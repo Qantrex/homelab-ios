@@ -1,0 +1,53 @@
+{
+  "_comment": "Example for a Debian server with Docker apps on 127.0.0.1, behind tailscale serve, plus a gaming PC that sleeps. Keys that start with _ are comments. All keys: docs/REFERENCE_SERVER.md.",
+
+  "name": "homeserver",
+  "listen": "127.0.0.1:8791",
+
+  "_auth": "tailscale serve adds Tailscale-User-Login. Only logins listed here get in. Tokens (for tagged devices or curl) come from the env var HOMELAB_TOKENS, so this file holds no secrets.",
+  "trust_identity_header": "Tailscale-User-Login",
+  "allowed_logins": ["you@example.com"],
+  "tokens": [],
+
+  "interval": 60,
+
+  "this_host": {
+    "_comment": "This machine. id defaults to the hostname.",
+    "id": "homeserver",
+    "kind": "server",
+    "disks": ["/", "/tank"],
+    "docker": true,
+    "updates": true
+  },
+
+  "hosts": [
+    {"id": "gaming-pc", "name": "Gaming PC", "kind": "desktop", "check": "ping://gaming-pc", "sleeps": true},
+    {"id": "router", "name": "Router", "kind": "server", "check": "tcp://192.168.0.1:443"}
+  ],
+
+  "checks": [
+    {"name": "Vaultwarden", "url": "http://127.0.0.1:8080/alive", "host": "homeserver", "expect": 200},
+    {"name": "Pi-hole", "url": "http://127.0.0.1:8081/admin/", "host": "homeserver", "expect": [200, 302]},
+    {"name": "CouchDB", "url": "http://127.0.0.1:5984/_up", "host": "homeserver"},
+    {"name": "Jellyfin", "url": "http://127.0.0.1:8096/health", "host": "homeserver", "severity": "warning"},
+    {"name": "Cockpit", "url": "https://127.0.0.1:9090/", "host": "homeserver", "insecure": true, "severity": "warning"}
+  ],
+
+  "thresholds": {"disk_warning": 90, "disk_problem": 95, "temp_warning": 80},
+
+  "cards_dir": "/var/lib/homelab-companion/cards",
+
+  "services": [
+    {"name": "Vaultwarden", "url": "https://homeserver.tailXXXX.ts.net", "group": "Apps", "icon": "lock.shield"},
+    {"name": "Jellyfin", "url": "https://homeserver.tailXXXX.ts.net:8920", "group": "Media", "icon": "play.rectangle"},
+    {"name": "Pi-hole", "url": "https://homeserver.tailXXXX.ts.net:9443/admin/", "group": "Network", "icon": "shield"},
+    {"name": "Cockpit", "url": "https://homeserver.tailXXXX.ts.net:9091", "group": "Admin", "icon": "gauge"}
+  ],
+
+  "_actions": "Off by default. To turn on: set pending_dir and actions. Your scripts write pending/*.json; the app's Approve button runs the command. Read the security notes first.",
+  "_pending_dir": "/var/lib/homelab-companion/pending",
+  "_actions_example": {"restart": ["sudo", "-n", "/usr/local/bin/restart-stack", "--", "{arg}"]},
+
+  "_chat": "Off by default. chat_command gets the text on stdin and prints the answer.",
+  "_chat_command_example": ["/usr/local/bin/my-chat-bot"]
+}
