@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Usage: scripts/verify-ipa PATH/TO/App.ipa
+# Checks that the IPA holds Payload/Homelab.app with the widget at PlugIns/HomelabWidget.appex, and that both carry
+# the App Group entitlement group.com.qantrex.homelab. Used by CI and the release workflow.
+# The entitlement check needs `codesign` (macOS) or `ldid`; without either it is skipped with a warning.
+set -euo pipefail
+
+ipa=${1:?usage: scripts/verify-ipa PATH/TO/App.ipa}
+group=group.com.qantrex.homelab
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+unzip -q "$ipa" -d "$tmp"
+app="$tmp/Payload/Homelab.app"
+appex="$app/PlugIns/HomelabWidget.appex"
+echo "== contents of $(basename "$ipa") ($(wc -c < "$ipa" | tr -d ' ') bytes)"
+(cd "$tmp" && find Payload -maxdepth 4 | sort)
+
+[ -d "$app" ]   || { echo "FAIL: Payload/Homelab.app missing"; exit 1; }
+[ -d "$appex" ] || { echo "FAIL: Payload/Homelab.app/PlugIns/HomelabWidget.appex missing"; exit 1; }
+
+entitlements() {
+  if command -v codesign >/dev/null; then codesign -d --entitlements - "$1" 2>&1 || true
+  elif command -v ldid >/dev/null; then ldid -e "$1" 2>&1 || true
+  else return 3; fi
+}
+
+for b in "$app" "$appex"; do
+  name=${b#"$tmp"/}
+  if command -v plutil >/dev/null; then
+    plutil -p "$b/Info.plist" | grep -E 'CFBundle(Identifier|ShortVersionString|Version)"' || true
+  fi
+  if ! ent=$(entitlements "$b"); then
+    echo "WARN: no codesign/ldid here, entitlement check skipped for $name"
+    continue
+  fi
+  if grep -q "$group" <<<"$ent"; then
+    echo "ok: $name has $group"
+  else
+    echo "FAIL: $name lacks the App Group entitlement $group"
+    echo "$ent"
+    exit 1
+  fi
+done
+echo "verify-ipa: ok"

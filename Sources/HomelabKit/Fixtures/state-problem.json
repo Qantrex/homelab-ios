@@ -1,0 +1,44 @@
+{
+  "time": "2026-11-04T21:30:00", "status": "problem", "checked": "2026-11-04T21:28:00",
+  "problems": [
+    {"id": "media-sonarr", "text": "media: container sonarr is unhealthy", "host": "media", "severity": "problem", "since": "2026-11-04T21:10:00"},
+    {"id": "pi-uv", "text": "pi: under-voltage since boot", "host": "pi", "severity": "warning"}
+  ],
+  "hosts": [
+    {"id": "server", "name": "server", "kind": "server", "reachable": true, "checked": "2026-11-04T21:28:00",
+     "load": 1.85, "cpu_count": 4, "mem_pct": 71, "temp": 63.0, "disks": {"/": 58, "/tank": 81},
+     "containers": {"up": 14, "total": 14}, "updates": {"upgradable": 12, "reboot_required": true},
+     "backup": {"last": "2026-11-04T04:45:10", "result": "success"}, "flags": [], "url": "https://server.example.ts.net"},
+    {"id": "media", "name": "media", "kind": "raspberry-pi", "reachable": true, "checked": "2026-11-04T21:28:00",
+     "load": 3.1, "cpu_count": 4, "mem_pct": 88, "temp": 71.2, "disks": {"/": 44, "/srv/media": 93},
+     "containers": {"up": 10, "total": 11}, "updates": {"upgradable": 0, "reboot_required": false},
+     "backup": {"last": "2026-11-03T03:00:00", "result": "failed"}, "flags": []},
+    {"id": "pi", "name": "pi", "kind": "raspberry-pi", "reachable": true, "checked": "2026-11-04T21:28:00",
+     "load": 0.3, "cpu_count": 4, "mem_pct": 40, "temp": 48.0, "disks": {"/": 22},
+     "containers": {"up": 6, "total": 6}, "flags": ["undervoltage_since_boot"]},
+    {"id": "gpu", "name": "gaming-pc", "kind": "desktop", "reachable": false, "checked": "2026-11-04T21:28:00", "flags": ["asleep"]}
+  ],
+  "pending": [
+    {"id": "ab12", "job": "watchdog", "action": "restart", "arg": "media sonarr",
+     "reason": "sonarr has been unhealthy for 20 minutes; a restart usually fixes it.", "created": "2026-11-04T21:12:00",
+     "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "always": "HOMELAB_ALWAYS_ab12_1123456789abcdef",
+                 "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}},
+    {"id": "cd34", "job": "updates", "action": "apt-upgrade", "arg": "server",
+     "reason": "12 package updates, 3 security.", "created": "2026-11-04T10:00:00",
+     "buttons": {"approve": "HOMELAB_APPROVE_cd34_3123456789abcdef", "deny": "HOMELAB_DENY_cd34_4123456789abcdef"}}
+  ],
+  "cards": [
+    {"id": "now-playing", "title": "Now playing", "icon": "play.tv", "tint": "purple", "style": "list", "updated": "21:30",
+     "items": [{"title": "The Expanse S03E05", "subtitle": "alex · Living room TV", "value": "direct play", "progress": 0.42}]},
+    {"id": "downloads", "title": "Downloads", "icon": "arrow.down.circle", "tint": "blue", "style": "list",
+     "items": [{"title": "Dune Part Two (2024)", "subtitle": "radarr", "value": "12 min", "progress": 0.81},
+               {"title": "Severance S02E03", "subtitle": "sonarr", "value": "1 h", "progress": 0.2}]},
+    {"id": "today", "title": "Today", "icon": "sun.max", "tint": "orange", "style": "metrics",
+     "items": [{"title": "Wake-up", "value": "06:20"}, {"title": "First lesson", "value": "08:00"},
+               {"title": "Leave by", "value": "07:31", "subtitle": "U6 07:36"}]},
+    {"id": "note", "title": "Note", "icon": "text.bubble", "style": "text", "text": "Backups to **R2** are at 6.1 of 8 GB."}
+  ],
+  "busy": ["chat"],
+  "last_message": {"id": 1762290600000000000, "ts": "2026-11-04T21:10:00", "from": "agent", "job": "watchdog",
+                   "status": "ALERT", "text": "media: sonarr unhealthy. Proposed: restart (ab12)."}
+}

@@ -1,0 +1,144 @@
+# Release: push a tag like v1.0.0 -> GitHub Release with the IPA + SHA-256, and a SideStore/AltStore source on
+# GitHub Pages (https://qantrex.github.io/homelab-ios/source.json). Free standard runner only (macos-26).
+# One-time setup by the owner: Settings -> Pages -> Source: GitHub Actions. See docs/CI.md.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)release, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write   # create the release
+  pages: write      # deploy the source to Pages
+  id-token: write   # required by actions/deploy-pages
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # Fails early (before anything is published) when Pages is not enabled yet.
+      - name: Check GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Version from tag
+        run: |
+          version=${TAG#v}
+          [[ "$version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?([-+][0-9A-Za-z.-]+)?$ ]] || { echo "bad tag: $TAG"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "IPA_NAME=Homelab-$version.ipa" >> "$GITHUB_ENV"
+
+      - name: Toolchain and xtool
+        run: |
+          sw_vers; xcodebuild -version; swift --version
+          brew install xtool-org/tap/xtool
+          xtool --version || true
+
+      - name: Shared code tests
+        run: KIT_ONLY=1 swift test
+
+      - name: Build release IPA
+        run: |
+          scripts/build-ipa 2>&1 | tee build-device.log
+          ipa=$(find xtool -name '*.ipa' | head -1)
+          mkdir -p dist && cp "$ipa" "dist/$IPA_NAME"
+          (cd dist && shasum -a 256 "$IPA_NAME" > "$IPA_NAME.sha256" && cat "$IPA_NAME.sha256")
+
+      - name: Verify IPA
+        run: scripts/verify-ipa "dist/$IPA_NAME"
+
+      - name: GitHub Release
+        run: |
+          pre=(); [[ "$VERSION" == *-* ]] && pre=(--prerelease)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "dist/$IPA_NAME" "dist/$IPA_NAME.sha256" --clobber
+          else
+            gh release create "$TAG" "dist/$IPA_NAME" "dist/$IPA_NAME.sha256" \
+              --title "Homelab $VERSION" --generate-notes --verify-tag "${pre[@]+"${pre[@]}"}"
+          fi
+
+      - name: Build site (source.json, icon, index.html)
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          mkdir -p site
+          download="https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG/$IPA_NAME"
+          prev=()
+          if curl -fsSL --max-time 20 "$SITE_URL/source.json" -o previous-source.json; then
+            prev=(--previous previous-source.json)
+          else
+            echo "no live source.json yet, starting a new one"
+          fi
+          notes=$(gh release view "$TAG" --json body -q .body 2>/dev/null | head -c 4000 || true)
+          scripts/make-source --version "$VERSION" --ipa "dist/$IPA_NAME" --download-url "$download" \
+            --notes "${notes:-Homelab $VERSION}" "${prev[@]+"${prev[@]}"}" --output site/source.json
+          if [ -f Resources/AppIcon.png ]; then cp Resources/AppIcon.png site/icon.png
+          else echo "::warning::Resources/AppIcon.png missing, the source has no icon"; fi
+
+          source_url="$SITE_URL/source.json"
+          enc=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$source_url")
+          cat > site/index.html <<HTML
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Homelab iOS</title>
+          <style>
+            :root { color-scheme: light dark; }
+            body { font: 17px/1.5 -apple-system, system-ui, sans-serif; max-width: 34rem; margin: 3rem auto; padding: 0 16px; }
+            img { width: 96px; height: 96px; border-radius: 22px; }
+            a.button { display: inline-block; padding: .7rem 1.2rem; border-radius: .7rem; background: #2F6FED; color: #fff; text-decoration: none; margin: .3rem 0; }
+            code { word-break: break-all; }
+          </style>
+          </head>
+          <body>
+          <img src="icon.png" alt="">
+          <h1>Homelab iOS</h1>
+          <p>Latest version: <strong>$VERSION</strong></p>
+          <p><a class="button" href="sidestore://source?url=$enc">Add to SideStore</a><br>
+             <a class="button" href="altstore://source?url=$enc">Add to AltStore</a></p>
+          <p>Or add this source by hand: <code>$source_url</code></p>
+          <p><a href="$download">Download the IPA</a> ·
+             <a href="https://github.com/${GITHUB_REPOSITORY}">Source code</a></p>
+          </body>
+          </html>
+          HTML
+          python3 -m json.tool site/source.json > /dev/null
+          ls -la site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

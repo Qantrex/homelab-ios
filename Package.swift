@@ -1,0 +1,54 @@
+// swift-tools-version: 6.0
+// Homelab iOS: a SwiftPM package built into an iOS app by xtool (see xtool.yml and docs/SETUP.md).
+
+import Foundation
+import PackageDescription
+
+// `KIT_ONLY=1 swift test` builds only HomelabKit (Foundation only), so its tests run on Linux, where SwiftUI and
+// WidgetKit don't exist. Not `#if os(Linux)`: xtool evaluates this manifest on Linux too and needs the app targets.
+let kitOnly = ProcessInfo.processInfo.environment["KIT_ONLY"] == "1"
+
+let swiftSettings: [SwiftSetting] = [
+    .enableUpcomingFeature("ExistentialAny"),
+]
+
+var products: [Product] = [
+    .library(name: "HomelabKit", targets: ["HomelabKit"]),
+]
+var targets: [Target] = [
+    .target(
+        name: "HomelabKit",
+        resources: [.copy("Fixtures")],
+        swiftSettings: swiftSettings
+    ),
+    .testTarget(
+        name: "HomelabKitTests",
+        dependencies: ["HomelabKit"],
+        swiftSettings: swiftSettings
+    ),
+]
+
+if !kitOnly {
+    products += [
+        // xtool: the app is the library product named in xtool.yml; the widget extension is another one.
+        .library(name: "Homelab", targets: ["Homelab"]),
+        .library(name: "HomelabWidget", targets: ["HomelabWidget"]),
+    ]
+    targets += [
+        .target(name: "HomelabDesign", dependencies: ["HomelabKit"], swiftSettings: swiftSettings),
+        .target(name: "HomelabUI", dependencies: ["HomelabKit", "HomelabDesign"], swiftSettings: swiftSettings),
+        .target(name: "Homelab", dependencies: ["HomelabKit", "HomelabUI"], swiftSettings: swiftSettings),
+        .target(name: "HomelabWidget", dependencies: ["HomelabKit", "HomelabDesign"], swiftSettings: swiftSettings),
+    ]
+}
+
+let package = Package(
+    name: "Homelab",
+    defaultLocalization: "en",
+    platforms: [
+        .iOS(.v18),
+        .macOS(.v15),
+    ],
+    products: products,
+    targets: targets
+)

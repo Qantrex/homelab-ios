@@ -1,0 +1,13 @@
+[
+  {"entity_id": "light.living_room", "state": "on", "attributes": {"friendly_name": "Living room", "brightness": 180},
+   "last_changed": "2026-11-04T20:10:00+00:00"},
+  {"entity_id": "switch.heater", "state": "off", "attributes": {"friendly_name": "IR heater", "icon": "mdi:radiator"},
+   "last_changed": "2026-11-04T18:00:00+00:00"},
+  {"entity_id": "input_boolean.school_today", "state": "on", "attributes": {"friendly_name": "School today"}},
+  {"entity_id": "script.goodnight", "state": "off", "attributes": {"friendly_name": "Goodnight"}},
+  {"entity_id": "scene.movie", "state": "2026-11-03T21:00:00+00:00", "attributes": {"friendly_name": "Movie"}},
+  {"entity_id": "sensor.living_room_temperature", "state": "21.4",
+   "attributes": {"friendly_name": "Living room temperature", "unit_of_measurement": "°C", "device_class": "temperature"}},
+  {"entity_id": "binary_sensor.front_door", "state": "off", "attributes": {"friendly_name": "Front door", "device_class": "door"}},
+  {"entity_id": "fan.bedroom", "state": "unavailable", "attributes": {"friendly_name": "Bedroom fan"}}
+]

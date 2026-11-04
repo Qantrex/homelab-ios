@@ -1,0 +1,2 @@
+{"api": 1, "name": "Demo homelab", "server": "homelab-demo", "version": "1.0.0",
+ "features": ["status", "hosts", "actions", "chat", "cards", "services"], "auth": "identity"}

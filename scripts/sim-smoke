@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# Usage: scripts/sim-smoke APP_PATH OUT_DIR
+#   APP_PATH  simulator build of the app (e.g. from `xtool dev build --triple arm64-apple-ios-simulator`)
+#   OUT_DIR   where the PNG screenshots, app-log.txt and summary.txt go
+# macOS only. Boots the newest available iPhone simulator, installs the app, starts the fixture server
+# (server/reference_server.py on 127.0.0.1:8791, the simulator shares the host network) and takes screenshots:
+#   demo mode (every tab, light), dark mode, large text, live mode against the fixture server, a deep link.
+# Exits 0 when at least one screenshot worked (a single failed shot is reported, not fatal).
+# Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulator booted.
+set -euo pipefail
+
+[ $# -eq 2 ] || { sed -n '2,10p' "$0"; exit 2; }
+[ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
+
+APP_PATH=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
+mkdir -p "$2"
+OUT_DIR=$(cd "$2" && pwd)
+cd "$(dirname "$0")/.."
+
+BUNDLE_ID=com.qantrex.homelab
+WAIT=${WAIT:-6}
+PORT=${PORT:-8791}
+SERVER_URL="http://127.0.0.1:$PORT"
+[ -d "$APP_PATH" ] || { echo "sim-smoke: no app at $APP_PATH"; exit 1; }
+
+udid=$(xcrun simctl list devices available -j | python3 -c '
+import json,sys
+d=json.load(sys.stdin)["devices"]
+ios=[k for k in d if "iOS" in k]
+ios.sort(key=lambda k: [int(x) for x in k.rsplit("iOS-",1)[1].split("-")])
+for k in reversed(ios):
+    for dev in d[k]:
+        if dev["name"].startswith("iPhone"):
+            print(dev["udid"]); sys.exit()')
+[ -n "$udid" ] || { echo "sim-smoke: no available iPhone simulator"; exit 1; }
+echo "simulator: $udid ($(xcrun simctl list devices | grep "$udid" | sed 's/ *(.*//' | xargs))"
+
+server_pid=""
+cleanup() {
+  if [ -n "$server_pid" ]; then kill "$server_pid" 2>/dev/null || true; fi
+  if [ "${KEEP_SIM:-0}" != 1 ]; then xcrun simctl shutdown "$udid" 2>/dev/null || true; fi
+}
+trap cleanup EXIT
+
+xcrun simctl boot "$udid" 2>/dev/null || true   # "already booted" is fine
+xcrun simctl bootstatus "$udid" -b
+start_time=$(date '+%Y-%m-%d %H:%M:%S')
+xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --batteryLevel 100 \
+  --wifiBars 3 --cellularBars 4 || echo "WARN: status bar override failed"
+xcrun simctl ui "$udid" appearance light || true
+xcrun simctl ui "$udid" content_size large || true
+xcrun simctl install "$udid" "$APP_PATH"
+
+# Fixture server, starting in the "problem" state so the later switch to state-ok.json is visible.
+if [ -f server/reference_server.py ]; then
+  python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port "$PORT" \
+    --state state-problem.json > "$OUT_DIR/server-log.txt" 2>&1 &
+  server_pid=$!
+  for _ in $(seq 1 50); do
+    curl -s -o /dev/null --max-time 1 "$SERVER_URL/" && break
+    sleep 0.2
+  done
+  curl -s -o /dev/null --max-time 1 "$SERVER_URL/" || echo "WARN: fixture server not answering on $SERVER_URL"
+else
+  echo "WARN: server/reference_server.py missing, live-mode shots will show an unreachable server"
+fi
+
+ok=()
+failed=()
+launch() { xcrun simctl launch --terminate-running-process "$udid" "$BUNDLE_ID" "$@" >/dev/null; }
+shot() {
+  local name=$1
+  if xcrun simctl io "$udid" screenshot "$OUT_DIR/$name.png" >/dev/null 2>&1; then
+    ok+=("$name"); echo "ok   $name"
+  else
+    failed+=("$name"); echo "FAIL $name"
+  fi
+}
+# scene NAME LAUNCH_ARGS... : launch fresh, wait, screenshot
+scene() {
+  local name=$1; shift
+  if launch "$@"; then sleep "$WAIT"; shot "$name"; else failed+=("$name (launch)"); echo "FAIL $name (launch)"; fi
+}
+
+DEMO=(-HomelabDemo YES)
+LIVE=(-HomelabResetState YES -HomelabServer "$SERVER_URL")
+
+# (a) demo mode, every tab, light
+n=1
+for tab in overview actions chat home settings; do
+  scene "$(printf %02d $n)-demo-$tab-light" "${DEMO[@]}" -HomelabTab "$tab"; n=$((n + 1))
+done
+
+# (b) dark mode
+xcrun simctl ui "$udid" appearance dark || true
+scene 06-demo-overview-dark "${DEMO[@]}" -HomelabTab overview
+scene 07-demo-chat-dark     "${DEMO[@]}" -HomelabTab chat
+xcrun simctl ui "$udid" appearance light || true
+
+# (c) large text
+xcrun simctl ui "$udid" content_size accessibility-extra-large || true
+scene 08-demo-overview-largetext "${DEMO[@]}" -HomelabTab overview
+xcrun simctl ui "$udid" content_size large || true
+
+# (d) live mode against the fixture server
+scene 09-live-overview-problem "${LIVE[@]}" -HomelabTab overview
+scene 10-live-actions          "${LIVE[@]}" -HomelabTab actions
+scene 11-live-chat             "${LIVE[@]}" -HomelabTab chat
+if curl -fsS -o /dev/null --max-time 3 "$SERVER_URL/__control?state=state-ok.json"; then
+  scene 12-live-overview-ok "${LIVE[@]}" -HomelabTab overview
+else
+  failed+=("12-live-overview-ok (/__control)"); echo "FAIL 12-live-overview-ok (/__control)"
+fi
+
+# (e) deep link into a running app
+scene 13-demo-before-deeplink "${DEMO[@]}" -HomelabTab overview
+if xcrun simctl openurl "$udid" "homelab://actions"; then
+  sleep 3; shot 14-deeplink-actions
+else
+  failed+=("14-deeplink-actions (openurl)"); echo "FAIL 14-deeplink-actions (openurl)"
+fi
+
+# App log for this run (Logger subsystem com.qantrex.homelab)
+xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \
+  --style compact > "$OUT_DIR/app-log.txt" 2>&1 \
+  || xcrun simctl spawn "$udid" log show --last 5m --predicate "subsystem == \"$BUNDLE_ID\"" \
+       --style compact > "$OUT_DIR/app-log.txt" 2>&1 || true
+
+{
+  echo "sim-smoke: ${#ok[@]} screenshots ok, ${#failed[@]} failed"
+  for s in "${failed[@]+"${failed[@]}"}"; do echo "  failed: $s"; done
+} | tee "$OUT_DIR/summary.txt"
+
+[ "${#ok[@]}" -gt 0 ]
