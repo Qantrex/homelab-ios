@@ -112,7 +112,7 @@ public struct Problem: Codable, Sendable, Equatable, Hashable, Identifiable {
     }
 }
 
-public struct Host: Codable, Sendable, Equatable, Identifiable {
+public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
     public var id: String
     public var name: String
     public var kind: String?
