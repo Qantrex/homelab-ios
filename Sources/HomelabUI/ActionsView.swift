@@ -141,20 +141,34 @@ struct ActionRow: View {
     @ViewBuilder
     private func buttons(spacer: Bool) -> some View {
         if action.buttons[.approve] != nil {
-            Button { tap(.approve) } label: { Label("Approve", systemImage: "checkmark").lineLimit(1) }
+            Button { tap(.approve) } label: { ButtonText(title: "Approve", symbol: "checkmark") }
                 .buttonStyle(.borderedProminent)
                 .fixedSize()
         }
         if action.buttons[.always] != nil {
-            Button { tap(.always) } label: { Text("Always").lineLimit(1) }
+            Button { tap(.always) } label: { ButtonText(title: "Always", symbol: nil) }
                 .buttonStyle(.bordered)
                 .fixedSize()
         }
         if spacer { Spacer(minLength: 8) }
         if action.buttons[.deny] != nil {
-            Button(role: .destructive) { tap(.deny) } label: { Label("Deny", systemImage: "xmark").lineLimit(1) }
+            Button(role: .destructive) { tap(.deny) } label: { ButtonText(title: "Deny", symbol: "xmark") }
                 .buttonStyle(.bordered)
                 .fixedSize()
+        }
+    }
+}
+
+/// Icon + title for the action buttons. Not `Label`: in a fixed-size row inside a List, iOS showed Labels as
+/// icon-only (a blank Approve button in CI screenshots, 2026-11-04).
+struct ButtonText: View {
+    let title: LocalizedStringKey
+    let symbol: String?
+
+    var body: some View {
+        HStack(spacing: 5) {
+            if let symbol { Image(systemName: symbol).accessibilityHidden(true) }
+            Text(title).lineLimit(1)
         }
     }
 }
