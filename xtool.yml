@@ -1,0 +1,10 @@
+version: 1
+bundleID: com.qantrex.homelab
+product: Homelab
+infoPath: App-Info.plist
+entitlementsPath: App.entitlements
+iconPath: Resources/AppIcon.png
+extensions:
+  - product: HomelabWidget
+    infoPath: Widget-Info.plist
+    entitlementsPath: Widget.entitlements
