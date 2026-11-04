@@ -23,7 +23,7 @@ defaults:
 jobs:
   linux:
     runs-on: ubuntu-latest
-    container: swift:6.4-noble
+    container: swift:6.4-noble@sha256:bca121f6eb59fd80340d1296887b2698ed8f3eb9eca7d80c181f8af769dc7ee0   # pinned; bump on purpose
     timeout-minutes: 20
     env:
       KIT_ONLY: "1"
