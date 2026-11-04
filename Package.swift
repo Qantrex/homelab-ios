@@ -38,7 +38,15 @@ if !kitOnly {
         .target(name: "HomelabDesign", dependencies: ["HomelabKit"], swiftSettings: swiftSettings),
         .target(name: "HomelabUI", dependencies: ["HomelabKit", "HomelabDesign"], swiftSettings: swiftSettings),
         .target(name: "Homelab", dependencies: ["HomelabKit", "HomelabUI"], swiftSettings: swiftSettings),
-        .target(name: "HomelabWidget", dependencies: ["HomelabKit", "HomelabDesign"], swiftSettings: swiftSettings),
+        .target(
+            name: "HomelabWidget",
+            dependencies: ["HomelabKit", "HomelabDesign"],
+            swiftSettings: swiftSettings,
+            // The extension's entry point is Foundation's _NSExtensionMain, so nothing references the WidgetBundle's
+            // `main` and -dead_strip drops the whole widget. The empty binary then fails xtool's signing ("Can't find
+            // free space of LoadCommands for CodeSignature"). Keep `main` and everything it uses.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-u", "-Xlinker", "_main"])]
+        ),
     ]
 }
 
