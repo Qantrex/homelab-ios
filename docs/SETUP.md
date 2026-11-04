@@ -140,7 +140,7 @@ passwords in the URL are refused.
 | `server/` | `openapi.yaml` (the API), `reference_server.py`, its tests, `config.example.json` | – |
 | `scripts/` | Build, install, test, lint, screenshot and release helpers | – |
 | `xtool.yml`, `App-Info.plist`, `Widget-Info.plist`, `App.entitlements`, `Widget.entitlements`, `Resources/AppIcon.png` | What xtool needs to package the app and the widget | – |
-| `.github/workflows/` | `ci.yml` (Linux + macOS), `release.yml` (tag → IPA, Release, SideStore source) | – |
+| `.github/workflows/` | `ci.yml` (Linux + macOS checks only; CI never builds an app to install, see `docs/RELEASE.md`) | – |
 
 No third-party Swift packages. The shared App Group is `group.com.qantrex.homelab`; SideStore renames it, see
 [SIDESTORE.md](SIDESTORE.md).

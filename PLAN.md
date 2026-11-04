@@ -104,7 +104,7 @@ homelab-ios/
 │  ├─ reference_server.py     # stdlib Python: a real server for other homelabs + the mock for tests
 │  └─ test_reference_server.py
 ├─ scripts/  test-linux  build-ipa  install-dev  sim-smoke  make-source
-├─ .github/workflows/  ci.yml  release.yml
+├─ .github/workflows/  ci.yml   (checks only; releases by hand: docs/RELEASE.md)
 ├─ docs/  SETUP.md  SIDESTORE.md  API.md  SECURITY.md  CONTRIBUTING.md
 ├─ DeviceTest.md  README.md  CHANGELOG.md  LICENSE
 ```
@@ -247,4 +247,5 @@ Commit and push after every step (the container is ephemeral). Commit style as i
 | `server/fixtures/` | `Sources/HomelabKit/Fixtures/` | One copy shared by demo mode, Swift tests, the mock server and CI |
 | Deep-link screenshot via `simctl openurl` | Launch with `-HomelabTab` | `openurl` shows an iOS "Open in Homelab?" prompt in the simulator; deep links are unit-tested in `AppModelTests` |
 | `AppModel` in the UI layer | In `HomelabKit` | So its race-prone logic (refresh queueing, token rules, tabs) runs in the Linux tests |
-| Release `v1.0.0` | `v1.0.0-rc.1` first | The phone tests (spike S1–S7, `DeviceTest.md`) haven't run yet. `v1.0.0` follows them |
+| Release by a tag workflow (IPA + source.json on Pages) | Releases by hand from the owner's own build (`docs/RELEASE.md`, `scripts/make-source`); CI only checks | Owner's decision 2026-11-04: CI must not build the apps people install. The SideStore source is a release file (`releases/latest/download/source.json`), so no Pages either |
+| Release `v1.0.0` in the session | No release yet | The owner builds and tests on the phone first (`DeviceTest.md`), then releases |

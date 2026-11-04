@@ -1,5 +1,8 @@
 # Installing with SideStore
 
+> No release yet: until then, build it yourself ([INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md)) and import
+> the IPA in SideStore, or install it with `xtool install`.
+
 [SideStore](https://sidestore.io) installs apps on an iPhone with a free Apple ID, without a computer after the first
 setup. It signs the app for you and refreshes it before it expires. Homelab needs nothing else: no paid developer
 account, no TestFlight.
@@ -15,12 +18,12 @@ You need iOS 18 or newer for Homelab.
 
 | Way | Steps |
 |---|---|
-| Add the source (gets updates) | SideStore → Sources → + → paste `https://qantrex.github.io/homelab-ios/source.json` → open the source → Homelab → install. Or open https://qantrex.github.io/homelab-ios/ on the phone and tap **Add to SideStore** |
+| Add the source (gets updates) | SideStore → Sources → + → paste `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` → open the source → Homelab → install. |
 | Import an IPA | Download `Homelab-<version>.ipa` from [GitHub Releases](https://github.com/Qantrex/homelab-ios/releases) (or build one, see [SETUP.md](SETUP.md)). In Files: Share → SideStore, or in SideStore: My Apps → + → pick the IPA |
 
-The release IPA has a `.sha256` file next to it if you want to check the download. Each release also carries
-`source.json`, so `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` works as the source
-URL too, if the Pages site is down.
+The release IPA has a `.sha256` file next to it if you want to check the download. Releases are built by hand
+from the owner's own build ([RELEASE.md](RELEASE.md)); each one carries `source.json`, which is why the source URL
+above always points at the newest release.
 
 Slots: a free Apple ID allows 3 active sideloaded apps, and SideStore is one of them. The Homelab widget doesn't take
 a slot, so SideStore + Homelab = 2 of 3. Each install also uses 2 of the 10 App IDs a free account may create per
@@ -63,7 +66,7 @@ If it says "none (widget can't see data)", the app still works, but the widget s
 | Widget shows "Open the app" or "Open Homelab to load your hosts." | The app has no data yet, or no App Group was found | Open the app and pull down on Overview. Then check Settings → Diagnostics → App Group. If it is "none", reinstall through SideStore and send the report |
 | Widget is dimmed and says "Data from … open the app" | The last data is more than 2 hours old. Widgets never fetch by themselves | Open the app. Background refresh also updates it when iOS allows |
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Tailscale is off (often after a SideStore refresh), the server is down, or `tailscale serve` doesn't serve that port | Turn Tailscale on. On the server: `tailscale serve status` and `curl https://<machine>.<tailnet>.ts.net:<port>/api/v1/info` from another tailnet device |
-| "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off | Check the name in the Tailscale app. Try the `100.x` address |
+| "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off | Check the name in the Tailscale app, and that MagicDNS is on (Tailscale app → Settings, and the admin console → DNS). The `100.x` address won't work with `tailscale serve`: its certificate is for the `.ts.net` name |
 | "The server refused access. Is this login or token allowed?" (HTTP 403) | Your Tailscale login is not in the server's `allowed_logins`, the token is wrong, or the device is tagged (tagged devices get no login header) | Add the login on the server, or switch Login to **Token** and enter a token the server knows |
 | "The server wants a login or token. Check the token in Settings." (HTTP 401) | Login is **Tailscale / proxy**, but the request didn't come through `tailscale serve`, or the server only takes tokens | Put the server behind `tailscale serve`, or use **Token** |
 | "This button is no longer valid (already handled or expired)." | The action was already approved or denied, or the server restarted with a new button secret | Pull to refresh. Set `HOMELAB_BUTTON_SECRET` on the reference server so buttons survive restarts |

@@ -10,7 +10,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| I1 | Add the source in SideStore | Sources → + → `https://qantrex.github.io/homelab-ios/source.json` shows "Homelab iOS" with the Homelab app | | |
+| I1 | Add the source in SideStore | (after the first release) Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` shows "Homelab iOS" with the Homelab app | | |
 | I2 | Install from the source | Installs without an error. SideStore → My Apps shows Homelab, active apps 2 of 3 | | |
 | I3 | Icon and name | Home screen shows the Homelab icon (sharp, no white border) and the name "Homelab" | | |
 
@@ -18,7 +18,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| F1 | Welcome screen | "Your homelab, in your pocket", four points, **Add a server** and **Try the demo**. No tabs yet | | |
+| F1 | Welcome screen | "Your homelab, in your pocket", a short text, four points, **Add a server**, **Try the demo** and a link to the server setup. No tabs yet | | |
 | F2 | Try the demo | Overview with demo hosts and problems. Tabs: Overview, Actions (with badge), Chat, Home, Settings | | |
 | F3 | Demo is alive | Demo chat answers a message. A demo toggle in Home flips. A demo Approve shows an answer | | |
 | F4 | Demo off | Settings → Demo servers off → back to the welcome screen (when no own server exists) | | |
@@ -29,7 +29,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 |---|---|---|---|---|
 | R1 | Add server | Type Homelab API, address `https://<machine>.<tailnet>.ts.net[:port]`, Login Tailscale / proxy. Save works | | |
 | R1b | Token stays with its server | Edit a token server and change only its address: the token field asks for a token again ("The address or type changed…"). Renaming keeps the token | | |
-| R2 | Test connection | Green "Connected to `<name>` (N features)." and the name field fills in when empty | | |
+| R2 | Test connection | Green "Connected to `<name>`: status, hosts and …" (the features in words), and the name field fills in when empty | | |
 | R3 | Bad address | `ftp://x` or `http://example.com` shows red text under the field, Save is greyed out | | |
 | R4 | Tailscale off | Turn Tailscale off, pull to refresh: "Can't reach `<host>`. Is Tailscale (or your VPN) on?" with Retry. No crash. Turn it back on: Retry loads the data | | |
 | R6 | Wrong login | With a token server: a wrong token gives "The server refused access…" or "The server wants a login or token…", not a crash | | |

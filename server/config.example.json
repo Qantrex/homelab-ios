@@ -6,6 +6,8 @@
 
   "_auth": "tailscale serve adds Tailscale-User-Login. Only logins listed here get in. Tokens (for tagged devices or curl) come from the env var HOMELAB_TOKENS, so this file holds no secrets.",
   "trust_identity_header": "Tailscale-User-Login",
+  "_allowed_hosts": "Host names the server answers to. Default: loopback and any *.ts.net. Tighter: your machine's exact name.",
+  "allowed_hosts": ["localhost", "127.0.0.1", "homeserver.tailXXXX.ts.net"],
   "allowed_logins": ["you@example.com"],
   "tokens": [],
 

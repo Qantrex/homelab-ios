@@ -2,8 +2,8 @@
 
 Tested setup: Arch Linux, iPhone 12 mini, iOS 18.x, a free Apple ID. The app needs iOS 18 or newer.
 
-Two ways. **A** is quicker: it installs the IPA that CI built on macOS, so you don't need Swift or Xcode.
-**B** builds on your PC.
+Two ways. **A** installs a released IPA (no Swift or Xcode needed). **B** builds on your PC; use it until the
+first release, and for testing branches.
 
 ## Once: tools and Apple ID
 
@@ -27,14 +27,16 @@ Plug the phone in with a cable, unlock it, tap **Trust** and enter the passcode.
 xtool devices
 ```
 
-## A: install the CI build (no Swift, no Xcode)
+## A: install a released IPA (no Swift, no Xcode)
 
-Download the IPA from the latest CI run of the `testing` branch: GitHub → Actions → **ci** → the newest run on
-`testing` → Artifacts → **ipa-macos-26**. Unzip it (the file is `Homelab-<commit>-macos-26.ipa`), then:
+Once there is a release (built by hand, see [RELEASE.md](RELEASE.md)), download `Homelab-<version>.ipa` from the
+[release page](https://github.com/Qantrex/homelab-ios/releases), then:
 
 ```bash
-cd ~/Downloads && unzip -o ipa-macos-26.zip && xtool install Homelab-*-macos-26.ipa
+xtool install ~/Downloads/Homelab-*.ipa
 ```
+
+Until the first release, use B.
 
 ## B: build on the PC
 
@@ -42,7 +44,7 @@ Needs Swift 6.4 and the iOS SDK from Xcode 27.1 (download `Xcode_27.1.xip` in th
 https://developer.apple.com/download/all/?q=Xcode, Apple login).
 
 ```bash
-yay -S swift-bin
+yay -S swift-bin   # from the AUR (any AUR helper, or makepkg)
 ```
 
 ```bash
@@ -59,7 +61,7 @@ git clone -b testing https://github.com/Qantrex/homelab-ios ~/Projects/homelab-i
 
 1. iOS 18 needs **Developer Mode** for apps you sign yourself: Settings → Privacy & Security → Developer Mode → on,
    restart, confirm. (The switch shows up after the first install attempt.)
-2. Trust your Apple ID: Settings → General → VPN & Device Management → your Apple ID → Trust.
+2. Trust your Apple ID: Settings → General → VPN & Device Management → **Developer App** → your Apple ID → Trust.
 3. Open **Homelab**. Try the demo, or add your server (Tailscale on).
 
 ## Good to know

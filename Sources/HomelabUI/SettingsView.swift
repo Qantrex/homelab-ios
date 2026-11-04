@@ -330,7 +330,7 @@ struct ServerEditor: View {
         }
         do {
             try model.save(c, token: typed.isEmpty ? nil : typed)
-            Task { await model.refresh() }
+            if c.speaksCompanionAPI { Task { await model.refresh(c) } }
             dismiss()
         } catch {
             saveError = error.localizedDescription

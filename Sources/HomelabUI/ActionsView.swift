@@ -97,7 +97,7 @@ struct ActionsView: View {
         case .success(let text): result = ResultMessage(title: c.action.title, text: text)
         case .failure(let e):
             result = ResultMessage(title: String(localized: "Didn't work"),
-                                   text: e == .forbidden ? String(localized: "This button is no longer valid (already handled or expired).") : e.message)
+                                   text: e.isForbidden ? String(localized: "This button is no longer valid (already handled or expired).") : e.message)
         }
     }
 }

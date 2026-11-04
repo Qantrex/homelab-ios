@@ -51,6 +51,7 @@ public struct ServerStatus: Sendable, Equatable {
     public var failures = 0
     public var services: [Service] = []
     public var servicesFetched: Date?
+    public var infoFetched: Date?
 
     public init(snapshot: Snapshot? = nil) {
         self.snapshot = snapshot
@@ -90,6 +91,8 @@ public final class AppModel {
     @ObservationIgnored private var running: [UUID: Task<Void, Never>] = [:]
     /// A refresh was asked for while one was running (e.g. right after pressing a button): run once more after it.
     @ObservationIgnored private var refreshAgain: Set<UUID> = []
+    /// The running fetch has sent its /state request: data a new caller needs may be newer than its answer.
+    @ObservationIgnored private var stateRequested: Set<UUID> = []
 
     public init(storage: Storage, tokens: any TokenStore, transport: any HTTPTransport = URLSessionTransport(),
                 arguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -254,7 +257,9 @@ public final class AppModel {
     public func refresh(_ server: ServerConfig) async {
         let id = server.id
         if let task = running[id] {
-            refreshAgain.insert(id)
+            // Only queue a second fetch if the running one already asked for /state; before that, its answer
+            // will be new enough, and several taps at once cost one fetch.
+            if stateRequested.contains(id) { refreshAgain.insert(id) }
             await task.value
             return
         }
@@ -286,9 +291,11 @@ public final class AppModel {
         let api = companion(for: server)
         var snapshot: Snapshot?
         do {
-            if s.info == nil {
+            // /info once, then every 10 minutes: a server can gain a feature (chat) without an app restart.
+            if s.info == nil || s.infoFetched.map({ Date().timeIntervalSince($0) > 600 }) ?? true {
                 do {
                     s.info = try await api.info()
+                    s.infoFetched = Date()
                 } catch APIError.unsupportedVersion(let v) {
                     throw APIError.unsupportedVersion(v)
                 } catch {
@@ -296,6 +303,8 @@ public final class AppModel {
                 }
             }
             let info = s.knownInfo
+            stateRequested.insert(server.id)
+            defer { stateRequested.remove(server.id) }
             let state = try await api.state()
             snapshot = Snapshot(serverID: server.id, serverName: info?.name ?? server.name, state: state, info: info)
             s.snapshot = snapshot
@@ -323,6 +332,8 @@ public final class AppModel {
             if var current = status[server.id] {
                 current.loading = false
                 status[server.id] = current
+                // Edited while we waited: fetch once more with the new config (refreshLoop reads it).
+                refreshAgain.insert(server.id)
             }
             return
         }

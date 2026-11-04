@@ -23,7 +23,7 @@ Status codes the app understands: 401/403 (identity missing or not allowed), 404
 
 | Way | Who adds it | App setting |
 |---|---|---|
-| Identity header, e.g. `Tailscale-User-Login` from `tailscale serve` | The reverse proxy, never the app | Auth "None / Tailscale" |
+| Identity header, e.g. `Tailscale-User-Login` from `tailscale serve` | The reverse proxy, never the app | Login "Tailscale / proxy" |
 | `Authorization: Bearer <token>` | The app (token from the Keychain) | Auth "Token" |
 
 The app never sends an `Origin` header or cookies. Plain `http://` only works for LAN names, `.local` and private or
@@ -45,7 +45,7 @@ Other people's servers send odd JSON, so the app is forgiving. A server can rely
 | Duplicate ids | Keeps the first |
 | A problem as a plain string | Treats it as `{text}` |
 | A link that isn't `http`/`https` | Drops the link |
-| Times: ISO 8601 with or without zone, or epoch s/ms/µs/ns | Reads them; without a zone = the phone's zone |
+| Times: ISO 8601 with or without zone, or epoch s/ms/µs/ns | Reads them; without a zone they mean the server's local time, read in the phone's zone (the same in a homelab). Send a zone if they can differ |
 
 The fixtures in `Sources/HomelabKit/Fixtures/` show all of this, and the tests check it. `state-unknown-fields.json`
 is the "everything odd at once" example.

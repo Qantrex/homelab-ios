@@ -51,8 +51,9 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         kind == other.kind && Self.origin(baseURL) == Self.origin(other.baseURL)
     }
 
-    /// "kind|scheme://host:port/path": changes exactly when cached data stops belonging to this server.
-    public var target: String { kind.rawValue + "|" + Self.origin(baseURL) }
+    /// "id|kind|scheme://host:port/path": changes exactly when cached data stops belonging to this server, and
+    /// differs between two entries that happen to share an address.
+    public var target: String { id.uuidString + "|" + kind.rawValue + "|" + Self.origin(baseURL) }
 
     static func origin(_ url: URL) -> String {
         let scheme = url.scheme?.lowercased() ?? ""

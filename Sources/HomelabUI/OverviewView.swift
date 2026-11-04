@@ -163,7 +163,9 @@ struct OverviewView: View {
         if !state.hosts.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 SectionTitle(text: "Hosts", trailing: "\(state.hosts.filter { $0.reachable == true }.count)/\(state.hosts.count) up")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
+                // Large text: one host per row, so names and numbers fit on a small phone.
+                LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
+                                                                : [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
                     ForEach(state.hosts) { host in
                         NavigationLink(value: host) { HostTile(host: host) }
                             .buttonStyle(.plain)

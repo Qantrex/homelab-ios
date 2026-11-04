@@ -132,10 +132,13 @@ struct WelcomeView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                     }
-                    Text("Works with any server that speaks the Homelab API (a reference server is in the project), and with Home Assistant.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 4) {
+                        Text("Works with any server that speaks the Homelab API, and with Home Assistant. A small reference server for any Linux box is in the project:")
+                        Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios/blob/main/docs/SERVER-SETUP.md")!)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
                 }
                 .padding(24)
                 .frame(maxWidth: 520)

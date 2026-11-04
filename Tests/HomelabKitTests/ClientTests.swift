@@ -87,8 +87,16 @@ import Testing
         (500, .server(status: 500)), (502, .server(status: 502)),
     ])
     func statusMapping(_ status: Int, _ expected: APIError) async {
-        let c = CompanionClient(baseURL: base, token: nil, transport: FakeTransport(status: status, json: #"{"error":"x"}"#))
+        let c = CompanionClient(baseURL: base, token: nil, transport: FakeTransport(status: status, json: #"{"error":"forbidden"}"#))
         await #expect(throws: expected) { try await c.state() }
+    }
+
+    @Test func refusalCarriesTheServerReason() async {
+        let c = CompanionClient(baseURL: base, token: nil,
+                                transport: FakeTransport(status: 403, json: #"{"error":"host not allowed (allowed_hosts in the config)"}"#))
+        await #expect(throws: APIError.refused("host not allowed (allowed_hosts in the config)")) { try await c.state() }
+        #expect(APIError.refused("x").isForbidden && APIError.forbidden.isForbidden && !APIError.notFound.isForbidden)
+        #expect(APIError.refused("host not allowed").message.contains("host not allowed"))
     }
 
     @Test func badRequestCarriesTheServerText() async {

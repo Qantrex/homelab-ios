@@ -12,12 +12,15 @@ final class FakeServer: @unchecked Sendable {
     private var _calls: [String: Int] = [:]
     private var _infoStatus = 200
     private var _delay: TimeInterval = 0
+    private var _stateDelay: TimeInterval = 0
     private var _authHeaders: [String?] = []
     private var _hosts: [String] = []
 
     var state: String { get { lock.withLock { _state } } set { lock.withLock { _state = newValue } } }
     var infoStatus: Int { get { lock.withLock { _infoStatus } } set { lock.withLock { _infoStatus = newValue } } }
     var delay: TimeInterval { get { lock.withLock { _delay } } set { lock.withLock { _delay = newValue } } }
+    /// Extra delay for /state only (the answer is read when the request arrives, like a real server).
+    var stateDelay: TimeInterval { get { lock.withLock { _stateDelay } } set { lock.withLock { _stateDelay = newValue } } }
     func calls(_ path: String) -> Int { lock.withLock { _calls[path] ?? 0 } }
     var authHeaders: [String?] { lock.withLock { _authHeaders } }
     var hosts: [String] { lock.withLock { _hosts } }
@@ -31,7 +34,7 @@ final class FakeServer: @unchecked Sendable {
             _calls[path, default: 0] += 1
             _authHeaders.append(r.value(forHTTPHeaderField: "Authorization"))
             _hosts.append(r.url?.host ?? "")
-            return (_delay, _state, _infoStatus)
+            return (_delay + (path == "/api/v1/state" ? _stateDelay : 0), _state, _infoStatus)
         }
         if delay > 0 { Thread.sleep(forTimeInterval: delay) }
         switch path {
@@ -129,17 +132,20 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
         await m.refresh()
-        server.delay = 0.15
-        let poll = Task { await m.refresh() }                          // a poll is running when the user taps
-        try await Task.sleep(for: .milliseconds(30))
+        // A poll has already asked /state (old answer: 2 pending) when the user taps; /button is fast.
+        server.stateDelay = 0.3
+        let poll = Task { await m.refresh() }
+        try await Task.sleep(for: .milliseconds(60))
         let button = try #require(m.selectedStatus.snapshot?.state.pending.first?.buttons[.approve])
         let result = await m.press(button, on: lab)
         #expect((try? result.get()) == "done")
-        #expect(m.selectedStatus.snapshot?.state.pending.isEmpty == true)   // the handled action is gone
+        // press must not return with the poll's old answer: the queued fetch ran and the action is gone.
+        #expect(m.selectedStatus.snapshot?.state.pending.isEmpty == true)
+        #expect(server.calls("/api/v1/state") == 3)
         await poll.value
     }
 
-    @Test func concurrentRefreshesShareOneFetch() async throws {
+    @Test func simultaneousRefreshesCostOneFetch() async throws {
         let (m, server, _, _) = makeModel()
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
@@ -148,8 +154,22 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         async let b: Void = m.refresh()
         async let c: Void = m.refresh()
         _ = await (a, b, c)
-        // One running + one queued (b and c collapse into it), not three.
-        #expect(server.calls("/api/v1/state") == 2)
+        #expect(server.calls("/api/v1/state") == 1)                    // b and c joined before /state was asked
+    }
+
+    @Test func aRefreshDuringTheStateRequestQueuesOneMore() async throws {
+        let (m, server, _, _) = makeModel()
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        await m.refresh()
+        server.stateDelay = 0.2
+        let first = Task { await m.refresh() }
+        try await Task.sleep(for: .milliseconds(60))                   // /state is in flight now
+        async let b: Void = m.refresh()
+        async let c: Void = m.refresh()
+        _ = await (b, c)
+        await first.value
+        #expect(server.calls("/api/v1/state") == 3)                    // 1 initial + the running one + one queued
     }
 
     @Test func refreshAfterEditUsesTheNewAddress() async throws {
@@ -269,5 +289,24 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         #expect(t.outgoing.count == 1 && t.isWorking)
         t.merge(MessagePage(messages: [ChatMessage(id: 11, from: .me, text: "hi")]))
         #expect(t.outgoing.isEmpty)
+    }
+}
+
+@Suite struct ChatWorkingTimeoutTests {
+    @Test func aMessageWithoutEchoStopsCountingAsWorking() {
+        var t = ChatTimeline()
+        let start = Date()
+        let local = t.begin("hi", now: start)
+        t.confirm(local, serverID: 99)
+        #expect(t.isWorking(now: start + 10))
+        #expect(!t.isWorking(now: start + ChatTimeline.workingTimeout + 1))
+        t.merge(MessagePage(messages: [], busy: ["chat"]))
+        #expect(t.isWorking(now: start + ChatTimeline.workingTimeout + 1))   // the server says it is busy
+    }
+
+    @Test func targetDiffersForTwoEntriesWithTheSameAddress() {
+        let a = ServerConfig(name: "a", kind: .companion, baseURL: labURL, auth: .token)
+        let b = ServerConfig(name: "b", kind: .companion, baseURL: labURL, auth: .identity)
+        #expect(a.target != b.target && a.isSameTarget(as: b))
     }
 }

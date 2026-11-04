@@ -108,20 +108,14 @@ jobs:
       - name: Shared code tests on macOS
         run: KIT_ONLY=1 swift test
 
-      - name: Device build (IPA, release configuration if supported)
+      # A check only: the device build must compile and carry the widget + App Group. The IPA is deleted again.
+      # Owner's rule (2026-11-04): CI never ships installable apps; the owner builds them with xtool himself.
+      - name: Device build check (compile, widget inside, App Group in app and widget)
         run: |
           scripts/build-ipa 2>&1 | tee build-device.log
           ipa=$(find xtool -name '*.ipa' | head -1)
-          mkdir -p out && cp "$ipa" "out/Homelab-${GITHUB_SHA::7}-${{ matrix.runner }}.ipa"
-
-      - name: Verify IPA (widget inside, App Group in app and widget)
-        run: scripts/verify-ipa out/*.ipa
-
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ipa-${{ matrix.runner }}
-          path: out/*.ipa
-          retention-days: 14
+          scripts/verify-ipa "$ipa"
+          rm -f "$ipa"
 
       - name: Simulator build
         run: |

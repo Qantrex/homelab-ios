@@ -71,6 +71,7 @@ fi
 APP_PATH=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 mkdir -p "$2"
 OUT_DIR=$(cd "$2" && pwd)
+touch "$OUT_DIR/.started"   # crash reports newer than this belong to this run
 cd "$(dirname "$0")/.."
 
 BUNDLE_ID=com.qantrex.homelab
@@ -134,11 +135,19 @@ dev=$udid   # the simulator the helpers below act on
 n=0         # the last screenshot number
 fail() { failed+=("$1"); echo "FAIL $1"; }
 launch() { xcrun simctl launch --terminate-running-process "$dev" "$BUNDLE_ID" "$@" >/dev/null; }
+# app_running: is the app process alive in the simulator? (A crash leaves the home screen, which would still
+# screenshot fine; that must count as a failure, not a success.)
+app_running() { xcrun simctl spawn "$dev" launchctl list 2>/dev/null | grep -q "UIKitApplication:$BUNDLE_ID"; }
 # shot NAME: the next number + NAME
 shot() {
   n=$((n + 1))
   local name
   name=$(printf '%02d-%s' "$n" "$1")
+  if ! app_running; then
+    xcrun simctl io "$dev" screenshot "$OUT_DIR/$name-NOT-RUNNING.png" >/dev/null 2>&1 || true
+    fail "$name (app not running: crashed or closed)"
+    return
+  fi
   if xcrun simctl io "$dev" screenshot "$OUT_DIR/$name.png" >/dev/null 2>&1; then
     ok+=("$name"); echo "ok   $name"
   else
@@ -227,8 +236,14 @@ for tab in "${TABS[@]}"; do
   printf '%s\n' "${core[@]+"${core[@]}"}" | grep -qx "$(printf '%02d' "$i")-demo-$tab-light" || core_ok=0
 done
 
+# Crash reports of the app from this run (simulator crashes land in the host's DiagnosticReports).
+mkdir -p "$OUT_DIR/crashes"
+find "$HOME/Library/Logs/DiagnosticReports" -newer "$OUT_DIR/.started" -name 'Homelab*' -exec cp {} "$OUT_DIR/crashes/" \; 2>/dev/null || true
+crashes=$(find "$OUT_DIR/crashes" -type f | wc -l | tr -d ' ')
+[ "$crashes" = 0 ] && rmdir "$OUT_DIR/crashes" 2>/dev/null
+
 {
-  echo "sim-smoke: ${#ok[@]} screenshots ok, ${#failed[@]} failed"
+  echo "sim-smoke: ${#ok[@]} screenshots ok, ${#failed[@]} failed, $crashes crash reports"
   echo "main simulator:  $(sim_name "$udid")"
   if [ -n "${small:-}" ]; then echo "small simulator: $(sim_name "$small")"; fi
   echo "core shots (01-05 demo light): $([ "$core_ok" = 1 ] && echo ok || echo MISSING)"

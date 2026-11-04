@@ -55,9 +55,14 @@ look around without any server.
 
 ## Install
 
+> **Status (2026-11-04): no release yet.** The app is tested in CI and the simulator, not yet on a real iPhone.
+> Until the first release, build and install it yourself: [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md)
+> (Linux) or [docs/SETUP.md](docs/SETUP.md) (macOS). Releases are built by hand, never by CI
+> ([docs/RELEASE.md](docs/RELEASE.md)).
+
 | Way | Good for | How |
 |---|---|---|
-| SideStore source | Most people. Updates show up in SideStore | In SideStore: Sources → + → `https://qantrex.github.io/homelab-ios/source.json` |
+| SideStore source | Most people. Updates show up in SideStore | In SideStore: Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` (from the first release on) |
 | IPA from GitHub Releases | One version, no source | Download `Homelab-<version>.ipa` from [Releases](https://github.com/Qantrex/homelab-ios/releases), then SideStore → My Apps → + |
 | Build it yourself | Developers | xtool on Linux or macOS, see [docs/SETUP.md](docs/SETUP.md). From Linux straight to a phone over USB: [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) |
 
@@ -65,7 +70,8 @@ Details and troubleshooting: [docs/SIDESTORE.md](docs/SIDESTORE.md). Needs iOS 1
 
 ## Quick start (a homelab with nothing yet)
 
-On a Debian/Ubuntu server that is in your tailnet:
+On a Debian/Ubuntu server that is in your tailnet. Once per tailnet, in the Tailscale admin console → DNS: turn on
+**MagicDNS** and **HTTPS Certificates** (`tailscale serve --https` needs both).
 
 ```bash
 git clone https://github.com/Qantrex/homelab-ios && cd homelab-ios
@@ -123,6 +129,10 @@ More: [docs/SECURITY.md](docs/SECURITY.md).
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, what the app does, what server operators must do |
 | [docs/SETUP.md](docs/SETUP.md) | Building with xtool, tests, project layout |
 | [docs/CI.md](docs/CI.md) | CI and releases |
+| [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) | Installing from a Linux PC over USB (no Mac) |
+| [docs/API.md](docs/API.md) | The API in plain words, for writing your own server |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Building, testing, code rules |
+| [docs/RELEASE.md](docs/RELEASE.md) | Building and publishing a release by hand |
 | [CHANGELOG.md](CHANGELOG.md) | What changed |
 
 ## License

@@ -8,10 +8,9 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | Workflow / job | Runner | Runs on | What it proves |
 |---|---|---|---|
 | `ci` / `linux` | `ubuntu-latest`, container `swift:6.4-noble` | every push (not `ci-screenshots`), PRs, manual | `scripts/lint` passes (no `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit); HomelabKit tests pass on Linux (`KIT_ONLY=1 swift test`, fixture server running); reference server tests pass |
-| `ci` / `macos (macos-26)` | `macos-26` | same | HomelabKit tests on macOS; the full app builds into an IPA (release config if xtool supports it); the IPA has `Payload/Homelab.app/PlugIns/HomelabWidget.appex` and both carry the App Group `group.com.qantrex.homelab`; the simulator build launches and every screen renders (screenshots); HomelabKit tests pass on the iOS simulator (`xcodebuild test`); no compiler warnings in `Sources/`. **Required.** |
+| `ci` / `macos (macos-26)` | `macos-26` | same | HomelabKit tests on macOS; the full app builds into an IPA (a check only, deleted afterwards); the IPA has `Payload/Homelab.app/PlugIns/HomelabWidget.appex` and both carry the App Group `group.com.qantrex.homelab`; the simulator build launches and every screen renders (screenshots); HomelabKit tests pass on the iOS simulator (`xcodebuild test`); no compiler warnings in `Sources/`. **Required.** |
 | `ci` / `macos (xcode-27)` | `xcode-27` | same | Same, on the next toolchain. `continue-on-error`, and warnings only reported, so it never blocks. |
 | `ci` / `screenshots` | `ubuntu-latest` | pushes and manual runs, after `macos` | Publishes the `macos-26` screenshots to the `ci-screenshots` branch (see below) |
-| `release` / `build` + `pages` | `macos-26`, `ubuntu-latest` | tag `v*` (or manual with a tag) | Builds and verifies the release IPA, creates the GitHub Release (`Homelab-<version>.ipa` + `.sha256`), publishes the SideStore source to GitHub Pages |
 
 ### Steps of the macOS job
 
@@ -62,27 +61,12 @@ They are:
 
 Open them in the browser: `https://github.com/Qantrex/homelab-ios/tree/ci-screenshots`.
 
-The IPA of every CI run is the artifact `ipa-<runner>` (14 days).
+CI builds a device IPA only to check it (compiles, widget inside, App Group entitlements) and deletes it. **CI never
+publishes an app to install** (owner's rule, 2026-11-04).
 
 ## Release
 
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-```
-
-The `release` workflow then:
-
-1. builds and verifies the IPA, creates the GitHub Release with `Homelab-1.0.0.ipa` and its SHA-256;
-2. builds `source.json` with `scripts/make-source` (the newest version first, older ones kept from the live source),
-   copies `Resources/AppIcon.png` to `icon.png` and writes an `index.html`;
-3. deploys that site to https://qantrex.github.io/homelab-ios/.
-
-Add the source in SideStore from the site's "Add to SideStore" link, or by hand:
-`https://qantrex.github.io/homelab-ios/source.json`. A tag with a `-` (e.g. `v1.1.0-beta.1`) becomes a pre-release.
-To redo a release, run the workflow by hand (Actions → release → Run workflow) with the tag; it replaces the files.
-
-**One-time setup (owner):** Settings → Pages → Source: **GitHub Actions**. Until then the release workflow stops at
-"Check GitHub Pages" before it publishes anything.
+By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release workflow.
 
 ## Local scripts
 

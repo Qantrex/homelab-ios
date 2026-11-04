@@ -20,8 +20,8 @@ import zipfile
 from pathlib import Path
 
 BUNDLE_ID = "com.qantrex.homelab"
-SITE = "https://qantrex.github.io/homelab-ios"
-ICON_URL = f"{SITE}/icon.png"
+# The icon comes straight from the repo, so a release needs no website (releases are made by hand: docs/RELEASE.md).
+ICON_URL = "https://raw.githubusercontent.com/Qantrex/homelab-ios/main/Resources/AppIcon.png"
 TINT = "2F6FED"
 
 SOURCE = {

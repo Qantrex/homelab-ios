@@ -22,33 +22,40 @@ final class HomeModel {
     }
 
     func load(_ api: any HomeAssistantAPI, host: String) async {
+        let sid = loadedFor
         loading = true
+        defer { loading = false }
         do {
-            entities = try await api.states()
+            let fresh = try await api.states()
+            guard sid == loadedFor else { return }   // another Home Assistant now
+            entities = fresh
             error = nil
         } catch {
+            guard sid == loadedFor else { return }
             let e = APIError.from(error, host: host)
             if e != .cancelled { self.error = e }
         }
-        loading = false
     }
 
     func tap(_ entity: HAEntity, api: any HomeAssistantAPI, host: String) async {
+        let sid = loadedFor
         busy.insert(entity.entityID)
+        defer { busy.remove(entity.entityID) }
         do {
             let changed = try await api.call(entity)
+            guard sid == loadedFor else { return }
             for c in changed {
                 if let i = entities.firstIndex(where: { $0.entityID == c.entityID }) { entities[i] = c }
             }
             // HA sometimes answers before the device reports its new state.
             if changed.isEmpty || entity.control == .toggle {
                 try? await Task.sleep(for: .milliseconds(700))
-                if let fresh = try? await api.states() { entities = fresh }
+                if let fresh = try? await api.states(), sid == loadedFor { entities = fresh }
             }
         } catch {
+            guard sid == loadedFor else { return }
             actionError = "\(entity.name): \(APIError.from(error, host: host).message)"
         }
-        busy.remove(entity.entityID)
     }
 }
 

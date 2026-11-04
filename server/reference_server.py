@@ -52,6 +52,7 @@ PAGE_MESSAGES = 200
 BUTTON_RE = re.compile(r"^HOMELAB_(APPROVE|ALWAYS|DENY)_([A-Za-z0-9-]{1,32})_([0-9a-f]{16})$")
 PENDING_ID_RE = re.compile(r"^[A-Za-z0-9-]{1,32}$")
 # No word may start with "-": a stray arg must never become an option of the command.
+# Always used with fullmatch(): "$" alone would also accept a trailing newline.
 ARG_RE = re.compile(r"^[A-Za-z0-9_.@][A-Za-z0-9_.@-]{0,63}( [A-Za-z0-9_.@][A-Za-z0-9_.@-]{0,63})*$")
 HOSTNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
 SECRET_ENV = ("HOMELAB_TOKENS", "HOMELAB_BUTTON_SECRET")
@@ -186,7 +187,7 @@ def validate_target(target):
         if not u.hostname or not u.port:
             raise ConfigError("tcp check needs tcp://host:port, got %r" % target)
     elif u.scheme == "ping":
-        if not u.hostname or not HOSTNAME_RE.match(u.hostname):
+        if not u.hostname or not HOSTNAME_RE.fullmatch(u.hostname):
             raise ConfigError("ping check needs ping://host, got %r" % target)
     else:
         raise ConfigError("unsupported check %r (use tcp://, ping://, http:// or https://)" % target)
@@ -555,6 +556,12 @@ class Collector:
                                  "text": "%s: temperature %.0f °C" % (host["name"], temp)})
         disks = {}
         for mount in me["disks"]:
+            # An encrypted volume that isn't unlocked yet is an empty folder on the root disk: its usage would
+            # look real but be the root's. Anything but "/" must be a mount point.
+            if mount != "/" and os.path.isdir(mount) and not os.path.ismount(mount):
+                problems.append({"id": "disk-%s-%s" % (hid, mount), "host": hid, "severity": "warning",
+                                 "text": "%s: %s is not mounted (locked or not unlocked yet?)" % (host["name"], mount)})
+                continue
             try:
                 du = shutil.disk_usage(mount)
             except OSError:
@@ -723,7 +730,7 @@ class Actions:
             if not isinstance(data, dict):
                 continue
             pid = str(data.get("id") or os.path.splitext(os.path.basename(path))[0])
-            if not PENDING_ID_RE.match(pid) or pid in found:
+            if not PENDING_ID_RE.fullmatch(pid) or pid in found:
                 warn_once(path, "pending: skipped %s (id must be 1-32 of A-Z a-z 0-9 -, unique)" %
                           os.path.basename(path))
                 continue
@@ -739,7 +746,7 @@ class Actions:
 
     def _runnable(self, data):
         arg = data.get("arg") or ""
-        return data.get("action") in self.commands and isinstance(arg, str) and (arg == "" or ARG_RE.match(arg))
+        return data.get("action") in self.commands and isinstance(arg, str) and (arg == "" or ARG_RE.fullmatch(arg))
 
     def pending(self):
         out = []
@@ -768,7 +775,7 @@ class Actions:
         return argv
 
     def press(self, action):
-        m = BUTTON_RE.match(action or "")
+        m = BUTTON_RE.fullmatch(action or "")
         if not m:
             return 403, {"error": "unknown button"}
         verb, pid, sig = m.groups()
@@ -789,7 +796,7 @@ class Actions:
         if template is None:
             return 403, {"error": "action %r is not configured" % name}
         arg = data.get("arg") or ""
-        if not isinstance(arg, str) or (arg and not ARG_RE.match(arg)):
+        if not isinstance(arg, str) or (arg and not ARG_RE.fullmatch(arg)):
             return 400, {"error": "bad arg", "text": "refused %s: the arg is not allowed" % pid}
         with self.lock:
             if pid in self.running:
@@ -1103,7 +1110,7 @@ class FixtureApp:
             for p in doc["pending"]:
                 if isinstance(p, dict) and isinstance(p.get("buttons"), dict):
                     valid.update(v for v in p["buttons"].values() if isinstance(v, str))
-        m = BUTTON_RE.match(action)
+        m = BUTTON_RE.fullmatch(action)
         if action not in valid or not m:
             return 403, {"error": "unknown button"}
         return 200, {"text": "%s %s (fixture)" % (self.VERBS[m.group(1)], m.group(2))}
@@ -1212,6 +1219,10 @@ class Handler(BaseHTTPRequestHandler):
         if fn is None:
             return 405, {"error": "method not allowed"}
         body = {}
+        if self.headers.get("Transfer-Encoding"):
+            # Chunked bodies aren't supported; reading them as empty would let the rest be parsed as a request.
+            self.close_connection = True
+            return 411, {"error": "send a Content-Length, not Transfer-Encoding"}
         if method == "POST":
             self._body_read = False
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()

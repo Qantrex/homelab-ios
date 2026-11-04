@@ -11,6 +11,8 @@ final class ChatModel {
     var loadedOnce = false
     private(set) var serverID: String?
     private var failures = 0
+    /// Each load gets a number; an older load that finishes late doesn't overwrite a newer one.
+    private var generation = 0
     /// Bumped after a send: restarts the poll loop so the fast "working" polling starts right away.
     var kick = 0
 
@@ -25,9 +27,11 @@ final class ChatModel {
 
     func load(_ api: any CompanionAPI, host: String) async {
         let sid = serverID
+        generation += 1
+        let mine = generation
         do {
             let page = try await api.messages(after: timeline.cursor)
-            guard sid == serverID else { return }   // the user switched server meanwhile
+            guard sid == serverID, mine == generation else { return }   // server switched, or a newer load ran
             timeline.merge(page)
             error = nil
             failures = 0
@@ -49,8 +53,7 @@ final class ChatModel {
             let id = try await api.send(text)
             guard sid == serverID else { return }
             timeline.confirm(local, serverID: id)
-            await load(api, host: host)
-            kick += 1
+            kick += 1   // restarts the poll loop: it loads at once and then polls fast while the agent works
         } catch {
             guard sid == serverID else { return }
             timeline.fail(local, message: APIError.from(error, host: host).message)

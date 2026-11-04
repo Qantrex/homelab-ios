@@ -50,7 +50,12 @@ struct IntegrationTests {
         let state = try await client.state()
         let approve = try #require(state.pending.first?.buttons[.approve])
         #expect(try await client.press(approve).isEmpty == false)
-        await #expect(throws: APIError.forbidden) { try await client.press("HOMELAB_APPROVE_ab12_ffffffffffffffff") }
+        do {
+            _ = try await client.press("HOMELAB_APPROVE_ab12_ffffffffffffffff")
+            Issue.record("a forged button worked")
+        } catch let e as APIError {
+            #expect(e.isForbidden)
+        }
     }
 
     @Test func services() async throws {

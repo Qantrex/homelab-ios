@@ -10,9 +10,12 @@ public protocol HTTPTransport: Sendable {
 
 public struct URLSessionTransport: HTTPTransport {
     let session: URLSession
+    /// Stop reading past this many bytes (the clients check their own, smaller limits too).
+    let maxBytes: Int
 
-    public init(session: URLSession = URLSessionTransport.defaultSession) {
+    public init(session: URLSession = URLSessionTransport.defaultSession, maxBytes: Int = 32 * 1024 * 1024) {
         self.session = session
+        self.maxBytes = maxBytes
     }
 
     /// No cookies, no cache, no credential storage: every request carries its own auth. Redirects are not followed,
@@ -33,9 +36,24 @@ public struct URLSessionTransport: HTTPTransport {
     }()
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        #if canImport(Darwin)
+        // Streamed, so a hostile server can't make the app buffer more than `maxBytes`.
+        let (bytes, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if http.expectedContentLength > Int64(maxBytes) { throw APIError.tooLarge }
+        var data = Data()
+        data.reserveCapacity(Int(max(0, min(http.expectedContentLength, Int64(maxBytes)))))
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count > maxBytes { throw APIError.tooLarge }
+        }
+        return (data, http)
+        #else
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if data.count > maxBytes { throw APIError.tooLarge }
         return (data, http)
+        #endif
     }
 }
 
@@ -71,6 +89,8 @@ public enum APIError: Error, Equatable, Sendable {
     case timeout
     case unauthorized
     case forbidden
+    /// 403 with the server's own reason ("host not allowed", "forged or outdated button").
+    case refused(String)
     case notFound
     case tooManyRequests
     case server(status: Int)
@@ -90,8 +110,9 @@ public enum APIError: Error, Equatable, Sendable {
         case .notOnTailnet(let host): "Can't reach \(host). Is Tailscale (or your VPN) on?"
         case .cannotFindHost(let host): "Can't find \(host). Check the address."
         case .timeout: "The server took too long to answer."
-        case .unauthorized: "The server wants a login or token. Check the token in Settings."
+        case .unauthorized: "No login reached the server. With Tailscale: is it behind `tailscale serve`, and is this phone logged in (tagged devices get no login)? With a token: check it in Settings."
         case .forbidden: "The server refused access. Is this login or token allowed?"
+        case .refused(let why): "The server refused access: \(why)"
         case .notFound: "The server doesn't offer this. Is the address right, and does it speak the Homelab API?"
         case .tooManyRequests: "Too many requests. Try again in a minute."
         case .server(let status): "The server had an error (HTTP \(status))."
@@ -105,6 +126,12 @@ public enum APIError: Error, Equatable, Sendable {
         case .tooLarge: "The server's answer is too large."
         case .other(let text): text
         }
+    }
+
+    /// Any 403, with or without a reason.
+    public var isForbidden: Bool {
+        if case .refused = self { return true }
+        return self == .forbidden
     }
 
     /// Worth an automatic retry later (vs. a setup problem the user must fix).
@@ -147,7 +174,12 @@ public enum APIError: Error, Equatable, Sendable {
         case 200..<300: return nil
         case 300..<400: return .redirected(status: status)
         case 401: return .unauthorized
-        case 403: return .forbidden
+        case 403:
+            // Pass on a specific reason; a bare "forbidden" says nothing new.
+            if let text = serverErrorText(body), !["forbidden", "unauthorized"].contains(text.lowercased()) {
+                return .refused(text)
+            }
+            return .forbidden
         case 404: return .notFound
         case 429: return .tooManyRequests
         case 400, 413, 415, 422:

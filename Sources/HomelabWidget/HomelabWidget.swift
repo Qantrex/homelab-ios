@@ -177,7 +177,13 @@ struct HostsView: View {
                 Spacer()
                 Text(entry.snapshot.map { Format.age($0.fetched, now: entry.date) } ?? "").font(.caption2).foregroundStyle(.secondary)
             }
-            if let hosts = state?.hosts, !hosts.isEmpty {
+            if entry.redacted, let hosts = state?.hosts, !hosts.isEmpty {
+                // App lock on: no host names or numbers on the home screen, only how many are up.
+                Spacer()
+                Text("\(hosts.filter { $0.reachable == true }.count) of \(hosts.count) hosts up")
+                    .font(.title3.weight(.semibold))
+                Text("Open the app for details").font(.caption).foregroundStyle(.secondary)
+            } else if let hosts = state?.hosts, !hosts.isEmpty {
                 let limit = family == .systemLarge ? 8 : 4
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
                     ForEach(hosts.prefix(limit)) { HostCell(host: $0) }

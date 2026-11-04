@@ -22,8 +22,17 @@ public struct ChatTimeline: Sendable, Equatable {
     /// The id to poll after.
     public var cursor: Int64 { messages.last?.id ?? 0 }
 
-    public var isWorking: Bool {
-        !busy.isEmpty || outgoing.contains { if case .sent = $0.state { return true } else { return false } }
+    /// A sent message counts as "working" for at most this long: a server that never echoes it (or changes the
+    /// text) must not keep the chat in 2-second polling forever.
+    public static let workingTimeout: TimeInterval = 120
+
+    public var isWorking: Bool { isWorking(now: Date()) }
+
+    public func isWorking(now: Date) -> Bool {
+        !busy.isEmpty || outgoing.contains {
+            if case .sent = $0.state { return now.timeIntervalSince($0.created) < Self.workingTimeout }
+            return false
+        }
     }
 
     public mutating func merge(_ page: MessagePage) {

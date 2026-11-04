@@ -464,6 +464,35 @@ class RealModeTest(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertIn("different", obj["text"])
 
+    def test_unmounted_volume_is_a_warning_not_root_usage(self):
+        folder = tempfile.mkdtemp()   # a plain folder, like /opt/stacks before unlock.sh
+        cfg = rs.Config({"name": "t", "tokens": ["x" * 20], "this_host": {"id": "me", "disks": ["/", folder]}}, env={})
+        hosts, problems = [], []
+        col = rs.Collector(cfg)
+        h = col._local(problems)
+        self.assertNotIn(folder, h.get("disks", {}))
+        self.assertTrue(any("is not mounted" in p["text"] for p in problems))
+        os.rmdir(folder)
+
+    def test_trailing_newline_is_not_a_valid_arg(self):
+        self.assertIsNone(rs.ARG_RE.fullmatch("safe\n"))
+        path = self.add_pending("nl01", arg="safe\n")
+        self.assertEqual(set(self.buttons("nl01")), {"deny"})
+        os.remove(path)
+
+    def test_chunked_body_refused(self):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        c.putrequest("POST", "/api/v1/messages")
+        c.putheader(LOGIN_HEADER, "alice@example.com")
+        c.putheader("Content-Type", "application/json")
+        c.putheader("Transfer-Encoding", "chunked")
+        c.endheaders()
+        c.send(b"5\r\n{\"a\"}\r\n0\r\n\r\n")
+        r = c.getresponse()
+        self.assertEqual(r.status, 411)
+        c.close()
+
     def test_host_header_allowlist(self):
         self.assertTrue(rs.host_allowed("box.tail1234.ts.net", rs.DEFAULT_ALLOWED_HOSTS))
         self.assertTrue(rs.host_allowed("127.0.0.1:8791", rs.DEFAULT_ALLOWED_HOSTS))

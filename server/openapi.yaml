@@ -14,7 +14,8 @@ info:
       Answer 401 or 403 for a missing or wrong identity.
     - Every field except the ones marked `required` is optional. Clients ignore unknown fields and unknown enum
       values, so servers may add fields at any time. Breaking changes need `/api/v2/`.
-    - Times are ISO 8601. Without a time zone they mean the server's local time.
+    - Times are ISO 8601. Without a time zone they mean the server's local time; the app reads them in the
+      phone's time zone (the same in a homelab). Send a zone if they can differ.
     - `features` in `/info` tells the app which tabs to show. A server without `chat` simply leaves it out.
 
     Rules for the client (the app):

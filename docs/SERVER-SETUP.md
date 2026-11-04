@@ -46,7 +46,9 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
    }
    ```
 
-   `"sleeps": true` shows a sleeping PC as "Asleep", not as a problem. Use the PC's `100.x` address: a server
+   `"sleeps": true` shows a sleeping PC as "Asleep", not as a problem. Test it once with the PC awake: if it
+   still shows Asleep, `ping` isn't allowed for the service user (the hardened unit blocks it); use a TCP check of
+   a port the PC opens instead, for example `tcp://100.64.0.20:47989` (Sunshine). Use the PC's `100.x` address: a server
    running `tailscale up --accept-dns=false` can't resolve MagicDNS names (the app then shows a warning).
 
 2. Run it with systemd. Copy the unit from [REFERENCE_SERVER.md → Run it with systemd](REFERENCE_SERVER.md#run-it-with-systemd)
@@ -82,14 +84,16 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
 ### Containers without the docker group
 
 `"docker": true` needs `docker ps`, and the docker group is root-equivalent. To show container counts without
-it, let root write a card every 5 minutes (`/etc/cron.d/homelab-containers`, one line):
+it, let root write a card every 5 minutes with the script in this repo:
 
 ```bash
-*/5 * * * * root d=/var/lib/homelab-companion/cards; printf '{"id":"containers","title":"Containers","icon":"shippingbox","style":"metrics","items":[{"title":"Running","value":"%s/%s"}]}' "$(docker ps -q | wc -l)" "$(docker ps -aq | wc -l)" > $d/.containers.tmp && mv $d/.containers.tmp $d/containers.json
+sudo install -m 755 /tmp/homelab-ios/server/examples/card-containers /usr/local/bin/card-containers
+sudo install -d -m 755 /var/lib/homelab-companion/cards
+echo '*/5 * * * * root /usr/local/bin/card-containers /var/lib/homelab-companion/cards' | sudo tee /etc/cron.d/homelab-containers
 ```
 
-Set `"cards_dir": "/var/lib/homelab-companion/cards"` and create the folder (owned by root, readable by the
-service user).
+Then set `"cards_dir": "/var/lib/homelab-companion/cards"` in the config. (A script and not a one-line cron job:
+cron cuts a line at every unescaped `%`.)
 
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.
@@ -196,7 +200,8 @@ From `openapi.yaml`:
 - Unknown fields and unknown enum values are ignored. You may add fields at any time. Breaking changes go to
   `/api/v2/`.
 - A problem can be an object or a plain string (treated as `{text}`).
-- Times are ISO 8601. Without a time zone they mean the server's local time.
+- Times are ISO 8601. Without a time zone they mean the server's local time; the app reads them in the phone's
+  time zone, which is the same in a homelab. Send a zone (`+01:00` or `Z`) if they can differ.
 - All text from the server is untrusted plain text. Inline Markdown is shown (bold, code, links), no HTML, and only
   `http`/`https` links.
 - The app never sends an `Origin` header and never sends cookies. A server may refuse requests that have an `Origin`
