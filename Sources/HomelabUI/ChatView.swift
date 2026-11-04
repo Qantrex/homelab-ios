@@ -60,7 +60,7 @@ struct ChatView: View {
     @State private var draft = ""
     @FocusState private var focused: Bool
 
-    private static let quick = ["/pending", "/status", "/last", "/memory", "/help"]
+    private static let quick = ["/pending", "/last", "/memory", "/usage", "/help"]
 
     var body: some View {
         NavigationStack {

@@ -119,24 +119,34 @@ struct ActionRow: View {
                 Text("The server offers no buttons for this action. Use the chat: /approve \(action.id)")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                HStack(spacing: 8) {
-                    if action.buttons[.approve] != nil {
-                        Button { tap(.approve) } label: { Label("Approve", systemImage: "checkmark") }
-                            .buttonStyle(.borderedProminent)
-                    }
-                    if action.buttons[.always] != nil {
-                        Button { tap(.always) } label: { Text("Always") }
-                            .buttonStyle(.bordered)
-                    }
-                    Spacer()
-                    if action.buttons[.deny] != nil {
-                        Button(role: .destructive) { tap(.deny) } label: { Label("Deny", systemImage: "xmark") }
-                            .buttonStyle(.bordered)
-                    }
+                // Labels never wrap ("Ap-prove"); with very large text the row stacks instead.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { buttons(spacer: true) }
+                    VStack(alignment: .leading, spacing: 8) { buttons(spacer: false) }
                 }
                 .controlSize(.regular)
             }
         }
         .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private func buttons(spacer: Bool) -> some View {
+        if action.buttons[.approve] != nil {
+            Button { tap(.approve) } label: { Label("Approve", systemImage: "checkmark").lineLimit(1) }
+                .buttonStyle(.borderedProminent)
+                .fixedSize()
+        }
+        if action.buttons[.always] != nil {
+            Button { tap(.always) } label: { Text("Always").lineLimit(1) }
+                .buttonStyle(.bordered)
+                .fixedSize()
+        }
+        if spacer { Spacer(minLength: 8) }
+        if action.buttons[.deny] != nil {
+            Button(role: .destructive) { tap(.deny) } label: { Label("Deny", systemImage: "xmark").lineLimit(1) }
+                .buttonStyle(.bordered)
+                .fixedSize()
+        }
     }
 }

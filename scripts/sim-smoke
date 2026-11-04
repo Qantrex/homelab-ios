@@ -28,10 +28,14 @@ import json,sys
 d=json.load(sys.stdin)["devices"]
 ios=[k for k in d if "iOS" in k]
 ios.sort(key=lambda k: [int(x) for x in k.rsplit("iOS-",1)[1].split("-")])
-for k in reversed(ios):
-    for dev in d[k]:
-        if dev["name"].startswith("iPhone"):
-            print(dev["udid"]); sys.exit()')
+import re
+# Prefer a plain numbered iPhone ("iPhone 17 Pro"): preview images also ship odd form factors (foldables) that
+# boot slowly or not at all. Fall back to any iPhone.
+for pattern in (r"^iPhone \d+( Pro)?$", r"^iPhone"):
+    for k in reversed(ios):
+        for dev in d[k]:
+            if re.match(pattern, dev["name"]):
+                print(dev["udid"]); sys.exit()')
 [ -n "$udid" ] || { echo "sim-smoke: no available iPhone simulator"; exit 1; }
 echo "simulator: $udid ($(xcrun simctl list devices | grep "$udid" | sed 's/ *(.*//' | xargs))"
 
