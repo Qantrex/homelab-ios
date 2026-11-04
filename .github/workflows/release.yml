@@ -12,10 +12,8 @@ on:
         description: "Existing tag to (re)release, e.g. v1.0.0"
         required: true
 
-permissions:
-  contents: write   # create the release
-  pages: write      # deploy the source to Pages
-  id-token: write   # required by actions/deploy-pages
+# Least privilege: nothing by default; each job asks only for what it needs.
+permissions: {}
 
 concurrency:
   group: release
@@ -28,23 +26,26 @@ defaults:
 jobs:
   build:
     runs-on: macos-26
+    permissions:
+      contents: write   # create the release and upload its files (only the `gh` steps get the token)
+      pages: read       # configure-pages: is Pages enabled?
     timeout-minutes: 60
     outputs:
       pages: ${{ steps.pages.outcome == 'success' }}
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
 
       # Without Pages (Settings → Pages → Source: GitHub Actions) the GitHub Release is still published;
       # only the SideStore source page is skipped, and the job summary says so.
       - name: Check GitHub Pages
         id: pages
         continue-on-error: true
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
 
       - name: Version from tag
         run: |
@@ -56,8 +57,15 @@ jobs:
       - name: Toolchain and xtool
         run: |
           sw_vers; xcodebuild -version; swift --version
-          brew install xtool-org/tap/xtool
-          xtool --version || true
+          # Pinned and checksummed: a release never builds with an unreviewed xtool (no brew fallback here).
+          dir=$RUNNER_TEMP/xtool
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 -o "$dir/xtool.app.zip" \
+            "https://github.com/xtool-org/xtool/releases/download/1.24.0/xtool.app.zip"
+          echo "a56e98d69dea02a97a17e609f0ae8771c57ffaab23f1d62513fd9ada222026b3  $dir/xtool.app.zip" | shasum -a 256 -c -
+          ditto -x -k "$dir/xtool.app.zip" "$dir"
+          echo "$dir/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
+          "$dir/xtool.app/Contents/Resources/bin/xtool" --version || true
 
       - name: Shared code tests
         run: KIT_ONLY=1 swift test
@@ -73,6 +81,9 @@ jobs:
         run: scripts/verify-ipa "dist/$IPA_NAME"
 
       - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}   # only the steps that call gh get the token
+          GH_REPO: ${{ github.repository }}
         run: |
           pre=(); [[ "$VERSION" == *-* ]] && pre=(--prerelease)
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -84,6 +95,8 @@ jobs:
 
       - name: Build site (source.json, icon, index.html)
         env:
+          GH_TOKEN: ${{ github.token }}   # reads the release notes
+          GH_REPO: ${{ github.repository }}
           SITE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           mkdir -p site
@@ -133,9 +146,12 @@ jobs:
           ls -la site
 
       - name: Attach source.json to the release (works without Pages)
+        env:
+          GH_TOKEN: ${{ github.token }}   # only the steps that call gh get the token
+          GH_REPO: ${{ github.repository }}
         run: gh release upload "$TAG" site/source.json --clobber
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         if: steps.pages.outcome == 'success'
         with:
           path: site
@@ -150,10 +166,13 @@ jobs:
     needs: build
     if: needs.build.outputs.pages == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write      # deploy the source to Pages
+      id-token: write   # required by actions/deploy-pages
     timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
