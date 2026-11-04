@@ -29,6 +29,8 @@ jobs:
   build:
     runs-on: macos-26
     timeout-minutes: 60
+    outputs:
+      pages: ${{ steps.pages.outcome == 'success' }}
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
@@ -37,9 +39,11 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref }}
 
-      # Fails early (before anything is published) when Pages is not enabled yet.
+      # Without Pages (Settings → Pages → Source: GitHub Actions) the GitHub Release is still published;
+      # only the SideStore source page is skipped, and the job summary says so.
       - name: Check GitHub Pages
         id: pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Version from tag
@@ -128,12 +132,23 @@ jobs:
           python3 -m json.tool site/source.json > /dev/null
           ls -la site
 
+      - name: Attach source.json to the release (works without Pages)
+        run: gh release upload "$TAG" site/source.json --clobber
+
       - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outcome == 'success'
         with:
           path: site
 
+      - name: Note when Pages is off
+        if: steps.pages.outcome != 'success'
+        run: |
+          echo "### GitHub Pages is not enabled" >> "$GITHUB_STEP_SUMMARY"
+          echo "The release and IPA are published. To publish the SideStore source, enable Pages (Settings → Pages → Source: GitHub Actions) and re-run this workflow with the tag." >> "$GITHUB_STEP_SUMMARY"
+
   pages:
     needs: build
+    if: needs.build.outputs.pages == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:

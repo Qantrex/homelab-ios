@@ -5,6 +5,7 @@ import SwiftUI
 struct OverviewView: View {
     let model: AppModel
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     private var status: ServerStatus { model.selectedStatus }
     private var state: HomelabState? { status.snapshot?.state }
@@ -33,7 +34,9 @@ struct OverviewView: View {
             .navigationTitle(status.snapshot?.serverName ?? model.selected?.name ?? "Homelab")
             .toolbar { serverMenu }
             .navigationDestination(for: Host.self) { HostDetailView(host: $0) }
-            .task(id: model.selected?.id) { await poll() }
+            .task(id: PollKey(server: model.selected?.id, active: scenePhase == .active)) {
+                if scenePhase == .active { await poll() }
+            }
         }
     }
 

@@ -58,6 +58,7 @@ struct ChatView: View {
     let model: AppModel
     @State private var chat = ChatModel()
     @State private var draft = ""
+    @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focused: Bool
 
     private static let quick = ["/pending", "/last", "/memory", "/usage", "/help"]
@@ -76,8 +77,10 @@ struct ChatView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
-            .task(id: model.selected?.id) {
+            // Restarts on server change and when the app comes back; stops while it's in the background.
+            .task(id: PollKey(server: model.selected?.id, active: scenePhase == .active)) {
                 chat.reset(for: model.selected)
+                guard scenePhase == .active else { return }
                 while !Task.isCancelled {
                     await load()
                     try? await Task.sleep(for: chat.nextPoll)

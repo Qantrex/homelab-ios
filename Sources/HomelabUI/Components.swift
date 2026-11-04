@@ -17,6 +17,12 @@ func markdown(_ text: String) -> AttributedString {
     return s
 }
 
+/// Identity of a polling loop: a new server or a change between foreground and background restarts it.
+struct PollKey: Hashable {
+    var server: UUID?
+    var active: Bool
+}
+
 /// "Can't reach … Is Tailscale on?" with a retry.
 struct ErrorBanner: View {
     let error: APIError

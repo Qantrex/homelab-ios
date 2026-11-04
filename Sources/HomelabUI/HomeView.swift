@@ -46,6 +46,7 @@ struct HomeView: View {
     let model: AppModel
     @State private var home = HomeModel()
     @State private var picking = false
+    @Environment(\.scenePhase) private var scenePhase
 
     private var server: ServerConfig? { model.homeAssistant }
 
@@ -105,7 +106,8 @@ struct HomeView: View {
             } message: {
                 Text(home.actionError ?? "")
             }
-            .task(id: server?.id) {
+            .task(id: PollKey(server: server?.id, active: scenePhase == .active)) {
+                guard scenePhase == .active else { return }
                 while !Task.isCancelled {
                     await load()
                     try? await Task.sleep(for: .seconds(30))
