@@ -53,7 +53,8 @@ public struct ChatTimeline: Sendable, Equatable {
         if let serverID, messages.contains(where: { $0.id == serverID }) {
             outgoing.remove(at: i)
         } else {
-            outgoing[i].state = .sent(serverID ?? cursor)
+            // Without an id, wait for a message after the current newest one (not the newest itself).
+            outgoing[i].state = .sent(serverID ?? (cursor + 1))
         }
     }
 

@@ -6,7 +6,7 @@ import SwiftUI
 struct ActionsView: View {
     let model: AppModel
     @State private var confirm: Confirmation?
-    @State private var running: String?
+    @State private var running: Set<String> = []
     @State private var result: ResultMessage?
 
     struct Confirmation: Identifiable {
@@ -34,14 +34,16 @@ struct ActionsView: View {
                     .listRowBackground(Color.clear)
                 }
                 ForEach(pending) { action in
-                    ActionRow(action: action, running: running == action.id,
+                    ActionRow(action: action, running: running.contains(action.id),
                               hasChat: model.selectedStatus.features.contains(.chat)) { verb in
                         confirm = Confirmation(action: action, verb: verb)
                     }
                 }
             }
             .overlay {
-                if pending.isEmpty && model.selectedStatus.snapshot != nil {
+                if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
+                    ProgressView("Loading…")
+                } else if pending.isEmpty && model.selectedStatus.snapshot != nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield",
                                 message: "When your homelab proposes an action, it shows up here.")
                 }
@@ -88,9 +90,9 @@ struct ActionsView: View {
 
     private func press(_ c: Confirmation) async {
         guard let server = model.selected, let button = c.action.buttons[c.verb] else { return }
-        running = c.action.id
+        running.insert(c.action.id)
         let r = await model.press(button, on: server)
-        running = nil
+        running.remove(c.action.id)
         switch r {
         case .success(let text): result = ResultMessage(title: c.action.title, text: text)
         case .failure(let e):

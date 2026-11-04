@@ -19,8 +19,9 @@ func markdown(_ text: String) -> AttributedString {
 
 /// Identity of a polling loop: a new server or a change between foreground and background restarts it.
 struct PollKey: Hashable {
-    var server: UUID?
+    var server: String?   // ServerConfig.target: a new address restarts the loop with fresh data
     var active: Bool
+    var kick = 0          // bumped to wake a sleeping loop at once (after sending a chat message)
 }
 
 /// "Can't reach … Is Tailscale on?" with a retry.

@@ -185,6 +185,8 @@ public struct HomeAssistantClient: HomeAssistantAPI {
             throw APIError.from(error, host: host)
         }
         if let error = APIError.from(status: response.statusCode, body: data) { throw error }
+        // /api/states of a big install is a few MB; more is not Home Assistant.
+        if data.count > 4 * CompanionClient.maxResponseBytes { throw APIError.tooLarge }
         return data
     }
 }

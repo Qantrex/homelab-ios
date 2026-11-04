@@ -69,11 +69,16 @@ On a Debian/Ubuntu server that is in your tailnet:
 
 ```bash
 git clone https://github.com/Qantrex/homelab-ios && cd homelab-ios
-cp server/config.example.json config.json   # set name, allowed_logins (your Tailscale login), disks, hosts, checks
+printf '%s\n' '{"name": "homeserver", "trust_identity_header": "Tailscale-User-Login",' \
+  ' "allowed_logins": ["you@example.com"], "this_host": {"kind": "server", "disks": ["/"]}}' > config.json
 python3 server/reference_server.py --config config.json
 ```
 
-In a second shell, publish it in your tailnet (pick a free port, `tailscale serve status` shows the used ones):
+Put your Tailscale login in `allowed_logins` (a refused login is printed in the log, so you can copy it). The full
+example with hosts, checks and services is `server/config.example.json`.
+
+In a second shell, publish it in your tailnet (pick a free port, `tailscale serve status` shows the used ones;
+`tailscale serve` replaces what already runs on that port):
 
 ```bash
 sudo tailscale serve --bg --https=7443 http://127.0.0.1:8791

@@ -25,10 +25,12 @@ Not in scope: a jailbroken phone, a compromised server (it can show you anything
 | Cached data | The last status per server, as JSON files in the App Group container (iOS file protection: until first unlock). No tokens in them |
 | Server text | Inline Markdown only, no HTML. Links from a server (services, host pages, card items, Markdown links) must be `http`/`https` with a host and no user name or password; everything else is dropped |
 | Plain http | Only for local and tailnet addresses: private IPv4, `127.x`, `169.254.x`, `100.64–127.x` (Tailscale), `localhost`, `.local`, single-label names, local IPv6. Not `.lan`, `.home.arpa` or `.internal`: iOS blocks plain http there, so use https. Shown with a warning in the editor |
-| Network | An ephemeral `URLSession`: no cookies, no cache, no stored credentials. No `Origin` header. Short timeouts. User names or passwords in a URL are refused |
-| Face ID lock | Optional, off by default. Asks for Face ID or the passcode when the app starts and when it comes back from the background. It is tested once before it is turned on, so you can't lock yourself out |
-| Actions | Approve, Always and Deny each need a confirm tap. The app only sends back the signed button string the server gave it; the server checks the signature and decides. Forged, used or expired buttons get 403 |
-| Notifications | Off by default. They contain the server name and the problem or action text, which shows on the lock screen. Turn off previews in iOS Settings if that matters |
+| Network | An ephemeral `URLSession`: no cookies, no cache, no stored credentials. No `Origin` header. Short timeouts. User names or passwords in a URL are refused. Redirects are never followed (a token can't be carried to another host). Answers over 8 MB are refused |
+| Token targets | A saved token belongs to one server (kind + scheme + host + port + path). Editing the address or type drops it; the app asks for the token again |
+| Copy | Copied chat text and the diagnostics report stay on this device (no Universal Clipboard) and expire after 10 minutes |
+| Face ID lock | Optional, off by default. Asks for Face ID or the passcode when the app starts and when it comes back from the background. While locked, no screen exists behind the lock (open sheets and dialogs are closed), the app switcher shows a blur, notifications only say that something happened, and the widget shows the status without problem text. It is tested once before it is turned on, so you can't lock yourself out |
+| Actions | Approve, Always and Deny each need a confirm tap. The app only sends back the signed button string the server gave it; the server checks the signature and decides. Both servers in this project sign the action's content too, so an old button can't approve a new action that reuses the id. Forged, used, outdated or expired buttons get 403 |
+| Notifications | Off by default. They contain the server name and the problem or action text, which shows on the lock screen, unless the app lock is on (then only "Something needs a look") |
 | Diagnostics report | Has the app version, App Group, server kinds, host names and last errors. No tokens. Check it before you paste it in a public issue |
 | Third parties | None. No analytics, no crash reporting, no third-party Swift packages |
 

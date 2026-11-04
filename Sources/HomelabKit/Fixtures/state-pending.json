@@ -1,0 +1,30 @@
+{
+  "time": "2026-11-04T21:30:00", "status": "warning", "checked": "2026-11-04T21:28:00",
+  "problems": [
+    {"id": "server-updates", "text": "server: 12 package updates waiting, 3 security", "host": "server", "severity": "warning"}
+  ],
+  "hosts": [
+    {"id": "server", "name": "server", "kind": "server", "reachable": true, "checked": "2026-11-04T21:28:00",
+     "load": 0.62, "cpu_count": 4, "mem_pct": 45, "temp": 51.0, "disks": {"/": 40, "/tank": 72},
+     "containers": {"up": 9, "total": 9}, "updates": {"upgradable": 12, "reboot_required": false},
+     "backup": {"last": "2026-11-04T04:45:10", "result": "success"}, "flags": []}
+  ],
+  "pending": [
+    {"id": "pa01", "job": "watchdog", "action": "restart", "arg": "server jellyfin",
+     "reason": "jellyfin stopped answering 15 minutes ago.", "created": "2026-11-04T21:15:00",
+     "buttons": {"approve": "HOMELAB_APPROVE_pa01_a000000000000001", "always": "HOMELAB_ALWAYS_pa01_a000000000000002",
+                 "deny": "HOMELAB_DENY_pa01_a000000000000003"}},
+    {"id": "pa02", "job": "updates", "action": "apt-upgrade", "arg": "server",
+     "reason": "12 package updates, 3 security.", "created": "2026-11-04T10:00:00",
+     "buttons": {"approve": "HOMELAB_APPROVE_pa02_b000000000000001", "deny": "HOMELAB_DENY_pa02_b000000000000003"}},
+    {"id": "pa03", "job": "backup", "action": "prune", "arg": "-",
+     "reason": "The backup repository is at 7.6 of 8 GB. Pruning keeps 7 daily and 4 weekly snapshots.",
+     "created": "2026-11-04T04:50:00",
+     "buttons": {"approve": "HOMELAB_APPROVE_pa03_c000000000000001", "deny": "HOMELAB_DENY_pa03_c000000000000003"}},
+    {"id": "pa04", "job": "morning", "action": "reboot", "arg": "server",
+     "reason": "Shown for information only: the server offers no buttons for this one.", "created": "2026-11-04T07:00:00",
+     "buttons": {}}
+  ],
+  "cards": [],
+  "busy": []
+}

@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var editing: ServerConfig?
     @State private var adding = false
     @State private var confirmReset = false
+    @State private var deleting: ServerConfig?
     @State private var notificationNote: String?
 
     var body: some View {
@@ -18,7 +19,7 @@ struct SettingsView: View {
                         Button { editing = s } label: { ServerRow(server: s, selected: s.id == model.selected?.id) }
                             .foregroundStyle(.primary)
                             .swipeActions {
-                                Button("Delete", role: .destructive) { model.remove(s.id) }
+                                Button("Delete", role: .destructive) { deleting = s }
                             }
                     }
                     Button { adding = true } label: { Label("Add server", systemImage: "plus") }
@@ -76,6 +77,12 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .sheet(item: $editing) { ServerEditor(model: model, server: $0) }
             .sheet(isPresented: $adding) { ServerEditor(model: model, server: nil) }
+            .confirmationDialog("Delete \(deleting?.name ?? "server")?", isPresented: Binding(
+                get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { s in
+                Button("Delete server and its token", role: .destructive) { model.remove(s.id) }
+            } message: { _ in
+                Text("The address, its saved token and cached data are removed from this phone.")
+            }
             .confirmationDialog("Reset everything?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Delete all data", role: .destructive) { model.resetAll() }
             }
@@ -151,6 +158,7 @@ struct ServerEditor: View {
     @State private var testing = false
     @State private var testResult: Result<String, APIError>?
     @State private var saveError: String?
+    @State private var confirmDelete = false
 
     init(model: AppModel, server: ServerConfig?) {
         self.model = model
@@ -184,7 +192,7 @@ struct ServerEditor: View {
                             Text("Home Assistant").tag(ServerConfig.Kind.homeAssistant)
                         }
                         TextField("Name", text: $name, prompt: Text(kind == .homeAssistant ? "Home Assistant" : "My homelab"))
-                        TextField("Address", text: $address, prompt: Text(kind == .homeAssistant ? "https://ha.tailnet.ts.net" : "https://homelab.tailnet.ts.net"))
+                        TextField("Address", text: $address, prompt: Text(kind == .homeAssistant ? "https://ha.tailnet.ts.net" : "https://server.tailnet.ts.net:7443"))
                             .keyboardType(.URL)
                             .textContentType(.URL)
                             .textInputAutocapitalization(.never)
@@ -197,7 +205,7 @@ struct ServerEditor: View {
                     } footer: {
                         Text(kind == .homeAssistant
                              ? "Your Home Assistant address, as you open it in a browser."
-                             : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine.")
+                             : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine plus the port you gave `tailscale serve` (for example :7443).")
                     }
 
                     Section {
@@ -247,10 +255,15 @@ struct ServerEditor: View {
 
                     if let original {
                         Section {
-                            Button("Delete server", role: .destructive) {
-                                model.remove(original.id)
-                                dismiss()
-                            }
+                            Button("Delete server", role: .destructive) { confirmDelete = true }
+                                .confirmationDialog("Delete \(original.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                                    Button("Delete server and its token", role: .destructive) {
+                                        model.remove(original.id)
+                                        dismiss()
+                                    }
+                                } message: {
+                                    Text("The address, its saved token and cached data are removed from this phone.")
+                                }
                         }
                     }
                 }
@@ -291,11 +304,21 @@ struct ServerEditor: View {
             } else {
                 let info = try await CompanionClient(baseURL: c.baseURL, token: c.auth == .token ? t : nil, transport: model.transport).info()
                 if name.isEmpty, let n = info.name { name = n }
-                testResult = .success(String(localized: "Connected to \(info.name ?? c.host) (\(info.features.count) features)."))
+                testResult = .success(String(localized: "Connected to \(info.name ?? c.host): \(Self.describe(info.features))."))
             }
         } catch {
             testResult = .failure(APIError.from(error, host: c.host))
         }
+    }
+
+    /// "status, hosts and chat" for the connection test.
+    static func describe(_ features: Set<ServerInfo.Feature>) -> String {
+        let order: [(ServerInfo.Feature, String)] = [
+            (.status, String(localized: "status")), (.hosts, String(localized: "hosts")), (.cards, String(localized: "cards")),
+            (.actions, String(localized: "actions")), (.chat, String(localized: "chat")), (.services, String(localized: "services")),
+        ]
+        let names = order.filter { features.contains($0.0) }.map(\.1)
+        return names.isEmpty ? String(localized: "no features") : names.formatted(.list(type: .and))
     }
 
     private func save() {

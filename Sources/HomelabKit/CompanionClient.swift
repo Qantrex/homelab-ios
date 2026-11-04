@@ -19,6 +19,7 @@ public struct CompanionClient: CompanionAPI {
     let transport: any HTTPTransport
 
     public static let maxMessageLength = 4000
+    public static let maxResponseBytes = 8 * 1024 * 1024
 
     public init(baseURL: URL, token: String?, transport: any HTTPTransport = URLSessionTransport()) {
         self.baseURL = baseURL
@@ -38,7 +39,7 @@ public struct CompanionClient: CompanionAPI {
     }
 
     public func state() async throws -> HomelabState {
-        try await get("state", timeout: 15)
+        try await get("state", timeout: 10)
     }
 
     public func messages(after: Int64) async throws -> MessagePage {
@@ -106,6 +107,8 @@ public struct CompanionClient: CompanionAPI {
             throw APIError.from(error, host: host)
         }
         if let error = APIError.from(status: response.statusCode, body: data) { throw error }
+        // A hostile or broken server can't make the app hold hundreds of MB.
+        if data.count > Self.maxResponseBytes { throw APIError.tooLarge }
         // A captive portal or web page instead of the API.
         let type = response.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
         if type.contains("text/html") { throw APIError.decoding("HTML instead of JSON") }

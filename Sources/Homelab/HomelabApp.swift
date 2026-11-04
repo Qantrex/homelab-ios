@@ -5,7 +5,7 @@ import UserNotifications
 
 @main
 struct HomelabApp: App {
-    @State private var model = AppModel()
+    @State private var model = AppModel.live()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {

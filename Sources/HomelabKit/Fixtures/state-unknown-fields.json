@@ -1,0 +1,53 @@
+{
+  "time": "2026-11-04T21:30:00",
+  "status": "warning",
+  "checked": "2026-11-04T21:28:00",
+  "schema_version": 7,
+  "server_extension": {"name": "future", "nested": {"deeper": [1, 2, {"x": null}]}},
+  "weather": [{"city": "Vienna", "temp": 9}],
+  "problems": [
+    {"id": "p1", "text": "nas: disk / at 92%", "host": "nas", "severity": "catastrophic", "since": "2026-11-04T20:00:00",
+     "ticket": {"system": "jira", "key": "HL-1"}, "tags": ["disk", "nas"]},
+    {"id": "p2", "text": "nas: fan slow", "host": {"id": "nas"}, "severity": "warning", "since": {"iso": "2026-11-04"},
+     "acknowledged": true}
+  ],
+  "hosts": [
+    {"id": "nas", "name": {"short": "nas", "long": "the NAS"}, "kind": "quantum-computer", "reachable": {"value": true},
+     "checked": "2026-11-04T21:28:00", "load": {"1m": 0.5, "5m": 0.4}, "cpu_count": 8, "mem_pct": 140, "temp": [60, 61],
+     "disks": {"/": 92, "/tank": {"pct": 40}, "/negative": -5, "/over": 250},
+     "containers": {"up": 3, "total": 4, "paused": 1, "images": {"dangling": 2}},
+     "updates": {"upgradable": 5, "reboot_required": false, "channel": "beta"},
+     "backup": {"last": "2026-11-04T04:00:00", "result": "success", "size_gb": 6.1, "repo": {"kind": "restic"}},
+     "flags": ["undervoltage_now", "flux_capacitor_low", {"name": "object-flag"}],
+     "url": {"href": "https://nas.example.ts.net"},
+     "gpu": {"model": "none"}, "uptime_s": 123456, "labels": {"rack": "A"}},
+    {"id": "pi", "name": "pi", "reachable": true, "mem_pct": "55", "temp": "48.5", "load": "0.3",
+     "containers": 7, "updates": "none", "backup": ["2026-11-04"], "flags": "throttled_now",
+     "url": "ftp://pi.example.ts.net", "future_field": {"a": {"b": {"c": [1, 2, 3]}}}},
+    {"name": "no id, dropped", "reachable": true},
+    "not an object",
+    42
+  ],
+  "pending": [
+    {"id": "u1", "job": "watchdog", "action": "restart", "arg": "nas smb", "reason": "smb down", "created": "2026-11-04T21:00:00",
+     "priority": "high", "expires": "2026-11-05T21:00:00",
+     "buttons": {"approve": "HOMELAB_APPROVE_u1_d000000000000001", "deny": "HOMELAB_DENY_u1_d000000000000003",
+                 "snooze": "HOMELAB_SNOOZE_u1_d000000000000004", "always": {"sig": "nested"}}},
+    {"id": "u2", "action": {"verb": "restart"}, "reason": ["a", "list"], "buttons": "approve-only"},
+    {"job": "no id, dropped"}
+  ],
+  "cards": [
+    {"id": "c1", "title": "Future card", "style": "carousel", "tint": "ultraviolet", "icon": "sparkles",
+     "layout": {"columns": 3}, "actions": [{"label": "Open"}],
+     "items": [{"title": "a", "progress": 1.7, "url": "javascript:alert(1)", "tint": "infrared", "badge": {"n": 3}},
+               {"title": "b", "progress": -0.4, "value": 12, "url": "https://example.com/b"},
+               {"title": "c", "progress": {"pct": 50}},
+               "not an item"]},
+    {"id": "c2", "title": {"text": "object title"}, "style": "METRICS", "tint": "TEAL", "items": {"title": "not a list"}},
+    {"title": "no id, dropped"}
+  ],
+  "busy": ["chat", {"job": "morning"}, 3],
+  "last_message": {"id": 1762290600000000002, "ts": "2026-11-04T21:10:00", "from": "robot", "job": "watchdog",
+                   "status": "alert", "text": "hello", "attachments": [{"url": "https://example.com/x.png"}],
+                   "reactions": {"thumbs_up": 2}}
+}

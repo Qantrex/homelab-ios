@@ -1,9 +1,9 @@
 {"messages": [
   {"id": 1762288000000000000, "ts": "2026-11-04T06:00:00", "from": "agent", "job": "digest", "status": "OK",
-   "text": "**Morning.** All hosts fine. Backups ran at 04:45.\n\n- 3 updates on pi\n- R2: 6.1 of 8 GB"},
-  {"id": 1762290000000000000, "ts": "2026-11-04T21:00:00", "from": "me", "job": "", "status": "", "text": "is plex ok?"},
+   "text": "**Morning.** All hosts fine. Backups ran at 04:45.\n\n- 3 updates on pi\n- Off-site backup: 6.1 of 8 GB used"},
+  {"id": 1762290000000000000, "ts": "2026-11-04T21:00:00", "from": "me", "job": "", "status": "", "text": "is the media server ok?"},
   {"id": 1762290060000000000, "ts": "2026-11-04T21:01:00", "from": "agent", "job": "chat", "status": "OK",
-   "text": "Yes. Plex is up, 1 stream (direct play), CPU at 12%."},
+   "text": "Yes. The media server is up, 1 stream (direct play), CPU at 12%."},
   {"id": 1762290600000000000, "ts": "2026-11-04T21:10:00", "from": "agent", "job": "watchdog", "status": "ALERT",
-   "text": "media: sonarr unhealthy. Proposed: `restart media sonarr` (ab12). /approve ab12"}
+   "text": "media: sonarr unhealthy. Proposed: `restart media sonarr` (ab12). Approve it in the Actions tab."}
 ], "busy": ["chat"]}

@@ -16,7 +16,7 @@ public enum BackgroundRefresh {
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
-            log.notice("background schedule failed: \(error.localizedDescription, privacy: .public)")
+            AppLog.notice("background schedule failed: \(error.localizedDescription)")
         }
     }
 
@@ -115,5 +115,9 @@ enum UIDeviceInfo {
 }
 
 enum UIPasteboardBridge {
-    @MainActor static func copy(_ text: String) { UIPasteboard.general.string = text }
+    /// This device only (no Universal Clipboard to the Mac), and gone after 10 minutes.
+    @MainActor static func copy(_ text: String) {
+        UIPasteboard.general.setItems([["public.utf8-plain-text": text]],
+                                      options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(600)])
+    }
 }

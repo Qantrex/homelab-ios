@@ -15,20 +15,23 @@
     "_comment": "This machine. id defaults to the hostname.",
     "id": "homeserver",
     "kind": "server",
-    "disks": ["/", "/tank"],
+    "_disks": "Mount points. A LUKS or ZFS volume that is only mounted after unlocking shows as missing until then.",
+    "disks": ["/", "/opt/stacks", "/tank"],
     "docker": true,
     "updates": true
   },
 
   "hosts": [
-    {"id": "gaming-pc", "name": "Gaming PC", "kind": "desktop", "check": "ping://gaming-pc", "sleeps": true},
+    {"_comment": "With `tailscale up --accept-dns=false` this server can't resolve MagicDNS names: use the 100.x address. A name that doesn't resolve shows as a warning, not as asleep.",
+     "id": "gaming-pc", "name": "Gaming PC", "kind": "desktop", "check": "ping://100.64.0.20", "sleeps": true},
     {"id": "router", "name": "Router", "kind": "server", "check": "tcp://192.168.0.1:443"}
   ],
 
   "checks": [
     {"name": "Vaultwarden", "url": "http://127.0.0.1:8080/alive", "host": "homeserver", "expect": 200},
     {"name": "Pi-hole", "url": "http://127.0.0.1:8081/admin/", "host": "homeserver", "expect": [200, 302]},
-    {"name": "CouchDB", "url": "http://127.0.0.1:5984/_up", "host": "homeserver"},
+    {"name": "CouchDB", "url": "http://127.0.0.1:5984/_up", "host": "homeserver", "expect": [200, 401],
+     "_comment": "401 is fine: CouchDB with require_valid_user answers /_up only to logged-in users, but it is up."},
     {"name": "Jellyfin", "url": "http://127.0.0.1:8096/health", "host": "homeserver", "severity": "warning"},
     {"name": "Cockpit", "url": "https://127.0.0.1:9090/", "host": "homeserver", "insecure": true, "severity": "warning"}
   ],

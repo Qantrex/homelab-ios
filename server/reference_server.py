@@ -51,7 +51,8 @@ PAGE_MESSAGES = 200
 
 BUTTON_RE = re.compile(r"^HOMELAB_(APPROVE|ALWAYS|DENY)_([A-Za-z0-9-]{1,32})_([0-9a-f]{16})$")
 PENDING_ID_RE = re.compile(r"^[A-Za-z0-9-]{1,32}$")
-ARG_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,64}( [A-Za-z0-9_.@-]{1,64})*$")
+# No word may start with "-": a stray arg must never become an option of the command.
+ARG_RE = re.compile(r"^[A-Za-z0-9_.@][A-Za-z0-9_.@-]{0,63}( [A-Za-z0-9_.@][A-Za-z0-9_.@-]{0,63})*$")
 HOSTNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
 SECRET_ENV = ("HOMELAB_TOKENS", "HOMELAB_BUTTON_SECRET")
 SEVERITIES = ("problem", "warning")
@@ -95,6 +96,24 @@ def short_error(exc):
         return "TLS error: %s" % (getattr(exc, "reason", None) or exc)
     text = str(exc) or exc.__class__.__name__
     return text[:120]
+
+
+DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "::1", "*.ts.net"]
+
+
+def host_allowed(header, allowed):
+    """The Host header without its port, matched against names and "*.domain" patterns."""
+    host = (header or "").strip().lower()
+    if host.startswith("["):
+        host = host[1:host.find("]")] if "]" in host else host
+    elif host.count(":") == 1:
+        host = host.rsplit(":", 1)[0]
+    if not host:
+        return False
+    for a in allowed:
+        if a == "*" or a == host or (a.startswith("*.") and host.endswith(a[1:])):
+            return True
+    return False
 
 
 def is_loopback(addr):
@@ -173,10 +192,19 @@ def validate_target(target):
         raise ConfigError("unsupported check %r (use tcp://, ping://, http:// or https://)" % target)
 
 
+RESOLVE_FAILED = "can't resolve "
+
+
 def probe(target, timeout=5.0, expect=None, insecure=False):
     """Return (ok, detail). With expect=None any HTTP answer counts as ok (host reachability)."""
     u = urllib.parse.urlsplit(target)
     try:
+        # A name that doesn't resolve is a setup problem (e.g. MagicDNS off on this server), not a sleeping host.
+        if u.hostname:
+            try:
+                socket.getaddrinfo(u.hostname, None)
+            except socket.gaierror:
+                return False, RESOLVE_FAILED + u.hostname
         if u.scheme in ("http", "https"):
             req = urllib.request.Request(target, method="GET", headers={"User-Agent": SERVER_NAME + "/1"})
             try:
@@ -209,7 +237,7 @@ def probe(target, timeout=5.0, expect=None, insecure=False):
 # --------------------------------------------------------------------------------------------- config
 
 KNOWN_KEYS = {
-    "name", "listen", "allow_remote", "tokens", "trust_identity_header", "allowed_logins", "interval",
+    "name", "listen", "allow_remote", "allowed_hosts", "tokens", "trust_identity_header", "allowed_logins", "interval",
     "this_host", "hosts", "checks", "thresholds", "cards_dir", "services", "pending_dir", "actions",
     "action_timeout", "chat_command", "chat_timeout", "state_dir",
 }
@@ -244,6 +272,11 @@ class Config:
         self.name = str(raw.get("name") or socket.gethostname())
         self.host, self.port = parse_listen(raw.get("listen", "127.0.0.1:8791"))
         self.allow_remote = bool(raw.get("allow_remote", False))
+        # Host header allowlist: blocks DNS rebinding (a web page that renames itself to 127.0.0.1).
+        hosts = raw.get("allowed_hosts", DEFAULT_ALLOWED_HOSTS)
+        if not isinstance(hosts, list) or not all(isinstance(h, str) and h for h in hosts):
+            raise ConfigError("allowed_hosts must be a list of host names (\"*.ts.net\" allowed)")
+        self.allowed_hosts = [h.lower() for h in hosts]
 
         tokens = raw.get("tokens") or []
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
@@ -405,6 +438,8 @@ class Auth:
                 return None
             return 403, "forbidden"
         if denied_login:
+            # The login isn't a secret, and it is the one thing needed to fix allowed_logins.
+            log("refused login %r: not in allowed_logins" % login[:120])
             return 403, "login not allowed"
         return 401, "unauthorized"
 
@@ -469,7 +504,12 @@ class Collector:
                 ok, detail = fut.result()
                 host = self._base(h)
                 host.update({"reachable": ok, "checked": now_iso(), "flags": []})
-                if not ok and h["sleeps"]:
+                if not ok and h["sleeps"] and detail.startswith(RESOLVE_FAILED):
+                    host["flags"].append("asleep")
+                    problems.append({"id": "host-%s-dns" % h["id"], "host": h["id"], "severity": "warning",
+                                     "text": "%s: %s on this server, so it can't tell asleep from gone. "
+                                             "Use its 100.x address in the check." % (host["name"], detail)})
+                elif not ok and h["sleeps"]:
                     host["flags"].append("asleep")
                 elif not ok:
                     problems.append({"id": "host-%s" % h["id"], "host": h["id"], "severity": "problem",
@@ -655,11 +695,19 @@ class Actions:
         self.lock = threading.Lock()
         self.running = set()
 
-    def sign(self, verb, pid):
-        return hmac.new(self.secret, ("%s:%s" % (verb, pid)).encode(), hashlib.sha256).hexdigest()[:16]
+    @staticmethod
+    def digest(data):
+        """What the user saw: a button only works for exactly this action, arg and creation time.
+        A new pending file that reuses an id gets new buttons, and old ones stop working."""
+        seen = {k: data.get(k) for k in ("action", "arg", "created")}
+        return hashlib.sha256(json.dumps(seen, sort_keys=True).encode()).hexdigest()
 
-    def button(self, verb, pid):
-        return "HOMELAB_%s_%s_%s" % (verb, pid, self.sign(verb, pid))
+    def sign(self, verb, pid, data):
+        msg = "%s:%s:%s" % (verb, pid, self.digest(data))
+        return hmac.new(self.secret, msg.encode(), hashlib.sha256).hexdigest()[:16]
+
+    def button(self, verb, pid, data):
+        return "HOMELAB_%s_%s_%s" % (verb, pid, self.sign(verb, pid, data))
 
     def _scan(self):
         """Return {id: (path, data)}."""
@@ -699,10 +747,10 @@ class Actions:
             item = {k: data[k] for k in ("id", "job", "action", "arg", "reason", "created") if k in data}
             buttons = {}
             if self._runnable(data):
-                buttons["approve"] = self.button("APPROVE", pid)
+                buttons["approve"] = self.button("APPROVE", pid, data)
                 if data.get("offer_always"):
-                    buttons["always"] = self.button("ALWAYS", pid)
-            buttons["deny"] = self.button("DENY", pid)
+                    buttons["always"] = self.button("ALWAYS", pid, data)
+            buttons["deny"] = self.button("DENY", pid, data)
             item["buttons"] = buttons
             out.append(item)
         out.sort(key=lambda p: str(p.get("created", "")))
@@ -724,12 +772,12 @@ class Actions:
         if not m:
             return 403, {"error": "unknown button"}
         verb, pid, sig = m.groups()
-        if not hmac.compare_digest(sig, self.sign(verb, pid)):
-            return 403, {"error": "forged button"}
         entry = self._scan().get(pid)
         if not entry:
             return 403, {"error": "unknown or expired action"}
         path, data = entry
+        if not hmac.compare_digest(sig, self.sign(verb, pid, data)):
+            return 403, {"error": "forged or outdated button"}
         if verb == "DENY":
             self._remove(path)
             log("action %s denied" % pid)
@@ -897,6 +945,7 @@ class RealApp:
     def __init__(self, cfg):
         self.cfg = cfg
         self.auth = Auth(cfg.tokens, cfg.identity_header, cfg.allowed_logins)
+        self.allowed_hosts = cfg.allowed_hosts
         self.collector = Collector(cfg)
         self.actions = Actions(cfg.pending_dir, cfg.actions, cfg.button_secret, cfg.action_timeout) \
             if cfg.pending_dir else None
@@ -1090,6 +1139,7 @@ class FixtureApp:
 # --------------------------------------------------------------------------------------------- http
 
 class Handler(BaseHTTPRequestHandler):
+    timeout = 30   # a slow or silent client can't hold a thread forever
     server_version = SERVER_NAME
     sys_version = ""
     protocol_version = "HTTP/1.1"
@@ -1148,6 +1198,10 @@ class Handler(BaseHTTPRequestHandler):
             return 404, {"error": "not found"}
         if self.headers.get("Origin"):
             return 403, {"error": "browser requests are not allowed"}
+        allowed_hosts = getattr(app, "allowed_hosts", None)
+        if allowed_hosts is not None and not host_allowed(self.headers.get("Host"), allowed_hosts):
+            log("refused Host %r: not in allowed_hosts" % (self.headers.get("Host") or "")[:120])
+            return 403, {"error": "host not allowed (allowed_hosts in the config)"}
         denied = app.auth.check(self.headers, self.client_address[0])
         if denied:
             return denied[0], {"error": denied[1]}

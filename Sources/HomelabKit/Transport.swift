@@ -15,7 +15,8 @@ public struct URLSessionTransport: HTTPTransport {
         self.session = session
     }
 
-    /// No cookies, no cache, no credential storage: every request carries its own auth.
+    /// No cookies, no cache, no credential storage: every request carries its own auth. Redirects are not followed,
+    /// so a bearer token can never be carried to another host by a 3xx answer.
     public static let defaultSession: URLSession = {
         let c = URLSessionConfiguration.ephemeral
         c.httpCookieAcceptPolicy = .never
@@ -28,7 +29,7 @@ public struct URLSessionTransport: HTTPTransport {
         c.waitsForConnectivity = false   // fail fast: the UI shows "is Tailscale on?"
         #endif
         c.httpAdditionalHeaders = ["User-Agent": "HomelabiOS/\(AppVersion.short)"]
-        return URLSession(configuration: c)
+        return URLSession(configuration: c, delegate: NoRedirects(), delegateQueue: nil)
     }()
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -36,6 +37,21 @@ public struct URLSessionTransport: HTTPTransport {
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         return (data, http)
     }
+}
+
+/// Stops every redirect: the 3xx answer comes back as it is and becomes `APIError.redirected`.
+final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    #if canImport(Darwin)
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
+    #else
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
+    #endif
 }
 
 public enum AppVersion {
@@ -64,6 +80,8 @@ public enum APIError: Error, Equatable, Sendable {
     case badRequest(String)
     case cancelled
     case unsupportedVersion(Int)
+    case redirected(status: Int)
+    case tooLarge
     case other(String)
 
     public var message: String {
@@ -83,6 +101,8 @@ public enum APIError: Error, Equatable, Sendable {
         case .badRequest(let text): text.isEmpty ? "The server rejected the request." : text
         case .cancelled: "Cancelled."
         case .unsupportedVersion(let v): "This server speaks Homelab API version \(v). This app knows version 1. Update the app."
+        case .redirected(let status): "The server answered with a redirect (HTTP \(status)). Enter the final address: often https:// or another port."
+        case .tooLarge: "The server's answer is too large."
         case .other(let text): text
         }
     }
@@ -125,6 +145,7 @@ public enum APIError: Error, Equatable, Sendable {
     public static func from(status: Int, body: Data) -> APIError? {
         switch status {
         case 200..<300: return nil
+        case 300..<400: return .redirected(status: status)
         case 401: return .unauthorized
         case 403: return .forbidden
         case 404: return .notFound

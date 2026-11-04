@@ -17,6 +17,8 @@ struct HomelabWidgets: WidgetBundle {
 struct Entry: TimelineEntry {
     var date: Date
     var snapshot: Snapshot?
+    /// The app lock is on: show status and counts only, never problem text.
+    var redacted = false
 }
 
 struct Provider: TimelineProvider {
@@ -25,19 +27,25 @@ struct Provider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
-        completion(Entry(date: Date(), snapshot: context.isPreview ? (Self.load() ?? Self.sample) : Self.load()))
+        completion(Entry(date: Date(), snapshot: context.isPreview ? (Self.load() ?? Self.sample) : Self.load(),
+                         redacted: !context.isPreview && Self.locked()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
         // The app reloads timelines whenever it has new data; this is only the fallback, so the age text stays right.
         let now = Date()
         let snap = Self.load()
-        let entries = (0..<4).map { Entry(date: now.addingTimeInterval(Double($0) * 15 * 60), snapshot: snap) }
+        let redacted = Self.locked()
+        let entries = (0..<4).map { Entry(date: now.addingTimeInterval(Double($0) * 15 * 60), snapshot: snap, redacted: redacted) }
         completion(Timeline(entries: entries, policy: .atEnd))
     }
 
     static func load() -> Snapshot? {
         Storage.shared().read(Snapshot.self, Snapshot.widgetFileName)
+    }
+
+    static func locked() -> Bool {
+        Storage.shared().read(AppSettings.self, AppSettings.fileName)?.faceIDLock ?? false
     }
 
     static var sample: Snapshot? {
@@ -126,6 +134,9 @@ struct StatusView: View {
     private var line: String {
         guard let state, entry.snapshot != nil else { return String(localized: "No data yet") }
         if stale { return String(localized: "Data from \(age), open the app") }
+        if entry.redacted {
+            return state.problems.isEmpty ? String(localized: "No problems") : String(localized: "\(state.problems.count) problems, open the app")
+        }
         if let p = state.problems.first { return state.problems.count > 1 ? "\(p.text) +\(state.problems.count - 1)" : p.text }
         let up = state.hosts.filter { $0.reachable == true }.count
         return String(localized: "\(up)/\(state.hosts.count) hosts up")
@@ -171,7 +182,8 @@ struct HostsView: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
                     ForEach(hosts.prefix(limit)) { HostCell(host: $0) }
                 }
-                if family == .systemLarge, let problems = state?.problems, !problems.isEmpty {
+                .opacity(stale ? 0.55 : 1)   // only the data dims; the age above stays readable
+                if family == .systemLarge, !entry.redacted, let problems = state?.problems, !problems.isEmpty {
                     Divider()
                     ForEach(problems.prefix(4)) { p in
                         Label(p.text, systemImage: p.severity.symbol).font(.caption).foregroundStyle(p.severity.color).lineLimit(1)
@@ -185,7 +197,6 @@ struct HostsView: View {
             }
             Spacer(minLength: 0)
         }
-        .opacity(stale ? 0.55 : 1)
     }
 }
 

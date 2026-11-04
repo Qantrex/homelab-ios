@@ -51,6 +51,9 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         kind == other.kind && Self.origin(baseURL) == Self.origin(other.baseURL)
     }
 
+    /// "kind|scheme://host:port/path": changes exactly when cached data stops belonging to this server.
+    public var target: String { kind.rawValue + "|" + Self.origin(baseURL) }
+
     static func origin(_ url: URL) -> String {
         let scheme = url.scheme?.lowercased() ?? ""
         let port = url.port ?? (scheme == "https" ? 443 : 80)
@@ -65,6 +68,8 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
 public protocol TokenStore: Sendable {
     func token(for server: UUID) -> String?
     func setToken(_ token: String?, for server: UUID) throws
+    /// Deletes every token of this app (Reset everything).
+    func removeAll()
 }
 
 public final class MemoryTokenStore: TokenStore, @unchecked Sendable {
@@ -80,4 +85,10 @@ public final class MemoryTokenStore: TokenStore, @unchecked Sendable {
     public func setToken(_ token: String?, for server: UUID) throws {
         lock.withLock { tokens[server] = token?.isEmpty == true ? nil : token }
     }
+
+    public func removeAll() {
+        lock.withLock { tokens.removeAll() }
+    }
+
+    public var count: Int { lock.withLock { tokens.count } }
 }

@@ -8,8 +8,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only by default. Only the `screenshots` job can write (to the ci-screenshots branch).
 permissions:
-  contents: write   # only to push simulator screenshots to the ci-screenshots branch
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,7 +29,9 @@ jobs:
       KIT_ONLY: "1"
       HOMELAB_FIXTURE_URL: http://127.0.0.1:8791
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Install python3 if missing
         run: |
@@ -61,9 +64,12 @@ jobs:
     continue-on-error: ${{ matrix.runner == 'xcode-27' }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Toolchain
+        id: toolchain
         run: |
           sw_vers
           xcodebuild -version
@@ -71,10 +77,32 @@ jobs:
           xcrun -sdk iphoneos --show-sdk-path
           xcrun simctl list runtimes
 
-      - name: Install xtool
+      # Pinned release + checksum (the brew cask is always "latest"). To update: new tag, new sha256 of xtool.app.zip.
+      - name: Install xtool (pinned)
+        env:
+          XTOOL_VERSION: "1.24.0"
+          XTOOL_SHA256: a56e98d69dea02a97a17e609f0ae8771c57ffaab23f1d62513fd9ada222026b3
         run: |
-          brew install xtool-org/tap/xtool
-          xtool --version || xtool --help | head -5
+          dir=$RUNNER_TEMP/xtool
+          mkdir -p "$dir"
+          if curl -fsSL --retry 3 -o "$dir/xtool.app.zip" \
+               "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool.app.zip" \
+             && echo "$XTOOL_SHA256  $dir/xtool.app.zip" | shasum -a 256 -c -; then
+            ditto -x -k "$dir/xtool.app.zip" "$dir"   # keeps symlinks and the code signature
+            echo "$dir/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
+            export PATH="$dir/xtool.app/Contents/Resources/bin:$PATH"
+          else
+            echo "::warning::pinned xtool $XTOOL_VERSION not available, falling back to brew (latest)"
+            brew install xtool-org/tap/xtool
+          fi
+          out=$(xtool --version 2>&1 || true)
+          echo "xtool --version: $out"
+          version=$(printf '%s' "$out" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1 || true)
+          if [ -z "$version" ]; then
+            echo "::warning::xtool --version printed no version; expected $XTOOL_VERSION"
+            version=$XTOOL_VERSION
+          fi
+          [ "${version%%.*}" = 1 ] || { echo "::error::xtool major version ${version%%.*} (want 1): check before upgrading"; exit 1; }
           xtool dev build --help || true
 
       - name: Shared code tests on macOS
@@ -89,7 +117,7 @@ jobs:
       - name: Verify IPA (widget inside, App Group in app and widget)
         run: scripts/verify-ipa out/*.ipa
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ipa-${{ matrix.runner }}
           path: out/*.ipa
@@ -102,7 +130,63 @@ jobs:
           app=$(find xtool -maxdepth 2 -name '*.app' | head -1)
           echo "APP=$app" >> "$GITHUB_ENV"; test -n "$app"
 
-      - name: Compiler warnings in our code (not failing yet)
+      - name: Simulator smoke test (screenshots)
+        run: scripts/sim-smoke "$APP" shots
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && hashFiles('shots/*') != ''
+        with:
+          name: screenshots-${{ matrix.runner }}
+          path: shots/
+          retention-days: 14
+
+      # Level 4: HomelabKit tests on an iOS simulator. The full package first (app targets build for the
+      # simulator too); if xcodebuild can't build those, KIT_ONLY=1 (Kit + tests only). xcodebuild passes
+      # TEST_RUNNER_* variables to the tests without the prefix, so the integration tests see HOMELAB_FIXTURE_URL.
+      - name: Kit tests on the iOS simulator (xcodebuild test)
+        if: always() && steps.toolchain.outcome == 'success'
+        env:
+          TEST_RUNNER_HOMELAB_FIXTURE_URL: http://127.0.0.1:8791
+        run: |
+          python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port 8791 > xcodebuild-server-log.txt 2>&1 &
+          pid=$!; trap 'kill $pid 2>/dev/null || true' EXIT
+          udid=$(scripts/sim-smoke --pick main)
+          test -n "$udid" || { echo "::error::no iPhone simulator"; exit 1; }
+          echo "destination: id=$udid"
+          kit_test() {   # kit_test LABEL
+            local scheme
+            scheme=$(xcodebuild -list -json 2>/dev/null | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          schemes = (d.get("workspace") or d.get("project") or {}).get("schemes", [])
+          print(next((s for s in ("Homelab-Package", "HomelabKit") if s in schemes), schemes[0] if schemes else ""))')
+            echo "scheme ($1): ${scheme:-none}"
+            [ -n "$scheme" ] || return 1
+            xcodebuild test -scheme "$scheme" -destination "id=$udid" -derivedDataPath "$RUNNER_TEMP/dd-$1" \
+              -only-testing:HomelabKitTests CODE_SIGNING_ALLOWED=NO 2>&1 | tee "xcodebuild-test-$1.log"
+          }
+          if kit_test full; then
+            echo "### xcodebuild test (${{ matrix.runner }}): full package, passed" >> "$GITHUB_STEP_SUMMARY"
+          elif (export KIT_ONLY=1; kit_test kit); then
+            echo "::warning::full package failed under xcodebuild; HomelabKit tests passed with KIT_ONLY=1"
+            echo "### xcodebuild test (${{ matrix.runner }}): KIT_ONLY=1 fallback, passed" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### xcodebuild test (${{ matrix.runner }}): FAILED" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && hashFiles('xcodebuild-test-*.log') != ''
+        with:
+          name: xcodebuild-test-${{ matrix.runner }}
+          path: |
+            xcodebuild-test-*.log
+            xcodebuild-server-log.txt
+          retention-days: 14
+
+      # Last, so a warning never hides the screenshots or the simulator tests. Fails on macos-26 (plan: no
+      # warnings); xcode-27 only reports (new toolchains bring new warnings first).
+      - name: Compiler warnings in our code
         if: always()
         run: |
           warnings=$(cat build-*.log 2>/dev/null | grep -E '/Sources/[^:]+:[0-9]+(:[0-9]+)?: warning:' \
@@ -112,23 +196,38 @@ jobs:
             echo "### Compiler warnings in Sources/ (${{ matrix.runner }}): $count"
             if [ "$count" -gt 0 ]; then echo '```'; echo "$warnings"; echo '```'; fi
           } >> "$GITHUB_STEP_SUMMARY"
-          [ "$count" -eq 0 ] || echo "$warnings"
+          [ "$count" -eq 0 ] && exit 0
+          echo "$warnings"
+          if [ "${{ matrix.runner }}" = macos-26 ]; then
+            echo "::error::$count compiler warning(s) in Sources/"
+            exit 1
+          fi
+          echo "::warning::$count compiler warning(s) in Sources/ (informational on ${{ matrix.runner }})"
 
-      - name: Simulator smoke test (screenshots)
-        run: scripts/sim-smoke "$APP" shots
+  # Publishes the macos-26 screenshots to the orphan branch ci-screenshots. The only job that can write, and it runs
+  # no third-party tools: git + bash on the downloaded PNGs. Only pushes and manual runs (PRs from forks get a
+  # read-only token anyway).
+  screenshots:
+    needs: macos
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/upload-artifact@v4
-        if: always() && hashFiles('shots/*') != ''
+      - name: Download the macos-26 screenshots
+        id: download
+        continue-on-error: true   # no artifact = the macos job failed before sim-smoke
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: screenshots-${{ matrix.runner }}
-          path: shots/
-          retention-days: 14
+          name: screenshots-macos-26
+          path: shots
 
-      # Only macos-26 publishes, so the two runners never write the same folder. Pull requests from forks get a
-      # read-only token, so only pushes and manual runs publish.
       - name: Push screenshots to ci-screenshots
-        continue-on-error: true   # a lost push race must not fail the build; the artifact above has the PNGs
-        if: matrix.runner == 'macos-26' && github.event_name != 'pull_request' && hashFiles('shots/*.png') != ''
+        continue-on-error: true   # a lost push race must not fail the build; the artifact has the PNGs
+        if: steps.download.outcome == 'success' && hashFiles('shots/*.png') != ''
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
@@ -143,17 +242,33 @@ jobs:
           else
             git worktree add --detach "$wt" && (cd "$wt" && git checkout --orphan ci-screenshots && git rm -rfq --ignore-unmatch .)
           fi
+          # README set: fixed names in <branch>/readme/, always the newest run, for docs/screenshots.
+          readme=(
+            01-demo-overview-light:01-overview.png
+            02-demo-actions-light:02-actions.png
+            03-demo-chat-light:03-chat.png
+            04-demo-home-light:04-home.png
+            05-demo-settings-light:05-settings.png
+            06-demo-overview-dark:06-dark.png
+          )
           publish() {
             cd "$wt"
             mkdir -p "$branch"
             rm -rf "${branch:?}/$sha" && mkdir -p "$branch/$sha" && cp "$GITHUB_WORKSPACE"/shots/*.png "$branch/$sha/"
             cp "$GITHUB_WORKSPACE"/shots/*.txt "$branch/$sha/" 2>/dev/null || true
+            mkdir -p "$branch/readme"
+            for pair in "${readme[@]}"; do
+              src="$GITHUB_WORKSPACE/shots/${pair%%:*}.png"
+              if [ -f "$src" ]; then cp "$src" "$branch/readme/${pair##*:}"; else echo "missing for readme/: ${pair%%:*}.png"; fi
+            done
+            echo "$sha" > "$branch/readme/sha.txt"
             echo "$sha" > "$branch/latest.txt"
             # history.txt: one short sha per run, newest last; keep the last 5 folders, delete older ones.
             { grep -vx "$sha" "$branch/history.txt" 2>/dev/null || true; echo "$sha"; } | tail -5 > "$branch/history.new"
             mv "$branch/history.new" "$branch/history.txt"
             for d in "$branch"/*/; do
               d=${d%/}
+              [ "${d##*/}" = readme ] && continue
               grep -qx "${d##*/}" "$branch/history.txt" || rm -rf "$d"
             done
             git add -A
@@ -171,4 +286,6 @@ jobs:
           {
             echo "### Screenshots ($branch @ $sha)"
             for f in "$GITHUB_WORKSPACE"/shots/*.png; do n=$(basename "$f"); echo "<img src=\"$base/$n\" width=\"200\" title=\"$n\">"; done
+            echo
+            echo "README set: \`$branch/readme/\` (01-overview … 06-dark)"
           } >> "$GITHUB_STEP_SUMMARY"

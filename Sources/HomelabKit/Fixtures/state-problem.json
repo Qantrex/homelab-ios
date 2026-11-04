@@ -36,7 +36,7 @@
     {"id": "today", "title": "Today", "icon": "sun.max", "tint": "orange", "style": "metrics",
      "items": [{"title": "Wake-up", "value": "06:20"}, {"title": "First lesson", "value": "08:00"},
                {"title": "Leave by", "value": "07:31", "subtitle": "U6 07:36"}]},
-    {"id": "note", "title": "Note", "icon": "text.bubble", "style": "text", "text": "Backups to **R2** are at 6.1 of 8 GB."}
+    {"id": "note", "title": "Note", "icon": "text.bubble", "style": "text", "text": "Off-site backup is at **6.1 of 8 GB**."}
   ],
   "busy": ["chat"],
   "last_message": {"id": 1762290600000000000, "ts": "2026-11-04T21:10:00", "from": "agent", "job": "watchdog",

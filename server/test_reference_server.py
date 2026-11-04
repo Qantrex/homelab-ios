@@ -156,6 +156,8 @@ class RealModeTest(unittest.TestCase):
                 {"id": "gpu", "name": "gaming-pc", "kind": "desktop", "sleeps": True,
                  "check": "tcp://127.0.0.1:%d" % cls.closed},
                 {"id": "web", "kind": "server", "check": "http://127.0.0.1:%d/bad" % tport},
+                {"id": "pc2", "name": "pc-no-dns", "kind": "desktop", "sleeps": True,
+                 "check": "ping://no-such-host.invalid"},
             ],
             "checks": [
                 {"name": "app-ok", "url": "http://127.0.0.1:%d/ok" % tport, "host": "box"},
@@ -213,6 +215,10 @@ class RealModeTest(unittest.TestCase):
         with open(path, "w") as fh:
             json.dump(doc, fh)
         return path
+
+    def signed(self, verb, pid):
+        """A correctly signed button for the pending file as the server sees it now."""
+        return self.app.actions.button(verb, pid, self.app.actions._scan()[pid][1])
 
     def buttons(self, pid):
         for p in self.state()["pending"]:
@@ -317,6 +323,16 @@ class RealModeTest(unittest.TestCase):
         self.assertEqual(gpu["name"], "gaming-pc")
         self.assertFalse([p for p in s["problems"] if p.get("host") == "gpu"])
 
+    def test_sleeping_host_that_does_not_resolve_is_a_warning(self):
+        s = self.state()
+        pc = [h for h in s["hosts"] if h["id"] == "pc2"][0]
+        self.assertEqual(pc["flags"], ["asleep"])
+        p = [p for p in s["problems"] if p.get("host") == "pc2"]
+        self.assertEqual(len(p), 1)
+        self.assertEqual(p[0]["severity"], "warning")
+        self.assertIn("can't resolve no-such-host.invalid", p[0]["text"])
+        self.assertIn("100.x", p[0]["text"])
+
     def test_http_host_any_answer_is_reachable(self):
         web = [h for h in self.state()["hosts"] if h["id"] == "web"][0]
         self.assertTrue(web["reachable"])
@@ -388,7 +404,9 @@ class RealModeTest(unittest.TestCase):
         self.assertLessEqual(set(p), keys_union(fx))
         self.assertLessEqual(set(p["buttons"]), keys_union(x["buttons"] for x in fx))
         self.assertEqual(set(p["buttons"]), {"approve", "deny"})
-        sig = rs.hmac.new(self.cfg.button_secret, b"APPROVE:sh01", rs.hashlib.sha256).hexdigest()[:16]
+        data = self.app.actions._scan()["sh01"][1]
+        msg = ("APPROVE:sh01:" + rs.Actions.digest(data)).encode()
+        sig = rs.hmac.new(self.cfg.button_secret, msg, rs.hashlib.sha256).hexdigest()[:16]
         self.assertEqual(p["buttons"]["approve"], "HOMELAB_APPROVE_sh01_" + sig)
         self.assertIn("created", p)
         os.remove(os.path.join(self.pending, "sh01.json"))
@@ -404,17 +422,18 @@ class RealModeTest(unittest.TestCase):
         os.remove(os.path.join(self.pending, "fg01.json"))
 
     def test_button_unknown_id_403(self):
-        btn = self.app.actions.button("APPROVE", "gone")
+        btn = self.app.actions.button("APPROVE", "gone", {})
         self.assertEqual(self.post("/api/v1/button", {"action": btn})[0], 403)
 
     def test_button_approve_runs_action(self):
         path = self.add_pending("ap01")
-        code, _, obj = self.post("/api/v1/button", {"action": self.buttons("ap01")["approve"]})
+        btn = self.buttons("ap01")["approve"]
+        code, _, obj = self.post("/api/v1/button", {"action": btn})
         self.assertEqual(code, 200)
         self.assertIn("restarted media sonarr", obj["text"])
         self.assertIn("exit 0", obj["text"])
         self.assertFalse(os.path.exists(path))
-        self.assertEqual(self.post("/api/v1/button", {"action": self.app.actions.button("APPROVE", "ap01")})[0], 403)
+        self.assertEqual(self.post("/api/v1/button", {"action": btn})[0], 403)   # works once
 
     def test_button_deny_removes(self):
         path = self.add_pending("dn01")
@@ -425,17 +444,45 @@ class RealModeTest(unittest.TestCase):
     def test_button_always_only_when_offered(self):
         self.add_pending("al01")
         self.assertNotIn("always", self.buttons("al01"))
-        self.assertEqual(self.post("/api/v1/button", {"action": self.app.actions.button("ALWAYS", "al01")})[0], 403)
+        self.assertEqual(self.post("/api/v1/button", {"action": self.signed("ALWAYS", "al01")})[0], 403)
         os.remove(os.path.join(self.pending, "al01.json"))
         self.add_pending("al02", offer_always=True)
         code, _, obj = self.post("/api/v1/button", {"action": self.buttons("al02")["always"]})
         self.assertEqual(code, 200)
         self.assertIn("restarted", obj["text"])
 
+    def test_old_button_does_not_approve_a_new_action_with_the_same_id(self):
+        self.add_pending("re01", arg="old")
+        old = self.buttons("re01")["approve"]
+        self.add_pending("re01", arg="different", created="2026-11-05T10:00:00+01:00")   # a script reuses the id
+        code, _, obj = self.post("/api/v1/button", {"action": old})
+        self.assertEqual(code, 403)
+        self.assertIn("outdated", obj["error"])
+        new = self.buttons("re01")["approve"]
+        self.assertNotEqual(new, old)
+        code, _, obj = self.post("/api/v1/button", {"action": new})
+        self.assertEqual(code, 200)
+        self.assertIn("different", obj["text"])
+
+    def test_host_header_allowlist(self):
+        self.assertTrue(rs.host_allowed("box.tail1234.ts.net", rs.DEFAULT_ALLOWED_HOSTS))
+        self.assertTrue(rs.host_allowed("127.0.0.1:8791", rs.DEFAULT_ALLOWED_HOSTS))
+        self.assertTrue(rs.host_allowed("[::1]:8791", rs.DEFAULT_ALLOWED_HOSTS))
+        self.assertFalse(rs.host_allowed("evil.example", rs.DEFAULT_ALLOWED_HOSTS))
+        self.assertFalse(rs.host_allowed("ts.net.evil.example", rs.DEFAULT_ALLOWED_HOSTS))
+        self.assertFalse(rs.host_allowed("", rs.DEFAULT_ALLOWED_HOSTS))
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        c.request("GET", "/api/v1/state", headers={"Host": "evil.example", LOGIN_HEADER: "alice@example.com"})
+        r = c.getresponse()
+        self.assertEqual(r.status, 403)
+        self.assertIn("host not allowed", r.read().decode())
+        c.close()
+
     def test_bad_arg_rejected(self):
         path = self.add_pending("ba01", arg="; rm -rf /")
         self.assertEqual(set(self.buttons("ba01")), {"deny"})
-        code, _, obj = self.post("/api/v1/button", {"action": self.app.actions.button("APPROVE", "ba01")})
+        code, _, obj = self.post("/api/v1/button", {"action": self.signed("APPROVE", "ba01")})
         self.assertEqual(code, 400)
         self.assertNotIn("restarted", json.dumps(obj))
         self.assertTrue(os.path.exists(path))
@@ -444,13 +491,13 @@ class RealModeTest(unittest.TestCase):
     def test_unconfigured_action_has_no_approve(self):
         self.add_pending("uc01", action="reboot")
         self.assertEqual(set(self.buttons("uc01")), {"deny"})
-        self.assertEqual(self.post("/api/v1/button", {"action": self.app.actions.button("APPROVE", "uc01")})[0], 403)
+        self.assertEqual(self.post("/api/v1/button", {"action": self.signed("APPROVE", "uc01")})[0], 403)
         os.remove(os.path.join(self.pending, "uc01.json"))
 
     def test_arg_regex_and_argv(self):
         for good in ("media sonarr", "nginx.service", "user@host", "a_b-c"):
             self.assertTrue(rs.ARG_RE.match(good), good)
-        for bad in ("; rm -rf /", "a  b", " a", "a ", "$(id)", "a;b", "x" * 65, "a\nb", "a/b"):
+        for bad in ("; rm -rf /", "a  b", " a", "a ", "$(id)", "a;b", "x" * 65, "a\nb", "a/b", "-rf", "media --force"):
             self.assertFalse(rs.ARG_RE.match(bad), bad)
         self.assertEqual(rs.Actions.build_argv(["/bin/echo", "restarted", "{arg}"], "media sonarr"),
                          ["/bin/echo", "restarted", "media", "sonarr"])

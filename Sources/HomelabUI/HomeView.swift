@@ -10,6 +10,16 @@ final class HomeModel {
     var loading = false
     var busy: Set<String> = []
     var actionError: String?
+    private var loadedFor: String?
+
+    /// A different Home Assistant (new address) means the old entities don't exist there.
+    func reset(for server: ServerConfig?) {
+        guard server?.target != loadedFor else { return }
+        loadedFor = server?.target
+        entities = []
+        error = nil
+        busy = []
+    }
 
     func load(_ api: any HomeAssistantAPI, host: String) async {
         loading = true
@@ -108,7 +118,8 @@ struct HomeView: View {
             } message: {
                 Text(home.actionError ?? "")
             }
-            .task(id: PollKey(server: server?.id, active: scenePhase == .active)) {
+            .task(id: PollKey(server: server?.target, active: scenePhase == .active)) {
+                home.reset(for: server)
                 guard scenePhase == .active else { return }
                 while !Task.isCancelled {
                     await load()

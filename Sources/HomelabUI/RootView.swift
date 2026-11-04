@@ -105,14 +105,14 @@ struct WelcomeView: View {
                         .accessibilityHidden(true)
                     VStack(spacing: 8) {
                         Text("Your homelab, in your pocket").font(.title2.weight(.bold)).multilineTextAlignment(.center)
-                        Text("See your hosts, approve what your homelab proposes, chat with your agent and switch Home Assistant devices. Everything stays on your network.")
+                        Text("See your hosts and problems at a glance. If your server offers it, approve what it proposes and chat with it. Home Assistant devices work too. Everything stays on your network.")
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         point("checkmark.shield", "Status of every host, problems first")
-                        point("hand.thumbsup", "Approve or deny proposed actions")
-                        point("bubble.left.and.bubble.right", "Chat with your homelab agent")
+                        point("hand.thumbsup", "Approve or deny proposed actions (if offered)")
+                        point("bubble.left.and.bubble.right", "Chat with your homelab agent (if offered)")
                         point("lock.shield", "No account, no cloud, no tracking")
                     }
                     .padding(.horizontal)

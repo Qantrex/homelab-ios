@@ -9,12 +9,14 @@ final class ChatModel {
     var timeline = ChatTimeline()
     var error: APIError?
     var loadedOnce = false
-    private(set) var serverID: UUID?
+    private(set) var serverID: String?
     private var failures = 0
+    /// Bumped after a send: restarts the poll loop so the fast "working" polling starts right away.
+    var kick = 0
 
     func reset(for server: ServerConfig?) {
-        guard server?.id != serverID else { return }
-        serverID = server?.id
+        guard server?.target != serverID else { return }
+        serverID = server?.target
         timeline.reset()
         error = nil
         loadedOnce = false
@@ -48,6 +50,7 @@ final class ChatModel {
             guard sid == serverID else { return }
             timeline.confirm(local, serverID: id)
             await load(api, host: host)
+            kick += 1
         } catch {
             guard sid == serverID else { return }
             timeline.fail(local, message: APIError.from(error, host: host).message)
@@ -85,7 +88,7 @@ struct ChatView: View {
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             // Restarts on server change and when the app comes back; stops while it's in the background.
-            .task(id: PollKey(server: model.selected?.id, active: scenePhase == .active)) {
+            .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active, kick: chat.kick)) {
                 chat.reset(for: model.selected)
                 guard scenePhase == .active else { return }
                 while !Task.isCancelled {
@@ -107,7 +110,7 @@ struct ChatView: View {
                 LazyVStack(spacing: 10) {
                     if chat.loadedOnce && chat.timeline.messages.isEmpty && chat.timeline.outgoing.isEmpty {
                         Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right",
-                                    message: "Ask your homelab anything, or try /help.")
+                                    message: quick.contains("/help") ? "Ask your homelab anything, or try /help." : "Ask your homelab anything.")
                             .padding(.top, 40)
                     }
                     ForEach(chat.timeline.messages) { m in
@@ -217,7 +220,7 @@ struct Bubble: View {
                                 in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .foregroundStyle(mine ? Color.white : Color.primary)
                     .contextMenu {
-                        Button { UIPasteboard.general.string = message.text } label: { Label("Copy", systemImage: "doc.on.doc") }
+                        Button { UIPasteboardBridge.copy(message.text) } label: { Label("Copy", systemImage: "doc.on.doc") }
                     }
                 if let ts = message.ts {
                     Text(ts, format: .dateTime.hour().minute()).font(.caption2).foregroundStyle(.secondary)

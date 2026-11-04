@@ -33,17 +33,18 @@ cp server/config.example.json config.json      # edit it: name, logins, disks, h
 python3 /opt/homelab-companion/reference_server.py --config config.json
 ```
 
-Then publish it in your tailnet. One example (use any free HTTPS port; `tailscale serve status` lists the used ones):
+Then publish it in your tailnet. One example (use any free HTTPS port; `tailscale serve status` lists the used ones.
+**`tailscale serve` replaces whatever is already served on that port**, so check first):
 
 ```bash
-sudo tailscale serve --bg --https=8443 http://127.0.0.1:8791
+sudo tailscale serve --bg --https=7443 http://127.0.0.1:8791
 ```
 
-In the app, add the server as `https://<machine>.<tailnet>.ts.net:8443`. With `trust_identity_header` set, the app
+In the app, add the server as `https://<machine>.<tailnet>.ts.net:7443`. With `trust_identity_header` set, the app
 needs no token. Test it from another tailnet device:
 
 ```bash
-curl https://<machine>.<tailnet>.ts.net:8443/api/v1/info
+curl https://<machine>.<tailnet>.ts.net:7443/api/v1/info
 ```
 
 ## Run it with systemd
@@ -96,6 +97,7 @@ The config is JSON. Keys that start with `_` are comments and are ignored. Unkno
 | `name` | hostname | Title in the app |
 | `listen` | `127.0.0.1:8791` | Address and port. `--port` overrides the port |
 | `allow_remote` | `false` | Must be `true` to listen on a non-loopback address. Not recommended |
+| `allowed_hosts` | `["localhost", "127.0.0.1", "::1", "*.ts.net"]` | Accepted `Host` headers (`*.` = any subdomain). Blocks DNS rebinding. Add your own name if you use a custom domain |
 | `tokens` | `[]` | Bearer tokens. Env `HOMELAB_TOKENS` (comma-separated) adds more. Use 16+ random characters |
 | `trust_identity_header` | none | Header set by the proxy, e.g. `Tailscale-User-Login`. Only trusted from `127.0.0.1` |
 | `allowed_logins` | `[]` | Logins allowed via the header. Empty = any login the proxy sends |
@@ -158,8 +160,9 @@ How it works:
    `{"id": "ab12", "job": "watchdog", "action": "restart", "arg": "jellyfin", "reason": "Jellyfin is down."}`
    The id is 1–32 of `A-Z a-z 0-9 -`. Add `"offer_always": true` to also show an "Always" button.
 2. The app shows it with signed buttons: `HOMELAB_<APPROVE|ALWAYS|DENY>_<id>_<sig>`, where `sig` is the first
-   16 hex digits of HMAC-SHA256(secret, `"<VERB>:<id>"`). The secret is env `HOMELAB_BUTTON_SECRET`; without it,
-   a random one is made at every start (old buttons then stop working).
+   16 hex digits of HMAC-SHA256(secret, `"<VERB>:<id>:<sha256 of action, arg, created>"`). So a button only works
+   for exactly the action the user saw: if a script reuses an id for a different action, old buttons stop working.
+   The secret is env `HOMELAB_BUTTON_SECRET`; without it, a random one is made at every start.
 3. Approve runs the argv list from `actions[action]`. No shell. `{arg}` must be a whole argv item; the arg is
    split at spaces into separate items. Always works like Approve (the server keeps no standing approvals).
    Deny runs nothing.
@@ -167,10 +170,10 @@ How it works:
 
 Safety rules in the server:
 
-- Only names in `actions` can run. The arg must match `^[A-Za-z0-9_.@-]{1,64}( [A-Za-z0-9_.@-]{1,64})*$`.
-  Anything else (like `; rm -rf /`) gets no Approve button and is refused.
-- The arg may start with `-`. Put `--` before `{arg}` when the command takes options.
-- Forged, unknown or already used buttons get 403.
+- Only names in `actions` can run. The arg is 1–64 character words of `A-Z a-z 0-9 _ . @ -`, separated by single
+  spaces, and no word may start with `-` (so an arg can never become an option). Anything else (like `; rm -rf /`
+  or `--force`) gets no Approve button and is refused.
+- Forged, outdated, unknown or already used buttons get 403.
 - Commands run as the server's user, without `HOMELAB_TOKENS` or `HOMELAB_BUTTON_SECRET` in their environment.
   They get `HOMELAB_PENDING_ID`, `HOMELAB_ACTION` and `HOMELAB_ARG`.
 
@@ -197,11 +200,15 @@ The command gets the message text from someone you let in. Treat it as untrusted
   Wrong token or a login not in `allowed_logins` → 403. Tokens are compared in constant time.
 - The identity header is only trusted from `127.0.0.1`, because that is where `tailscale serve` connects from.
   Any local process could also set it, so do not run untrusted code on the server. Set `allowed_logins`.
+  A refused login is written to the log (`refused login 'name@github'`), so you can copy the exact spelling.
+- The `Host` header must be in `allowed_hosts` (default: loopback and `*.ts.net`). This stops a web page from
+  reaching the server through DNS rebinding.
   Devices with tags get no login header from `tailscale serve`; give them a token.
 - Keep tokens out of the config file: use `HOMELAB_TOKENS` in a root-only `EnvironmentFile`.
 - Requests with an `Origin` header (browsers) get 403. The app never sends one.
 - POST needs `application/json` (else 415), at most 16 KB (else 413), and text of 1–4000 characters (else 400).
 - The log has one line per request: client, method, path, status. No query, no headers, no tokens, no message text.
+- Slow clients are cut off after 30 s without data.
 - Actions and chat are off by default. Turn them on only if you need them.
 
 ## Fixture mode

@@ -204,8 +204,8 @@ components:
       type: object
       required: [id]
       properties:
-        id: { type: string, example: pi-two }
-        name: { type: string, example: "pi-two (Pi 4)" }
+        id: { type: string, example: nas }
+        name: { type: string, example: "NAS (basement)" }
         kind: { type: string, example: raspberry-pi, description: "Free text; the app picks an icon for: server, raspberry-pi, laptop, desktop, nas, vm." }
         reachable: { type: boolean, description: "null/missing = not checked yet." }
         checked: { type: string, format: date-time }
@@ -244,7 +244,7 @@ components:
         id: { type: string, example: ab12 }
         job: { type: string, example: watchdog }
         action: { type: string, example: restart }
-        arg: { type: string, example: "pi-media sonarr" }
+        arg: { type: string, example: "media sonarr" }
         reason: { type: string }
         created: { type: string, format: date-time }
         buttons:

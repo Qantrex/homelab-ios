@@ -236,3 +236,15 @@ Commit and push after every step (the container is ephemeral). Commit style as i
 - [ ] iPhone: iOS version (Settings → General → About), SideStore installed and working
 - [ ] `bauarch-pc`: Swift 6.4, `usbmuxd`, xtool AppImage, `Xcode_27.1.xip`, `xtool setup` (SDK)
 - [ ] Phase 0 spike: run S1–S7 and fill `Day Test iOS Spike.md`
+
+## Deviations from this plan (2026-11-04, with reasons)
+
+| Plan said | Built | Why |
+|---|---|---|
+| Home tab grouped by area/domain | By domain only | Home Assistant's REST API (`/api/states`) has no areas; areas need the WebSocket API. Possible later |
+| Error enum with `insecureURL` | `URLPolicy.Problem.insecureRemote` in the server editor | An insecure URL can't be saved, so it never reaches the network layer |
+| Timeouts 10 s (state), 20 s (send) | 10 s state and info, 15 s messages, 20 s send, 150 s button | A button waits for the action's result on the server |
+| `server/fixtures/` | `Sources/HomelabKit/Fixtures/` | One copy shared by demo mode, Swift tests, the mock server and CI |
+| Deep-link screenshot via `simctl openurl` | Launch with `-HomelabTab` | `openurl` shows an iOS "Open in Homelab?" prompt in the simulator; deep links are unit-tested in `AppModelTests` |
+| `AppModel` in the UI layer | In `HomelabKit` | So its race-prone logic (refresh queueing, token rules, tabs) runs in the Linux tests |
+| Release `v1.0.0` | `v1.0.0-rc.1` first | The phone tests (spike S1–S7, `DeviceTest.md`) haven't run yet. `v1.0.0` follows them |

@@ -239,3 +239,26 @@ import Testing
         await #expect(throws: APIError.self) { try await demo.call(fan) }
     }
 }
+
+@Suite struct HardeningTests {
+    @Test func redirectsAreErrorsNotFollowed() async {
+        let t = FakeTransport { _ in .init(status: 302, body: Data(), headers: ["Location": "https://evil.example/"]) }
+        await #expect(throws: APIError.redirected(status: 302)) {
+            try await CompanionClient(baseURL: base, token: "t", transport: t).state()
+        }
+        #expect(t.requests.count == 1)
+        #expect(APIError.redirected(status: 301).message.contains("redirect"))
+    }
+
+    @Test func hugeAnswersAreRefused() async {
+        let big = Data(repeating: 0x20, count: CompanionClient.maxResponseBytes + 1)
+        let t = FakeTransport { _ in .init(status: 200, body: big) }
+        await #expect(throws: APIError.tooLarge) { try await CompanionClient(baseURL: base, token: nil, transport: t).state() }
+    }
+
+    @Test func theRealSessionDoesNotFollowRedirects() async throws {
+        // The fixture server isn't needed: the session's delegate is checked directly.
+        let delegate = try #require(URLSessionTransport.defaultSession.delegate as? NoRedirects)
+        _ = delegate
+    }
+}

@@ -6,6 +6,7 @@ struct OverviewView: View {
     let model: AppModel
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var status: ServerStatus { model.selectedStatus }
     private var state: HomelabState? { status.snapshot?.state }
@@ -34,7 +35,7 @@ struct OverviewView: View {
             .navigationTitle(status.snapshot?.serverName ?? model.selected?.name ?? "Homelab")
             .toolbar { serverMenu }
             .navigationDestination(for: Host.self) { HostDetailView(host: $0) }
-            .task(id: PollKey(server: model.selected?.id, active: scenePhase == .active)) {
+            .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active)) {
                 if scenePhase == .active { await poll() }
             }
         }
@@ -84,7 +85,12 @@ struct OverviewView: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(headline).font(.headline)
-                Text(subline).font(.caption).foregroundStyle(.secondary)
+                // Large text: one fact per line instead of a wrapped "a · b · c".
+                if typeSize.isAccessibilitySize {
+                    ForEach(sublines, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+                } else {
+                    Text(sublines.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                }
             }
             Spacer()
             if status.loading { ProgressView() }
@@ -104,14 +110,14 @@ struct OverviewView: View {
         }
     }
 
-    private var subline: String {
+    private var sublines: [String] {
         var parts: [String] = []
         if let checked = state?.checked { parts.append(String(localized: "checked \(Format.age(checked))")) }
         if let fetched = status.snapshot?.fetched, status.snapshot?.isStale() == true {
             parts.append(String(localized: "updated \(Format.age(fetched))"))
         }
         if let n = state?.pending.count, n > 0 { parts.append(n == 1 ? String(localized: "1 action waiting") : String(localized: "\(n) actions waiting")) }
-        return parts.isEmpty ? (model.selected?.host ?? "") : parts.joined(separator: " · ")
+        return parts.isEmpty ? [model.selected?.host ?? ""] : parts
     }
 
     // MARK: Content
@@ -206,6 +212,10 @@ struct HostTile: View {
                 Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(.secondary)
                 Text(host.name).font(.subheadline.weight(.semibold)).lineLimit(1)
                 Spacer(minLength: 0)
+                // Colour plus a word, so the state doesn't depend on seeing colour.
+                if health != .ok {
+                    Text(health.label).font(.caption2.weight(.semibold)).foregroundStyle(health.color).lineLimit(1)
+                }
                 Circle().fill(health.color).frame(width: 9, height: 9)
             }
             if host.reachable == true {
@@ -234,9 +244,24 @@ struct HostTile: View {
         }
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
         .card()
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(host.name), \(health.label)"))
+        .accessibilityValue(Text(spokenMetrics))
         .accessibilityHint(Text("Shows details"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// What VoiceOver reads after the name: the numbers the tile shows.
+    private var spokenMetrics: String {
+        guard host.reachable == true else { return host.flags.map(Format.flag).joined(separator: ", ") }
+        var parts = [String(localized: "load \(Format.load(host.load))"), String(localized: "memory \(Format.percent(host.memPct))")]
+        if let d = Format.worstDisk(host.disks) { parts.append(String(localized: "disk \(d.mount) \(d.percent) percent")) }
+        if host.temp != nil { parts.append(Format.temperature(host.temp)) }
+        if host.containersTotal != nil {
+            parts.append(String(localized: "containers \(Format.containers(up: host.containersUp, total: host.containersTotal))"))
+        }
+        parts += host.flags.map(Format.flag)
+        return parts.joined(separator: ", ")
     }
 
     private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?) -> some View {

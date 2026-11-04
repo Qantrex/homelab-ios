@@ -31,7 +31,8 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
    sudo nano /etc/homelab-companion/config.json
    ```
 
-   Change at least `name`, `allowed_logins` (your Tailscale login, the e-mail shown in the Tailscale app), and
+   Change at least `name`, `allowed_logins` (your Tailscale login: the e-mail, or `name@github` for GitHub logins;
+   a refused login is printed in the server log), and
    `this_host.disks`. Set `"docker": false` unless the service user may run `docker ps`. Delete the example `hosts`,
    `checks` and `services` you don't have. A minimal config:
 
@@ -41,11 +42,12 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
      "trust_identity_header": "Tailscale-User-Login",
      "allowed_logins": ["you@example.com"],
      "this_host": {"kind": "server", "disks": ["/"], "updates": true},
-     "hosts": [{"id": "gaming-pc", "name": "Gaming PC", "kind": "desktop", "check": "ping://gaming-pc", "sleeps": true}]
+     "hosts": [{"id": "gaming-pc", "name": "Gaming PC", "kind": "desktop", "check": "ping://100.64.0.20", "sleeps": true}]
    }
    ```
 
-   `"sleeps": true` shows a sleeping PC as "Asleep", not as a problem.
+   `"sleeps": true` shows a sleeping PC as "Asleep", not as a problem. Use the PC's `100.x` address: a server
+   running `tailscale up --accept-dns=false` can't resolve MagicDNS names (the app then shows a warning).
 
 2. Run it with systemd. Copy the unit from [REFERENCE_SERVER.md → Run it with systemd](REFERENCE_SERVER.md#run-it-with-systemd)
    to `/etc/systemd/system/homelab-companion.service`, then:
@@ -58,7 +60,9 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
 
    The log should say `listening on http://127.0.0.1:8791`.
 
-3. Publish it in your tailnet. Pick a free HTTPS port (`tailscale serve status` lists the used ones):
+3. Publish it in your tailnet. Pick a free HTTPS port (`tailscale serve status` lists the used ones;
+   `tailscale serve` replaces whatever already runs on that port). If your tailnet has an ACL policy, allow that
+   port for your phone:
 
    ```bash
    sudo tailscale serve --bg --https=7443 http://127.0.0.1:8791
@@ -73,7 +77,19 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
    You should see `{"api": 1, "name": "homeserver", ...}`. A 403 means your login is not in `allowed_logins`.
 
 5. In the app: Add server → Type **Homelab API** → Address `https://<machine>.<tailnet>.ts.net:7443` → Login
-   **Tailscale / proxy** → Test connection ("Connected to homeserver (2 features).") → Save.
+   **Tailscale / proxy** → Test connection ("Connected to homeserver: status and hosts.") → Save.
+
+### Containers without the docker group
+
+`"docker": true` needs `docker ps`, and the docker group is root-equivalent. To show container counts without
+it, let root write a card every 5 minutes (`/etc/cron.d/homelab-containers`, one line):
+
+```bash
+*/5 * * * * root d=/var/lib/homelab-companion/cards; printf '{"id":"containers","title":"Containers","icon":"shippingbox","style":"metrics","items":[{"title":"Running","value":"%s/%s"}]}' "$(docker ps -q | wc -l)" "$(docker ps -aq | wc -l)" > $d/.containers.tmp && mv $d/.containers.tmp $d/containers.json
+```
+
+Set `"cards_dir": "/var/lib/homelab-companion/cards"` and create the folder (owned by root, readable by the
+service user).
 
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.
