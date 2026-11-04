@@ -59,7 +59,7 @@ look around without any server.
 |---|---|---|
 | SideStore source | Most people. Updates show up in SideStore | In SideStore: Sources → + → `https://qantrex.github.io/homelab-ios/source.json` |
 | IPA from GitHub Releases | One version, no source | Download `Homelab-<version>.ipa` from [Releases](https://github.com/Qantrex/homelab-ios/releases), then SideStore → My Apps → + |
-| Build it yourself | Developers | xtool on Linux or macOS, see [docs/SETUP.md](docs/SETUP.md) |
+| Build it yourself | Developers | xtool on Linux or macOS, see [docs/SETUP.md](docs/SETUP.md). From Linux straight to a phone over USB: [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) |
 
 Details and troubleshooting: [docs/SIDESTORE.md](docs/SIDESTORE.md). Needs iOS 18 or newer.
 
