@@ -72,14 +72,12 @@ phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
 - The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
 - On Linux, usbmuxd must be running.
 
-### Known xtool bug: minimum iOS on Linux builds
+### Known xtool bug: recorded SDK version on Linux builds
 
-Linux builds set the app's minimum iOS to the SDK version, not to the iOS 18 in `Package.swift`
-([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). An IPA built on Linux with the Xcode 27.1 SDK
-only installs on the newest iOS. That is fine for your own phone if it is up to date.
-
-CI builds the release IPA on macOS, where the bug doesn't happen. **For other people, share the CI or release IPA,
-not one built on Linux.**
+Linux builds record the deployment target (iOS 18) as the SDK version in the binary
+([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). The minimum iOS is correct, so the app
+installs on iOS 18 and newer. Only an App Store upload would be refused, and this app doesn't use the App Store.
+CI builds the release IPA on macOS, where the bug doesn't happen.
 
 ## Tests
 

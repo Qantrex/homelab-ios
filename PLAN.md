@@ -25,7 +25,7 @@ Claude uses these unless the owner says otherwise before the session.
 | Home Assistant backend | **In**: pinned entities, toggles, run script/scene. No HA dashboard clone |
 | Face ID lock | **In**, off by default |
 | Language | English (strings via `String(localized:)`, so translations can come later) |
-| Minimum iOS | 18.0 in the package. Linux builds stamp the SDK version (xtool#351), so the owner's phone needs the newest iOS. CI builds don't have this bug |
+| Minimum iOS | 18.0 in the package. Linux builds record a wrong SDK version (xtool#351) but the right minimum iOS, so they install on iOS 18 (corrected 2026-11-04: only App Store uploads are affected) |
 
 ## 1. Proven so far (2026-11-04)
 
