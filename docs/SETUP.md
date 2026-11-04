@@ -125,7 +125,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 
 URL rules (`Sources/HomelabKit/URLPolicy.swift`): `https://` always works. Plain `http://` only works for addresses
 that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`, `192.168.x`), `127.x`, `169.254.x`,
-Tailscale's `100.64–127.x`, `localhost`, names ending in `.local`, `.lan`, `.home.arpa` or `.internal`, single-label
+Tailscale's `100.64–127.x`, `localhost`, names ending in `.local`, single-label
 names, and local IPv6 (`::1`, `fe80:`, `fc`/`fd`). A trailing `/api/v1` or `/api` is removed. User names and
 passwords in the URL are refused.
 

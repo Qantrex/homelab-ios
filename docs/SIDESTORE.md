@@ -61,7 +61,7 @@ If it says "none (widget can't see data)", the app still works, but the widget s
 | You see | Likely cause | Fix |
 |---|---|---|
 | Widget shows "Open the app" or "Open Homelab to load your hosts." | The app has no data yet, or no App Group was found | Open the app and pull down on Overview. Then check Settings → Diagnostics → App Group. If it is "none", reinstall through SideStore and send the report |
-| Widget shows "Data is old" and a grey status | The last data is more than 10 minutes old. Widgets never fetch by themselves | Open the app. With notifications on, background refresh also updates it when iOS allows |
+| Widget is dimmed and says "Data from … open the app" | The last data is more than 2 hours old. Widgets never fetch by themselves | Open the app. Background refresh also updates it when iOS allows |
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Tailscale is off (often after a SideStore refresh), the server is down, or `tailscale serve` doesn't serve that port | Turn Tailscale on. On the server: `tailscale serve status` and `curl https://<machine>.<tailnet>.ts.net:<port>/api/v1/info` from another tailnet device |
 | "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off | Check the name in the Tailscale app. Try the `100.x` address |
 | "The server refused access. Is this login or token allowed?" (HTTP 403) | Your Tailscale login is not in the server's `allowed_logins`, the token is wrong, or the device is tagged (tagged devices get no login header) | Add the login on the server, or switch Login to **Token** and enter a token the server knows |
@@ -73,5 +73,5 @@ If it says "none (widget can't see data)", the app still works, but the widget s
 | "The server's answer couldn't be read. Is it a Homelab API server?" | The address points at a web page, not the API | Use the server's base address (the app adds `/api/v1` itself) |
 | "The secure connection failed (certificate?)." | Self-signed or expired certificate | Use `tailscale serve` (real certificates), or plain `http://` on a local address |
 | "http:// is only allowed for addresses in your home network or tailnet." | Plain http to a public name, or to a `.ts.net` name | Use `https://`. `tailscale serve` gives HTTPS for free |
-| Diagnostics → Background → Last run "never" | Notifications are off (background refresh only runs with them on), or iOS hasn't run it yet | Turn on a notification toggle in Settings and use the phone normally for a day. iOS decides when it runs |
+| Diagnostics → Background → Last run "never" | iOS hasn't run it yet. It learns from how often you open the app | Use the phone normally for a day. Low Power Mode and turning off Background App Refresh (iOS Settings → General) stop it |
 | The app doesn't open | It expired (7 days) | SideStore → My Apps → Refresh All |

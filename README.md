@@ -13,7 +13,7 @@ developer account. You install it with [SideStore](https://sidestore.io) and a f
 |---|---|
 | Overview | Overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags). Tap a host for details. Cards from your own scripts. A launcher for your web UIs (opens Safari). Pull to refresh; refreshes every 30 s while open |
 | Actions | Actions your homelab proposes, with reason and age. Approve, Always or Deny, each with a confirm step. Shows the server's answer |
-| Chat | Chat with your homelab agent. "Working…" while it runs, report tags (`morning`, `watchdog`, …), long-press to copy, quick commands |
+| Chat | Chat with your homelab agent. "Working…" while it runs, report tags (`morning`, `watchdog`, …), long-press to copy, quick buttons for the commands the server lists |
 | Home | Your pinned Home Assistant lights, switches, scripts, scenes and sensors. Tap to toggle or run |
 | Settings | Several servers, test connection, notifications, Face ID lock, demo mode, Diagnostics |
 
@@ -27,7 +27,8 @@ Assistant server.
 | Homelab status | small, lock screen (circular, rectangular, inline) | Status, first problem, actions waiting |
 | Homelab hosts | medium (4 hosts), large (8 hosts + problems) | Each host with load, RAM and disk |
 
-Tapping a widget opens the right tab. Data older than 10 minutes is marked as old.
+Tapping a widget opens the right tab. Data older than 2 hours is dimmed and says how old it is. The status text is
+hidden on the lock screen while the phone is locked.
 
 ## Who it is for
 

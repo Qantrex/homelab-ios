@@ -24,7 +24,7 @@ Not in scope: a jailbroken phone, a compromised server (it can show you anything
 | Deleting | Deleting a server deletes its token. Settings → Reset everything deletes all servers, tokens, cached data and settings |
 | Cached data | The last status per server, as JSON files in the App Group container (iOS file protection: until first unlock). No tokens in them |
 | Server text | Inline Markdown only, no HTML. Links from a server (services, host pages, card items, Markdown links) must be `http`/`https` with a host and no user name or password; everything else is dropped |
-| Plain http | Only for local and tailnet addresses: private IPv4, `127.x`, `169.254.x`, `100.64–127.x` (Tailscale), `localhost`, `.local`, `.lan`, `.home.arpa`, `.internal`, single-label names, local IPv6. Shown with a warning in the editor |
+| Plain http | Only for local and tailnet addresses: private IPv4, `127.x`, `169.254.x`, `100.64–127.x` (Tailscale), `localhost`, `.local`, single-label names, local IPv6. Not `.lan`, `.home.arpa` or `.internal`: iOS blocks plain http there, so use https. Shown with a warning in the editor |
 | Network | An ephemeral `URLSession`: no cookies, no cache, no stored credentials. No `Origin` header. Short timeouts. User names or passwords in a URL are refused |
 | Face ID lock | Optional, off by default. Asks for Face ID or the passcode when the app starts and when it comes back from the background. It is tested once before it is turned on, so you can't lock yourself out |
 | Actions | Approve, Always and Deny each need a confirm tap. The app only sends back the signed button string the server gave it; the server checks the signature and decides. Forged, used or expired buttons get 403 |

@@ -28,6 +28,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
 | R1 | Add server | Type Homelab API, address `https://<machine>.<tailnet>.ts.net[:port]`, Login Tailscale / proxy. Save works | | |
+| R1b | Token stays with its server | Edit a token server and change only its address: the token field asks for a token again ("The address or type changed…"). Renaming keeps the token | | |
 | R2 | Test connection | Green "Connected to `<name>` (N features)." and the name field fills in when empty | | |
 | R3 | Bad address | `ftp://x` or `http://example.com` shows red text under the field, Save is greyed out | | |
 | R4 | Tailscale off | Turn Tailscale off, pull to refresh: "Can't reach `<host>`. Is Tailscale (or your VPN) on?" with Retry. No crash. Turn it back on: Retry loads the data | | |
@@ -66,7 +67,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | C2 | Working… | "Working…" with a spinner while the agent runs, gone when the reply is in | | |
 | C3 | Report chips | Scheduled reports (`morning`, `watchdog`, …) have a coloured chip with a clock | | |
 | C4 | Copy | Long-press a bubble → Copy → paste in Notes gives the full text | | |
-| C5 | Quick commands | `/pending`, `/last`, `/memory`, `/usage`, `/help` each send and get an answer | | |
+| C5 | Quick commands | With the agent: `/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help` each send and get an answer. A server without `commands` in /info shows no button row | | |
 | C6 | Long text limit | Paste 4100 characters: a counter shows, red above 4000, the send button is greyed out | | |
 | C7 | Send while offline | Tailscale off, send: "Not sent: … Tap to edit." Tap puts the text back in the field | | |
 | C8 | No duplicates | Leave the app for a minute, come back: no message shows twice | | |
@@ -111,6 +112,9 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | L1 | Turn on | Settings → Lock with Face ID: Face ID is asked first, then the toggle is on | | |
 | L2 | Locks | Leave the app, come back: "Homelab is locked", Face ID unlocks | | |
 | L3 | Cancel | Cancel Face ID: stays locked, Unlock tries again. Kill and reopen: locked | | |
+| L4 | Open dialogs close | Actions → Approve (confirm sheet open) → leave the app → come back: the sheet is gone, only the lock shows | | |
+| L5 | App switcher | With the lock on, swipe up to the app switcher: the Homelab card shows a blurred lock, not your data | | |
+| L6 | Notifications stay vague | With the lock on, a background notification says only "Something needs a look" / "An action is waiting" | | |
 
 ## Settings
 
