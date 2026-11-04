@@ -1,0 +1,145 @@
+# SPIKE test S8: can free GitHub runners build this xtool project? Standard runners only (free on a public repo);
+# never use -large/-xlarge labels, those are billed.
+name: spike
+
+on:
+  push:
+    branches: [spike]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # only to push simulator screenshots to the ci-screenshots branch
+
+concurrency:
+  group: spike-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    container: swift:6.4-noble
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shared code tests (Foundation only)
+        run: KIT_ONLY=1 swift test
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-26, xcode-27]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+          xcrun -sdk iphoneos --show-sdk-path
+          xcrun simctl list runtimes
+
+      - name: Install xtool
+        run: |
+          brew install xtool-org/tap/xtool
+          xtool --version || xtool --help | head -5
+
+      - name: Shared code tests on macOS
+        run: KIT_ONLY=1 swift test
+
+      - name: "S8a: unsigned IPA (device build)"
+        run: |
+          xtool dev build --ipa < /dev/null
+          ipa=$(find xtool -name '*.ipa' | head -1)
+          echo "IPA: $ipa"; test -n "$ipa"
+          ls -la "$ipa"
+          rm -rf ipa-check && mkdir ipa-check && unzip -q "$ipa" -d ipa-check
+          find ipa-check -maxdepth 4 | sort
+          app=$(find ipa-check/Payload -maxdepth 1 -name '*.app' | head -1)
+          appex=$(find "$app/PlugIns" -maxdepth 1 -name '*.appex' | head -1)
+          test -n "$appex" || { echo "no widget appex in the IPA"; exit 1; }
+          for b in "$app" "$appex"; do
+            echo "== $b"
+            plutil -p "$b/Info.plist"
+            codesign -d --entitlements - "$b" 2>&1 || true
+          done
+          codesign -d --entitlements - "$app" 2>&1 | grep -q "group.com.qantrex.homelab" \
+            || { echo "App Group entitlement missing in the app"; exit 1; }
+          codesign -d --entitlements - "$appex" 2>&1 | grep -q "group.com.qantrex.homelab" \
+            || { echo "App Group entitlement missing in the widget"; exit 1; }
+          mkdir -p out && cp "$ipa" out/HomelabSpike-${{ matrix.runner }}.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipa-${{ matrix.runner }}
+          path: out/*.ipa
+          retention-days: 14
+
+      - name: "S8b: simulator build with xtool"
+        id: simxtool
+        continue-on-error: true
+        run: |
+          rm -rf xtool
+          xtool dev build --triple arm64-apple-ios-simulator < /dev/null
+          app=$(find xtool -maxdepth 2 -name '*.app' | head -1)
+          echo "APP=$app" >> "$GITHUB_ENV"; test -n "$app"
+
+      - name: "S8b fallback: simulator build via generated Xcode project"
+        if: steps.simxtool.outcome != 'success'
+        continue-on-error: true
+        run: |
+          xtool dev generate-xcode-project < /dev/null
+          proj=$(find . -maxdepth 3 -name '*.xcodeproj' -not -path './.build/*' | head -1)
+          echo "project: $proj"; test -n "$proj"
+          xcodebuild -project "$proj" -list
+          scheme=$(xcodebuild -project "$proj" -list -json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["project"]["schemes"][0])')
+          xcodebuild -project "$proj" -scheme "$scheme" -sdk iphonesimulator -configuration Debug \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build | tail -20
+          app=$(find dd/Build/Products -maxdepth 2 -name '*.app' | head -1)
+          echo "APP=$app" >> "$GITHUB_ENV"; test -n "$app"
+
+      - name: "S8c: launch in the simulator and screenshot"
+        if: env.APP != ''
+        continue-on-error: true
+        run: |
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys
+          d=json.load(sys.stdin)["devices"]
+          ios=[k for k in d if "iOS" in k]
+          ios.sort(key=lambda k: [int(x) for x in k.rsplit("iOS-",1)[1].split("-")])
+          for k in reversed(ios):
+              for dev in d[k]:
+                  if dev["name"].startswith("iPhone"):
+                      print(dev["udid"]); sys.exit()')
+          echo "simulator: $udid"; test -n "$udid"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" "$APP"
+          bid=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          xcrun simctl launch "$udid" "$bid"
+          sleep 8
+          mkdir -p shots
+          xcrun simctl io "$udid" screenshot "shots/spike-${{ matrix.runner }}.png"
+          xcrun simctl openurl "$udid" "homelab://spike"
+          sleep 3
+          xcrun simctl io "$udid" screenshot "shots/spike-${{ matrix.runner }}-deeplink.png"
+          ls -la shots
+
+      - name: Push screenshots to ci-screenshots
+        if: hashFiles('shots/*.png') != ''
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf /tmp/shots-wt
+          if git fetch --depth 1 origin ci-screenshots 2>/dev/null; then
+            git worktree add /tmp/shots-wt FETCH_HEAD
+          else
+            git worktree add --detach /tmp/shots-wt && (cd /tmp/shots-wt && git checkout --orphan ci-screenshots && git rm -rfq .)
+          fi
+          mkdir -p "/tmp/shots-wt/spike" && cp shots/*.png /tmp/shots-wt/spike/
+          cd /tmp/shots-wt && git add -A && git commit -qm "spike screenshots (${{ matrix.runner }}, ${GITHUB_SHA::7})" \
+            && for i in 1 2 3; do git push origin HEAD:ci-screenshots && break || (git pull --rebase origin ci-screenshots; sleep 3); done
