@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: scripts/build-ipa [extra xtool dev build options]
 # Builds an IPA with xtool (Linux or macOS) and prints where it is. Needs xtool set up once:
-#   macOS: brew install xtool-org/tap/xtool      Linux: see https://xtool.sh (then `xtool setup` for the iOS SDK)
+#   macOS: brew install xtool-org/tap/xtool      Linux: see https://xtool.sh (then `xtool sdk install ~/Downloads/Xcode_27.1.xip`; docs/SETUP.md)
 # Uses a release configuration if this xtool supports one.
 set -euo pipefail
 cd "$(dirname "$0")/.."

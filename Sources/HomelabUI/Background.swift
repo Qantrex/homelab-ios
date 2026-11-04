@@ -24,7 +24,7 @@ public enum BackgroundRefresh {
     public static func run(storage: Storage = .shared(), tokens: any TokenStore = KeychainTokenStore(),
                            transport: any HTTPTransport = URLSessionTransport()) async {
         schedule()
-        var settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
+        let settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
         let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
         guard let server = list.selectedServer else { return }
         let result: String
@@ -42,27 +42,32 @@ public enum BackgroundRefresh {
             WidgetCenter.shared.reloadAllTimelines()
 
             var tracker = storage.read(AlertTracker.self, AlertTracker.fileName) ?? AlertTracker()
-            let alerts = tracker.update(with: state, server: snap.serverName,
+            let alerts = tracker.update(with: state, server: snap.serverName, serverID: server.id,
                                         options: .init(problems: settings.notifyProblems, pending: settings.notifyPending))
             try? storage.write(tracker, AlertTracker.fileName)
             if settings.notificationsOn {
-                for a in alerts { await Notifier.post(a) }
+                for a in alerts { await Notifier.post(a, private: settings.faceIDLock) }
             }
             result = "ok, \(state.problems.count) problems, \(state.pending.count) pending, \(alerts.count) alerts"
         } catch {
             result = APIError.from(error, host: server.host).message
         }
-        settings.lastBackgroundRun = Date()
-        settings.lastBackgroundResult = result
-        try? storage.write(settings, AppSettings.fileName)
+        // Re-read: the user may have changed a setting during the network call. Only our two fields change.
+        var latest = storage.read(AppSettings.self, AppSettings.fileName) ?? settings
+        latest.lastBackgroundRun = Date()
+        latest.lastBackgroundResult = result
+        try? storage.write(latest, AppSettings.fileName)
     }
 }
 
 enum Notifier {
-    static func post(_ alert: AlertTracker.Alert) async {
+    /// `private`: the app lock is on, so the lock screen only says that something happened.
+    static func post(_ alert: AlertTracker.Alert, private hidden: Bool) async {
         let content = UNMutableNotificationContent()
-        content.title = alert.title
-        content.body = alert.body
+        content.title = hidden ? "Homelab" : alert.title
+        content.body = hidden
+            ? (alert.kind == .pending ? String(localized: "An action is waiting for you.") : String(localized: "Something needs a look."))
+            : alert.body
         content.sound = alert.kind == .problem ? .default : nil
         content.threadIdentifier = alert.kind.rawValue
         content.userInfo = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://overview"]
@@ -71,19 +76,36 @@ enum Notifier {
     }
 }
 
-/// Taps on notifications open the right tab.
-public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+/// Taps on notifications open the right tab. A tap that arrives before the UI is ready (cold start) is kept and
+/// delivered once `open` is set.
+@MainActor
+public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     public static let shared = NotificationRouter()
-    public var open: (@MainActor (URL) -> Void)?
+    private var pending: URL?
 
-    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard let link = response.notification.request.content.userInfo["link"] as? String,
-              let url = URL(string: link) else { return }
-        await MainActor.run { open?(url) }
+    public var open: ((URL) -> Void)? {
+        didSet {
+            if let url = pending, let open {
+                pending = nil
+                open(url)
+            }
+        }
     }
 
-    public func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                       willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+    func route(_ url: URL) {
+        guard url.scheme == "homelab" else { return }
+        if let open { open(url) } else { pending = url }
+    }
+
+    public nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                                   didReceive response: UNNotificationResponse) async {
+        guard let link = response.notification.request.content.userInfo["link"] as? String,
+              let url = URL(string: link) else { return }
+        await route(url)
+    }
+
+    public nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                                   willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .list]
     }
 }

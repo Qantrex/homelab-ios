@@ -10,18 +10,27 @@ public struct ServerInfo: Codable, Sendable, Equatable {
     public var version: String?
     public var features: Set<Feature>
     public var auth: String?
+    /// Slash commands the server's chat understands, offered as quick buttons. Empty = no buttons.
+    public var commands: [String]
+    /// The server keeps standing approvals ("Always"). Changes what the confirm text promises.
+    public var standingApprovals: Bool
 
     public enum Feature: String, Codable, Sendable, CaseIterable {
         case status, hosts, actions, chat, cards, services
     }
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,
-                features: Set<Feature> = Set(Feature.allCases), auth: String? = nil) {
+                features: Set<Feature> = Set(Feature.allCases), auth: String? = nil, commands: [String] = [],
+                standingApprovals: Bool = false) {
         self.api = api; self.name = name; self.server = server; self.version = version
-        self.features = features; self.auth = auth
+        self.features = features; self.auth = auth; self.commands = commands
+        self.standingApprovals = standingApprovals
     }
 
-    enum CodingKeys: String, CodingKey { case api, name, server, version, features, auth }
+    enum CodingKeys: String, CodingKey {
+        case api, name, server, version, features, auth, commands
+        case standingApprovals = "standing_approvals"
+    }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -36,6 +45,9 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         let raw = c.strings(.features)
         features = c.contains(.features) ? Set(raw.compactMap(Feature.init(rawValue:))) : [.status, .hosts]
         auth = c.text(.auth)
+        // Only "/word" commands, short, at most 8: they become buttons.
+        commands = Array(c.strings(.commands).filter { $0.hasPrefix("/") && $0.count <= 24 && !$0.contains(" ") }.prefix(8))
+        standingApprovals = c.bool(.standingApprovals) ?? false
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -46,6 +58,8 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         try c.encodeIfPresent(version, forKey: .version)
         try c.encode(features.map(\.rawValue).sorted(), forKey: .features)
         try c.encodeIfPresent(auth, forKey: .auth)
+        try c.encode(commands, forKey: .commands)
+        try c.encode(standingApprovals, forKey: .standingApprovals)
     }
 }
 

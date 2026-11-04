@@ -21,7 +21,8 @@ struct HomelabApp: App {
                 }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background, model.settings.notificationsOn { BackgroundRefresh.schedule() }
+            // Always: the widget and the cached overview profit even when notifications are off.
+            if phase == .background, model.selected != nil { BackgroundRefresh.schedule() }
         }
         .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
             await BackgroundRefresh.run()

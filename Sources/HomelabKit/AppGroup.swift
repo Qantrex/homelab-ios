@@ -22,7 +22,8 @@ public enum AppGroup {
                                   base: String = baseBundleID, declared: String = declaredGroup) -> [String] {
         var out = provisioned
         if let team = teamSuffix(bundleID: bundleID, base: base) {
-            out += [declared + "." + team, "group." + base + "." + team]
+            // SideStore's two rules ("<group>.<TEAM>" and "group.<rewritten bundle ID>") give the same string here.
+            out.append(declared + "." + team)
         }
         out.append(declared)
         var seen = Set<String>()

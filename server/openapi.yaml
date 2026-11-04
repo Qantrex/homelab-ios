@@ -155,6 +155,13 @@ components:
             type: string
             enum: [status, hosts, actions, chat, cards, services]
         auth: { type: string, enum: [identity, token, none] }
+        commands:
+          type: array
+          items: { type: string, pattern: "^/\\S{1,23}$" }
+          description: Slash commands the chat understands. The app shows them as quick buttons (at most 8).
+        standing_approvals:
+          type: boolean
+          description: The server remembers an "always" approval and runs that action by itself later.
     State:
       type: object
       properties:

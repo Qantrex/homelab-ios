@@ -96,6 +96,17 @@ extension View {
     func card() -> some View { modifier(CardBackground()) }
 }
 
+/// Covers the app while it isn't active (app switcher), when the lock is on.
+struct PrivacyCover: View {
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.regularMaterial).ignoresSafeArea()
+            Image(systemName: "lock.fill").font(.system(size: 40)).foregroundStyle(.secondary)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// Face ID / passcode gate.
 struct LockView: View {
     let unlock: () async -> Void

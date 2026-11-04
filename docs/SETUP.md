@@ -1,0 +1,148 @@
+# Building the app
+
+The app is a SwiftPM package. [xtool](https://github.com/xtool-org/xtool) turns it into an iOS app with a widget
+extension, on Linux or macOS. There is no Xcode project. `xtool.yml` names the bundle ID, the Info.plists, the
+entitlements, the icon and the widget extension.
+
+If you only want to use the app, take the release IPA or the SideStore source instead ([SIDESTORE.md](SIDESTORE.md)).
+
+## Linux
+
+You need Swift 6.4, usbmuxd (to talk to the iPhone over USB), the xtool AppImage, and the iOS SDK from Xcode 27.1.
+
+### Arch
+
+```bash
+sudo pacman -S --needed usbmuxd libimobiledevice fuse2
+yay -S swift-bin        # or the Swift 6.4 tarball from https://www.swift.org/install/linux/
+```
+
+### Debian / Ubuntu
+
+```bash
+sudo apt install usbmuxd libimobiledevice-utils libfuse2   # Ubuntu 24.04 and newer: libfuse2t64
+```
+
+Install Swift 6.4 with swiftly, as described on https://www.swift.org/install/linux/:
+
+```bash
+curl -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
+tar zxf "swiftly-$(uname -m).tar.gz" && ./swiftly init
+swiftly install 6.4 && swift --version
+```
+
+### xtool and the iOS SDK (both distros)
+
+```bash
+mkdir -p ~/.local/bin
+curl -fL "https://github.com/xtool-org/xtool/releases/latest/download/xtool-$(uname -m).AppImage" -o ~/.local/bin/xtool
+chmod +x ~/.local/bin/xtool
+```
+
+Download **Xcode 27.1** in the browser (Apple login) from https://developer.apple.com/download/all/?q=Xcode, then:
+
+```bash
+xtool sdk install ~/Downloads/Xcode_27.1.xip
+```
+
+This is a one-time step. xtool only takes the SDK from it.
+
+## macOS
+
+Install Xcode from the App Store (xtool uses its SDK through `xcrun`, so no `.xip` is needed), then:
+
+```bash
+brew install xtool-org/tap/xtool
+```
+
+## Build
+
+| Command | What it does |
+|---|---|
+| `scripts/build-ipa` | `xtool dev build --ipa` (release configuration if your xtool supports it). Prints the IPA path and size. The IPA is in `xtool/` |
+| `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB in one step |
+| `scripts/verify-ipa xtool/<name>.ipa` | Checks the widget is inside and both carry the App Group (entitlements need `codesign` or `ldid`) |
+
+`scripts/build-ipa` needs no Apple ID: the IPA is unsigned, and SideStore signs it when you install it (send it to the
+phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
+
+`scripts/install-dev` signs with your own Apple ID. Before the first run:
+
+- `xtool auth login` (a free Apple ID works; the app then expires after 7 days, run it again).
+- The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
+- On Linux, usbmuxd must be running.
+
+### Known xtool bug: minimum iOS on Linux builds
+
+Linux builds set the app's minimum iOS to the SDK version, not to the iOS 18 in `Package.swift`
+([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). An IPA built on Linux with the Xcode 27.1 SDK
+only installs on the newest iOS. That is fine for your own phone if it is up to date.
+
+CI builds the release IPA on macOS, where the bug doesn't happen. **For other people, share the CI or release IPA,
+not one built on Linux.**
+
+## Tests
+
+Only `HomelabKit` (models, clients, URL rules, the notification diff, App Group logic) builds on Linux. SwiftUI,
+WidgetKit, Keychain and BackgroundTasks don't exist there. `KIT_ONLY=1` makes `Package.swift` leave out the app
+targets.
+
+| Command | Needs | Runs |
+|---|---|---|
+| `scripts/test-linux` | docker, python3 | Same as the CI `linux` job: fixture server on `127.0.0.1:8791`, `KIT_ONLY=1 swift test` in `swift:6.4-noble`, the reference server's Python tests, `scripts/lint` |
+| `KIT_ONLY=1 swift test` | Swift 6.4 | The HomelabKit tests. The integration tests are skipped unless `HOMELAB_FIXTURE_URL` is set |
+| `python3 -m unittest -v server/test_reference_server.py` | python3 | The reference server's tests |
+| `scripts/lint` | bash, grep | No `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit |
+
+To run the integration tests natively, start the fixture server first:
+
+```bash
+python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port 8791 &
+HOMELAB_FIXTURE_URL=http://127.0.0.1:8791 KIT_ONLY=1 swift test
+```
+
+On macOS, `scripts/sim-smoke APP OUT` installs a simulator build and takes screenshots of every screen. Build the
+simulator app with `xtool dev build --triple arm64-apple-ios-simulator`. CI runs this on every push, see
+[CI.md](CI.md).
+
+## Launch arguments
+
+For tests, screenshots and a quick first run. Pass them to the app at launch, for example in the simulator:
+
+```bash
+xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -HomelabDemo YES -HomelabTab chat
+```
+
+| Argument | Effect |
+|---|---|
+| `-HomelabDemo YES` | Turns on the demo servers (a demo homelab and a demo Home Assistant, no network) |
+| `-HomelabServer <url>` | Adds a Homelab API server with this address (login: Tailscale / proxy) and shows it. The URL rules below apply |
+| `-HomelabTab <tab>` | Opens a tab: `overview`, `actions`, `chat`, `home` or `settings` |
+| `-HomelabResetState YES` | Deletes all servers, tokens, cached data and settings before the start |
+
+`YES`, `true` and `1` all count as yes. The links `homelab://overview`, `homelab://actions`, `homelab://chat`,
+`homelab://home` and `homelab://settings` open a tab too (the widgets use them).
+
+URL rules (`Sources/HomelabKit/URLPolicy.swift`): `https://` always works. Plain `http://` only works for addresses
+that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`, `192.168.x`), `127.x`, `169.254.x`,
+Tailscale's `100.64–127.x`, `localhost`, names ending in `.local`, `.lan`, `.home.arpa` or `.internal`, single-label
+names, and local IPv6 (`::1`, `fe80:`, `fc`/`fd`). A trailing `/api/v1` or `/api` is removed. User names and
+passwords in the URL are refused.
+
+## Project layout
+
+| Path | What it holds | Builds on Linux |
+|---|---|---|
+| `Sources/HomelabKit` | Foundation only: API models (tolerant decoding), Companion and Home Assistant clients, error texts, URL rules, storage, App Group lookup, notification diff, chat timeline, demo backend, fixtures | yes |
+| `Sources/HomelabDesign` | Colours, symbols and small shared views for app and widget | no |
+| `Sources/HomelabUI` | The SwiftUI screens, `AppModel`, Keychain token store, background refresh, Face ID lock | no |
+| `Sources/Homelab` | The `@main` app: scene, deep links, notification taps, background task | no |
+| `Sources/HomelabWidget` | The WidgetKit extension (status and hosts widgets, static configuration only) | no |
+| `Tests/HomelabKitTests` | Swift Testing tests for HomelabKit, plus integration tests against the fixture server | yes |
+| `server/` | `openapi.yaml` (the API), `reference_server.py`, its tests, `config.example.json` | – |
+| `scripts/` | Build, install, test, lint, screenshot and release helpers | – |
+| `xtool.yml`, `App-Info.plist`, `Widget-Info.plist`, `App.entitlements`, `Widget.entitlements`, `Resources/AppIcon.png` | What xtool needs to package the app and the widget | – |
+| `.github/workflows/` | `ci.yml` (Linux + macOS), `release.yml` (tag → IPA, Release, SideStore source) | – |
+
+No third-party Swift packages. The shared App Group is `group.com.qantrex.homelab`; SideStore renames it, see
+[SIDESTORE.md](SIDESTORE.md).

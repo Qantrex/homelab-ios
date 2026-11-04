@@ -1,6 +1,7 @@
 import HomelabDesign
 import HomelabKit
 import SwiftUI
+import UIKit
 
 /// The app: onboarding until a server exists, then the tabs. A lock screen covers everything when Face ID is on.
 public struct RootView: View {
@@ -13,7 +14,10 @@ public struct RootView: View {
 
     public var body: some View {
         ZStack {
-            if model.hasServers {
+            // While locked, nothing behind the lock exists: no tab, sheet or dialog can be reached (or read by VoiceOver).
+            if model.locked {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+            } else if model.hasServers {
                 tabs
             } else {
                 WelcomeView(model: model)
@@ -25,16 +29,34 @@ public struct RootView: View {
                     }
                 }
                 .transition(.opacity)
+            } else if model.settings.faceIDLock && scenePhase != .active {
+                // App switcher snapshot and Control Center: cover the content without asking for Face ID yet.
+                PrivacyCover()
             }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:
-                if model.settings.faceIDLock { model.locked = true }
+                if model.settings.faceIDLock {
+                    Self.dismissPresentedScreens()
+                    model.locked = true
+                }
             case .active:
                 model.reloadSettings()
+                model.validateTab()
             default:
                 break
+            }
+        }
+        .onChange(of: model.availableTabs) { _, _ in model.validateTab() }
+    }
+
+    /// Sheets, alerts and confirmation dialogs live above the root view; close them all before locking.
+    static func dismissPresentedScreens() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.rootViewController?.dismiss(animated: false)
             }
         }
     }

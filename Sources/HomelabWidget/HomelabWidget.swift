@@ -66,8 +66,9 @@ struct StatusView: View {
     let entry: Entry
 
     private var state: HomelabState? { entry.snapshot?.state }
-    private var stale: Bool { entry.snapshot?.isStale(now: entry.date) ?? true }
-    private var status: OverallStatus { stale ? .unknown : (state?.status ?? .unknown) }
+    // Old data keeps its status (dimmed, with its age) instead of turning grey: the background refresh is rare.
+    private var stale: Bool { entry.snapshot?.isStaleForWidget(now: entry.date) ?? true }
+    private var status: OverallStatus { state?.status ?? .unknown }
     private var pending: Int { state?.pending.count ?? 0 }
 
     var body: some View {
@@ -85,7 +86,7 @@ struct StatusView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Label(entry.snapshot?.serverName ?? "Homelab", systemImage: status.symbol).font(.headline)
-                Text(line).font(.caption)
+                Text(line).font(.caption).privacySensitive()
                 Text(age).font(.caption2).foregroundStyle(.secondary)
             }
             .widgetURL(URL(string: "homelab://overview"))
@@ -115,7 +116,7 @@ struct StatusView: View {
             Text(entry.snapshot == nil ? String(localized: "Open the app") : status.title)
                 .font(.headline)
                 .lineLimit(1)
-            Text(line).font(.caption2).lineLimit(2)
+            Text(line).font(.caption2).lineLimit(2).privacySensitive()
             Spacer(minLength: 0)
             Text(age).font(.caption2).foregroundStyle(.secondary)
         }
@@ -124,7 +125,7 @@ struct StatusView: View {
 
     private var line: String {
         guard let state, entry.snapshot != nil else { return String(localized: "No data yet") }
-        if stale { return String(localized: "Data is old") }
+        if stale { return String(localized: "Data from \(age), open the app") }
         if let p = state.problems.first { return state.problems.count > 1 ? "\(p.text) +\(state.problems.count - 1)" : p.text }
         let up = state.hosts.filter { $0.reachable == true }.count
         return String(localized: "\(up)/\(state.hosts.count) hosts up")
@@ -156,10 +157,10 @@ struct HostsView: View {
 
     var body: some View {
         let state = entry.snapshot?.state
-        let stale = entry.snapshot?.isStale(now: entry.date) ?? true
+        let stale = entry.snapshot?.isStaleForWidget(now: entry.date) ?? true
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                let status = stale ? OverallStatus.unknown : (state?.status ?? .unknown)
+                let status = state?.status ?? .unknown
                 Image(systemName: status.symbol).foregroundStyle(status.color)
                 Text(entry.snapshot?.serverName ?? "Homelab").font(.headline).lineLimit(1)
                 Spacer()
@@ -174,6 +175,7 @@ struct HostsView: View {
                     Divider()
                     ForEach(problems.prefix(4)) { p in
                         Label(p.text, systemImage: p.severity.symbol).font(.caption).foregroundStyle(p.severity.color).lineLimit(1)
+                            .privacySensitive()
                     }
                 }
             } else {
@@ -183,6 +185,7 @@ struct HostsView: View {
             }
             Spacer(minLength: 0)
         }
+        .opacity(stale ? 0.55 : 1)
     }
 }
 

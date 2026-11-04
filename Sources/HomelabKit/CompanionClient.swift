@@ -33,7 +33,7 @@ public struct CompanionClient: CompanionAPI {
 
     public func info() async throws -> ServerInfo {
         let info: ServerInfo = try await get("info", timeout: 10)
-        guard info.api == 1 else { throw APIError.other("This server speaks API version \(info.api); the app knows 1.") }
+        guard info.api == 1 else { throw APIError.unsupportedVersion(info.api) }
         return info
     }
 

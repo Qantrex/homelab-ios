@@ -95,8 +95,7 @@ public struct HAEntity: Codable, Sendable, Equatable, Identifiable, Hashable {
     public var tapService: (domain: String, service: String)? {
         switch control {
         case .toggle:
-            let d = domain == "automation" ? "automation" : domain
-            return (d, "toggle")
+            return (domain, "toggle")
         case .run:
             switch domain {
             case "script": return ("script", "turn_on")

@@ -22,13 +22,21 @@ public struct KeychainTokenStore: TokenStore {
         return String(data: data, encoding: .utf8)
     }
 
+    /// Replaces in place (update, else add), so a failed write never loses the old token.
     public func setToken(_ token: String?, for server: UUID) throws {
-        SecItemDelete(base(server) as CFDictionary)
-        guard let token = token?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty else { return }
-        var item = base(server)
-        item[kSecValueData as String] = Data(token.utf8)
-        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let status = SecItemAdd(item as CFDictionary, nil)
+        guard let token = token?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty else {
+            let status = SecItemDelete(base(server) as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError(status: status) }
+            return
+        }
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(token.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        var status = SecItemUpdate(base(server) as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            status = SecItemAdd(base(server).merging(attributes) { _, new in new } as CFDictionary, nil)
+        }
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 

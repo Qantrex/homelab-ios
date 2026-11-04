@@ -215,7 +215,7 @@ struct HostTile: View {
                     metric("Disk", "\(d.percent)%", Double(d.percent) / 100)
                 }
                 HStack(spacing: 6) {
-                    if host.temp != nil { Chip(Format.temperature(host.temp), color: (host.temp ?? 0) >= 75 ? .orange : .secondary, symbol: "thermometer.medium") }
+                    if host.temp != nil { Chip(Format.temperature(host.temp), color: (host.temp ?? 0) >= Format.hotCelsius ? .orange : .secondary, symbol: "thermometer.medium") }
                     if host.containersTotal != nil {
                         Chip(Format.containers(up: host.containersUp, total: host.containersTotal),
                              color: (host.containersUp ?? 0) < (host.containersTotal ?? 0) ? .orange : .secondary, symbol: "shippingbox")

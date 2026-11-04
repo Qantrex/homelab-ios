@@ -166,6 +166,12 @@ struct ServerEditor: View {
     private var needsToken: Bool { kind == .homeAssistant || auth == .token }
     private var isDemo: Bool { original?.kind == .demo }
 
+    /// The stored token may only be used while kind and address stay the same (it was made for that server).
+    private var storedTokenUsable: Bool {
+        guard tokenStored, let original, let c = config() else { return false }
+        return original.isSameTarget(as: c)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -202,13 +208,15 @@ struct ServerEditor: View {
                             }
                         }
                         if needsToken {
-                            SecureField(tokenStored ? "Token saved (type to replace)" : (kind == .homeAssistant ? "Long-lived access token" : "Token"), text: $token)
+                            SecureField(storedTokenUsable ? "Token saved (type to replace)" : (kind == .homeAssistant ? "Long-lived access token" : "Token"), text: $token)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .textContentType(.password)
                         }
                     } footer: {
-                        if kind == .homeAssistant {
+                        if tokenStored && !storedTokenUsable && needsToken {
+                            Text("The address or type changed, so the saved token is not used for it. Enter the token for this server.")
+                        } else if kind == .homeAssistant {
                             Text("In Home Assistant: your profile → Security → Long-lived access tokens → Create token.")
                         } else if auth == .identity {
                             Text("For servers behind tailscale serve: Tailscale on this phone proves who you are. No token needed.")
@@ -275,7 +283,7 @@ struct ServerEditor: View {
         testing = true
         defer { testing = false }
         let typed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        let t = typed.isEmpty ? model.tokens.token(for: c.id) : typed
+        let t = typed.isEmpty ? (storedTokenUsable ? model.tokens.token(for: c.id) : nil) : typed
         do {
             if c.kind == .homeAssistant {
                 _ = try await HomeAssistantClient(baseURL: c.baseURL, token: t, transport: model.transport).check()
@@ -293,7 +301,7 @@ struct ServerEditor: View {
     private func save() {
         guard let c = config() else { return }
         let typed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        if (c.kind == .homeAssistant || c.auth == .token) && typed.isEmpty && !tokenStored {
+        if (c.kind == .homeAssistant || c.auth == .token) && typed.isEmpty && !storedTokenUsable {
             saveError = String(localized: "Enter the token first.")
             return
         }

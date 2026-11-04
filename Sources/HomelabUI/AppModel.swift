@@ -40,7 +40,16 @@ public struct ServerStatus: Sendable, Equatable {
     public var failures = 0
     public var services: [Service] = []
 
-    public var features: Set<ServerInfo.Feature> { info?.features ?? snapshot?.info?.features ?? Set(ServerInfo.Feature.allCases) }
+    public var servicesFetched: Date?
+
+    /// What the server offers. Until /info has answered, only what the data itself shows, so no tab appears for a
+    /// feature the server doesn't have.
+    public var features: Set<ServerInfo.Feature> {
+        if let f = info?.features ?? snapshot?.info?.features { return f }
+        var f: Set<ServerInfo.Feature> = [.status, .hosts, .cards]
+        if snapshot?.state.pending.isEmpty == false { f.insert(.actions) }
+        return f
+    }
 }
 
 @MainActor @Observable
@@ -55,6 +64,8 @@ public final class AppModel {
     public let tokens: any TokenStore
     let transport: any HTTPTransport
     private var demo: DemoBackend?
+    /// A refresh was asked for while one was running (e.g. right after pressing a button): run once more.
+    private var refreshAgain: Set<UUID> = []
 
     public init(storage: Storage = .shared(), tokens: any TokenStore = KeychainTokenStore(),
                 transport: any HTTPTransport = URLSessionTransport(),
@@ -83,21 +94,51 @@ public final class AppModel {
 
     public var pendingCount: Int { selectedStatus.snapshot?.state.pending.count ?? 0 }
 
+    /// The tabs RootView shows right now. Deep links and launch arguments can only pick one of these.
+    public var availableTabs: Set<AppTab> {
+        var t: Set<AppTab> = [.overview, .settings]
+        if selected != nil {
+            let f = selectedStatus.features
+            if f.contains(.actions) { t.insert(.actions) }
+            if f.contains(.chat) { t.insert(.chat) }
+        }
+        if homeAssistant != nil { t.insert(.home) }
+        return t
+    }
+
+    /// Falls back to the overview when the shown tab went away (feature list changed, HA server removed).
+    public func validateTab() {
+        if !availableTabs.contains(tab) { tab = .overview }
+    }
+
     public func select(_ id: UUID) {
         servers.selected = id
         saveServers()
         Task { await refresh() }
     }
 
+    /// `token: nil` keeps the stored token, but only while the server stays the same target (kind + origin).
+    /// A new address or type drops it, so a token is never sent to a server it wasn't made for.
     public func save(_ server: ServerConfig, token: String?) throws {
+        let old = servers.servers.first { $0.id == server.id }
+        let sameTarget = old.map { $0.isSameTarget(as: server) } ?? false
         if server.auth == .token || server.kind == .homeAssistant {
-            if let token { try tokens.setToken(token, for: server.id) }
+            if let token {
+                try tokens.setToken(token, for: server.id)
+            } else if !sameTarget {
+                try tokens.setToken(nil, for: server.id)
+            }
         } else {
             try tokens.setToken(nil, for: server.id)
         }
         servers.upsert(server)
-        if server.speaksCompanionAPI, status[server.id] == nil { status[server.id] = ServerStatus() }
+        if old == nil || !sameTarget || old?.auth != server.auth {
+            // Different server now: its old data, features and services don't apply.
+            storage.remove(Snapshot.fileName(server.id))
+            status[server.id] = server.speaksCompanionAPI ? ServerStatus() : nil
+        }
         saveServers()
+        validateTab()
     }
 
     public func remove(_ id: UUID) {
@@ -105,8 +146,10 @@ public final class AppModel {
         storage.remove(Snapshot.fileName(id))
         servers.remove(id)
         status[id] = nil
+        refreshAgain.remove(id)
         saveServers()
         writeWidgetSnapshot()
+        validateTab()
     }
 
     public func setPinned(_ entities: [String], for id: UUID) {
@@ -180,33 +223,58 @@ public final class AppModel {
     }
 
     public func refresh(_ server: ServerConfig) async {
+        if status[server.id]?.loading == true {
+            refreshAgain.insert(server.id)
+            return
+        }
         var s = status[server.id] ?? ServerStatus()
-        guard !s.loading else { return }
         s.loading = true
         status[server.id] = s
         let api = companion(for: server)
+        var snapshot: Snapshot?
         do {
-            if s.info == nil { s.info = try? await api.info() }
+            if s.info == nil {
+                do {
+                    s.info = try await api.info()
+                } catch APIError.unsupportedVersion(let v) {
+                    throw APIError.unsupportedVersion(v)
+                } catch {
+                    // An old or minimal server without /info: carry on with the state alone.
+                }
+            }
             let state = try await api.state()
-            let snap = Snapshot(serverID: server.id, serverName: s.info?.name ?? server.name, state: state, info: s.info)
-            s.snapshot = snap
+            snapshot = Snapshot(serverID: server.id, serverName: s.info?.name ?? server.name, state: state, info: s.info)
+            s.snapshot = snapshot
             s.error = nil
             s.failures = 0
-            try? storage.write(snap, Snapshot.fileName(server.id))
-            if s.features.contains(.services) || s.services.isEmpty {
-                if let list = try? await api.services() { s.services = list }
+            // Services rarely change: once, then every 10 minutes, and only from servers that offer them.
+            if s.features.contains(.services), s.servicesFetched.map({ Date().timeIntervalSince($0) > 600 }) ?? true {
+                if let list = try? await api.services() {
+                    s.services = list
+                    s.servicesFetched = Date()
+                }
             }
         } catch {
             let e = APIError.from(error, host: server.host)
             if e != .cancelled {
                 s.error = e
                 s.failures += 1
-                log.notice("refresh failed: \(e.message, privacy: .public)")
+                log.notice("refresh failed: \(e.message, privacy: .private)")
             }
         }
         s.loading = false
+        // The server may have been removed or edited while we waited: then this answer belongs to nobody.
+        guard servers.servers.contains(where: { $0.id == server.id && $0.isSameTarget(as: server) && $0.auth == server.auth }) else {
+            refreshAgain.remove(server.id)
+            return
+        }
         status[server.id] = s
+        if let snapshot { try? storage.write(snapshot, Snapshot.fileName(server.id)) }
         if server.id == selected?.id { writeWidgetSnapshot() }
+        validateTab()
+        if refreshAgain.remove(server.id) != nil {
+            await refresh(server)
+        }
     }
 
     /// Press a signed action button; returns the server's answer for the alert.
@@ -252,17 +320,18 @@ public final class AppModel {
         if args.demo { setDemo(true) }
         if let url = args.server {
             let s = ServerConfig(name: url.host ?? "Server", kind: .companion, baseURL: url, auth: .identity)
-            servers.servers.removeAll { $0.baseURL == url && $0.kind == .companion }
+            for old in servers.servers where old.baseURL == url && old.kind == .companion { remove(old.id) }
             servers.upsert(s)
             servers.selected = s.id
             status[s.id] = ServerStatus()
             saveServers()
         }
-        if let tab = args.tab { self.tab = tab }
+        if let tab = args.tab, availableTabs.contains(tab) { self.tab = tab }
     }
 
     public func open(_ url: URL) {
-        if let t = AppTab(url: url) { tab = t }
+        guard let t = AppTab(url: url) else { return }
+        tab = availableTabs.contains(t) ? t : .overview
     }
 }
 

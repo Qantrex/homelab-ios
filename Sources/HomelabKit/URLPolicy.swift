@@ -19,7 +19,7 @@ public enum URLPolicy {
         }
         guard let host = parts.host, !host.isEmpty else { return .failure(.noHost) }
         if parts.user != nil || parts.password != nil { return .failure(.credentialsInURL) }
-        if scheme == "http" && !isLocal(host: host) { return .failure(.insecureRemote) }
+        if scheme == "http" && !allowsPlainHTTP(host: host) { return .failure(.insecureRemote) }
         parts.scheme = scheme
         parts.host = host.lowercased()
         parts.query = nil
@@ -42,7 +42,17 @@ public enum URLPolicy {
         return url
     }
 
-    /// True for names and addresses that don't leave the LAN or tailnet.
+    /// Where the app may use plain http: what iOS ATS allows with NSAllowsLocalNetworking (single-label names,
+    /// `.local`) plus private and tailnet IP addresses. Not `.lan`/`.home.arpa`: ATS blocks those over http.
+    public static func allowsPlainHTTP(host rawHost: String) -> Bool {
+        let host = rawHost.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if host == "localhost" || host.hasSuffix(".local") { return true }
+        if !host.contains(".") && !host.contains(":") { return true }
+        if ipv4(host) != nil || host.contains(":") { return isLocal(host: host) }
+        return false
+    }
+
+    /// True for names and addresses that don't leave the LAN or tailnet (used to explain errors).
     public static func isLocal(host rawHost: String) -> Bool {
         let host = rawHost.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
         if host == "localhost" || host.hasSuffix(".local") || host.hasSuffix(".lan") || host.hasSuffix(".home.arpa")

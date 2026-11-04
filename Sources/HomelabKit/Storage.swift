@@ -120,4 +120,8 @@ public struct Snapshot: Codable, Sendable, Equatable {
     /// Older than this, the UI marks the data as stale.
     public static let staleAfter: TimeInterval = 10 * 60
     public func isStale(now: Date = Date()) -> Bool { age(now: now) > Self.staleAfter }
+
+    /// Widgets refresh only when iOS runs the background task (often 15–60+ min), so they call data old later.
+    public static let widgetStaleAfter: TimeInterval = 2 * 3600
+    public func isStaleForWidget(now: Date = Date()) -> Bool { age(now: now) > Self.widgetStaleAfter }
 }

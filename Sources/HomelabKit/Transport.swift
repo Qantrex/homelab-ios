@@ -63,6 +63,7 @@ public enum APIError: Error, Equatable, Sendable {
     case tls
     case badRequest(String)
     case cancelled
+    case unsupportedVersion(Int)
     case other(String)
 
     public var message: String {
@@ -81,6 +82,7 @@ public enum APIError: Error, Equatable, Sendable {
         case .tls: "The secure connection failed (certificate?)."
         case .badRequest(let text): text.isEmpty ? "The server rejected the request." : text
         case .cancelled: "Cancelled."
+        case .unsupportedVersion(let v): "This server speaks Homelab API version \(v). This app knows version 1. Update the app."
         case .other(let text): text
         }
     }

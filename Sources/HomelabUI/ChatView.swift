@@ -22,12 +22,15 @@ final class ChatModel {
     }
 
     func load(_ api: any CompanionAPI, host: String) async {
+        let sid = serverID
         do {
             let page = try await api.messages(after: timeline.cursor)
+            guard sid == serverID else { return }   // the user switched server meanwhile
             timeline.merge(page)
             error = nil
             failures = 0
         } catch {
+            guard sid == serverID else { return }
             let e = APIError.from(error, host: host)
             if e != .cancelled {
                 self.error = e
@@ -38,12 +41,15 @@ final class ChatModel {
     }
 
     func send(_ text: String, api: any CompanionAPI, host: String) async {
+        let sid = serverID
         let local = timeline.begin(text)
         do {
             let id = try await api.send(text)
+            guard sid == serverID else { return }
             timeline.confirm(local, serverID: id)
             await load(api, host: host)
         } catch {
+            guard sid == serverID else { return }
             timeline.fail(local, message: APIError.from(error, host: host).message)
         }
     }
@@ -61,7 +67,8 @@ struct ChatView: View {
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focused: Bool
 
-    private static let quick = ["/pending", "/last", "/memory", "/usage", "/help"]
+    /// Quick buttons: the commands the server says its chat understands (none = no button row).
+    private var quick: [String] { model.selectedStatus.info?.commands ?? model.selectedStatus.snapshot?.info?.commands ?? [] }
 
     var body: some View {
         NavigationStack {
@@ -138,9 +145,10 @@ struct ChatView: View {
 
     private var composer: some View {
         VStack(spacing: 6) {
+            if !quick.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    ForEach(Self.quick, id: \.self) { cmd in
+                    ForEach(quick, id: \.self) { cmd in
                         Button(cmd) { submit(cmd) }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -148,6 +156,7 @@ struct ChatView: View {
                     }
                 }
                 .padding(.horizontal)
+            }
             }
             HStack(alignment: .bottom, spacing: 8) {
                 TextField("Message", text: $draft, axis: .vertical)

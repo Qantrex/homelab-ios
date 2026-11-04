@@ -9,6 +9,8 @@ public struct AlertTracker: Codable, Sendable, Equatable {
     public var seenProblems: Set<String> = []
     public var seenPending: Set<String> = []
     public var lastRun: Date?
+    /// The server these sets belong to. Another server means: learn first, alert nothing.
+    public var serverID: UUID?
 
     public static let fileName = "alerts.json"
     public static let maxPerRun = 3
@@ -33,13 +35,15 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         }
     }
 
-    public mutating func update(with state: HomelabState, server: String, options: Options = Options(),
-                                now: Date = Date()) -> [Alert] {
-        let learnOnly = lastRun.map { now.timeIntervalSince($0) > Self.relearnAfter } ?? true
+    public mutating func update(with state: HomelabState, server: String, serverID: UUID? = nil,
+                                options: Options = Options(), now: Date = Date()) -> [Alert] {
+        let learnOnly = (lastRun.map { now.timeIntervalSince($0) > Self.relearnAfter } ?? true)
+            || serverID != self.serverID
         defer {
             seenProblems = Set(state.problems.map(\.id))
             seenPending = Set(state.pending.map(\.id))
             lastRun = now
+            self.serverID = serverID
         }
         if learnOnly { return [] }
 

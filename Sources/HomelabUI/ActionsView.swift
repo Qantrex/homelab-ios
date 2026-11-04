@@ -34,7 +34,8 @@ struct ActionsView: View {
                     .listRowBackground(Color.clear)
                 }
                 ForEach(pending) { action in
-                    ActionRow(action: action, running: running == action.id) { verb in
+                    ActionRow(action: action, running: running == action.id,
+                              hasChat: model.selectedStatus.features.contains(.chat)) { verb in
                         confirm = Confirmation(action: action, verb: verb)
                     }
                 }
@@ -77,7 +78,10 @@ struct ActionsView: View {
     private func confirmMessage(_ c: Confirmation) -> String {
         switch c.verb {
         case .approve: String(localized: "Runs this action now, one time.")
-        case .always: String(localized: "Runs it now, and lets this kind of action run by itself from now on. You can take that back with /never in the chat.")
+        case .always:
+            model.selectedStatus.info?.standingApprovals == true
+                ? String(localized: "Runs it now, and lets this kind of action run by itself from now on. The server can take that back (for example /never in the chat).")
+                : String(localized: "Runs it now. Whether it may run by itself later is up to the server.")
         case .deny: String(localized: "Drops the proposal. Nothing runs.")
         }
     }
@@ -99,6 +103,7 @@ struct ActionsView: View {
 struct ActionRow: View {
     let action: PendingAction
     let running: Bool
+    let hasChat: Bool
     let tap: (PendingAction.Verb) -> Void
 
     var body: some View {
@@ -116,7 +121,8 @@ struct ActionRow: View {
             if running {
                 HStack { ProgressView(); Text("Running…").font(.subheadline).foregroundStyle(.secondary) }
             } else if action.buttons.isEmpty {
-                Text("The server offers no buttons for this action. Use the chat: /approve \(action.id)")
+                Text(hasChat ? "The server offers no buttons for this action. Answer it in the chat."
+                             : "The server offers no buttons for this action.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 // Labels never wrap ("Ap-prove"); with very large text the row stacks instead.

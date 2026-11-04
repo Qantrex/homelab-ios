@@ -277,3 +277,67 @@ import Testing
         #expect(Provisioning.parse(Data("x".utf8)) == nil)
     }
 }
+
+@Suite struct ReviewFixTests {
+    @Test func sameTargetGuardsTokens() {
+        let a = ServerConfig(name: "a", kind: .companion, baseURL: URL(string: "https://lab.example.ts.net")!, auth: .token)
+        var b = a
+        b.name = "renamed"
+        #expect(a.isSameTarget(as: b))                                         // rename keeps the token
+        b.baseURL = URL(string: "https://lab.example.ts.net:443/")!
+        #expect(a.isSameTarget(as: b))                                         // same origin, spelled differently
+        b.baseURL = URL(string: "https://other.example.ts.net")!
+        #expect(!a.isSameTarget(as: b))                                        // new host: token must not follow
+        b.baseURL = URL(string: "http://lab.example.ts.net")!
+        #expect(!a.isSameTarget(as: b))                                        // scheme change
+        b.baseURL = URL(string: "https://lab.example.ts.net:8443")!
+        #expect(!a.isSameTarget(as: b))                                        // port change
+        b = a
+        b.kind = .homeAssistant
+        #expect(!a.isSameTarget(as: b))                                        // HA token never goes to a Companion server
+    }
+
+    @Test func alertsLearnAgainForAnotherServer() {
+        var t = AlertTracker()
+        let one = UUID(), two = UUID()
+        let now = Date(timeIntervalSince1970: 1_793_827_800)
+        let s = HomelabState(status: .problem, problems: [Problem(text: "x")])
+        _ = t.update(with: HomelabState(), server: "one", serverID: one, now: now)
+        #expect(t.update(with: s, server: "two", serverID: two, now: now + 60).isEmpty)   // switch: learn only
+        #expect(t.update(with: s, server: "two", serverID: two, now: now + 120).isEmpty)  // already seen
+        let n = HomelabState(status: .problem, problems: [Problem(text: "x"), Problem(text: "y")])
+        #expect(t.update(with: n, server: "two", serverID: two, now: now + 180).map(\.body) == ["y"])
+    }
+
+    @Test func plainHTTPOnlyWhereATSAllowsIt() {
+        for h in ["nas", "nas.local", "localhost", "192.168.1.5", "10.0.0.2", "100.100.1.1", "fd7a:115c:a1e0::1"] {
+            #expect(URLPolicy.allowsPlainHTTP(host: h), "\(h)")
+        }
+        for h in ["nas.lan", "box.home.arpa", "svc.internal", "8.8.8.8", "example.com", "pi.tail01.ts.net"] {
+            #expect(!URLPolicy.allowsPlainHTTP(host: h), "\(h)")
+        }
+        #expect((try? URLPolicy.serverURL("http://nas.lan").get()) == nil)
+        #expect((try? URLPolicy.serverURL("https://nas.lan").get()) != nil)
+    }
+
+    @Test func versionMismatchHasItsOwnError() async {
+        let c = CompanionClient(baseURL: base, token: nil, transport: FakeTransport(json: #"{"api": 2}"#))
+        await #expect(throws: APIError.unsupportedVersion(2)) { try await c.info() }
+        #expect(APIError.unsupportedVersion(2).message.contains("version 2"))
+    }
+}
+
+@Suite struct InfoCommandsTests {
+    @Test func commandsAreFilteredAndCapped() throws {
+        let i = try decode(ServerInfo.self, """
+        {"api":1,"commands":["/pending","rm -rf","/with space","/a","/b","/c","/d","/e","/f","/g","/h"],
+         "standing_approvals":"yes"}
+        """)
+        #expect(i.commands == ["/pending", "/a", "/b", "/c", "/d", "/e", "/f", "/g"])
+        #expect(i.standingApprovals)
+        let none = try decode(ServerInfo.self, #"{"api":1}"#)
+        #expect(none.commands.isEmpty && !none.standingApprovals)
+        let fixture = try fixture(ServerInfo.self, "info.json")
+        #expect(fixture.commands.contains("/pending") && fixture.standingApprovals)
+    }
+}

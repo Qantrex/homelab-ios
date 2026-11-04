@@ -14,6 +14,9 @@ public enum Format {
         return "\(Int(s / 86400)) d ago"
     }
 
+    /// Same default as the reference server's `temp_warning`.
+    public static let hotCelsius = 80.0
+
     public static func percent(_ value: Int?) -> String {
         value.map { "\($0)%" } ?? "–"
     }
@@ -92,7 +95,7 @@ public enum HostHealth: Sendable, Equatable {
         if host.flags.contains(where: Format.isAlarming) { self = .problem; return }
         if let up = host.containersUp, let total = host.containersTotal, up < total { self = .warning; return }
         if let d = Format.worstDisk(host.disks), d.percent >= 90 { self = .warning; return }
-        if let t = host.temp, t >= 75 { self = .warning; return }
+        if let t = host.temp, t >= Format.hotCelsius { self = .warning; return }
         if let m = host.memPct, m >= 95 { self = .warning; return }
         if Format.backupFailed(host.backupResult) { self = .warning; return }
         if !host.flags.isEmpty { self = .warning; return }

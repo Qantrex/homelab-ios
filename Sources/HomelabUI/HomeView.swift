@@ -82,7 +82,9 @@ struct HomeView: View {
                     } description: {
                         Text("Pick the lights, switches and scripts you want here.")
                     } actions: {
-                        Button("Choose devices") { picking = true }.buttonStyle(.borderedProminent)
+                        Button("Choose devices") { picking = true }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(home.entities.isEmpty)
                     }
                 } else if home.loading && home.entities.isEmpty {
                     ProgressView()

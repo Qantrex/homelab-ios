@@ -44,6 +44,20 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     public var host: String { baseURL.host ?? baseURL.absoluteString }
 
     public var showsHomeTab: Bool { kind == .homeAssistant || isDemoHomeAssistant }
+
+    /// Same kind and the same scheme, host, port and path. A stored token may only be reused when this holds:
+    /// otherwise it would be sent to a different server (or an HA admin token to a Companion server).
+    public func isSameTarget(as other: ServerConfig) -> Bool {
+        kind == other.kind && Self.origin(baseURL) == Self.origin(other.baseURL)
+    }
+
+    static func origin(_ url: URL) -> String {
+        let scheme = url.scheme?.lowercased() ?? ""
+        let port = url.port ?? (scheme == "https" ? 443 : 80)
+        var path = url.path
+        while path.hasSuffix("/") { path.removeLast() }
+        return "\(scheme)://\(url.host?.lowercased() ?? ""):\(port)\(path)"
+    }
     public var speaksCompanionAPI: Bool { kind == .companion || (kind == .demo && !isDemoHomeAssistant) }
 }
 
