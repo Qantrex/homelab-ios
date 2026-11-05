@@ -137,7 +137,18 @@ fail() { failed+=("$1"); echo "FAIL $1"; }
 launch() { xcrun simctl launch --terminate-running-process "$dev" "$BUNDLE_ID" "$@" >/dev/null; }
 # app_running: is the app process alive in the simulator? (A crash leaves the home screen, which would still
 # screenshot fine; that must count as a failure, not a success.)
-app_running() { xcrun simctl spawn "$dev" launchctl list 2>/dev/null | grep -q "UIKitApplication:$BUNDLE_ID"; }
+# The list is read into a variable first: `launchctl list | grep -q` under pipefail fails at random, because grep -q
+# exits at the first match and launchctl then dies of SIGPIPE (141). That made good shots "NOT-RUNNING" (2026-11-05).
+# One retry after a second covers a launch that is still settling.
+app_running() {
+  local list try
+  for try in 1 2; do
+    list=$(xcrun simctl spawn "$dev" launchctl list 2>/dev/null || true)
+    grep -qF "UIKitApplication:$BUNDLE_ID" <<<"$list" && return 0
+    [ "$try" = 1 ] && sleep 1
+  done
+  return 1
+}
 # shot NAME: the next number + NAME
 shot() {
   n=$((n + 1))
@@ -233,7 +244,7 @@ core_ok=1
 i=0
 for tab in "${TABS[@]}"; do
   i=$((i + 1))
-  printf '%s\n' "${core[@]+"${core[@]}"}" | grep -qx "$(printf '%02d' "$i")-demo-$tab-light" || core_ok=0
+  grep -qx "$(printf '%02d' "$i")-demo-$tab-light" <<<"$(printf '%s\n' "${core[@]+"${core[@]}"}")" || core_ok=0
 done
 
 # Crash reports of the app from this run (simulator crashes land in the host's DiagnosticReports).
