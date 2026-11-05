@@ -11,3 +11,4 @@ DerivedData/
 .build-test.log
 __pycache__/
 *.pyc
+.bsp/
