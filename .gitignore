@@ -8,3 +8,7 @@ DerivedData/
 .netrc
 /xtool
 *.ipa
+.build-test.log
+__pycache__/
+*.pyc
+.bsp/

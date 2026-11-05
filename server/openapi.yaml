@@ -1,0 +1,310 @@
+openapi: 3.1.0
+info:
+  title: Homelab Companion API
+  version: "1"
+  summary: What the Homelab iOS app reads from a homelab server.
+  description: |
+    A small, read-mostly JSON API. Any server can implement it: the owner's homelab agent (agent-chat) does, and
+    `server/reference_server.py` in this repo is a complete stdlib implementation for any other homelab.
+
+    Rules for servers:
+    - All paths are under `/api/v1/`. JSON in and out (`application/json; charset=utf-8`), UTF-8.
+    - Auth is one of: a reverse proxy that adds an identity header (for example `tailscale serve` adds
+      `Tailscale-User-Login`; the app sends no token then), or `Authorization: Bearer <token>`.
+      Answer 401 or 403 for a missing or wrong identity.
+    - Every field except the ones marked `required` is optional. Clients ignore unknown fields and unknown enum
+      values, so servers may add fields at any time. Breaking changes need `/api/v2/`.
+    - Times are ISO 8601. Without a time zone they mean the server's local time; the app reads them in the
+      phone's time zone (the same in a homelab). Send a zone if they can differ.
+    - `features` in `/info` tells the app which tabs to show. A server without `chat` simply leaves it out.
+
+    Rules for the client (the app):
+    - Never sends an `Origin` header and never sends cookies.
+    - Treats every text from the server as untrusted plain text (Markdown is rendered inline only, no HTML,
+      links only http/https).
+servers:
+  - url: https://{host}/api/v1
+    variables:
+      host:
+        default: homelab.example.ts.net
+security:
+  - identityHeader: []
+  - bearer: []
+paths:
+  /info:
+    get:
+      summary: Server name, API version and features. The app's "Test connection" calls this.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Info" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /state:
+    get:
+      summary: Everything the overview, the actions tab and the widgets show, in one call.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/State" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /messages:
+    get:
+      summary: Chat history after a message id (the newest 200 at most).
+      parameters:
+        - name: after
+          in: query
+          schema: { type: integer, format: int64, default: 0 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessagePage" }
+        "404": { description: The server has no chat (feature `chat` missing). }
+    post:
+      summary: Send a chat message or a slash command. The answer arrives later in GET /messages.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  id: { type: integer, format: int64, description: The id of the stored message. }
+        "400": { description: Empty or longer than 4000 characters. }
+        "415": { description: Not JSON. }
+        "429": { description: Too many runs; try later. }
+  /button:
+    post:
+      summary: Press a signed action button from `State.pending[].buttons`.
+      description: The server waits up to ~2 minutes for the result and returns it as text.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, example: HOMELAB_APPROVE_ab12_0123456789abcdef }
+      responses:
+        "200":
+          description: Done (or still running; the text says so).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text: { type: string }
+        "403": { description: Unknown, forged or expired button. }
+  /services:
+    get:
+      summary: Web UIs of the homelab, for the launcher.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items: { $ref: "#/components/schemas/Service" }
+components:
+  securitySchemes:
+    identityHeader:
+      type: apiKey
+      in: header
+      name: Tailscale-User-Login
+      description: Added by the reverse proxy (tailscale serve), never by the app.
+    bearer:
+      type: http
+      scheme: bearer
+  responses:
+    Unauthorized: { description: No identity. }
+    Forbidden: { description: Identity not allowed. }
+  schemas:
+    Info:
+      type: object
+      required: [api]
+      properties:
+        api: { type: integer, const: 1 }
+        name: { type: string, example: homelab, description: Shown as the server's title. }
+        server: { type: string, example: homelab-agent }
+        version: { type: string, example: "2026-11-04" }
+        features:
+          type: array
+          items:
+            type: string
+            enum: [status, hosts, actions, chat, cards, services]
+        auth: { type: string, enum: [identity, token, none] }
+        commands:
+          type: array
+          items: { type: string, pattern: "^/\\S{1,23}$" }
+          description: Slash commands the chat understands. The app shows them as quick buttons (at most 8).
+        standing_approvals:
+          type: boolean
+          description: The server remembers an "always" approval and runs that action by itself later.
+    State:
+      type: object
+      properties:
+        time: { type: string, format: date-time, description: When the server built this answer. }
+        status: { $ref: "#/components/schemas/Status" }
+        checked: { type: string, format: date-time, description: When the health data was collected. }
+        problems:
+          type: array
+          items: { $ref: "#/components/schemas/Problem" }
+        hosts:
+          type: array
+          items: { $ref: "#/components/schemas/Host" }
+        pending:
+          type: array
+          items: { $ref: "#/components/schemas/PendingAction" }
+        cards:
+          type: array
+          items: { $ref: "#/components/schemas/Card" }
+        busy:
+          type: array
+          items: { type: string }
+          description: Jobs running right now (the chat shows "working…").
+        last_message: { $ref: "#/components/schemas/Message" }
+    Status:
+      type: string
+      enum: [ok, warning, problem, unknown]
+    Problem:
+      description: An object, or (legacy) a plain string, which clients treat as `{text}`.
+      oneOf:
+        - type: string
+        - type: object
+          required: [text]
+          properties:
+            id: { type: string }
+            text: { type: string }
+            host: { type: string, description: A Host.id. }
+            severity: { type: string, enum: [warning, problem] }
+            since: { type: string, format: date-time }
+    Host:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, example: nas }
+        name: { type: string, example: "NAS (basement)" }
+        kind: { type: string, example: raspberry-pi, description: "Free text; the app picks an icon for: server, raspberry-pi, laptop, desktop, nas, vm." }
+        reachable: { type: boolean, description: "null/missing = not checked yet." }
+        checked: { type: string, format: date-time }
+        load: { type: number, description: 1-minute load average. }
+        cpu_count: { type: integer, description: Lets the app show load as a share of the cores. }
+        mem_pct: { type: integer, minimum: 0, maximum: 100 }
+        temp: { type: number, description: °C }
+        disks:
+          type: object
+          additionalProperties: { type: integer, minimum: 0, maximum: 100 }
+          description: Mount point → percent used.
+        containers:
+          type: object
+          properties:
+            up: { type: integer }
+            total: { type: integer }
+        updates:
+          type: object
+          properties:
+            upgradable: { type: integer }
+            reboot_required: { type: boolean }
+        backup:
+          type: object
+          properties:
+            last: { type: string, description: Free text or a date-time. }
+            result: { type: string, example: success }
+        flags:
+          type: array
+          items: { type: string }
+          description: "Known: undervoltage_now, throttled_now, undervoltage_since_boot, asleep. Others are shown as text."
+        url: { type: string, format: uri, description: A web UI for this host. }
+    PendingAction:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, example: ab12 }
+        job: { type: string, example: watchdog }
+        action: { type: string, example: restart }
+        arg: { type: string, example: "media sonarr" }
+        reason: { type: string }
+        created: { type: string, format: date-time }
+        buttons:
+          type: object
+          description: Signed strings for POST /button. A missing verb means the server doesn't offer it.
+          properties:
+            approve: { type: string }
+            always: { type: string }
+            deny: { type: string }
+    Card:
+      type: object
+      required: [id]
+      description: A generic box on the overview, so each homelab can show its own data (media, school, weather…).
+      properties:
+        id: { type: string }
+        title: { type: string }
+        subtitle: { type: string }
+        icon: { type: string, description: An SF Symbol name, e.g. play.tv. Unknown names fall back to a square. }
+        tint: { type: string, enum: [gray, blue, green, orange, red, purple, teal, yellow, pink] }
+        style: { type: string, enum: [list, metrics, text], default: list }
+        updated: { type: string, description: Free text or a date-time. }
+        text: { type: string, description: For style text. Inline Markdown. }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              subtitle: { type: string }
+              value: { type: string }
+              progress: { type: number, minimum: 0, maximum: 1 }
+              icon: { type: string }
+              url: { type: string, format: uri }
+              tint: { type: string }
+    Message:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64, description: Increasing; used as the cursor for `after`. }
+        ts: { type: string, format: date-time }
+        from: { type: string, enum: [me, agent] }
+        job: { type: string, description: "Empty or chat = a conversation reply; other = a scheduled report (morning, watchdog…)." }
+        status: { type: string, description: "OK, WARN, ALERT, ERROR or empty." }
+        text: { type: string }
+    MessagePage:
+      type: object
+      properties:
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/Message" }
+        busy:
+          type: array
+          items: { type: string }
+    Service:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string }
+        url: { type: string, format: uri }
+        group: { type: string }
+        icon: { type: string, description: SF Symbol name. }
+        description: { type: string }

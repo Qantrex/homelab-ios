@@ -1,0 +1,254 @@
+#!/usr/bin/env bash
+# Usage: scripts/sim-smoke APP_PATH OUT_DIR
+#        scripts/sim-smoke --pick [main|small]     print a simulator UDID and exit (CI uses it for xcodebuild test)
+#   APP_PATH  simulator build of the app (e.g. from `xtool dev build --triple arm64-apple-ios-simulator`)
+#   OUT_DIR   where the PNG screenshots, app-log.txt, server-log.txt and summary.txt go
+# macOS only. Boots the newest iPhone simulator, installs the app, starts the fixture server
+# (server/reference_server.py on 127.0.0.1:8791, the simulator shares the host network) and takes, numbered in order:
+#   01-15  demo mode, every tab (overview actions chat home settings) in light, dark and accessibility-XL text
+#   16-20  live mode against the fixture server: problem, chat, pending (actions), huge, ok
+#   21     offline: the fixture server is stopped, the app relaunches with its cached data (error bar + age)
+#   22-23  the smallest iPhone available (SE / "e" model / smallest screen): demo overview + actions
+# Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
+# Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
+set -euo pipefail
+
+usage() { sed -n '2,14p' "$0"; exit 2; }
+[ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
+
+# pick_udid main|small [EXCLUDE_UDID]
+#   main:  the newest plain numbered iPhone ("iPhone 17 Pro"): preview images also ship odd form factors (foldables)
+#          that boot slowly or not at all. Falls back to any iPhone.
+#   small: the iPhone with the narrowest screen (from the device type's profile.plist), newest runtime first;
+#          by name (SE, "e" models, mini) when the profile can't be read.
+pick_udid() {
+  xcrun simctl list -j | python3 -c '
+import json, os, plistlib, re, sys
+mode, exclude = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "")
+d = json.load(sys.stdin)
+devices = d["devices"]
+types = {t["identifier"]: t for t in d.get("devicetypes", [])}
+def version(k):
+    try: return [int(x) for x in k.rsplit("iOS-", 1)[1].split("-")]
+    except Exception: return [0]
+runtimes = sorted((k for k in devices if "iOS" in k), key=version, reverse=True)
+def available(k):
+    return [x for x in devices[k] if x.get("isAvailable", True) and x["name"].startswith("iPhone") and x["udid"] != exclude]
+if mode == "main":
+    for pattern in (r"^iPhone \d+( Pro)?$", r"^iPhone"):
+        for k in runtimes:
+            for dev in available(k):
+                if re.match(pattern, dev["name"]):
+                    print(dev["udid"]); sys.exit()
+    sys.exit()
+def size(dev):
+    t = types.get(dev.get("deviceTypeIdentifier", ""), {})
+    try:
+        with open(os.path.join(t["bundlePath"], "Contents", "Resources", "profile.plist"), "rb") as fh:
+            p = plistlib.load(fh)
+        scale = float(p.get("mainScreenScale", 1)) or 1
+        return (float(p["mainScreenWidth"]) / scale, float(p["mainScreenHeight"]) / scale)
+    except Exception:
+        name = dev["name"]
+        if "SE" in name: return (320.0, 568.0)
+        if "mini" in name: return (375.0, 812.0)
+        if re.search(r"\d+e$", name): return (390.0, 844.0)
+        return (999.0, 999.0)
+for k in runtimes:
+    devs = available(k)
+    if devs:
+        best = min(devs, key=lambda x: (size(x), x["name"]))
+        print(best["udid"]); sys.exit()
+' "$@"
+}
+
+if [ "${1:-}" = --pick ]; then
+  pick_udid "${2:-main}"
+  exit 0
+fi
+[ $# -eq 2 ] || usage
+
+APP_PATH=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
+mkdir -p "$2"
+OUT_DIR=$(cd "$2" && pwd)
+touch "$OUT_DIR/.started"   # crash reports newer than this belong to this run
+cd "$(dirname "$0")/.."
+
+BUNDLE_ID=com.qantrex.homelab
+WAIT=${WAIT:-6}
+PORT=${PORT:-8791}
+SERVER_URL="http://127.0.0.1:$PORT"
+[ -d "$APP_PATH" ] || { echo "sim-smoke: no app at $APP_PATH"; exit 1; }
+
+udid=$(pick_udid main)
+[ -n "$udid" ] || { echo "sim-smoke: no available iPhone simulator"; exit 1; }
+sim_name() { xcrun simctl list devices | grep "$1" | sed 's/ *(.*//' | xargs; }
+echo "simulator: $udid ($(sim_name "$udid"))"
+
+server_pid=""
+booted=()
+stop_server() {
+  if [ -n "$server_pid" ]; then kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; fi
+  server_pid=""
+}
+cleanup() {
+  stop_server
+  if [ "${KEEP_SIM:-0}" != 1 ]; then
+    for u in "${booted[@]+"${booted[@]}"}"; do xcrun simctl shutdown "$u" 2>/dev/null || true; done
+  fi
+}
+trap cleanup EXIT
+
+# prepare UDID: boot, fixed status bar, light mode, normal text, install the app
+prepare() {
+  local u=$1
+  xcrun simctl boot "$u" 2>/dev/null || true   # "already booted" is fine
+  booted+=("$u")
+  xcrun simctl bootstatus "$u" -b
+  xcrun simctl status_bar "$u" override --time 9:41 --batteryState charged --batteryLevel 100 \
+    --wifiBars 3 --cellularBars 4 || echo "WARN: status bar override failed"
+  xcrun simctl ui "$u" appearance light || true
+  xcrun simctl ui "$u" content_size large || true
+  xcrun simctl install "$u" "$APP_PATH"
+}
+
+start_time=$(date '+%Y-%m-%d %H:%M:%S')
+prepare "$udid"
+
+# Fixture server, starting in the "problem" state; /__control switches it later.
+if [ -f server/reference_server.py ]; then
+  python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port "$PORT" \
+    --state state-problem.json > "$OUT_DIR/server-log.txt" 2>&1 &
+  server_pid=$!
+  for _ in $(seq 1 50); do
+    curl -s -o /dev/null --max-time 1 "$SERVER_URL/" && break
+    sleep 0.2
+  done
+  curl -s -o /dev/null --max-time 1 "$SERVER_URL/" || echo "WARN: fixture server not answering on $SERVER_URL"
+else
+  echo "WARN: server/reference_server.py missing, live-mode shots will show an unreachable server"
+fi
+
+ok=()
+failed=()
+dev=$udid   # the simulator the helpers below act on
+n=0         # the last screenshot number
+fail() { failed+=("$1"); echo "FAIL $1"; }
+launch() { xcrun simctl launch --terminate-running-process "$dev" "$BUNDLE_ID" "$@" >/dev/null; }
+# app_running: is the app process alive in the simulator? (A crash leaves the home screen, which would still
+# screenshot fine; that must count as a failure, not a success.)
+app_running() { xcrun simctl spawn "$dev" launchctl list 2>/dev/null | grep -q "UIKitApplication:$BUNDLE_ID"; }
+# shot NAME: the next number + NAME
+shot() {
+  n=$((n + 1))
+  local name
+  name=$(printf '%02d-%s' "$n" "$1")
+  if ! app_running; then
+    xcrun simctl io "$dev" screenshot "$OUT_DIR/$name-NOT-RUNNING.png" >/dev/null 2>&1 || true
+    fail "$name (app not running: crashed or closed)"
+    return
+  fi
+  if xcrun simctl io "$dev" screenshot "$OUT_DIR/$name.png" >/dev/null 2>&1; then
+    ok+=("$name"); echo "ok   $name"
+  else
+    fail "$name"
+  fi
+}
+# scene NAME LAUNCH_ARGS... : launch fresh, wait, screenshot
+scene() {
+  local name=$1; shift
+  if launch "$@"; then
+    sleep "$WAIT"; shot "$name"
+  else
+    n=$((n + 1)); fail "$(printf '%02d-%s' "$n" "$name") (launch)"
+  fi
+}
+# control STATE_FILE: switch the fixture server's /state answer
+control() { curl -fsS -o /dev/null --max-time 3 "$SERVER_URL/__control?state=$1"; }
+
+TABS=(overview actions chat home settings)
+DEMO=(-HomelabDemo YES)
+LIVE=(-HomelabResetState YES -HomelabServer "$SERVER_URL")
+
+# 01-15: demo mode, every tab, in light, dark and accessibility-extra-large text
+for look in light dark xxl; do
+  case $look in
+    light) xcrun simctl ui "$dev" appearance light || true; xcrun simctl ui "$dev" content_size large || true ;;
+    dark)  xcrun simctl ui "$dev" appearance dark || true ;;
+    xxl)   xcrun simctl ui "$dev" appearance light || true
+           xcrun simctl ui "$dev" content_size accessibility-extra-large || true ;;
+  esac
+  for tab in "${TABS[@]}"; do scene "demo-$tab-$look" "${DEMO[@]}" -HomelabTab "$tab"; done
+done
+xcrun simctl ui "$dev" appearance light || true
+xcrun simctl ui "$dev" content_size large || true
+core=("${ok[@]+"${ok[@]}"}")   # for the exit code: 01-05 must be among these
+
+# 16-20: live mode against the fixture server
+live() {   # live NAME STATE_FILE TAB
+  if control "$2"; then
+    scene "$1" "${LIVE[@]}" -HomelabTab "$3"
+  else
+    n=$((n + 1)); fail "$(printf '%02d-%s' "$n" "$1") (/__control $2)"
+  fi
+}
+live live-overview-problem state-problem.json overview
+live live-chat             state-problem.json chat
+live live-actions-pending  state-pending.json actions
+live live-overview-huge    state-huge.json    overview
+live live-overview-ok      state-ok.json      overview
+
+# 21: offline. The app has state-ok cached from 20; stop the server and relaunch it. No -HomelabServer here: that
+# argument re-adds the server under a new id and drops its cache, and no reset, so the saved server stays.
+stop_server
+if launch -HomelabTab overview; then
+  sleep $((WAIT + 4)); shot live-offline-cached
+else
+  n=$((n + 1)); fail "$(printf '%02d' "$n")-live-offline-cached (launch)"
+fi
+
+# 22-23: the smallest iPhone, demo mode
+small=$(pick_udid small "$udid" || true)
+if [ -n "$small" ]; then
+  echo "small simulator: $small ($(sim_name "$small"))"
+  if prepare "$small"; then
+    dev=$small
+    scene small-demo-overview-light "${DEMO[@]}" -HomelabTab overview
+    scene small-demo-actions-light  "${DEMO[@]}" -HomelabTab actions
+    dev=$udid
+  else
+    fail "small simulator (boot/install)"
+  fi
+else
+  fail "small simulator (none available)"
+fi
+
+# App log for this run (Logger subsystem com.qantrex.homelab), from the main simulator
+xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \
+  --style compact > "$OUT_DIR/app-log.txt" 2>&1 \
+  || xcrun simctl spawn "$udid" log show --last 10m --predicate "subsystem == \"$BUNDLE_ID\"" \
+       --style compact > "$OUT_DIR/app-log.txt" 2>&1 || true
+
+core_ok=1
+i=0
+for tab in "${TABS[@]}"; do
+  i=$((i + 1))
+  printf '%s\n' "${core[@]+"${core[@]}"}" | grep -qx "$(printf '%02d' "$i")-demo-$tab-light" || core_ok=0
+done
+
+# Crash reports of the app from this run (simulator crashes land in the host's DiagnosticReports).
+mkdir -p "$OUT_DIR/crashes"
+find "$HOME/Library/Logs/DiagnosticReports" -newer "$OUT_DIR/.started" -name 'Homelab*' -exec cp {} "$OUT_DIR/crashes/" \; 2>/dev/null || true
+crashes=$(find "$OUT_DIR/crashes" -type f | wc -l | tr -d ' ')
+[ "$crashes" = 0 ] && rmdir "$OUT_DIR/crashes" 2>/dev/null
+
+{
+  echo "sim-smoke: ${#ok[@]} screenshots ok, ${#failed[@]} failed, $crashes crash reports"
+  echo "main simulator:  $(sim_name "$udid")"
+  if [ -n "${small:-}" ]; then echo "small simulator: $(sim_name "$small")"; fi
+  echo "core shots (01-05 demo light): $([ "$core_ok" = 1 ] && echo ok || echo MISSING)"
+  for s in "${ok[@]+"${ok[@]}"}"; do echo "  ok:     $s"; done
+  for s in "${failed[@]+"${failed[@]}"}"; do echo "  failed: $s"; done
+} | tee "$OUT_DIR/summary.txt"
+
+[ "$core_ok" = 1 ]

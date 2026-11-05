@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Usage: scripts/install-dev [extra xtool dev options]
+# Builds, signs and installs the app on an iPhone connected over USB, in one step (`xtool dev`).
+# - Sign in once with `xtool auth login` (a free Apple ID works; its apps expire after 7 days, then re-run this).
+# - The iPhone must trust this computer and have Developer Mode on (Settings -> Privacy & Security).
+# - Linux needs usbmuxd running so xtool can see the phone.
+# xtool registers the bundle ID com.qantrex.homelab, the widget and the App Group for you.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+command -v xtool >/dev/null || { echo "xtool not found: install it from https://github.com/xtool-org/xtool"; exit 1; }
+exec xtool dev "$@"

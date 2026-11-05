@@ -1,0 +1,16 @@
+{
+  "time": "2026-11-04T21:30:00", "status": "ok", "checked": "2026-11-04T21:28:00",
+  "problems": [],
+  "hosts": [
+    {"id": "nas", "name": "nas", "kind": "nas", "reachable": true, "checked": "2026-11-04T21:28:00",
+     "load": 0.42, "cpu_count": 4, "mem_pct": 38, "temp": 41.5, "disks": {"/": 31, "/srv/media": 64},
+     "containers": {"up": 12, "total": 12}, "updates": {"upgradable": 0, "reboot_required": false},
+     "backup": {"last": "2026-11-04T04:45:10", "result": "success"}, "flags": []},
+    {"id": "pi", "name": "pi", "kind": "raspberry-pi", "reachable": true, "checked": "2026-11-04T21:28:00",
+     "load": 0.9, "cpu_count": 4, "mem_pct": 55, "temp": 52.0, "disks": {"/": 47},
+     "containers": {"up": 8, "total": 8}, "updates": {"upgradable": 3, "reboot_required": false}, "flags": []}
+  ],
+  "pending": [], "cards": [], "busy": [],
+  "last_message": {"id": 1762288000000000000, "ts": "2026-11-04T06:00:00", "from": "agent", "job": "digest",
+                   "status": "OK", "text": "All hosts fine. Backups ran at 04:45."}
+}

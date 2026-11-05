@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Build a SideStore/AltStore source (source.json) for a release.
+
+Usage:
+  scripts/make-source --version 1.0.0 --ipa Homelab-1.0.0.ipa \
+      --download-url https://github.com/Qantrex/homelab-ios/releases/download/v1.0.0/Homelab-1.0.0.ipa \
+      [--date 2026-11-04T12:00:00Z] [--notes "What changed"] [--previous old-source.json] \
+      [--screenshot URL ...] [--output source.json]
+
+With --previous, the new version is put first and the older versions are kept (an entry with the same version is
+replaced). Stdlib only. Format: the AltStore source format (apps[].versions[], appPermissions), plus the older
+top-level version/versionDate/downloadURL/size fields that older SideStore builds still read.
+"""
+import argparse
+import datetime
+import json
+import plistlib
+import sys
+import zipfile
+from pathlib import Path
+
+BUNDLE_ID = "com.qantrex.homelab"
+# The icon comes straight from the repo, so a release needs no website (releases are made by hand: docs/RELEASE.md).
+ICON_URL = "https://raw.githubusercontent.com/Qantrex/homelab-ios/main/Resources/AppIcon.png"
+TINT = "2F6FED"
+
+SOURCE = {
+    "name": "Homelab iOS",
+    "identifier": "com.qantrex.homelab.source",
+    "subtitle": "A phone dashboard for a self-hosted homelab.",
+    "description": "Builds of the open-source Homelab iOS app, made by GitHub Actions from the public repository.",
+    "iconURL": ICON_URL,
+    "website": "https://github.com/Qantrex/homelab-ios",
+    "tintColor": TINT,
+}
+
+APP = {
+    "name": "Homelab",
+    "bundleIdentifier": BUNDLE_ID,
+    "developerName": "Qantrex",
+    "subtitle": "Your homelab at a glance.",
+    "localizedDescription": (
+        "Homelab shows the state of your self-hosted servers: what is up, what needs attention, actions waiting for "
+        "approval, a chat with your homelab agent and your Home Assistant home. It talks only to the servers you add "
+        "(for example over Tailscale); there is no account and no tracking. Includes a Home Screen widget.\n\n"
+        "Open source: https://github.com/Qantrex/homelab-ios"
+    ),
+    "iconURL": ICON_URL,
+    "tintColor": TINT,
+    "category": "utilities",
+    "appPermissions": {
+        "entitlements": [{"name": "com.apple.security.application-groups"}],
+        "privacy": [
+            {
+                "name": "LocalNetwork",
+                "usageDescription": "Homelab connects to the servers you add on your local network or tailnet.",
+            }
+        ],
+    },
+}
+
+
+def ipa_info(path: Path) -> dict:
+    """Read CFBundleIdentifier/CFBundleShortVersionString from the IPA's app Info.plist (best effort)."""
+    try:
+        with zipfile.ZipFile(path) as z:
+            for name in z.namelist():
+                parts = name.split("/")
+                if len(parts) == 3 and parts[0] == "Payload" and parts[1].endswith(".app") and parts[2] == "Info.plist":
+                    return plistlib.loads(z.read(name))
+    except (zipfile.BadZipFile, plistlib.InvalidFileException, OSError, ValueError) as e:
+        print(f"make-source: warning: could not read Info.plist from {path}: {e}", file=sys.stderr)
+    return {}
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--version", required=True, help="app version, e.g. 1.0.0 (a leading v is dropped)")
+    p.add_argument("--ipa", required=True, type=Path)
+    p.add_argument("--download-url", required=True)
+    p.add_argument("--date", help="ISO 8601 date or date-time (default: now, UTC)")
+    p.add_argument("--notes", default="", help="release notes for this version")
+    p.add_argument("--previous", type=Path, help="existing source.json to extend")
+    p.add_argument("--screenshot", action="append", default=[], help="screenshot URL (repeatable)")
+    p.add_argument("--min-os", default="18.0")
+    p.add_argument("--output", type=Path, default=Path("source.json"))
+    a = p.parse_args()
+
+    version = a.version.removeprefix("v")
+    date = a.date or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    size = a.ipa.stat().st_size
+
+    info = ipa_info(a.ipa)
+    if info:
+        if info.get("CFBundleIdentifier") != BUNDLE_ID:
+            print(f"make-source: IPA bundle ID is {info.get('CFBundleIdentifier')!r}, expected {BUNDLE_ID}",
+                  file=sys.stderr)
+            return 1
+        if info.get("CFBundleShortVersionString") not in (None, version):
+            print(f"make-source: warning: IPA says version {info.get('CFBundleShortVersionString')}, "
+                  f"releasing as {version}", file=sys.stderr)
+
+    entry = {
+        "version": version,
+        "date": date,
+        "size": size,
+        "downloadURL": a.download_url,
+        "localizedDescription": a.notes or f"Homelab {version}",
+        "minOSVersion": a.min_os,
+    }
+
+    older, news, screenshots = [], [], a.screenshot
+    if a.previous and a.previous.is_file():
+        try:
+            prev = json.loads(a.previous.read_text())
+            prev_app = next((x for x in prev.get("apps", []) if x.get("bundleIdentifier") == BUNDLE_ID), {})
+            older = [v for v in prev_app.get("versions", []) if v.get("version") != version]
+            news = prev.get("news", [])
+            screenshots = screenshots or prev_app.get("screenshots", [])
+        except (json.JSONDecodeError, AttributeError) as e:
+            print(f"make-source: warning: ignoring unreadable --previous {a.previous}: {e}", file=sys.stderr)
+
+    app = dict(APP)
+    app["screenshots"] = screenshots
+    app["versions"] = [entry] + older
+    # Older SideStore/AltStore builds read the newest version from these top-level fields.
+    app.update(version=version, versionDate=date, versionDescription=entry["localizedDescription"],
+               downloadURL=a.download_url, size=size)
+
+    source = dict(SOURCE, apps=[app], news=news)
+    a.output.write_text(json.dumps(source, indent=2, ensure_ascii=False) + "\n")
+    print(f"make-source: wrote {a.output} ({len(app['versions'])} version(s), newest {version}, {size} bytes)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

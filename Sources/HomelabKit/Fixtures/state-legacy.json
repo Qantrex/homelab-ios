@@ -1,0 +1,14 @@
+{
+  "time": "2026-11-04T21:30:00", "status": "degraded-new-value", "checked": 1762291680,
+  "problems": ["pi-media: disk / at 91%", {"text": "object problem"}, 42],
+  "hosts": [
+    {"id": "pi-two", "reachable": "yes", "load": "0.5", "mem_pct": 12.7, "temp": null, "disks": {"/": "x", "/boot": 20},
+     "containers": {"up": 3}, "flags": "undervoltage_now", "extra": {"nested": true}},
+    {"name": "no id, dropped"},
+    {"id": "mediabox", "reachable": null}
+  ],
+  "pending": [{"id": "ef56", "buttons": {"approve": 7}}, {"job": "no id, dropped"}],
+  "cards": [{"id": "c1", "style": "carousel", "tint": "neon", "items": [{"progress": 3.5}, {"progress": -1}, "bad"]}],
+  "busy": "chat",
+  "future_field": [1, 2, 3]
+}

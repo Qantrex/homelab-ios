@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Usage: scripts/lint
+# Cheap source checks that run in CI (job `linux`) and work on any machine with bash + grep.
+#   - no print( / NSLog( anywhere in Sources/ (use Logger; tests live in Tests/ and may print)
+#   - no os_log/Logger call that interpolates something token-ish (token, secret, password, api key, bearer, authorization)
+#   - no try! or fatalError( in Sources/HomelabKit (shared code must not crash the app or the widget)
+# A line ending in `// lint:allow` is skipped. Comment lines are skipped.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+fail=0
+# grep -rn output is "file:line:text"; drop comment lines and explicit opt-outs.
+filter() { grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|\*|/\*)' | grep -v 'lint:allow' || true; }
+
+check() {
+  local what=$1 pattern=$2 dir=$3 flags=${4:-}
+  [ -d "$dir" ] || return 0
+  local hits
+  # shellcheck disable=SC2086 # $flags is intentionally word-split (empty or -i)
+  hits=$(grep -rnE $flags --include='*.swift' -- "$pattern" "$dir" | filter || true)
+  if [ -n "$hits" ]; then
+    echo "lint: $what"
+    # shellcheck disable=SC2001
+    echo "$hits" | sed 's/^/  /'
+    fail=1
+  fi
+}
+
+check "print( in Sources/ (use Logger)"        '(^|[^A-Za-z0-9_.])print\('  Sources
+check "NSLog( in Sources/ (use Logger)"        '(^|[^A-Za-z0-9_.])NSLog\('  Sources
+check "token-ish value interpolated into a log call" \
+  '(os_log|[Ll]ogger\.[a-z]+|(^|[^A-Za-z0-9_])log\.[a-z]+)\(.*\\\(.*(token|secret|password|api_?key|bearer|authorization)' Sources -i
+check "try! in Sources/HomelabKit"             'try!'                       Sources/HomelabKit
+check "fatalError( in Sources/HomelabKit"      '(^|[^A-Za-z0-9_])fatalError\(' Sources/HomelabKit
+
+if [ "$fail" = 0 ]; then echo "lint: ok"; fi
+exit "$fail"

@@ -1,0 +1,7 @@
+{"services": [
+  {"name": "Home Assistant", "url": "https://ha.example.ts.net", "group": "Home", "icon": "house"},
+  {"name": "Agent chat", "url": "https://agent.example.ts.net", "group": "Home", "icon": "bubble.left.and.bubble.right"},
+  {"name": "Jellyfin", "url": "https://media.example.ts.net", "group": "Media", "icon": "play.rectangle"},
+  {"name": "Paperless", "url": "https://docs.example.ts.net", "group": "Documents", "icon": "doc.text"},
+  {"name": "Pi-hole", "url": "https://dns.example.ts.net/admin", "group": "Network", "icon": "shield"}
+]}

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Usage: scripts/build-ipa [extra xtool dev build options]
+# Builds an IPA with xtool (Linux or macOS) and prints where it is. Needs xtool set up once:
+#   macOS: brew install xtool-org/tap/xtool      Linux: see https://xtool.sh (then `xtool sdk install ~/Downloads/Xcode_27.1.xip`; docs/SETUP.md)
+# Uses a release configuration if this xtool supports one.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+command -v xtool >/dev/null || { echo "xtool not found: install it from https://github.com/xtool-org/xtool"; exit 1; }
+
+cfg=()
+help=$(xtool dev build --help 2>&1 || true)
+if grep -q -- '--configuration' <<<"$help"; then cfg=(--configuration release)
+elif grep -qE -- '(^|[[:space:]])-c[,[:space:]]' <<<"$help"; then cfg=(-c release); fi
+
+xtool dev build --ipa "${cfg[@]+"${cfg[@]}"}" "$@" < /dev/null
+ipa=$(find xtool -name '*.ipa' -print0 | xargs -0 ls -t 2>/dev/null | head -1)
+[ -n "$ipa" ] || { echo "no IPA found under xtool/"; exit 1; }
+
+echo
+echo "IPA:  $PWD/$ipa"
+echo "Size: $(du -h "$ipa" | cut -f1)"
+cat <<'TXT'
+
+To install with SideStore: copy the IPA to the iPhone (AirDrop, LocalSend, iCloud Drive or Files),
+then in SideStore: My Apps -> "+" -> pick the IPA. SideStore signs it with your Apple ID.
+For a USB install straight from this machine use scripts/install-dev instead.
+TXT
