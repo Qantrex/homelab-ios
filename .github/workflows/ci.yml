@@ -63,8 +63,7 @@ jobs:
       matrix:
         runner: [macos-26, xcode-27]
     runs-on: ${{ matrix.runner }}
-    # macos-26 is the required one; xcode-27 is an early look at the next toolchain.
-    continue-on-error: ${{ matrix.runner == 'xcode-27' }}
+    # Both are required (owner, 2026-11-05): local builds use the Xcode 27.1 SDK, so xcode-27 is the closest match.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -173,8 +172,7 @@ jobs:
             xcodebuild-server-log.txt
           retention-days: 14
 
-      # Last, so a warning never hides the screenshots or the simulator tests. Fails on macos-26 (plan: no
-      # warnings); xcode-27 only reports (new toolchains bring new warnings first).
+      # Last, so a warning never hides the screenshots or the simulator tests. Fails on any warning (plan: none).
       - name: Compiler warnings in our code
         if: always()
         run: |
@@ -187,11 +185,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           [ "$count" -eq 0 ] && exit 0
           echo "$warnings"
-          if [ "${{ matrix.runner }}" = macos-26 ]; then
-            echo "::error::$count compiler warning(s) in Sources/"
-            exit 1
-          fi
-          echo "::warning::$count compiler warning(s) in Sources/ (informational on ${{ matrix.runner }})"
+          echo "::error::$count compiler warning(s) in Sources/"
+          exit 1
 
   # Publishes the macos-26 screenshots to the orphan branch ci-screenshots. The only job that can write, and it runs
   # no third-party tools: git + bash on the downloaded PNGs. Only pushes and manual runs (PRs from forks get a

@@ -13,7 +13,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 |---|---|---|---|
 | `ci` / `linux` | `ubuntu-latest`, container `swift:6.4-noble` | every push (not `ci-screenshots`), PRs, manual | `scripts/lint` passes (no `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit); HomelabKit tests pass on Linux (`KIT_ONLY=1 swift test`, fixture server running); reference server tests pass |
 | `ci` / `macos (macos-26)` | `macos-26` | same | HomelabKit tests on macOS; the app and widget build for the simulator; the simulator build launches and every screen renders (screenshots); HomelabKit tests pass on the iOS simulator (`xcodebuild test`); no compiler warnings in `Sources/`. **Required.** |
-| `ci` / `macos (xcode-27)` | `xcode-27` | same | Same, on the next toolchain. `continue-on-error`, and warnings only reported, so it never blocks. |
+| `ci` / `macos (xcode-27)` | `xcode-27` | same | Same, on Xcode 27 (the SDK the local builds use). **Required** too (since 2026-11-05). |
 | `ci` / `screenshots` | `ubuntu-latest` | pushes and manual runs, after `macos` | Publishes the `macos-26` screenshots to the `ci-screenshots` branch (see below) |
 
 ### Steps of the macOS job
@@ -24,7 +24,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | Shared code tests | `KIT_ONLY=1 swift test` on macOS |
 | Simulator build, smoke test | `xtool dev build --triple arm64-apple-ios-simulator`, then `scripts/sim-smoke` |
 | Kit tests on the iOS simulator | Starts the fixture server, picks the newest iPhone simulator (`scripts/sim-smoke --pick main`), picks the scheme from `xcodebuild -list` (`Homelab-Package`, else `HomelabKit`), runs `xcodebuild test -only-testing:HomelabKitTests`. If the full package doesn't build there, it retries with `KIT_ONLY=1` and warns. `TEST_RUNNER_HOMELAB_FIXTURE_URL` gives the tests `HOMELAB_FIXTURE_URL`, so the integration tests run. Logs: artifact `xcodebuild-test-<runner>` |
-| Compiler warnings | Counts `warning:` lines for `Sources/` in the simulator build log and lists them in the job summary. **Fails on `macos-26`** when there is one or more; only a warning on `xcode-27`. Runs last, so it never hides the screenshots |
+| Compiler warnings | Counts `warning:` lines for `Sources/` in the simulator build log and lists them in the job summary. **Fails** when there is one or more, on both runners. Runs last, so it never hides the screenshots |
 
 ### Security of the workflow
 

@@ -25,7 +25,7 @@ simulator and the screenshots. It never builds the IPA: build that locally. See 
 
 | Rule | Why |
 |---|---|
-| Swift 6 language mode, strict concurrency, no compiler warnings (CI fails on `macos-26`) | Catch races at build time |
+| Swift 6 language mode, strict concurrency, no compiler warnings (CI fails on any) | Catch races at build time |
 | No third-party packages | Small, auditable, builds anywhere |
 | `HomelabKit` holds every decision that can be tested (decoding, errors, URL checks, diffs, formatting); views stay thin | Linux CI can test it |
 | `HomelabKit` imports Foundation only (no SwiftUI, UIKit, WidgetKit) | It must build on Linux |
