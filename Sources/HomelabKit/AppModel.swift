@@ -44,9 +44,16 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var lastBackgroundResult: String?
     /// Today's section order and hidden sections; nil = the standard layout (also for settings from older versions).
     public var today: TodayLayout?
+    /// Calm, Standard or Overkill; nil = Standard.
+    public var density: Density?
 
     public static let fileName = "settings.json"
     public init() {}
+
+    public var todayDensity: Density {
+        get { density ?? .standard }
+        set { density = newValue == .standard ? nil : newValue }
+    }
 
     public var todayLayout: TodayLayout {
         get { today ?? .standard }
@@ -412,6 +419,7 @@ public final class AppModel {
             saveServers()
         }
         if let tab = args.tab, availableTabs.contains(tab) { self.tab = tab }
+        if let d = args.density { settings.todayDensity = d }
     }
 
     public func open(_ url: URL) {
@@ -420,12 +428,13 @@ public final class AppModel {
     }
 }
 
-/// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES`
+/// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES -HomelabDensity overkill`
 struct LaunchArguments {
     var demo = false
     var reset = false
     var server: URL?
     var tab: AppTab?
+    var density: Density?
 
     init(_ args: [String]) {
         func value(_ key: String) -> String? {
@@ -437,5 +446,6 @@ struct LaunchArguments {
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }
+        density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
     }
 }

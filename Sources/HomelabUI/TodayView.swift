@@ -9,6 +9,8 @@ struct TodayView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var status: ServerStatus { model.selectedStatus }
+    private var density: Density { model.settings.todayDensity }
+    private func when(_ date: Date?) -> String { Format.when(date, exact: density.exactTimes) }
     private var state: HomelabState? { status.snapshot?.state }
 
     /// The card shown as the day's numbers under the hero: the server's "today" card, else the first metrics card.
@@ -35,7 +37,7 @@ struct TodayView: View {
                         }
                     }
                     // In my order, without the hidden ones (Settings → Today).
-                    ForEach(model.settings.todayLayout.visible) { section(for: $0) }
+                    ForEach(density.sections(model.settings.todayLayout)) { section(for: $0) }
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -105,10 +107,13 @@ struct TodayView: View {
         if status.loading {
             parts.append(String(localized: "updating…"))
         } else if let checked = state?.checked {
-            parts.append(String(localized: "checked \(Format.age(checked))"))
+            parts.append(String(localized: "checked \(when(checked))"))
         }
         if let fetched = status.snapshot?.fetched, status.snapshot?.isStale() == true {
-            parts.append(String(localized: "data from \(Format.age(fetched))"))
+            parts.append(String(localized: "data from \(when(fetched))"))
+        }
+        if density == .overkill, let busy = state?.busy, !busy.isEmpty {
+            parts.append(String(localized: "busy: \(busy.joined(separator: ", "))"))
         }
         return parts.joined(separator: " · ").uppercased()
     }
@@ -128,6 +133,8 @@ struct TodayView: View {
             if let state, model.selected != nil { otherCards(state) }
         case .report:
             if let state, model.selected != nil { lastReport(state) }
+        case .machines:
+            if let state, model.selected != nil, !state.hosts.isEmpty { MachineList(hosts: state.hosts, exact: density.exactTimes) }
         }
     }
 
@@ -139,23 +146,28 @@ struct TodayView: View {
                 model.tab = .actions
             } label: {
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(pending.prefix(3)) { p in
+                    ForEach(pending.prefix(density == .overkill ? pending.count : 3)) { p in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text([p.action, p.arg].compactMap { $0 }.joined(separator: " "))
                                     .font(Typo.mono(.subheadline, weight: .semibold)).lineLimit(1)
                                 if let reason = p.reason {
-                                    Text(reason).font(.caption).foregroundStyle(Palette.secondary).lineLimit(2)
+                                    Text(reason).font(.caption).foregroundStyle(Palette.secondary)
+                                        .lineLimit(density == .overkill ? nil : 2)
+                                }
+                                // Overkill's exact times are long: their own line, so the title keeps its room.
+                                if density.exactTimes, let created = p.created {
+                                    Text(when(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                                 }
                             }
                             Spacer(minLength: 8)
-                            if let created = p.created {
-                                Text(Format.age(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                            if !density.exactTimes, let created = p.created {
+                                Text(when(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                             }
                         }
                     }
-                    if pending.count > 3 {
+                    if density != .overkill, pending.count > 3 {
                         Text("and \(pending.count - 3) more").font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                     }
                 }
@@ -175,7 +187,7 @@ struct TodayView: View {
     private func lastReport(_ state: HomelabState) -> some View {
         if let m = state.lastMessage, !m.text.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                SectionTitle(text: "Last report", trailing: m.ts.map { Format.age($0) })
+                SectionTitle(text: "Last report", trailing: m.ts.map { when($0) })
                 Button {
                     model.tab = .chat
                 } label: {
@@ -255,5 +267,56 @@ struct DayNumbers: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(card.title ?? String(localized: "Today")))
+    }
+}
+
+/// Overkill: every machine with all its numbers, one dense block each. Tap a host in Lab for the details screen.
+struct MachineList: View {
+    let hosts: [Host]
+    let exact: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(text: "Machines", trailing: "\(hosts.filter { $0.reachable == true }.count)/\(hosts.count) up")
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(hosts) { host in
+                    let health = HostHealth(host)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Circle().fill(health.color).frame(width: 7, height: 7)
+                            Text(host.name).font(Typo.mono(.subheadline, weight: .semibold))
+                            if health != .ok { Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color) }
+                            Spacer(minLength: 4)
+                            if let checked = host.checked {
+                                Text(Format.when(checked, exact: exact)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                            }
+                        }
+                        Text(numbers(host)).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if !host.flags.isEmpty {
+                            Text(host.flags.map(Format.flag).joined(separator: " · ")).font(Typo.mono(.caption2))
+                                .foregroundStyle(host.flags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .card()
+        }
+    }
+
+    /// "LOAD 1.85/4 · RAM 71% · / 81% · /srv 40% · 63 °C · CT 14/14 · UPD 3 · REBOOT · BACKUP ok"
+    private func numbers(_ h: Host) -> String {
+        guard h.reachable == true else { return HostHealth(h).label }
+        var p: [String] = []
+        if h.load != nil { p.append("LOAD " + Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? "")) }
+        if h.memPct != nil { p.append("RAM " + Format.percent(h.memPct)) }
+        for (mount, pct) in h.disks.sorted(by: { $0.key < $1.key }) { p.append("\(mount) \(pct)%") }
+        if h.temp != nil { p.append(Format.temperature(h.temp)) }
+        if h.containersTotal != nil { p.append("CT " + Format.containers(up: h.containersUp, total: h.containersTotal)) }
+        if let u = h.upgradable, u > 0 { p.append("UPD \(u)") }
+        if h.rebootRequired == true { p.append("REBOOT") }
+        if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append("BACKUP " + b) }
+        return p.joined(separator: " · ")
     }
 }

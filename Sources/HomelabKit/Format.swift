@@ -14,6 +14,16 @@ public enum Format {
         return "\(Int(s / 86400)) d ago"
     }
 
+    /// Overkill: the exact time ("23:41:07", with the day when it isn't today) and the age; else just the age.
+    public static func when(_ date: Date?, exact: Bool, now: Date = Date(), calendar: Calendar = .current) -> String {
+        guard exact, let date else { return age(date, now: now) }
+        let c = calendar.dateComponents([.hour, .minute, .second], from: date)
+        let clock = String(format: "%02d:%02d:%02d", c.hour ?? 0, c.minute ?? 0, c.second ?? 0)
+        if calendar.isDate(date, inSameDayAs: now) { return "\(clock) (\(age(date, now: now)))" }
+        let d = calendar.dateComponents([.day, .month], from: date)
+        return String(format: "%02d.%02d. ", d.day ?? 0, d.month ?? 0) + clock + " (\(age(date, now: now)))"
+    }
+
     /// Same default as the reference server's `temp_warning`.
     public static let hotCelsius = 80.0
 

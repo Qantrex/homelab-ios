@@ -40,6 +40,11 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker("Detail", selection: Binding(get: { model.settings.todayDensity },
+                                                        set: { model.settings.todayDensity = $0 })) {
+                        ForEach(Density.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                     NavigationLink {
                         TodayLayoutEditor(model: model)
                     } label: {
@@ -48,7 +53,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Today")
                 } footer: {
-                    Text("Choose what Today shows under the headline, and in which order.")
+                    Text("Calm: the headline, the day's numbers and Home. Standard: the sections you choose. Overkill: everything at once, every machine's numbers and exact times.")
                 }
 
                 Section {

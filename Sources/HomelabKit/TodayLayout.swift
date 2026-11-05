@@ -7,6 +7,7 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
     case home      // Home Assistant tiles
     case cards     // the other cards (media, downloads, school, …)
     case report    // the last report
+    case machines  // every host's numbers in one dense list (Overkill only)
 
     public var id: String { rawValue }
 
@@ -17,6 +18,7 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
         case .home: "Home tiles"
         case .cards: "Cards"
         case .report: "Last report"
+        case .machines: "Machines (Overkill)"
         }
     }
 }
@@ -63,4 +65,32 @@ public struct TodayLayout: Codable, Equatable, Sendable {
         list.insert(contentsOf: moving, at: at)
         order = list.map(\.rawValue)
     }
+}
+
+/// How much Today shows, like a weather app's "overkill" layout. Calm: the headline, the day's numbers and Home.
+/// Standard: every section I turned on. Overkill: everything, plus every machine's numbers and exact times.
+public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
+    case calm, standard, overkill
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .calm: "Calm"
+        case .standard: "Standard"
+        case .overkill: "Overkill"
+        }
+    }
+
+    /// The sections Today shows, from my layout (order and hidden ones) and this density.
+    public func sections(_ layout: TodayLayout) -> [TodaySection] {
+        switch self {
+        case .calm: layout.visible.filter { $0 == .day || $0 == .home }
+        case .standard: layout.visible.filter { $0 != .machines }
+        case .overkill: layout.sections   // everything, hidden ones too: that's the point
+        }
+    }
+
+    /// "23:41" instead of "2 min ago".
+    public var exactTimes: Bool { self == .overkill }
 }
