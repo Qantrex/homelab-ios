@@ -87,7 +87,7 @@ struct ChatView: View {
                 messages
                 composer
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             // Restarts on server change and when the app comes back; stops while it's in the background.
@@ -170,7 +170,8 @@ struct ChatView: View {
                     .focused($focused)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.line, lineWidth: 1))
                     .submitLabel(.send)
                     .onSubmit { submit(draft) }
                 Button {
@@ -185,7 +186,7 @@ struct ChatView: View {
             if trimmed.count > CompanionClient.maxMessageLength - 200 {
                 Text("\(trimmed.count)/\(CompanionClient.maxMessageLength)")
                     .font(.caption2)
-                    .foregroundStyle(trimmed.count > CompanionClient.maxMessageLength ? .red : .secondary)
+                    .foregroundStyle(trimmed.count > CompanionClient.maxMessageLength ? Palette.love : Palette.secondary)
             }
         }
         .padding(.vertical, 8)
@@ -219,14 +220,15 @@ struct Bubble: View {
                     .textSelection(.enabled)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(mine ? Color.accentColor : Color(.secondarySystemGroupedBackground),
-                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .foregroundStyle(mine ? Color.white : Color.primary)
+                    .background(mine ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(mine ? Color.clear : Palette.line, lineWidth: 1))
+                    .foregroundStyle(mine ? Palette.onAccent : Palette.text)
                     .contextMenu {
                         Button { UIPasteboardBridge.copy(message.text) } label: { Label("Copy", systemImage: "doc.on.doc") }
                     }
                 if let ts = message.ts {
-                    Text(ts, format: .dateTime.hour().minute()).font(.caption2).foregroundStyle(.secondary)
+                    Text(ts, format: .dateTime.hour().minute()).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                 }
             }
             if !mine { Spacer(minLength: 40) }
@@ -247,8 +249,8 @@ struct OutgoingBubble: View {
                 Text(outgoing.text)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.accentColor.opacity(failed ? 0.35 : 0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .foregroundStyle(.white)
+                    .background(Palette.text.opacity(failed ? 0.35 : 0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .foregroundStyle(Palette.onAccent)
                 switch outgoing.state {
                 case .sending:
                     Text("Sending…").font(.caption2).foregroundStyle(.secondary)
@@ -258,7 +260,7 @@ struct OutgoingBubble: View {
                     Button(action: edit) {
                         Label("Not sent: \(why) Tap to edit.", systemImage: "exclamationmark.circle")
                             .font(.caption2)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Palette.love)
                             .multilineTextAlignment(.trailing)
                     }
                     .buttonStyle(.plain)

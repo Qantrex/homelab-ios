@@ -18,13 +18,20 @@ public enum AppLog {
 }
 
 public enum AppTab: String, CaseIterable, Hashable, Sendable {
-    case overview, actions, chat, home, settings
+    case today, actions, chat, lab, settings
+
+    /// A tab by name. Older names still work: the overview and the Home tab became Today (2026-11-05).
+    public init?(name: String) {
+        switch name.lowercased() {
+        case "overview", "home": self = .today
+        default: self.init(rawValue: name.lowercased())
+        }
+    }
 
     /// `homelab://actions` and the widget's links.
     public init?(url: URL) {
         guard url.scheme == "homelab" else { return nil }
-        let name = url.host ?? url.pathComponents.dropFirst().first ?? ""
-        self.init(rawValue: name.lowercased())
+        self.init(name: url.host ?? url.pathComponents.dropFirst().first ?? "")
     }
 }
 
@@ -77,7 +84,7 @@ public final class AppModel {
     public private(set) var servers = ServerList()
     public private(set) var status: [UUID: ServerStatus] = [:]
     public var settings = AppSettings() { didSet { if settings != oldValue { saveSettings() } } }
-    public var tab: AppTab = .overview
+    public var tab: AppTab = .today
     public var locked = false
 
     public let storage: Storage
@@ -121,19 +128,19 @@ public final class AppModel {
 
     /// The tabs RootView shows right now. Deep links and launch arguments can only pick one of these.
     public var availableTabs: Set<AppTab> {
-        var t: Set<AppTab> = [.overview, .settings]
+        var t: Set<AppTab> = [.today, .settings]
         if selected != nil {
             let f = selectedStatus.features
+            t.insert(.lab)
             if f.contains(.actions) { t.insert(.actions) }
             if f.contains(.chat) { t.insert(.chat) }
         }
-        if homeAssistant != nil { t.insert(.home) }
         return t
     }
 
-    /// Falls back to the overview when the shown tab went away (feature list changed, HA server removed).
+    /// Falls back to Today when the shown tab went away (feature list changed, server removed).
     public func validateTab() {
-        if !availableTabs.contains(tab) { tab = .overview }
+        if !availableTabs.contains(tab) { tab = .today }
     }
 
     /// Shows another server. The overview's poll loop restarts for it and fetches; no extra fetch here.
@@ -215,7 +222,7 @@ public final class AppModel {
         settings = AppSettings()
         demo = nil
         refreshAgain = []
-        tab = .overview
+        tab = .today
         onWidgetDataChange()
     }
 
@@ -402,7 +409,7 @@ public final class AppModel {
 
     public func open(_ url: URL) {
         guard let t = AppTab(url: url) else { return }
-        tab = availableTabs.contains(t) ? t : .overview
+        tab = availableTabs.contains(t) ? t : .today
     }
 }
 
@@ -422,6 +429,6 @@ struct LaunchArguments {
         demo = yes("HomelabDemo")
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
-        tab = value("HomelabTab").flatMap { AppTab(rawValue: $0.lowercased()) }
+        tab = value("HomelabTab").flatMap { AppTab(name: $0) }
     }
 }

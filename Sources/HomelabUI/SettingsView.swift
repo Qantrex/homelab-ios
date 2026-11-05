@@ -198,9 +198,9 @@ struct ServerEditor: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                         if case .failure(let p) = urlResult, !address.isEmpty {
-                            Text(URLPolicy.message(p)).font(.caption).foregroundStyle(.red)
+                            Text(URLPolicy.message(p)).font(.caption).foregroundStyle(Palette.love)
                         } else if case .success(let url) = urlResult, url.scheme == "http" {
-                            Text("Plain http: only use this inside your home network or tailnet.").font(.caption).foregroundStyle(.orange)
+                            Text("Plain http: only use this inside your home network or tailnet.").font(.caption).foregroundStyle(Palette.gold)
                         }
                     } footer: {
                         Text(kind == .homeAssistant
@@ -246,12 +246,12 @@ struct ServerEditor: View {
                         .disabled(testing || (try? urlResult.get()) == nil)
                         if let testResult {
                             switch testResult {
-                            case .success(let text): Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                            case .failure(let e): Label(e.message, systemImage: "xmark.circle.fill").foregroundStyle(.red)
+                            case .success(let text): Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.text)
+                            case .failure(let e): Label(e.message, systemImage: "xmark.circle.fill").foregroundStyle(Palette.love)
                             }
                         }
                     }
-                    if let saveError { Section { Text(saveError).foregroundStyle(.red) } }
+                    if let saveError { Section { Text(saveError).foregroundStyle(Palette.love) } }
 
                     if let original {
                         Section {
@@ -372,7 +372,7 @@ struct DiagnosticsView: View {
                         Text(s.name).font(.subheadline.weight(.medium))
                         Text("\(s.kind.rawValue), \(s.auth.rawValue), \(s.host)").font(.caption).foregroundStyle(.secondary)
                         if let snap = st?.snapshot { Text("data \(Format.age(snap.fetched))").font(.caption) }
-                        if let e = st?.error { Text(e.message).font(.caption).foregroundStyle(.red) }
+                        if let e = st?.error { Text(e.message).font(.caption).foregroundStyle(Palette.love) }
                         if let info = st?.info {
                             Text("\(info.server ?? "?") \(info.version ?? ""), API \(info.api), \(info.features.map(\.rawValue).sorted().joined(separator: ", "))")
                                 .font(.caption2).foregroundStyle(.secondary)

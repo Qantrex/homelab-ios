@@ -16,7 +16,7 @@ public struct RootView: View {
         ZStack {
             // While locked, nothing behind the lock exists: no tab, sheet or dialog can be reached (or read by VoiceOver).
             if model.locked {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                Palette.background.ignoresSafeArea()
             } else if model.hasServers {
                 tabs
             } else {
@@ -49,6 +49,7 @@ public struct RootView: View {
             }
         }
         .onChange(of: model.availableTabs) { _, _ in model.validateTab() }
+        .tint(Palette.accent)
     }
 
     /// Sheets, alerts and confirmation dialogs live above the root view; close them all before locking.
@@ -63,8 +64,8 @@ public struct RootView: View {
 
     private var tabs: some View {
         TabView(selection: $model.tab) {
-            Tab("Overview", systemImage: "square.grid.2x2", value: AppTab.overview) {
-                OverviewView(model: model)
+            Tab("Today", systemImage: "sun.horizon", value: AppTab.today) {
+                TodayView(model: model)
             }
             if model.selectedStatus.features.contains(.actions) {
                 Tab("Actions", systemImage: "checkmark.shield", value: AppTab.actions) {
@@ -77,9 +78,9 @@ public struct RootView: View {
                     ChatView(model: model)
                 }
             }
-            if model.homeAssistant != nil {
-                Tab("Home", systemImage: "house", value: AppTab.home) {
-                    HomeView(model: model)
+            if model.selected != nil {
+                Tab("Lab", systemImage: "server.rack", value: AppTab.lab) {
+                    LabView(model: model)
                 }
             }
             Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {

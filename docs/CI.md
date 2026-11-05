@@ -42,12 +42,12 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 
 | # | Shots |
 |---|---|
-| 01–05 | Demo mode, every tab (overview, actions, chat, home, settings), light. **Core**: sim-smoke fails without them |
+| 01–05 | Demo mode, every tab (today, actions, chat, lab, settings), light. **Core**: sim-smoke fails without them |
 | 06–10 | The same, dark |
 | 11–15 | The same, accessibility extra-large text (`-xxl`) |
-| 16–20 | Live mode against the fixture server: `state-problem.json` overview and chat, `state-pending.json` actions, `state-huge.json` overview, `state-ok.json` overview |
+| 16–20 | Live mode against the fixture server: `state-problem.json` today and chat, `state-pending.json` actions, `state-huge.json` lab, `state-ok.json` today |
 | 21 | Offline: the fixture server is stopped and the app relaunched; it should show the cached data with its age and the error bar |
-| 22–23 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini): demo overview and actions |
+| 22–23 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini; never a two-screen model like "iPhone Duo"): demo today and actions |
 
 Other failed shots are listed in `summary.txt` but don't fail the step. There is no deep-link shot: `simctl openurl`
 shows an "Open in Homelab?" system prompt; the launch argument `-HomelabTab` covers opening a tab directly.
@@ -58,8 +58,8 @@ They are:
 - on the orphan branch `ci-screenshots`, under `<branch>/<short-sha>/` (a `/` in the branch name becomes `-`).
   `<branch>/latest.txt` holds the newest short sha; only the last 5 sha folders per branch are kept. Only `macos-26`
   pushes there (the `screenshots` job), and only for pushes and manual runs (PRs from forks get a read-only token).
-- the README set, always from the newest run, under fixed names in `<branch>/readme/`: `01-overview.png`,
-  `02-actions.png`, `03-chat.png`, `04-home.png`, `05-settings.png` (demo, light) and `06-dark.png` (demo overview,
+- the README set, always from the newest run, under fixed names in `<branch>/readme/`: `01-today.png`,
+  `02-actions.png`, `03-chat.png`, `04-lab.png`, `05-settings.png` (demo, light) and `06-dark.png` (demo today,
   dark); `readme/sha.txt` says which run they came from. Copy them into `docs/screenshots/` for the README.
 
 Open them in the browser: `https://github.com/Qantrex/homelab-ios/tree/ci-screenshots`.

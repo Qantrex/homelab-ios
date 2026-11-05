@@ -2,7 +2,7 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-/// Home Assistant: the pinned entities, toggles and scripts. Not a dashboard clone; the pins are chosen here.
+/// Loads Home Assistant entities and runs taps on them. Used by the tiles on Today.
 @MainActor @Observable
 final class HomeModel {
     var entities: [HAEntity] = []
@@ -59,91 +59,118 @@ final class HomeModel {
     }
 }
 
-struct HomeView: View {
+/// Home Assistant on Today: only the few pinned things I use often (owner, 2026-11-05: living room lamps and
+/// "stop the morning routine"), as tiles. Everything else stays in the HA app. The pins are chosen with "Edit".
+struct HomeTiles: View {
     let model: AppModel
+    let server: ServerConfig
     @State private var home = HomeModel()
     @State private var picking = false
     @Environment(\.scenePhase) private var scenePhase
-
-    private var server: ServerConfig? { model.homeAssistant }
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var pinned: [HAEntity] {
-        guard let server else { return [] }
         let byID = Dictionary(home.entities.map { ($0.entityID, $0) }, uniquingKeysWith: { a, _ in a })
         return server.pinnedEntities.compactMap { byID[$0] }
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                if let error = home.error {
-                    ErrorBanner(error: error, snapshotAge: nil) { Task { await load() } }
-                        .listRowBackground(Color.clear)
+        VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(text: "Home", action: home.entities.isEmpty ? nil : ("EDIT", { picking = true }))
+            if let error = home.error {
+                ErrorBanner(error: error, snapshotAge: nil) { Task { await load() } }
+            }
+            if pinned.isEmpty {
+                if home.loading && home.entities.isEmpty {
+                    ProgressView().frame(maxWidth: .infinity).card()
+                } else if home.error == nil {
+                    Button { picking = true } label: {
+                        Label("Pin the lights or scripts you use most", systemImage: "pin")
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.secondary)
+                            .card()
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(home.entities.isEmpty)
                 }
-                let groups = Dictionary(grouping: pinned, by: \.domain)
-                ForEach(groups.keys.sorted(by: domainOrder), id: \.self) { domain in
-                    Section(domainTitle(domain)) {
-                        ForEach(groups[domain] ?? []) { e in
-                            EntityRow(entity: e, busy: home.busy.contains(e.entityID)) {
-                                guard let server else { return }
-                                Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
-                            }
+            } else {
+                LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
+                                                                : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                          spacing: 10) {
+                    ForEach(pinned) { e in
+                        HomeTile(entity: e, busy: home.busy.contains(e.entityID)) {
+                            Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
                         }
                     }
                 }
             }
-            .overlay {
-                if pinned.isEmpty, !home.loading, home.error == nil {
-                    ContentUnavailableView {
-                        Label("No devices pinned", systemImage: "pin")
-                    } description: {
-                        Text("Pick the lights, switches and scripts you want here.")
-                    } actions: {
-                        Button("Choose devices") { picking = true }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(home.entities.isEmpty)
-                    }
-                } else if home.loading && home.entities.isEmpty {
-                    ProgressView()
-                }
-            }
-            .refreshable { await load() }
-            .navigationTitle(server?.name ?? "Home")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { picking = true } label: { Label("Edit", systemImage: "pin") }
-                        .disabled(home.entities.isEmpty)
-                }
-            }
-            .sheet(isPresented: $picking) {
-                if let server {
-                    EntityPicker(entities: home.entities, selected: server.pinnedEntities) { model.setPinned($0, for: server.id) }
-                }
-            }
-            .alert("Didn't work", isPresented: Binding(get: { home.actionError != nil }, set: { if !$0 { home.actionError = nil } })) {
-                Button("OK") {}
-            } message: {
-                Text(home.actionError ?? "")
-            }
-            .task(id: PollKey(server: server?.target, active: scenePhase == .active)) {
-                home.reset(for: server)
-                guard scenePhase == .active else { return }
-                while !Task.isCancelled {
-                    await load()
-                    try? await Task.sleep(for: .seconds(30))
-                }
+        }
+        .sheet(isPresented: $picking) {
+            EntityPicker(entities: home.entities, selected: server.pinnedEntities) { model.setPinned($0, for: server.id) }
+        }
+        .alert("Didn't work", isPresented: Binding(get: { home.actionError != nil }, set: { if !$0 { home.actionError = nil } })) {
+            Button("OK") {}
+        } message: {
+            Text(home.actionError ?? "")
+        }
+        .task(id: PollKey(server: server.target, active: scenePhase == .active)) {
+            home.reset(for: server)
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await load()
+                try? await Task.sleep(for: .seconds(30))
             }
         }
     }
 
     private func load() async {
-        guard let server else { return }
         await home.load(model.homeAssistantAPI(for: server), host: server.host)
     }
+}
 
-    private func domainOrder(_ a: String, _ b: String) -> Bool {
-        let order = ["light", "switch", "fan", "input_boolean", "scene", "script", "button", "input_button", "sensor", "binary_sensor"]
-        return (order.firstIndex(of: a) ?? 99, a) < (order.firstIndex(of: b) ?? 99, b)
+/// One Home Assistant tile: icon, name, state. Tap toggles a light/switch or runs a script/scene. A tile that is on
+/// is filled (white on black), so the state reads without colour.
+struct HomeTile: View {
+    let entity: HAEntity
+    let busy: Bool
+    let tap: () -> Void
+
+    private var on: Bool { entity.control == .toggle && entity.isOn }
+
+    var body: some View {
+        Button(action: tap) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: entitySymbol(entity)).font(.title3)
+                    Spacer()
+                    if busy { ProgressView().controlSize(.small).tint(on ? Palette.onAccent : Palette.text) }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entity.name).font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(stateText.uppercased()).font(Typo.mono(.caption2)).opacity(0.7)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .foregroundStyle(on ? Palette.onAccent : Palette.text)
+            .background(on ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? Color.clear : Palette.line, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+        .disabled(busy || !entity.isAvailable || entity.control == .none)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(entity.name))
+        .accessibilityValue(Text(entity.displayState))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var stateText: String {
+        switch entity.control {
+        case .toggle: entity.isAvailable ? (entity.isOn ? String(localized: "On") : String(localized: "Off")) : entity.displayState
+        case .run: entity.lastChanged.map { String(localized: "ran \(Format.age($0))") } ?? String(localized: "Tap to run")
+        case .none: entity.displayState
+        }
     }
 }
 
@@ -191,45 +218,7 @@ func entitySymbol(_ e: HAEntity) -> String {
     }
 }
 
-struct EntityRow: View {
-    let entity: HAEntity
-    let busy: Bool
-    let tap: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: entitySymbol(entity))
-                .foregroundStyle(entity.isOn ? Color.yellow : Color.secondary)
-                .frame(width: 26)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entity.name)
-                if let changed = entity.lastChanged {
-                    Text(Format.age(changed)).font(.caption2).foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if busy {
-                ProgressView()
-            } else {
-                switch entity.control {
-                case .toggle:
-                    Toggle(entity.name, isOn: Binding(get: { entity.isOn }, set: { _ in tap() }))
-                        .labelsHidden()
-                        .disabled(!entity.isAvailable)
-                case .run:
-                    Button("Run", action: tap).buttonStyle(.bordered).disabled(!entity.isAvailable)
-                case .none:
-                    Text(entity.displayState).foregroundStyle(.secondary).monospacedDigit()
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(Text(entity.displayState))
-    }
-}
-
-/// Choose which entities the Home tab shows.
+/// Choose which entities Today shows as tiles.
 struct EntityPicker: View {
     let entities: [HAEntity]
     @State var selected: [String]
@@ -276,7 +265,7 @@ struct EntityPicker: View {
                 }
             }
             .searchable(text: $query)
-            .navigationTitle("Pinned devices")
+            .navigationTitle("Tiles on Today")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

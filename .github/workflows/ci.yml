@@ -228,12 +228,12 @@ jobs:
           fi
           # README set: fixed names in <branch>/readme/, always the newest run, for docs/screenshots.
           readme=(
-            01-demo-overview-light:01-overview.png
+            01-demo-today-light:01-today.png
             02-demo-actions-light:02-actions.png
             03-demo-chat-light:03-chat.png
-            04-demo-home-light:04-home.png
+            04-demo-lab-light:04-lab.png
             05-demo-settings-light:05-settings.png
-            06-demo-overview-dark:06-dark.png
+            06-demo-today-dark:06-dark.png
           )
           publish() {
             cd "$wt"
@@ -271,5 +271,5 @@ jobs:
             echo "### Screenshots ($branch @ $sha)"
             for f in "$GITHUB_WORKSPACE"/shots/*.png; do n=$(basename "$f"); echo "<img src=\"$base/$n\" width=\"200\" title=\"$n\">"; done
             echo
-            echo "README set: \`$branch/readme/\` (01-overview … 06-dark)"
+            echo "README set: \`$branch/readme/\` (01-today … 06-dark)"
           } >> "$GITHUB_STEP_SUMMARY"

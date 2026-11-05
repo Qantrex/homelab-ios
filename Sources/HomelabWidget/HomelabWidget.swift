@@ -61,7 +61,7 @@ struct StatusWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabStatus", provider: Provider()) { entry in
             StatusView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(Palette.background, for: .widget)
         }
         .configurationDisplayName("Homelab status")
         .description("Overall status and actions waiting for you.")
@@ -89,7 +89,7 @@ struct StatusView: View {
                     if pending > 0 { Text("\(pending)").font(.caption2.bold()) }
                 }
             }
-            .widgetURL(URL(string: pending > 0 ? "homelab://actions" : "homelab://overview"))
+            .widgetURL(URL(string: pending > 0 ? "homelab://actions" : "homelab://today"))
             .accessibilityLabel(Text("Homelab \(status.title), \(pending) waiting"))
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
@@ -97,7 +97,7 @@ struct StatusView: View {
                 Text(line).font(.caption).privacySensitive()
                 Text(age).font(.caption2).foregroundStyle(.secondary)
             }
-            .widgetURL(URL(string: "homelab://overview"))
+            .widgetURL(URL(string: "homelab://today"))
         case .accessoryInline:
             Label("\(status.title)\(pending > 0 ? " · \(pending) waiting" : "")", systemImage: status.symbol)
         default:
@@ -115,8 +115,8 @@ struct StatusView: View {
                         .font(.caption.bold())
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
-                        .background(Color.blue, in: Capsule())
-                        .foregroundStyle(.white)
+                        .background(Palette.gold, in: Capsule())
+                        .foregroundStyle(Color.black)
                         .accessibilityLabel(Text("\(pending) actions waiting"))
                 }
             }
@@ -128,7 +128,7 @@ struct StatusView: View {
             Spacer(minLength: 0)
             Text(age).font(.caption2).foregroundStyle(.secondary)
         }
-        .widgetURL(URL(string: pending > 0 ? "homelab://actions" : "homelab://overview"))
+        .widgetURL(URL(string: pending > 0 ? "homelab://actions" : "homelab://today"))
     }
 
     private var line: String {
@@ -153,8 +153,8 @@ struct HostsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabHosts", provider: Provider()) { entry in
             HostsView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
-                .widgetURL(URL(string: "homelab://overview"))
+                .containerBackground(Palette.background, for: .widget)
+                .widgetURL(URL(string: "homelab://today"))
         }
         .configurationDisplayName("Homelab hosts")
         .description("Each host with load, memory and disk.")

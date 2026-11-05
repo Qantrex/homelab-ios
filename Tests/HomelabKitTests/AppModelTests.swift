@@ -215,12 +215,19 @@ let labURL = URL(string: "https://lab.example.ts.net")!
 
     @Test func tabsAndDeepLinks() async throws {
         let (m, _, _, _) = makeModel()
-        #expect(m.availableTabs == [.overview, .settings])
-        m.open(URL(string: "homelab://home")!)
-        #expect(m.tab == .overview)                                    // no HA server: no Home tab
+        #expect(m.availableTabs == [.today, .settings])
+        m.open(URL(string: "homelab://lab")!)
+        #expect(m.tab == .today)                                       // no server: no Lab tab
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
         #expect(!m.availableTabs.contains(.chat))                      // before /info: only what data shows
+        m.open(URL(string: "homelab://lab")!)
+        #expect(m.tab == .lab)
+        for old in ["homelab://overview", "homelab://home"] {         // links from older widgets open Today
+            m.tab = .lab
+            m.open(URL(string: old)!)
+            #expect(m.tab == .today)
+        }
         await m.refresh()
         #expect(m.availableTabs.isSuperset(of: [.actions, .chat]))
         m.open(URL(string: "homelab://chat")!)
@@ -228,7 +235,7 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         m.open(URL(string: "https://evil.example/chat")!)
         #expect(m.tab == .chat)                                        // other schemes are ignored
         m.remove(lab.id)
-        #expect(m.tab == .overview)                                    // tab went away with the server
+        #expect(m.tab == .today)                                       // tab went away with the server
     }
 
     @Test func launchArguments() throws {
@@ -241,7 +248,7 @@ let labURL = URL(string: "https://lab.example.ts.net")!
                                      storage: storage, tokens: tokens)
         #expect(m.servers.servers.count == 1 && m.selected?.id != old.id && m.selected?.auth == .identity)
         #expect(tokens.token(for: old.id) == nil)                      // the replaced server's token is gone
-        #expect(m.tab == .overview)                                    // chat isn't known to exist yet
+        #expect(m.tab == .today)                                       // chat isn't known to exist yet
 
         let (r, _, rs, rt) = makeModel(args: ["app", "-HomelabResetState", "YES", "-HomelabDemo", "YES"],
                                        storage: storage, tokens: tokens)

@@ -111,9 +111,9 @@ struct ActionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text(action.title).font(.headline)
+                Text(action.title).font(Typo.mono(.headline, weight: .semibold))
                 Spacer()
-                if let created = action.created { Text(Format.age(created)).font(.caption).foregroundStyle(.secondary) }
+                if let created = action.created { Text(Format.age(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary) }
             }
             if let reason = action.reason { Text(markdown(reason)).font(.subheadline).foregroundStyle(.secondary) }
             HStack(spacing: 6) {
@@ -154,6 +154,7 @@ struct ActionRow: View {
         if action.buttons[.deny] != nil {
             Button(role: .destructive) { tap(.deny) } label: { ButtonText(title: "Deny", symbol: "xmark") }
                 .buttonStyle(.bordered)
+                .tint(Palette.love)
                 .fixedSize()
         }
     }

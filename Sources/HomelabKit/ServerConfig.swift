@@ -34,8 +34,8 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
 
     public static func demoHomeAssistant() -> ServerConfig {
         ServerConfig(name: "Demo Home Assistant", kind: .demo, baseURL: URL(string: "https://ha.demo.invalid")!,
-                     auth: .identity, pinnedEntities: ["light.living_room", "switch.heater", "script.goodnight",
-                                                       "sensor.living_room_temperature", "binary_sensor.front_door"])
+                     auth: .identity, pinnedEntities: ["light.living_room", "script.goodnight", "switch.heater",
+                                                       "sensor.living_room_temperature"])
     }
 
     public var isDemoHomeAssistant: Bool { kind == .demo && baseURL.host == "ha.demo.invalid" }

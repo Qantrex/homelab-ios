@@ -4,15 +4,73 @@ import SwiftUI
 import UIKit
 #endif
 
-// Colours, icons and small building blocks shared by the app and the widget. No UIKit, so the widget can use it.
+// Colours, icons and small building blocks shared by the app and the widget.
+//
+// The look (owner, 2026-11-05): true black, monochrome white/grey type, numbers in a mono font, thin borders instead
+// of filled cards. Colour only for status, from Rosé Pine Moon: love = problem, gold = warning, iris = links and
+// "asleep". No blue anywhere. Light mode is the same in white/black. Change colours here only.
+
+/// Every colour the app and the widget use.
+public enum Palette {
+    /// Screen background: #000000 in dark mode, white in light mode.
+    public static let background = dynamic(dark: 0x000000, light: 0xFFFFFF)
+    /// Panels on the background.
+    public static let surface = dynamic(dark: 0x0B0B0B, light: 0xF6F6F6)
+    /// Raised things inside a panel (buttons, tiles that are on).
+    public static let raised = dynamic(dark: 0x1A1A1A, light: 0xE9E9E9)
+    /// Hairlines and meter tracks.
+    public static let line = dynamic(dark: 0x262626, light: 0xDDDDDD)
+    /// Main text and the accent (buttons, selected tab): white on black, black on white.
+    public static let text = dynamic(dark: 0xF2F2F2, light: 0x0A0A0A)
+    public static let secondary = dynamic(dark: 0x9A9A9A, light: 0x5C5C5C)
+    public static let tertiary = dynamic(dark: 0x5E5E5E, light: 0x9A9A9A)
+    /// Text on an accent-coloured button.
+    public static let onAccent = dynamic(dark: 0x000000, light: 0xFFFFFF)
+    public static let accent = text
+
+    /// Rosé Pine Moon (dark) and Rosé Pine Dawn (light, readable on white).
+    public static let love = dynamic(dark: 0xEB6F92, light: 0xB4637A)
+    public static let gold = dynamic(dark: 0xF6C177, light: 0xEA9D34)
+    public static let iris = dynamic(dark: 0xC4A7E7, light: 0x907AA9)
+
+    static func dynamic(dark: UInt32, light: UInt32) -> Color {
+        #if canImport(UIKit)
+        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+        #else
+        Color(hex: dark)
+        #endif
+    }
+}
+
+/// Fonts: system text, numbers and labels in the monospaced design.
+public enum Typo {
+    public static func mono(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
+        .system(style, design: .monospaced).weight(weight)
+    }
+}
+
+#if canImport(UIKit)
+extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+#endif
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    }
+}
 
 public extension OverallStatus {
     var color: Color {
         switch self {
-        case .ok: .green
-        case .warning: .orange
-        case .problem: .red
-        case .unknown: .gray
+        case .ok: Palette.text
+        case .warning: Palette.gold
+        case .problem: Palette.love
+        case .unknown: Palette.tertiary
         }
     }
 
@@ -38,11 +96,11 @@ public extension OverallStatus {
 public extension HostHealth {
     var color: Color {
         switch self {
-        case .ok: .green
-        case .warning: .orange
-        case .problem: .red
-        case .asleep: .indigo
-        case .unknown: .gray
+        case .ok: Palette.text
+        case .warning: Palette.gold
+        case .problem: Palette.love
+        case .asleep: Palette.iris
+        case .unknown: Palette.tertiary
         }
     }
 
@@ -60,21 +118,17 @@ public extension HostHealth {
 public extension Tint {
     var color: Color {
         switch self {
-        case .gray: .gray
-        case .blue: .blue
-        case .green: .green
-        case .orange: .orange
-        case .red: .red
-        case .purple: .purple
-        case .teal: .teal
-        case .yellow: .yellow
-        case .pink: .pink
+        // Server tints map onto the palette: warm ones become status colours, everything else stays monochrome.
+        case .gray, .blue, .green, .teal: Palette.secondary
+        case .orange, .yellow: Palette.gold
+        case .red: Palette.love
+        case .purple, .pink: Palette.iris
         }
     }
 }
 
 public extension Problem.Severity {
-    var color: Color { self == .warning ? .orange : .red }
+    var color: Color { self == .warning ? Palette.gold : Palette.love }
     var symbol: String { self == .warning ? "exclamationmark.triangle.fill" : "xmark.octagon.fill" }
 }
 
@@ -120,11 +174,14 @@ public struct StatusPill: View {
     }
 
     public var body: some View {
-        Label(status.title, systemImage: status.symbol)
-            .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
-            .padding(.horizontal, compact ? 8 : 10)
-            .padding(.vertical, compact ? 3 : 5)
-            .background(status.color.opacity(0.18), in: Capsule())
+        HStack(spacing: 5) {
+            Circle().fill(status.color).frame(width: compact ? 6 : 8, height: compact ? 6 : 8)
+            Text(status.title.uppercased())
+        }
+            .font(Typo.mono(compact ? .caption2 : .caption, weight: .semibold))
+            .padding(.horizontal, compact ? 7 : 9)
+            .padding(.vertical, compact ? 3 : 4)
+            .overlay(Capsule().strokeBorder(status.color.opacity(0.6), lineWidth: 1))
             .foregroundStyle(status.color)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(Text("Status: \(status.title)"))
@@ -137,7 +194,7 @@ public struct Meter: View {
     let tint: Color
     let warns: Bool
 
-    public init(_ value: Double, tint: Color = .accentColor, warns: Bool = false) {
+    public init(_ value: Double, tint: Color = Palette.text, warns: Bool = false) {
         self.value = min(max(value, 0), 1)
         self.tint = tint
         self.warns = warns
@@ -145,17 +202,17 @@ public struct Meter: View {
 
     var color: Color {
         guard warns else { return tint }
-        return value >= 0.9 ? .red : value >= 0.75 ? .orange : tint
+        return value >= 0.9 ? Palette.love : value >= 0.75 ? Palette.gold : tint
     }
 
     public var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.2))
+                Capsule().fill(Palette.line)
                 Capsule().fill(color).frame(width: max(geo.size.width * value, value > 0 ? 3 : 0))
             }
         }
-        .frame(height: 5)
+        .frame(height: 4)
         .accessibilityHidden(true)
     }
 }
@@ -166,7 +223,7 @@ public struct Chip: View {
     let color: Color
     let symbol: String?
 
-    public init(_ text: String, color: Color = .secondary, symbol: String? = nil) {
+    public init(_ text: String, color: Color = Palette.secondary, symbol: String? = nil) {
         self.text = text
         self.color = color
         self.symbol = symbol
@@ -177,10 +234,10 @@ public struct Chip: View {
             if let symbol { Image(systemName: symbol) }
             Text(text).lineLimit(1)
         }
-        .font(.caption2.weight(.medium))
+        .font(Typo.mono(.caption2, weight: .medium))
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(color.opacity(0.15), in: Capsule())
+        .overlay(Capsule().strokeBorder(color.opacity(0.45), lineWidth: 1))
         .foregroundStyle(color)
     }
 }

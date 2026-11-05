@@ -2,10 +2,10 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-struct OverviewView: View {
+/// Lab: the machines. Problems, every host (tap for details), and the service launcher.
+struct LabView: View {
     let model: AppModel
     @Environment(\.openURL) private var openURL
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var status: ServerStatus { model.selectedStatus }
@@ -30,23 +30,12 @@ struct OverviewView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .screenBackground()
             .refreshable { await model.refresh() }
-            .navigationTitle(status.snapshot?.serverName ?? model.selected?.name ?? "Homelab")
+            .navigationTitle("Lab")
             .toolbar { serverMenu }
             .navigationDestination(for: Host.self) { HostDetailView(host: $0) }
-            .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active)) {
-                if scenePhase == .active { await poll() }
-            }
-        }
-    }
-
-    /// Refresh every 30 s while this screen is visible (the task ends when it disappears).
-    private func poll() async {
-        while !Task.isCancelled {
-            await model.refresh()
-            let wait = status.failures > 0 ? PollPolicy.backoff(failures: status.failures) : PollPolicy.stateInterval(visible: true)
-            try? await Task.sleep(for: wait ?? .seconds(30))
+            .pollingState(model)
         }
     }
 
@@ -80,22 +69,22 @@ struct OverviewView: View {
         HStack(alignment: .center, spacing: 12) {
             let s = state?.status ?? .unknown
             Image(systemName: s.symbol)
-                .font(.system(size: 34))
+                .font(.system(size: 28, weight: .light))
                 .foregroundStyle(s.color)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(headline).font(.headline)
+                Text(headline).font(Typo.mono(.headline, weight: .semibold))
                 // Large text: one fact per line instead of a wrapped "a · b · c".
                 if typeSize.isAccessibilitySize {
-                    ForEach(sublines, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+                    ForEach(sublines, id: \.self) { Text($0).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary) }
                 } else {
-                    Text(sublines.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                    Text(sublines.joined(separator: " · ")).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
                 }
             }
             Spacer()
             if status.loading { ProgressView() }
         }
-        .card()
+        .card(accent: (state?.status).map { $0 == .ok || $0 == .unknown ? nil : $0.color } ?? nil)
         .accessibilityElement(children: .combine)
     }
 
@@ -133,14 +122,14 @@ struct OverviewView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(p.text).font(.subheadline)
                             if let since = p.since {
-                                Text("since \(Format.age(since))").font(.caption).foregroundStyle(.secondary)
+                                Text("since \(Format.age(since))").font(Typo.mono(.caption2)).foregroundStyle(Palette.secondary)
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
                 }
-                .card()
+                .card(accent: state.problems.contains { $0.severity != .warning } ? Palette.love : Palette.gold)
             }
         }
 
@@ -149,11 +138,11 @@ struct OverviewView: View {
                 model.tab = .actions
             } label: {
                 HStack {
-                    Image(systemName: "checkmark.shield.fill").foregroundStyle(.blue)
+                    Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold)
                     Text(state.pending.count == 1 ? "1 action is waiting for you" : "\(state.pending.count) actions are waiting for you")
                         .font(.subheadline.weight(.medium))
                     Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.tertiary)
                 }
                 .card()
             }
@@ -174,31 +163,41 @@ struct OverviewView: View {
             }
         }
 
-        ForEach(state.cards) { CardView(card: $0) }
-
         if !status.services.isEmpty {
             ServicesSection(services: status.services)
-        }
-
-        if let m = state.lastMessage, !m.text.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                SectionTitle(text: "Last report", trailing: m.ts.map { Format.age($0) })
-                VStack(alignment: .leading, spacing: 6) {
-                    if let job = m.job { Chip(job, color: statusColor(m.status)) }
-                    Text(markdown(m.text)).font(.subheadline).lineLimit(8)
-                }
-                .card()
-            }
         }
     }
 }
 
+/// Colour of a report's status word (OK, WARN, ALERT).
 func statusColor(_ status: String?) -> Color {
     switch status?.uppercased() {
-    case "OK": .green
-    case "WARN", "WARNING": .orange
-    case "ALERT", "ERROR", "PROBLEM": .red
-    default: .secondary
+    case "WARN", "WARNING": Palette.gold
+    case "ALERT", "ERROR", "PROBLEM": Palette.love
+    default: Palette.secondary
+    }
+}
+
+extension View {
+    /// Refreshes the selected server every 30 s (backing off after errors) while this screen is visible and the app
+    /// is active. Today and Lab both use it; the task ends when the screen disappears.
+    func pollingState(_ model: AppModel) -> some View { modifier(StatePolling(model: model)) }
+}
+
+struct StatePolling: ViewModifier {
+    let model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
+
+    func body(content: Content) -> some View {
+        content.task(id: PollKey(server: model.selected?.target, active: scenePhase == .active)) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await model.refresh()
+                let st = model.selectedStatus
+                let wait = st.failures > 0 ? PollPolicy.backoff(failures: st.failures) : PollPolicy.stateInterval(visible: true)
+                try? await Task.sleep(for: wait ?? .seconds(30))
+            }
+        }
     }
 }
 
@@ -211,14 +210,14 @@ struct HostTile: View {
         let health = HostHealth(host)
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(.secondary)
-                Text(host.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(Palette.secondary)
+                Text(host.name).font(Typo.mono(.subheadline, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
                 // Colour plus a word, so the state doesn't depend on seeing colour.
                 if health != .ok {
-                    Text(health.label).font(.caption2.weight(.semibold)).foregroundStyle(health.color).lineLimit(1)
+                    Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color).lineLimit(1)
                 }
-                Circle().fill(health.color).frame(width: 9, height: 9)
+                Circle().fill(health.color).frame(width: 7, height: 7)
             }
             if host.reachable == true {
                 metric("Load", Format.load(host.load), Format.loadShare(host.load, cores: host.cpuCount))
@@ -227,25 +226,25 @@ struct HostTile: View {
                     metric("Disk", "\(d.percent)%", Double(d.percent) / 100)
                 }
                 HStack(spacing: 6) {
-                    if host.temp != nil { Chip(Format.temperature(host.temp), color: (host.temp ?? 0) >= Format.hotCelsius ? .orange : .secondary, symbol: "thermometer.medium") }
+                    if host.temp != nil { Chip(Format.temperature(host.temp), color: (host.temp ?? 0) >= Format.hotCelsius ? Palette.gold : Palette.secondary, symbol: "thermometer.medium") }
                     if host.containersTotal != nil {
                         Chip(Format.containers(up: host.containersUp, total: host.containersTotal),
-                             color: (host.containersUp ?? 0) < (host.containersTotal ?? 0) ? .orange : .secondary, symbol: "shippingbox")
+                             color: (host.containersUp ?? 0) < (host.containersTotal ?? 0) ? Palette.gold : Palette.secondary, symbol: "shippingbox")
                     }
                 }
             } else {
-                Text(health.label).font(.caption).foregroundStyle(health.color)
+                Text(health.label).font(Typo.mono(.caption)).foregroundStyle(health.color)
                 Spacer(minLength: 0)
             }
             if !host.flags.isEmpty {
                 Text(host.flags.map(Format.flag).joined(separator: ", "))
                     .font(.caption2)
-                    .foregroundStyle(host.flags.contains(where: Format.isAlarming) ? .red : .orange)
+                    .foregroundStyle(host.flags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)
                     .lineLimit(2)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-        .card()
+        .card(accent: health == .problem ? Palette.love : nil)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(host.name), \(health.label)"))
         .accessibilityValue(Text(spokenMetrics))
@@ -269,9 +268,9 @@ struct HostTile: View {
     private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(label).font(.caption2).foregroundStyle(.secondary)
+                Text(label).textCase(.uppercase).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                 Spacer()
-                Text(value).font(.caption.monospacedDigit())
+                Text(value).font(Typo.mono(.caption))
             }
             if let share { Meter(share, warns: true) }
         }
@@ -316,7 +315,7 @@ struct HostDetailView: View {
                         if host.rebootRequired == true { LabeledContent("Reboot", value: String(localized: "required")) }
                         if let b = Format.backup(last: host.backupLast, result: host.backupResult) {
                             LabeledContent("Backup") {
-                                Text(b).foregroundStyle(Format.backupFailed(host.backupResult) ? .red : .secondary)
+                                Text(b).foregroundStyle(Format.backupFailed(host.backupResult) ? Palette.love : Palette.secondary)
                             }
                         }
                     }
@@ -326,7 +325,7 @@ struct HostDetailView: View {
                 Section("Flags") {
                     ForEach(host.flags, id: \.self) { f in
                         Label(Format.flag(f), systemImage: Format.isAlarming(flag: f) ? "bolt.trianglebadge.exclamationmark" : "info.circle")
-                            .foregroundStyle(Format.isAlarming(flag: f) ? .red : .primary)
+                            .foregroundStyle(Format.isAlarming(flag: f) ? Palette.love : Palette.text)
                     }
                 }
             }
@@ -336,6 +335,7 @@ struct HostDetailView: View {
                 }
             }
         }
+        .screenBackground()
         .navigationTitle(host.name)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -343,32 +343,36 @@ struct HostDetailView: View {
 
 // MARK: - Cards and services
 
+/// A card from the server. `hero` is the big version for the top of Today (large mono numbers).
 struct CardView: View {
     let card: Card
+    var hero = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: Symbols.safe(card.icon)).foregroundStyle(card.tint.color)
-                Text(card.title ?? card.id).font(.headline)
+                Image(systemName: Symbols.safe(card.icon)).foregroundStyle(card.tint.color).font(.footnote)
+                Text(card.title ?? card.id).textCase(.uppercase).font(Typo.mono(.caption, weight: .semibold)).tracking(1.2)
+                    .foregroundStyle(Palette.secondary)
                 Spacer()
                 if let updated = card.updated {
-                    Text(ServerDate.parse(updated).map { Format.age($0) } ?? updated).font(.caption).foregroundStyle(.secondary)
+                    Text(ServerDate.parse(updated).map { Format.age($0) } ?? updated).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                 }
             }
-            if let subtitle = card.subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+            if let subtitle = card.subtitle { Text(subtitle).font(.caption).foregroundStyle(Palette.secondary) }
             switch card.style {
             case .text:
                 Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n"))).font(.subheadline)
             case .metrics:
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 10)], alignment: .leading, spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: hero ? 96 : 90), spacing: 10)], alignment: .leading, spacing: 12) {
                     ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.title ?? "").font(.caption).foregroundStyle(.secondary)
-                            Text(item.value ?? "–").font(.title3.weight(.semibold).monospacedDigit())
-                                .foregroundStyle(item.tint?.color ?? .primary)
-                            if let s = item.subtitle { Text(s).font(.caption2).foregroundStyle(.secondary) }
+                            Text(item.title ?? "").font(.caption).foregroundStyle(Palette.secondary).lineLimit(1)
+                            Text(item.value ?? "–").font(Typo.mono(hero ? .title : .title3, weight: .semibold))
+                                .minimumScaleFactor(0.6).lineLimit(1)
+                                .foregroundStyle(item.tint?.color ?? Palette.text)
+                            if let s = item.subtitle { Text(s).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary) }
                         }
                         .accessibilityElement(children: .combine)
                     }
@@ -386,15 +390,15 @@ struct CardView: View {
     private func itemRow(_ item: Card.Item) -> some View {
         let row = VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                if let icon = item.icon { Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? .secondary) }
+                if let icon = item.icon { Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? Palette.secondary) }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(item.title ?? "").font(.subheadline).lineLimit(2)
-                    if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                    if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(Palette.secondary).lineLimit(1) }
                 }
                 Spacer(minLength: 8)
-                if let v = item.value { Text(v).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
+                if let v = item.value { Text(v).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary) }
             }
-            if let p = item.progress { Meter(p, tint: card.tint == .gray ? .accentColor : card.tint.color) }
+            if let p = item.progress { Meter(p) }
         }
         .accessibilityElement(children: .combine)
         if let url = item.url {
@@ -436,7 +440,7 @@ struct ServicesSection: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.vertical, 8)
                                         .padding(.horizontal, 10)
-                                        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+                                        .background(Palette.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityHint(Text(s.url.host ?? ""))
