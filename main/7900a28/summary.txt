@@ -1,0 +1,27 @@
+sim-smoke: 19 screenshots ok, 4 failed, 0 crash reports
+main simulator:  iPhone 17 Pro
+small simulator: iPhone 17e
+core shots (01-05 demo light): ok
+  ok:     01-demo-overview-light
+  ok:     02-demo-actions-light
+  ok:     03-demo-chat-light
+  ok:     04-demo-home-light
+  ok:     05-demo-settings-light
+  ok:     06-demo-overview-dark
+  ok:     07-demo-actions-dark
+  ok:     08-demo-chat-dark
+  ok:     09-demo-home-dark
+  ok:     10-demo-settings-dark
+  ok:     11-demo-overview-xxl
+  ok:     13-demo-chat-xxl
+  ok:     14-demo-home-xxl
+  ok:     16-live-overview-problem
+  ok:     18-live-actions-pending
+  ok:     19-live-overview-huge
+  ok:     21-live-offline-cached
+  ok:     22-small-demo-overview-light
+  ok:     23-small-demo-actions-light
+  failed: 12-demo-actions-xxl (app not running: crashed or closed)
+  failed: 15-demo-settings-xxl (app not running: crashed or closed)
+  failed: 17-live-chat (app not running: crashed or closed)
+  failed: 20-live-overview-ok (app not running: crashed or closed)
