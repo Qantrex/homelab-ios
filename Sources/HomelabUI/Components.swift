@@ -140,6 +140,7 @@ struct LockView: View {
             } label: {
                 Label("Unlock", systemImage: "faceid")
                     .frame(minWidth: 160)
+                    .foregroundStyle(Palette.onAccent)
             }
             .buttonStyle(.borderedProminent)
         }

@@ -141,7 +141,8 @@ struct ActionRow: View {
     @ViewBuilder
     private func buttons(spacer: Bool) -> some View {
         if action.buttons[.approve] != nil {
-            Button { tap(.approve) } label: { ButtonText(title: "Approve", symbol: "checkmark") }
+            // A filled button keeps white text whatever its colour; ours is white (dark mode), so set the text colour.
+            Button { tap(.approve) } label: { ButtonText(title: "Approve", symbol: "checkmark").foregroundStyle(Palette.onAccent) }
                 .buttonStyle(.borderedProminent)
                 .fixedSize()
         }

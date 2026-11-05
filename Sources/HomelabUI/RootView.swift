@@ -121,7 +121,7 @@ struct WelcomeView: View {
                         Button {
                             adding = true
                         } label: {
-                            Text("Add a server").frame(maxWidth: .infinity)
+                            Text("Add a server").frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)

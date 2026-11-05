@@ -365,7 +365,9 @@ struct CardView: View {
             case .text:
                 Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n"))).font(.subheadline)
             case .metrics:
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: hero ? 96 : 90), spacing: 10)], alignment: .leading, spacing: 12) {
+                // Top-aligned, so a tile with a subtitle ("U6 07:36") doesn't sit higher than its neighbours.
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: hero ? 96 : 90), spacing: 10, alignment: .topLeading)],
+                          alignment: .leading, spacing: 12) {
                     ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title ?? "").font(.caption).foregroundStyle(Palette.secondary).lineLimit(1)
