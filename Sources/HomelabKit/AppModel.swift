@@ -42,9 +42,16 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var faceIDLock = false
     public var lastBackgroundRun: Date?
     public var lastBackgroundResult: String?
+    /// Today's section order and hidden sections; nil = the standard layout (also for settings from older versions).
+    public var today: TodayLayout?
 
     public static let fileName = "settings.json"
     public init() {}
+
+    public var todayLayout: TodayLayout {
+        get { today ?? .standard }
+        set { today = newValue == .standard ? nil : newValue }
+    }
 
     public var notificationsOn: Bool { notifyProblems || notifyPending }
 }

@@ -26,17 +26,29 @@ struct SettingsView: View {
                 } header: {
                     Text("Servers")
                 } footer: {
-                    Text("Tap a server to edit it. The overview shows the one with the checkmark; swipe to delete.")
+                    Text("Tap a server to edit it. Today and Lab show the one with the checkmark; swipe to delete.")
                 }
 
                 if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
                     Section("Shown server") {
-                        Picker("Overview, actions and chat", selection: Binding(
+                        Picker("Today, Lab, actions and chat", selection: Binding(
                             get: { model.selected?.id ?? UUID() },
                             set: { model.select($0) })) {
                             ForEach(model.servers.servers.filter(\.speaksCompanionAPI)) { Text($0.name).tag($0.id) }
                         }
                     }
+                }
+
+                Section {
+                    NavigationLink {
+                        TodayLayoutEditor(model: model)
+                    } label: {
+                        LabeledContent("Sections", value: "\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
+                    }
+                } header: {
+                    Text("Today")
+                } footer: {
+                    Text("Choose what Today shows under the headline, and in which order.")
                 }
 
                 Section {
@@ -422,5 +434,32 @@ struct AboutView: View {
             }
         }
         .navigationTitle("About")
+    }
+}
+
+/// Settings → Today: show or hide each section, drag to reorder.
+struct TodayLayoutEditor: View {
+    let model: AppModel
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(model.settings.todayLayout.sections) { s in
+                    Toggle(s.title, isOn: Binding(
+                        get: { model.settings.todayLayout.isVisible(s) },
+                        set: { model.settings.todayLayout.setVisible(s, $0) }))
+                }
+                .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
+            } footer: {
+                Text("The headline with your lab's status always stays on top. Drag the handles to change the order.")
+            }
+            Section {
+                Button("Standard layout") { model.settings.todayLayout = .standard }
+                    .disabled(model.settings.todayLayout == .standard)
+            }
+        }
+        .environment(\.editMode, .constant(.active))
+        .navigationTitle("Today")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

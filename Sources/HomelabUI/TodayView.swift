@@ -26,21 +26,16 @@ struct TodayView: View {
                         if let error = status.error {
                             ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched) { Task { await model.refresh() } }
                         }
-                        if let state {
-                            content(state)
-                        } else if status.loading {
-                            ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
-                        } else if status.error == nil {
-                            Placeholder(title: "No data yet", symbol: "tray", message: "Pull down to load.")
+                        if state == nil {
+                            if status.loading {
+                                ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
+                            } else if status.error == nil {
+                                Placeholder(title: "No data yet", symbol: "tray", message: "Pull down to load.")
+                            }
                         }
                     }
-                    if let ha = model.homeAssistant {
-                        HomeTiles(model: model, server: ha)
-                    }
-                    if let state, model.selected != nil {
-                        otherCards(state)
-                        lastReport(state)
-                    }
+                    // In my order, without the hidden ones (Settings → Today).
+                    ForEach(model.settings.todayLayout.visible) { section(for: $0) }
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -121,12 +116,18 @@ struct TodayView: View {
     // MARK: Content
 
     @ViewBuilder
-    private func content(_ state: HomelabState) -> some View {
-        if let dayCard {
-            DayNumbers(card: dayCard)
-        }
-        if !state.pending.isEmpty {
-            waiting(state.pending)
+    private func section(for section: TodaySection) -> some View {
+        switch section {
+        case .day:
+            if let dayCard { DayNumbers(card: dayCard) }
+        case .waiting:
+            if let state, model.selected != nil, !state.pending.isEmpty { waiting(state.pending) }
+        case .home:
+            if let ha = model.homeAssistant { HomeTiles(model: model, server: ha) }
+        case .cards:
+            if let state, model.selected != nil { otherCards(state) }
+        case .report:
+            if let state, model.selected != nil { lastReport(state) }
         }
     }
 
