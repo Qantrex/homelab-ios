@@ -84,8 +84,15 @@ struct LabView: View {
             Spacer()
             if status.loading { ProgressView() }
         }
-        .card(accent: (state?.status).map { $0 == .ok || $0 == .unknown ? nil : $0.color } ?? nil)
+        .card(accent: headerAccent)
         .accessibilityElement(children: .combine)
+    }
+
+    /// The header's border: the status colour for a warning or problem, else the normal hairline. (A separate
+    /// property: inline, Xcode 26's type checker gave up on it.)
+    private var headerAccent: Color? {
+        guard let s = state?.status, s == .warning || s == .problem else { return nil }
+        return s.color
     }
 
     private var headline: String {

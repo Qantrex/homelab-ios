@@ -211,10 +211,12 @@ import Testing
 
 @Suite struct DemoBackendTests {
     @Test func looksCurrent() async throws {
-        let demo = DemoBackend(delay: .zero)
+        // A fixed "now": comparing with the real clock failed on a slow CI simulator (2026-11-05).
+        let now = Date()
+        let demo = DemoBackend(delay: .zero, now: now)
         let s = try await demo.state()
         let checked = try #require(s.checked)
-        #expect(abs(Date().timeIntervalSince(checked) - 120) < 5)
+        #expect(abs(now.timeIntervalSince(checked) - 120) < 1)
         #expect(s.pending.count == 2 && s.busy.isEmpty)
     }
 
