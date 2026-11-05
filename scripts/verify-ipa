@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Usage: scripts/verify-ipa PATH/TO/App.ipa
 # Checks that the IPA holds Payload/Homelab.app with the widget at PlugIns/HomelabWidget.appex, and that both carry
-# the App Group entitlement group.com.qantrex.homelab. Used by CI and the release workflow.
-# The entitlement check needs `codesign` (macOS) or `ldid`; without either it is skipped with a warning.
+# the App Group entitlement group.com.qantrex.homelab. scripts/build-ipa runs it after every build.
+# Entitlements come from `codesign` (macOS), `ldid`, or else python3 reading the plist embedded in the signature.
 set -euo pipefail
 
 ipa=${1:?usage: scripts/verify-ipa PATH/TO/App.ipa}
@@ -19,10 +19,27 @@ echo "== contents of $(basename "$ipa") ($(wc -c < "$ipa" | tr -d ' ') bytes)"
 [ -d "$app" ]   || { echo "FAIL: Payload/Homelab.app missing"; exit 1; }
 [ -d "$appex" ] || { echo "FAIL: Payload/Homelab.app/PlugIns/HomelabWidget.appex missing"; exit 1; }
 
+# entitlements BUNDLE: prints the bundle's signed entitlements. Without codesign/ldid (plain Linux) it reads the
+# entitlements plist that the code signature embeds in the executable (xtool signs ad hoc when it packages).
 entitlements() {
   if command -v codesign >/dev/null; then codesign -d --entitlements - "$1" 2>&1 || true
   elif command -v ldid >/dev/null; then ldid -e "$1" 2>&1 || true
+  elif command -v python3 >/dev/null; then
+    local exe
+    exe=$(plist_value "$1/Info.plist" CFBundleExecutable)
+    [ -n "$exe" ] && [ -f "$1/$exe" ] || return 3
+    python3 -I - "$1/$exe" <<'PY'
+import re, sys
+data = open(sys.argv[1], "rb").read()
+for m in re.finditer(rb"<plist[^>]*>.{0,20000}?</plist>", data, re.S):
+    if b"com.apple.security." in m.group(0):
+        print(m.group(0).decode("utf-8", "replace"))
+PY
   else return 3; fi
+}
+# plist_value PLIST KEY: a top-level string value from an XML or binary plist (python3's plistlib).
+plist_value() {
+  python3 -I -c 'import plistlib, sys; print(plistlib.load(open(sys.argv[1], "rb")).get(sys.argv[2], ""))' "$1" "$2" 2>/dev/null || true
 }
 
 for b in "$app" "$appex"; do
@@ -31,10 +48,10 @@ for b in "$app" "$appex"; do
     plutil -p "$b/Info.plist" | grep -E 'CFBundle(Identifier|ShortVersionString|Version)"' || true
   fi
   if ! ent=$(entitlements "$b"); then
-    echo "WARN: no codesign/ldid here, entitlement check skipped for $name"
+    echo "WARN: no codesign, ldid or python3 here, entitlement check skipped for $name"
     continue
   fi
-  if grep -q "$group" <<<"$ent"; then
+  if grep -q "com.apple.security.application-groups" <<<"$ent" && grep -qF "$group" <<<"$ent"; then
     echo "ok: $name has $group"
   else
     echo "FAIL: $name lacks the App Group entitlement $group"

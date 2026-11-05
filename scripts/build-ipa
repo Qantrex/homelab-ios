@@ -2,7 +2,8 @@
 # Usage: scripts/build-ipa [extra xtool dev build options]
 # Builds an IPA with xtool (Linux or macOS) and prints where it is. Needs xtool set up once:
 #   macOS: brew install xtool-org/tap/xtool      Linux: see https://xtool.sh (then `xtool sdk install ~/Downloads/Xcode_27.1.xip`; docs/SETUP.md)
-# Uses a release configuration if this xtool supports one.
+# Uses a release configuration if this xtool supports one, then checks the IPA with scripts/verify-ipa.
+# Builds happen here, locally: CI never builds the IPA (owner's rule, 2026-11-05).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,6 +17,9 @@ elif grep -qE -- '(^|[[:space:]])-c[,[:space:]]' <<<"$help"; then cfg=(-c releas
 xtool dev build --ipa "${cfg[@]+"${cfg[@]}"}" "$@" < /dev/null
 ipa=$(find xtool -name '*.ipa' -print0 | xargs -0 ls -t 2>/dev/null | head -1)
 [ -n "$ipa" ] || { echo "no IPA found under xtool/"; exit 1; }
+
+echo
+scripts/verify-ipa "$ipa"   # widget inside, App Group in app and widget; stops here if not
 
 echo
 echo "IPA:  $PWD/$ipa"

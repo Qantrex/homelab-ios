@@ -11,15 +11,15 @@ Thanks for helping. This page says how to build and test, the code rules, and wh
 | Same, on a Mac | macOS | `KIT_ONLY=1 swift test` |
 | Reference server tests | any, Python 3 | `python3 -m unittest server/test_reference_server.py` |
 | Source checks | any, bash | `scripts/lint` |
-| IPA | macOS or Linux with xtool | `scripts/build-ipa` |
+| IPA (always built locally, checked by `verify-ipa`) | macOS or Linux with xtool | `scripts/build-ipa` |
 | Install on your iPhone | xtool + USB | `scripts/install-dev` |
 | Simulator screenshots | macOS | `scripts/sim-smoke APP OUT` |
 
 `KIT_ONLY=1` builds only `HomelabKit` and its tests: SwiftUI and WidgetKit don't exist on Linux. `scripts/test-linux`
 also starts the fixture server, so the integration tests run too (they need `HOMELAB_FIXTURE_URL`).
 
-CI does all of this on every push and pull request, plus the iOS builds, `xcodebuild test` on the simulator and the
-screenshots. See [docs/CI.md](docs/CI.md). You can't run the macOS part on Linux: push and read the CI result.
+CI runs the tests and checks on every push and pull request, plus a simulator build for `xcodebuild test` on the
+simulator and the screenshots. It never builds the IPA: build that locally. See [docs/CI.md](docs/CI.md). You can't run the macOS part on Linux: push and read the CI result.
 
 ## Code rules
 

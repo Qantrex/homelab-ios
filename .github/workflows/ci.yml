@@ -1,5 +1,8 @@
 # CI for Homelab iOS. Free standard runners only (the repo is public, so these cost nothing):
 # ubuntu-latest, macos-26, xcode-27. Never use -large/-xlarge labels, those are billed. See docs/CI.md.
+# CI only tests and checks. Owner's rule (2026-11-05): every app build (the IPA) is done locally with xtool
+# (scripts/build-ipa, which verifies it). The macOS job builds only for the simulator, because the screenshots and
+# simulator tests need a build and Linux has no simulator.
 name: ci
 
 on:
@@ -29,7 +32,7 @@ jobs:
       KIT_ONLY: "1"
       HOMELAB_FIXTURE_URL: http://127.0.0.1:8791
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -64,7 +67,7 @@ jobs:
     continue-on-error: ${{ matrix.runner == 'xcode-27' }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -108,18 +111,10 @@ jobs:
       - name: Shared code tests on macOS
         run: KIT_ONLY=1 swift test
 
-      # A check only: the device build must compile and carry the widget + App Group. The IPA is deleted again.
-      # Owner's rule (2026-11-04): CI never ships installable apps; the owner builds them with xtool himself.
-      - name: Device build check (compile, widget inside, App Group in app and widget)
-        run: |
-          scripts/build-ipa 2>&1 | tee build-device.log
-          ipa=$(find xtool -name '*.ipa' | head -1)
-          scripts/verify-ipa "$ipa"
-          rm -f "$ipa"
-
+      # No device build here: the IPA is built and verified locally (scripts/build-ipa). This build is for the
+      # simulator only and exists for the smoke test, the screenshots and the warnings check below.
       - name: Simulator build
         run: |
-          rm -rf xtool
           xtool dev build --triple arm64-apple-ios-simulator < /dev/null 2>&1 | tee build-sim.log
           app=$(find xtool -maxdepth 2 -name '*.app' | head -1)
           echo "APP=$app" >> "$GITHUB_ENV"; test -n "$app"
@@ -127,7 +122,7 @@ jobs:
       - name: Simulator smoke test (screenshots)
         run: scripts/sim-smoke "$APP" shots
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && hashFiles('shots/*') != ''
         with:
           name: screenshots-${{ matrix.runner }}
@@ -169,7 +164,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && hashFiles('xcodebuild-test-*.log') != ''
         with:
           name: xcodebuild-test-${{ matrix.runner }}
@@ -209,12 +204,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download the macos-26 screenshots
         id: download
         continue-on-error: true   # no artifact = the macos job failed before sim-smoke
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: screenshots-macos-26
           path: shots

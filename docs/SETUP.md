@@ -59,9 +59,9 @@ brew install xtool-org/tap/xtool
 
 | Command | What it does |
 |---|---|
-| `scripts/build-ipa` | `xtool dev build --ipa` (release configuration if your xtool supports it). Prints the IPA path and size. The IPA is in `xtool/` |
+| `scripts/build-ipa` | `xtool dev build --ipa` (release configuration if your xtool supports it), then `scripts/verify-ipa`. Prints the IPA path and size. The IPA is in `xtool/` |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB in one step |
-| `scripts/verify-ipa xtool/<name>.ipa` | Checks the widget is inside and both carry the App Group (entitlements need `codesign` or `ldid`) |
+| `scripts/verify-ipa xtool/<name>.ipa` | Checks the widget is inside and both carry the App Group (`build-ipa` runs it for you) |
 
 `scripts/build-ipa` needs no Apple ID: the IPA is unsigned, and SideStore signs it when you install it (send it to the
 phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).

@@ -34,6 +34,8 @@ Server and tooling:
 - Homelab Companion API v1 (`server/openapi.yaml`).
 - Reference server (`server/reference_server.py`): one stdlib Python file for any homelab. Host and web checks, cards,
   services, opt-in actions and chat, and a fixture mode for tests.
-- CI on Linux and macOS (free runners): tests, lint, IPA build and check, simulator screenshots.
-- Release workflow: tag → GitHub Release with the IPA and SHA-256, SideStore source on GitHub Pages.
+- CI on Linux and macOS (free runners): tests, lint, simulator build, screenshots and simulator tests. The IPA is
+  always built locally (`scripts/build-ipa`, which checks the widget and App Group).
+- Releases by hand from a local build (`docs/RELEASE.md`): GitHub Release with the IPA, its SHA-256 and the SideStore
+  `source.json`.
 - Docs: setup, SideStore, server setup, security, device test checklist.

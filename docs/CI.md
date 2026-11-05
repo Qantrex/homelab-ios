@@ -1,5 +1,9 @@
 # CI and releases
 
+**Rule: CI only tests and checks; every app build is done locally** (owner, 2026-11-05). `scripts/build-ipa` builds
+the IPA on your PC and checks it with `scripts/verify-ipa`. The macOS job builds only for the simulator, because the
+screenshots and simulator tests need a build and Linux has no simulator.
+
 **Rule: free standard runners only.** The repo is public, so `ubuntu-latest`, `macos-26` and `xcode-27` cost
 nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 
@@ -8,7 +12,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | Workflow / job | Runner | Runs on | What it proves |
 |---|---|---|---|
 | `ci` / `linux` | `ubuntu-latest`, container `swift:6.4-noble` | every push (not `ci-screenshots`), PRs, manual | `scripts/lint` passes (no `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit); HomelabKit tests pass on Linux (`KIT_ONLY=1 swift test`, fixture server running); reference server tests pass |
-| `ci` / `macos (macos-26)` | `macos-26` | same | HomelabKit tests on macOS; the full app builds into an IPA (a check only, deleted afterwards); the IPA has `Payload/Homelab.app/PlugIns/HomelabWidget.appex` and both carry the App Group `group.com.qantrex.homelab`; the simulator build launches and every screen renders (screenshots); HomelabKit tests pass on the iOS simulator (`xcodebuild test`); no compiler warnings in `Sources/`. **Required.** |
+| `ci` / `macos (macos-26)` | `macos-26` | same | HomelabKit tests on macOS; the app and widget build for the simulator; the simulator build launches and every screen renders (screenshots); HomelabKit tests pass on the iOS simulator (`xcodebuild test`); no compiler warnings in `Sources/`. **Required.** |
 | `ci` / `macos (xcode-27)` | `xcode-27` | same | Same, on the next toolchain. `continue-on-error`, and warnings only reported, so it never blocks. |
 | `ci` / `screenshots` | `ubuntu-latest` | pushes and manual runs, after `macos` | Publishes the `macos-26` screenshots to the `ci-screenshots` branch (see below) |
 
@@ -18,10 +22,9 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 |---|---|
 | Install xtool (pinned) | Downloads xtool `1.24.0` (`xtool.app.zip` from the GitHub release), checks its SHA-256, puts it on `PATH`. Falls back to `brew install xtool-org/tap/xtool` with a warning. Fails if `xtool --version` shows a major version other than 1. To upgrade: change `XTOOL_VERSION` and `XTOOL_SHA256` together |
 | Shared code tests | `KIT_ONLY=1 swift test` on macOS |
-| Device build, Verify IPA | `scripts/build-ipa`, `scripts/verify-ipa` |
 | Simulator build, smoke test | `xtool dev build --triple arm64-apple-ios-simulator`, then `scripts/sim-smoke` |
 | Kit tests on the iOS simulator | Starts the fixture server, picks the newest iPhone simulator (`scripts/sim-smoke --pick main`), picks the scheme from `xcodebuild -list` (`Homelab-Package`, else `HomelabKit`), runs `xcodebuild test -only-testing:HomelabKitTests`. If the full package doesn't build there, it retries with `KIT_ONLY=1` and warns. `TEST_RUNNER_HOMELAB_FIXTURE_URL` gives the tests `HOMELAB_FIXTURE_URL`, so the integration tests run. Logs: artifact `xcodebuild-test-<runner>` |
-| Compiler warnings | Counts `warning:` lines for `Sources/` in the xtool build logs and lists them in the job summary. **Fails on `macos-26`** when there is one or more; only a warning on `xcode-27`. Runs last, so it never hides the screenshots |
+| Compiler warnings | Counts `warning:` lines for `Sources/` in the simulator build log and lists them in the job summary. **Fails on `macos-26`** when there is one or more; only a warning on `xcode-27`. Runs last, so it never hides the screenshots |
 
 ### Security of the workflow
 
@@ -61,8 +64,8 @@ They are:
 
 Open them in the browser: `https://github.com/Qantrex/homelab-ios/tree/ci-screenshots`.
 
-CI builds a device IPA only to check it (compiles, widget inside, App Group entitlements) and deletes it. **CI never
-publishes an app to install** (owner's rule, 2026-11-04).
+CI builds no device IPA at all. The device build, with the widget and App Group check, runs on your PC
+(`scripts/build-ipa`). **CI never builds or publishes an app to install** (owner's rules, 2026-11-04 and 2026-11-05).
 
 ## Release
 
@@ -74,8 +77,8 @@ By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release work
 |---|---|
 | `scripts/test-linux` | Fixture server on the host, `KIT_ONLY=1 swift test` in Docker (`swift:6.4-noble`), Python tests, lint |
 | `scripts/lint` | The source checks from the `linux` job |
-| `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), prints the IPA path and size |
+| `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), runs `scripts/verify-ipa` on it, prints the IPA path and size |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
-| `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements need macOS `codesign` or `ldid`) |
+| `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |
 | `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. `--pick main\|small` prints a simulator UDID |
 | `scripts/make-source` | Builds the SideStore/AltStore `source.json` (`--help` for options) |

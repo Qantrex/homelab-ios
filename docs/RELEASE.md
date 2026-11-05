@@ -1,7 +1,7 @@
 # Releasing (by hand, from your own build)
 
-Rule (owner, 2026-11-04): **CI never builds the app you install or share.** CI only checks (tests, compile,
-simulator screenshots). You build the IPA yourself with xtool and publish it.
+Rule (owner, 2026-11-04, 2026-11-05): **every app build is done locally; CI never builds the app you install or share.**
+CI only tests and checks (tests, lint, a simulator build for the screenshots). You build the IPA yourself with xtool and publish it.
 
 ## 1. Build
 
