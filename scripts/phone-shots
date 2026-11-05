@@ -39,7 +39,9 @@ if [ "$install" = 1 ]; then
   kill -- "-$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
   if [ "$installed" = 0 ] && ! grep -q 'Installing to device' "$log"; then
-    tr '\r' '\n' < "$log" | grep -vE '^\[[0-9]+/[0-9]+\]' | tail -15
+    # Only the compiler's errors with their source lines, not the long command lines.
+    tr '\r' '\n' < "$log" | sed 's/\x1b\[[0-9;]*m//g' | grep -E '(error|warning): ' -A3 \
+      | grep -vE 'Failed frontend|swift-frontend|Command line' | head -30
     rm -f "$log"
     echo "install failed"; exit 1
   fi

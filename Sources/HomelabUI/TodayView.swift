@@ -11,8 +11,8 @@ struct TodayView: View {
     private var status: ServerStatus { model.selectedStatus }
     private var state: HomelabState? { status.snapshot?.state }
 
-    /// The card shown big at the top: the server's "today" card, else the first metrics card.
-    private var hero: Card? {
+    /// The card shown as the day's numbers under the hero: the server's "today" card, else the first metrics card.
+    private var dayCard: Card? {
         guard let cards = state?.cards else { return nil }
         return cards.first { $0.id == "today" } ?? cards.first { $0.style == .metrics }
     }
@@ -21,13 +21,12 @@ struct TodayView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 22) {
-                    header
+                    hero
                     if model.selected != nil {
                         if let error = status.error {
                             ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched) { Task { await model.refresh() } }
                         }
                         if let state {
-                            statusLine(state)
                             content(state)
                         } else if status.loading {
                             ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
@@ -47,76 +46,74 @@ struct TodayView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
-            .screenBackground()
+            .scrollContentBackground(.hidden)
+            .background { MoodGlow(level: mood.level).ignoresSafeArea() }
             .refreshable { await model.refresh() }
             .toolbar(.hidden, for: .navigationBar)
             .pollingState(model)
-        }
-    }
-
-    // MARK: Header
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(Date.now, format: .dateTime.weekday(.wide))
-                .font(.largeTitle.weight(.bold))
-            Text(subtitle)
-                .font(Typo.mono(.caption))
-                .tracking(1)
-                .foregroundStyle(Palette.secondary)
-        }
-        .padding(.top, 12)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    private var subtitle: String {
-        var parts = [Date.now.formatted(.dateTime.day().month(.wide).year()).uppercased()]
-        if let name = status.snapshot?.serverName ?? model.selected?.name { parts.append(name.uppercased()) }
-        if status.loading { parts.append(String(localized: "UPDATING…")) }
-        return parts.joined(separator: " · ")
-    }
-
-    /// One line for the machines: "All fine · 3/4 up" or "2 problems: sonarr unhealthy". Tap opens Lab.
-    private func statusLine(_ state: HomelabState) -> some View {
-        let s = state.status
-        let up = state.hosts.filter { $0.reachable == true }.count
-        return Button {
-            model.tab = .lab
-        } label: {
-            HStack(alignment: .top, spacing: 10) {
-                Circle().fill(s.color).frame(width: 8, height: 8).padding(.top, 6)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(statusHeadline(state)).font(Typo.mono(.subheadline, weight: .semibold))
-                    if let first = state.problems.first {
-                        Text(first.text).font(.caption).foregroundStyle(Palette.secondary).lineLimit(2)
-                    }
-                    Text(statusFacts(state, up: up)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.tertiary).padding(.top, 4)
+            // A tap you can feel when the lab turns bad while you're looking.
+            .sensoryFeedback(trigger: mood.level) { old, new in
+                new == .alarm && old != .alarm ? .error : nil
             }
-            .card(accent: s == .ok || s == .unknown ? nil : s.color)
+        }
+    }
+
+    // MARK: Hero
+
+    private var mood: TodayMood {
+        model.selected == nil ? TodayMood(level: .unknown, headline: String(localized: "Home."), detail: nil) : TodayMood(state: state)
+    }
+
+    /// The big "now": date, how the lab is doing in two words, the first problem. Tap opens Lab.
+    private var hero: some View {
+        let m = mood
+        return Button {
+            if model.availableTabs.contains(.lab) { model.tab = .lab }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(dateLine).font(Typo.mono(.caption, weight: .medium)).tracking(1.5).foregroundStyle(Palette.secondary)
+                Text(m.headline)
+                    .font(.system(size: typeSize.isAccessibilitySize ? 40 : 54, weight: .heavy))
+                    .tracking(-1.5)
+                    .foregroundStyle(m.level.color)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                if let detail = m.detail {
+                    Text(detail).font(.title3.weight(.medium)).foregroundStyle(Palette.text.opacity(0.85))
+                        .lineLimit(3).multilineTextAlignment(.leading)
+                }
+                if m.warnings > 0 {
+                    Text(m.warnings == 1 ? "and 1 warning" : "and \(m.warnings) warnings")
+                        .font(Typo.mono(.caption, weight: .semibold)).foregroundStyle(Palette.gold)
+                }
+                Text(facts).font(Typo.mono(.caption2)).tracking(1).foregroundStyle(Palette.tertiary).padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 36)
+            .padding(.bottom, 6)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
         .accessibilityHint(Text("Opens Lab"))
     }
 
-    private func statusHeadline(_ state: HomelabState) -> String {
-        switch state.status {
-        case .ok: String(localized: "All fine")
-        case .unknown: String(localized: "Status unknown")
-        case .warning, .problem:
-            state.problems.count == 1 ? String(localized: "1 problem") : String(localized: "\(state.problems.count) problems")
-        }
+    private var dateLine: String {
+        Date.now.formatted(.dateTime.weekday(.wide).day().month(.abbreviated)).uppercased()
     }
 
-    private func statusFacts(_ state: HomelabState, up: Int) -> String {
+    /// "DEMO HOMELAB · CHECKED 2 MIN AGO"
+    private var facts: String {
         var parts: [String] = []
-        if !state.hosts.isEmpty { parts.append(String(localized: "\(up)/\(state.hosts.count) up")) }
-        if let checked = state.checked { parts.append(String(localized: "checked \(Format.age(checked))")) }
+        if let name = status.snapshot?.serverName ?? model.selected?.name { parts.append(name) }
+        if status.loading {
+            parts.append(String(localized: "updating…"))
+        } else if let checked = state?.checked {
+            parts.append(String(localized: "checked \(Format.age(checked))"))
+        }
         if let fetched = status.snapshot?.fetched, status.snapshot?.isStale() == true {
-            parts.append(String(localized: "updated \(Format.age(fetched))"))
+            parts.append(String(localized: "data from \(Format.age(fetched))"))
         }
         return parts.joined(separator: " · ").uppercased()
     }
@@ -125,8 +122,8 @@ struct TodayView: View {
 
     @ViewBuilder
     private func content(_ state: HomelabState) -> some View {
-        if let hero {
-            CardView(card: hero, hero: true)
+        if let dayCard {
+            DayNumbers(card: dayCard)
         }
         if !state.pending.isEmpty {
             waiting(state.pending)
@@ -170,7 +167,7 @@ struct TodayView: View {
 
     @ViewBuilder
     private func otherCards(_ state: HomelabState) -> some View {
-        ForEach(state.cards.filter { $0.id != hero?.id }) { CardView(card: $0) }
+        ForEach(state.cards.filter { $0.id != dayCard?.id }) { CardView(card: $0) }
     }
 
     @ViewBuilder
@@ -191,5 +188,71 @@ struct TodayView: View {
                 .disabled(!model.availableTabs.contains(.chat))
             }
         }
+    }
+}
+
+// MARK: - Hero pieces
+
+extension TodayMood.Level {
+    var color: Color {
+        switch self {
+        case .calm: Palette.text
+        case .headsUp: Palette.gold
+        case .alarm: Palette.love
+        case .unknown: Palette.secondary
+        }
+    }
+}
+
+/// The light behind the hero: none when calm, a gold or love glow from the top when something is wrong. Fixed to
+/// the screen, so the content scrolls over it.
+struct MoodGlow: View {
+    let level: TodayMood.Level
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Palette.background
+            if level == .alarm || level == .headsUp {
+                RadialGradient(colors: [level.color.opacity(0.30), level.color.opacity(0.08), .clear],
+                               center: UnitPoint(x: 0.15, y: -0.05), startRadius: 10, endRadius: 520)
+                    .frame(height: 560)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.8), value: level)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The day in numbers under the hero ("06:20 wake-up · 08:00 first lesson · 07:31 leave by"): big mono numbers,
+/// no panel, a hairline above. From the server's "today" card.
+struct DayNumbers: View {
+    let card: Card
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Rectangle().fill(Palette.line).frame(height: 1)
+            LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .topLeading)]
+                                                            : [GridItem(.adaptive(minimum: 96), spacing: 12, alignment: .topLeading)],
+                      alignment: .leading, spacing: 14) {
+                ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.value ?? "–")
+                            .font(.system(size: 30, weight: .semibold, design: .monospaced))
+                            .minimumScaleFactor(0.6).lineLimit(1)
+                            .foregroundStyle(item.tint?.color ?? Palette.text)
+                        Text(item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .medium))
+                            .tracking(1).foregroundStyle(Palette.secondary).lineLimit(1)
+                        if let s = item.subtitle {
+                            Text(s).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(card.title ?? String(localized: "Today")))
     }
 }

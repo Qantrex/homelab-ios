@@ -135,10 +135,15 @@ struct HomeTile: View {
     let busy: Bool
     let tap: () -> Void
 
+    @State private var taps = 0
+
     private var on: Bool { entity.control == .toggle && entity.isOn }
 
     var body: some View {
-        Button(action: tap) {
+        Button {
+            taps += 1
+            tap()
+        } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Image(systemName: entitySymbol(entity)).font(.title3)
@@ -158,6 +163,7 @@ struct HomeTile: View {
             .contentShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.impact(weight: .medium), trigger: taps)
         .disabled(busy || !entity.isAvailable || entity.control == .none)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(entity.name))
