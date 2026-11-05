@@ -6,15 +6,19 @@ First release.
 
 App:
 
-- Overview: overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
-  host details, cards from the server, a service launcher (opens Safari), the last report. Pull to refresh, refresh
-  every 30 s while open, last data with its age when offline.
+- Today: the date, one status line, the server's "today" card in big numbers, actions waiting, pinned Home Assistant
+  tiles, the other cards and the last report.
+- Lab (was Overview): overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
+  host details, a service launcher (opens Safari). Pull to refresh, refresh every 30 s while open, last data with its
+  age when offline.
+- Look: true black (white in light mode), monochrome, thin borders, mono numbers; colour only for problems (Rosé
+  Pine love) and warnings (gold). No blue.
 - Actions: proposed actions with reason and age. Approve, Always and Deny with a confirm step; shows the server's
   answer. Tab badge with the count.
 - Chat: chat with a homelab agent. "Working…" state, report tags, inline Markdown, copy, quick commands, 4000-character
   limit with a counter, failed messages can be edited and sent again.
-- Home: Home Assistant with a long-lived token. Pin lights, switches, fans, toggles, automations, scripts, scenes,
-  buttons and sensors; toggle or run them.
+- Home Assistant with a long-lived token: pin a few lights, switches, fans, toggles, automations, scripts, scenes,
+  buttons or sensors as tiles on Today; tap to toggle or run them. No separate Home tab.
 - Settings: several servers (Homelab API or Home Assistant), Tailscale identity or token login, test connection,
   shown server, notifications, Face ID lock, demo mode, Diagnostics with a copyable report, reset everything.
 - Tabs show only what the server offers (`features` in `/api/v1/info`).

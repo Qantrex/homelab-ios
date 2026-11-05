@@ -10,7 +10,7 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | Method + path | Body | Reply | The app uses it for |
 |---|---|---|---|
 | `GET /info` | – | `{api, name, server, version, features, auth, commands, standing_approvals}` | "Test connection", which tabs to show |
-| `GET /state` | – | `{time, status, checked, problems, hosts, pending, cards, busy, last_message}` | Overview, Actions, widgets, background refresh |
+| `GET /state` | – | `{time, status, checked, problems, hosts, pending, cards, busy, last_message}` | Today, Lab, Actions, widgets, background refresh |
 | `GET /messages?after=<id>` | – | `{messages: [...], busy: [...]}` | Chat (polls; `after` is the last id it has) |
 | `POST /messages` | `{text}` (1–4000 chars) | `{ok, id}` | Sending a chat message or slash command |
 | `POST /button` | `{action: "<signed string>"}` | `{text}` | Approve / Always / Deny on a pending action |

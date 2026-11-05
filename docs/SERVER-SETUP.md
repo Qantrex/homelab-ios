@@ -8,7 +8,7 @@ The app talks to two kinds of server. You can add several of each in Settings �
 | Home Assistant | Home Assistant's REST API | Home |
 
 There are three ways to get a Homelab API server: (a) the reference server from this repo, (b) Home Assistant on its
-own (Home tab only), (c) your own agent or script.
+own (tiles on Today only), (c) your own agent or script.
 
 All examples assume [Tailscale](https://tailscale.com) on the server and on the phone. Any VPN to your home network
 works too; then use `https://` with a certificate the phone trusts, or plain `http://` on a local address.
@@ -100,15 +100,16 @@ Next steps, all optional: cards from your own scripts, a service launcher, actio
 
 ## (b) Home Assistant
 
-The Home tab shows the devices you pin: lights, switches, fans, toggles, automations (tap to toggle), scripts,
-scenes and buttons (tap **Run**), sensors and binary sensors (state only).
+Today shows the few devices you pin as tiles: lights, switches, fans, toggles, automations (tap to toggle), scripts,
+scenes and buttons (tap to run), sensors and binary sensors (state only). Pin only what you use often; the Home
+Assistant app stays the place for everything else.
 
 1. In Home Assistant: your profile → Security → **Long-lived access tokens** → Create token. Copy it; HA shows it
    only once. A separate HA user just for the phone makes it easy to revoke later.
 2. In the app: Add server → Type **Home Assistant** → Address as you open HA in a browser, for example
    `https://ha.<tailnet>.ts.net` or `http://192.168.0.10:8123` → paste the token → Test connection ("Home Assistant
    answers.") → Save.
-3. Open the Home tab → **Choose devices** → pick them → Done.
+3. On Today, in the **Home** section → **Edit** (or "Pin the lights or scripts you use most") → pick them → Done.
 
 Notes:
 
@@ -127,7 +128,7 @@ script, a small web app. Only `/api/v1/info` and `/api/v1/state` are needed. Add
 | Path | Needed for | Feature in `/info` |
 |---|---|---|
 | `GET /api/v1/info` | Test connection, which tabs to show | – |
-| `GET /api/v1/state` | Overview, Actions list, widgets, notifications | `status`, `hosts`, `cards` |
+| `GET /api/v1/state` | Today, Lab, Actions list, widgets, notifications | `status`, `hosts`, `cards` |
 | `POST /api/v1/button` | Approve / Always / Deny | `actions` |
 | `GET` + `POST /api/v1/messages` | Chat | `chat` |
 | `GET /api/v1/services` | Service launcher | `services` |

@@ -19,8 +19,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
 | F1 | Welcome screen | "Your homelab, in your pocket", a short text, four points, **Add a server**, **Try the demo** and a link to the server setup. No tabs yet | | |
-| F2 | Try the demo | Overview with demo hosts and problems. Tabs: Overview, Actions (with badge), Chat, Home, Settings | | |
-| F3 | Demo is alive | Demo chat answers a message. A demo toggle in Home flips. A demo Approve shows an answer | | |
+| F2 | Try the demo | Today with the date, a status line, the "today" numbers, actions waiting and Home tiles. Tabs: Today, Actions (with badge), Chat, Lab, Settings | | |
+| F3 | Demo is alive | Demo chat answers a message. A demo Home tile on Today flips. A demo Approve shows an answer | | |
 | F4 | Demo off | Settings → Demo servers off → back to the welcome screen (when no own server exists) | | |
 
 ## Real server
@@ -34,11 +34,14 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | R4 | Tailscale off | Turn Tailscale off, pull to refresh: "Can't reach `<host>`. Is Tailscale (or your VPN) on?" with Retry. No crash. Turn it back on: Retry loads the data | | |
 | R6 | Wrong login | With a token server: a wrong token gives "The server refused access…" or "The server wants a login or token…", not a crash | | |
 
-## Overview
+## Today and Lab
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| O1 | Status header | "All good" or "N problems", "checked … ago", and "N actions waiting" when there are any | | |
+| T1 | Today header | Weekday, date and server name; the status line says "All fine" or "N problems" with the first problem, "x/y up · checked … ago". Tap opens Lab | | |
+| T2 | Today content | The "today" card in big numbers, "Waiting for you" with up to 3 actions (tap opens Actions), Home tiles, the other cards, the last report (tap opens Chat) | | |
+| T3 | Look | True black (dark) or white (light), no blue anywhere, red/yellow only for problems and warnings | | |
+| O1 | Lab header | "All good" or "N problems", "checked … ago", and "N actions waiting" when there are any | | |
 | O2 | Problems | Listed first, with icon and "since …" | | |
 | O3 | Hosts | One tile per host, "x/y up" in the title, load/RAM/disk bars, a sleeping PC shows "Asleep", not red | | |
 | O4 | Host detail | Tap a tile: Status, System, Disks, Maintenance, Flags as the host has them. "Open web interface" opens Safari | | |
@@ -76,12 +79,12 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| H1 | Add HA | Type Home Assistant, address, long-lived token → Test connection "Home Assistant answers." → Save. Home tab appears | | |
-| H2 | Pin devices | Choose devices → search works → pick a light, a switch, a script, a sensor → Done. Grouped as Lights, Switches, Scripts, Sensors | | |
+| H1 | Add HA | Type Home Assistant, address, long-lived token → Test connection "Home Assistant answers." → Save. A Home section appears on Today | | |
+| H2 | Pin devices | Today → Home → Edit → search works → pick the living room lamps and "stop morning routine" → Done. Two tiles show | | |
 | H3 | Toggle | Toggle a light: it changes in the room and the switch shows the real state after a moment | | |
 | H4 | Run script | Run on a script or scene: it runs in HA | | |
 | H5 | Unavailable | An unavailable device shows "Unavailable" (sensor) or a greyed-out toggle, no crash | | |
-| H6 | Wrong token | Edit HA, paste a wrong token: a clear error text on the Home tab, no crash. Put the right one back | | |
+| H6 | Wrong token | Edit HA, paste a wrong token: a clear error text in the Home section on Today, no crash. Put the right one back | | |
 
 ## Widgets
 
@@ -91,7 +94,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | W2 | Medium | "Homelab hosts" medium: 4 hosts with load, RAM and disk bar | | |
 | W3 | Large | Large: up to 8 hosts and up to 4 problems | | |
 | W4 | Lock screen | Circular, rectangular and inline widgets show status (and pending count) | | |
-| W5 | Tap opens the right tab | Small with pending actions → Actions. Small without, medium, large, rectangular → Overview | | |
+| W5 | Tap opens the right tab | Small with pending actions → Actions. Small without, medium, large, rectangular → Today | | |
 | W6 | Stale data marked | Tailscale off, wait 15+ min: "Data is old" and a grey question mark, not a green check | | |
 
 ## Background and notifications
@@ -121,7 +124,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
 | S1 | Several servers | Add a second Homelab API server (for example the reference server): both listed, one has the checkmark | | |
-| S2 | Switch | Shown server picker (or the Overview server menu) switches Overview, Actions, Chat and the widget | | |
+| S2 | Switch | Shown server picker (or the Lab server menu) switches Today, Lab, Actions, Chat and the widget | | |
 | S3 | Delete removes the token | Swipe → Delete on a token server. Add it again: the token field is empty and Save says "Enter the token first." | | |
 | S4 | Diagnostics | Version, bundle ID with the SideStore team suffix, App Group "ok", each server with "data … ago" | | |
 | S5 | Reset everything | Confirm "Delete all data": welcome screen, no servers, widget shows "Open the app" | | |

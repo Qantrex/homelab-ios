@@ -11,14 +11,14 @@ developer account. You install it with [SideStore](https://sidestore.io) and a f
 
 | Tab | What you see and do |
 |---|---|
-| Overview | Overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags). Tap a host for details. Cards from your own scripts. A launcher for your web UIs (opens Safari). Pull to refresh; refreshes every 30 s while open |
+| Today | Your day first: the server's "today" card in big numbers, actions waiting for you, your pinned Home Assistant tiles (tap to toggle or run), the other cards (media, downloads, school, …) and the last report. The machines are one status line that opens Lab. Pull to refresh; refreshes every 30 s while open |
 | Actions | Actions your homelab proposes, with reason and age. Approve, Always or Deny, each with a confirm step. Shows the server's answer |
 | Chat | Chat with your homelab agent. "Working…" while it runs, report tags (`morning`, `watchdog`, …), long-press to copy, quick buttons for the commands the server lists |
-| Home | Your pinned Home Assistant lights, switches, scripts, scenes and sensors. Tap to toggle or run |
+| Lab | Problems, a tile per host (load, RAM, worst disk, temperature, containers, flags), tap a host for details. A launcher for your web UIs (opens Safari) |
 | Settings | Several servers, test connection, notifications, Face ID lock, demo mode, Diagnostics |
 
-Tabs appear only when they make sense: Actions and Chat only if the server offers them, Home only with a Home
-Assistant server.
+Tabs appear only when they make sense: Actions and Chat only if the server offers them. Home Assistant tiles appear on
+Today when you add a Home Assistant server.
 
 **Widgets** (read-only, from the last data the app fetched):
 
@@ -37,7 +37,7 @@ Anyone with a homelab and Tailscale (or another VPN) on the phone. You need one 
 | You have | Use |
 |---|---|
 | Nothing special: a Linux box with some Docker apps | The [reference server](docs/REFERENCE_SERVER.md): one Python file, no dependencies |
-| Home Assistant | Add it directly with a long-lived token (Home tab) |
+| Home Assistant | Add it directly with a long-lived token (tiles on Today) |
 | Your own agent or scripts | Implement the small JSON API in [`server/openapi.yaml`](server/openapi.yaml) |
 
 You can combine them, for example the reference server plus Home Assistant. **Try the demo** on the first screen to
@@ -45,13 +45,13 @@ look around without any server.
 
 ## Screenshots
 
-| Overview | Actions | Chat |
+| Today | Actions | Chat |
 |---|---|---|
-| ![Overview](docs/screenshots/01-overview.png) | ![Actions](docs/screenshots/02-actions.png) | ![Chat](docs/screenshots/03-chat.png) |
+| ![Today](docs/screenshots/01-today.png) | ![Actions](docs/screenshots/02-actions.png) | ![Chat](docs/screenshots/03-chat.png) |
 
-| Home | Settings | Dark mode |
+| Lab | Settings | Dark mode |
 |---|---|---|
-| ![Home](docs/screenshots/04-home.png) | ![Settings](docs/screenshots/05-settings.png) | ![Dark mode](docs/screenshots/06-dark.png) |
+| ![Lab](docs/screenshots/04-lab.png) | ![Settings](docs/screenshots/05-settings.png) | ![Dark mode](docs/screenshots/06-dark.png) |
 
 ## Install
 
