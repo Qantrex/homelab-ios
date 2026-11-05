@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Usage: scripts/phone-shots [--no-install] [OUT_DIR]   (default OUT_DIR: shots-phone/)
+# Screenshots from a real iPhone over USB, from Linux: builds and installs the app (xtool dev), launches it in demo
+# mode on every tab and saves a PNG per tab. About 2 minutes, instead of ~25 for the CI simulator run.
+# Needs once: the iPhone plugged in, unlocked (Auto-Lock off while testing), trusted, Developer Mode on, usbmuxd
+# running, `xtool auth login`. The developer disk image is mounted automatically. No root: pymobiledevice3 talks to
+# iOS 17+ through its userspace tunnel. It lives in .venv/ (created on the first run).
+# The phone keeps its own appearance and text size; CI covers dark/light, XXL text and other screen sizes.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+install=1
+if [ "${1:-}" = --no-install ]; then install=0; shift; fi
+OUT=${1:-shots-phone}
+PMD_VERSION=11.50.0
+WAIT=${WAIT:-4}
+
+if [ ! -x .venv/bin/pymobiledevice3 ]; then
+  python3 -m venv .venv
+  .venv/bin/pip install -q "pymobiledevice3==$PMD_VERSION"
+fi
+pmd() { timeout 120 .venv/bin/pymobiledevice3 "$@"; }
+
+idevice_id -l | grep -q . || { echo "no iPhone found: plug it in, unlock it, and check that usbmuxd runs"; exit 1; }
+
+if [ "$install" = 1 ]; then
+  echo "== build + install (xtool dev)"
+  # `xtool dev run` keeps running after the install (it waits on the launched app), and `xtool install` hung at
+  # "Packaging" (2026-11-05). So: run it in its own process group, stop it once the install reached 100%.
+  log=$(mktemp)
+  setsid xtool dev run --usb < /dev/null > "$log" 2>&1 &
+  pid=$!
+  installed=0
+  for _ in $(seq 1 400); do
+    if tr '\r' '\n' < "$log" | grep -q '\[Installing\] 100%'; then installed=1; sleep 3; break; fi
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 1
+  done
+  kill -- "-$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  if [ "$installed" = 0 ] && ! grep -q 'Installing to device' "$log"; then
+    tr '\r' '\n' < "$log" | grep -vE '^\[[0-9]+/[0-9]+\]' | tail -15
+    rm -f "$log"
+    echo "install failed"; exit 1
+  fi
+  rm -f "$log"
+  echo "installed"
+fi
+
+# xtool installs under a team prefix for free accounts (XTL-<TEAM>.com.qantrex.homelab): look the ID up.
+bundle=$(pmd apps list -t User 2>/dev/null | grep -oE '"CFBundleIdentifier": "[^"]*com\.qantrex\.homelab"' \
+  | head -1 | sed -E 's/.*: "(.*)"/\1/')
+[ -n "$bundle" ] || { echo "Homelab is not installed on the phone"; exit 1; }
+echo "== app: $bundle"
+
+pmd mounter auto-mount >/dev/null 2>&1 || true   # fails harmlessly when already mounted
+
+mkdir -p "$OUT"
+rm -f "$OUT"/*.png
+n=0
+shot() {   # shot NAME LAUNCH_ARGS...
+  local name=$1; shift
+  n=$((n + 1))
+  local file
+  file=$(printf '%s/%02d-%s.png' "$OUT" "$n" "$name")
+  local try
+  for try in 1 2; do   # right after an install the first launch sometimes fails; once more after a pause
+    if pmd developer dvt launch --userspace "$bundle $*" >/dev/null 2>&1; then
+      sleep "$WAIT"
+      if pmd developer dvt screenshot --userspace "$file" >/dev/null 2>&1; then echo "ok   $file"; return; fi
+    fi
+    [ "$try" = 1 ] && sleep 3
+  done
+  echo "FAIL $file (is the phone unlocked?)"
+}
+
+shot demo-today    -HomelabResetState YES -HomelabDemo YES -HomelabTab today
+for tab in actions chat lab settings; do
+  shot "demo-$tab" -HomelabDemo YES -HomelabTab "$tab"
+done
+echo "== done: $OUT/"

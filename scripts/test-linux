@@ -20,8 +20,10 @@ if [ -f server/reference_server.py ]; then
 fi
 
 echo "== swift test (KIT_ONLY=1, $SWIFT_IMAGE)"
-docker run --rm --network host -e KIT_ONLY=1 -e HOMELAB_FIXTURE_URL="http://127.0.0.1:$PORT" \
-  -v "$PWD":/w -w /w "$SWIFT_IMAGE" swift test
+# As my own user and with its own build folder: a root-owned .build broke the local xtool builds (2026-11-05).
+docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  -e KIT_ONLY=1 -e HOMELAB_FIXTURE_URL="http://127.0.0.1:$PORT" \
+  -v "$PWD":/w -w /w "$SWIFT_IMAGE" swift test --scratch-path .build-linux
 
 if [ -f server/test_reference_server.py ]; then
   echo "== python tests"

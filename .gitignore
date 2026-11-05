@@ -12,3 +12,6 @@ DerivedData/
 __pycache__/
 *.pyc
 .bsp/
+.venv/
+.build-linux/
+shots-phone/

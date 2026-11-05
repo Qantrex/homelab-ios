@@ -80,5 +80,6 @@ By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release work
 | `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), runs `scripts/verify-ipa` on it, prints the IPA path and size |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
 | `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |
+| `scripts/phone-shots [--no-install] [OUT]` | Linux or macOS: build, install on the iPhone over USB, open every tab in demo mode, save screenshots (`shots-phone/`). About 1 minute. Needs the phone unlocked, trusted, Developer Mode on; uses `pymobiledevice3` in `.venv/` (no root) |
 | `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. `--pick main\|small` prints a simulator UDID |
 | `scripts/make-source` | Builds the SideStore/AltStore `source.json` (`--help` for options) |

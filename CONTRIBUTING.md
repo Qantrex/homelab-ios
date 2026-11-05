@@ -13,6 +13,7 @@ Thanks for helping. This page says how to build and test, the code rules, and wh
 | Source checks | any, bash | `scripts/lint` |
 | IPA (always built locally, checked by `verify-ipa`) | macOS or Linux with xtool | `scripts/build-ipa` |
 | Install on your iPhone | xtool + USB | `scripts/install-dev` |
+| Screenshots from your iPhone | Linux or macOS, iPhone over USB | `scripts/phone-shots` (about 1 minute; use it while working on the UI) |
 | Simulator screenshots | macOS | `scripts/sim-smoke APP OUT` |
 
 `KIT_ONLY=1` builds only `HomelabKit` and its tests: SwiftUI and WidgetKit don't exist on Linux. `scripts/test-linux`
