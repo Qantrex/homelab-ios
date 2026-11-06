@@ -2,9 +2,9 @@ import Foundation
 
 extension HomelabState {
     /// The card Today shows as the day under the headline (and the Day widget): the server's "today" card, else the
-    /// first metrics card.
+    /// first metrics card that is not the weather card (that one has its own line under the headline).
     public var dayCard: Card? {
-        cards.first { $0.id == "today" } ?? cards.first { $0.style == .metrics }
+        cards.first { $0.id == "today" } ?? cards.first { $0.style == .metrics && $0.id != "weather" }
     }
 }
 
@@ -32,6 +32,12 @@ public struct DayTimeline: Equatable, Sendable {
     /// The card is about tomorrow (its `date` is the day after `now`'s day): no stop is past, nothing is filled, the
     /// countdown runs to the first stop.
     public var isTomorrow: Bool
+    /// Days the card's `date` lies before `now`'s day (a cached card after midnight), else 0. Then the line is stale:
+    /// every stop is past, nothing counts down.
+    public var staleDays: Int
+    public var isStale: Bool { staleDays > 0 }
+    /// Real minutes from `now` to the next stop (DST nights included); nil when there is none.
+    private var toNext: Int?
 
     /// More stops than this don't fit side by side on a phone; the view lays them out top to bottom instead.
     public static let maxAcross = 4
@@ -40,7 +46,11 @@ public struct DayTimeline: Equatable, Sendable {
         let c = calendar.dateComponents([.hour, .minute], from: now)
         let today = (c.hour ?? 0) * 60 + (c.minute ?? 0)
         let tomorrow = Self.isTomorrow(card.date, now: now, calendar: calendar)
-        let nowMinute = tomorrow ? today - 24 * 60 : today
+        let behind = Self.daysBehind(card.date, now: now, calendar: calendar)
+        let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+        // Tomorrow: minus the real minutes left until tomorrow's midnight. Stale: past every stop of the day.
+        let untilMidnight = startOfTomorrow.map { max(Int(($0.timeIntervalSince(now) / 60).rounded()), 0) } ?? (24 * 60 - today)
+        let nowMinute = behind > 0 ? 24 * 60 : tomorrow ? -untilMidnight : today
         var timed: [(item: Card.Item, minute: Int)] = []
         var notes: [Card.Item] = []
         for item in card.items {
@@ -48,7 +58,7 @@ public struct DayTimeline: Equatable, Sendable {
         }
         // Stable: two stops at the same time keep the server's order.
         let sorted = timed.enumerated().sorted { ($0.element.minute, $0.offset) < ($1.element.minute, $1.offset) }.map(\.element)
-        let next = sorted.firstIndex { $0.minute >= nowMinute }
+        let next = behind > 0 ? nil : sorted.firstIndex { $0.minute >= nowMinute }
         stops = sorted.enumerated().map { i, s in
             Stop(item: s.item, minute: s.minute, phase: next.map { i < $0 ? .past : i == $0 ? .next : .later } ?? .past)
         }
@@ -56,6 +66,33 @@ public struct DayTimeline: Equatable, Sendable {
         text = card.items.isEmpty ? card.text : nil
         self.now = nowMinute
         isTomorrow = tomorrow
+        staleDays = behind
+        if let next {
+            let m = sorted[next].minute
+            if tomorrow, let start = startOfTomorrow,
+               let at = calendar.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: start) {
+                toNext = Int((at.timeIntervalSince(now) / 60).rounded(.down))
+            } else {
+                toNext = m - nowMinute
+            }
+        } else {
+            toNext = nil
+        }
+    }
+
+    /// The card's day ('2026-11-07') as the start of that day in `calendar`; nil for nil or garbage.
+    public static func day(_ date: String?, calendar: Calendar = .current) -> Date? {
+        guard let date, Card.Item.isPlainDay(date) else { return nil }
+        let p = date.trimmingCharacters(in: .whitespaces).split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3 else { return nil }
+        return calendar.date(from: DateComponents(year: p[0], month: p[1], day: p[2]))
+    }
+
+    /// How many days `date` lies before `now`'s day; 0 when it is today, later, nil or unreadable.
+    public static func daysBehind(_ date: String?, now: Date, calendar: Calendar = .current) -> Int {
+        guard let d = day(date, calendar: calendar) else { return 0 }
+        let n = calendar.dateComponents([.day], from: d, to: calendar.startOfDay(for: now)).day ?? 0
+        return max(n, 0)
     }
 
     /// `date` ('2026-11-07') is the calendar day after `now`'s day. Nil or unreadable: no.
@@ -78,7 +115,7 @@ public struct DayTimeline: Equatable, Sendable {
     public var next: Stop? { stops.first { $0.phase == .next } }
 
     /// Minutes until the next stop; nil once the day's stops are over.
-    public var minutesToNext: Int? { next.map { $0.minute - now } }
+    public var minutesToNext: Int? { next == nil ? nil : toNext }
 
     /// How far "now" has filled the line after stop `i`, 0…1. The piece after the last stop is full once that stop is
     /// past. Two stops at the same minute: full once they are past.

@@ -42,7 +42,11 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             m.cards = m.cards.map(card)
             return m
         }
-        state.cards = state.cards.map { $0.id == "today" ? Self.demoDay($0, now: now) : card($0) }
+        // The demo day is always today (the fixture card is dated), so it never counts as a stale or tomorrow card.
+        state.cards = state.cards.map { c in
+            guard c.id == "today" else { return card(c) }
+            var day = Self.demoDay(c, now: now); day.date = nil; return day
+        }
         state.lastMessage = page.messages.last
         state.busy = []
         page.busy = []
