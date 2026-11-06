@@ -121,6 +121,9 @@ public struct HomeAssistantClient: HomeAssistantAPI {
     let token: String?
     let transport: any HTTPTransport
 
+    /// `/api/states` of a big install is a few MB; past this it is not Home Assistant. Reading stops there.
+    public static let maxResponseBytes = 32 * 1024 * 1024
+
     public init(baseURL: URL, token: String?, transport: any HTTPTransport = URLSessionTransport()) {
         self.baseURL = baseURL
         self.token = token?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
@@ -169,24 +172,25 @@ public struct HomeAssistantClient: HomeAssistantAPI {
         }
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         r.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let token { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
+        if let token, URLPolicy.allowsToken(baseURL) { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         r.httpShouldHandleCookies = false
         return r
     }
 
     func perform(_ request: URLRequest) async throws -> Data {
         guard token != nil else { throw APIError.unauthorized }
+        // The long-lived token is an HA login: never over plain http outside this device and the tailnet.
+        if let problem = URLPolicy.tokenProblem(baseURL) { throw APIError.badRequest(problem) }
         let host = baseURL.host ?? "Home Assistant"
         let data: Data
         let response: HTTPURLResponse
         do {
-            (data, response) = try await transport.send(request)
+            (data, response) = try await transport.send(request, maxBytes: Self.maxResponseBytes)
         } catch {
             throw APIError.from(error, host: host)
         }
         if let error = APIError.from(status: response.statusCode, body: data) { throw error }
-        // /api/states of a big install is a few MB; more is not Home Assistant.
-        if data.count > 4 * CompanionClient.maxResponseBytes { throw APIError.tooLarge }
+        if data.count > Self.maxResponseBytes { throw APIError.tooLarge }
         return data
     }
 }

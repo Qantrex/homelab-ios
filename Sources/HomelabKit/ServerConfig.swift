@@ -62,6 +62,25 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         while path.hasSuffix("/") { path.removeLast() }
         return "\(scheme)://\(url.host?.lowercased() ?? ""):\(port)\(path)"
     }
+    /// The server gets a bearer token: a Companion server with `auth == .token`, and Home Assistant always.
+    public var sendsToken: Bool { Self.sendsToken(kind: kind, auth: auth) }
+
+    public static func sendsToken(kind: Kind, auth: Auth) -> Bool {
+        kind == .homeAssistant || (kind == .companion && auth == .token)
+    }
+
+    /// Why this server's token can't be sent (a token over plain http to an address outside this device and the
+    /// tailnet's `.ts.net` names, `URLPolicy.allowsToken`), or nil. The editor shows it as an error: the clients
+    /// refuse such a server with the same text.
+    public var tokenTransportProblem: String? {
+        Self.tokenTransportProblem(kind: kind, auth: auth, url: baseURL)
+    }
+
+    /// The same for an entry the editor hasn't saved yet.
+    public static func tokenTransportProblem(kind: Kind, auth: Auth, url: URL) -> String? {
+        sendsToken(kind: kind, auth: auth) ? URLPolicy.tokenProblem(url) : nil
+    }
+
     public var speaksCompanionAPI: Bool { kind == .companion || (kind == .demo && !isDemoHomeAssistant) }
 }
 
