@@ -1124,7 +1124,8 @@ class FixtureApp:
 
     def run_action(self, spec, body):
         """A mock run: checks the shape the app sends (arg text, payload of text, required fields), runs nothing."""
-        arg, payload = body.get("arg", ""), body.get("payload") or {}
+        # Empty, missing or null all mean "no argument" (openapi.yaml).
+        arg, payload = body.get("arg") or "", body.get("payload") or {}
         if not isinstance(arg, str) or not isinstance(payload, dict) or not all(isinstance(v, str) for v in payload.values()):
             raise BadRequest("arg must be text and payload an object of texts")
         if bool(spec.get("arg")) != bool(arg.strip()):

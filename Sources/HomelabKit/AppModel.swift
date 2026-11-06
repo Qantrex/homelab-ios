@@ -413,6 +413,20 @@ public final class AppModel {
         return result
     }
 
+    /// The form a link asked for (`openAction`), once the selected server lists it; the request is cleared then. A
+    /// request the server can't serve (its loaded list lacks the name, or it has no `run-actions`) is dropped too,
+    /// so it doesn't pop up later after a server switch. Nil while the list isn't loaded yet: the request waits.
+    public func takeOpenAction() -> ActionSpec? {
+        guard let name = openAction else { return nil }
+        let s = selectedStatus
+        if s.features.contains(.runActions), let spec = s.actions.first(where: { $0.name == name }) {
+            openAction = nil
+            return spec
+        }
+        if s.actionsFetched != nil || (s.knownInfo != nil && !s.features.contains(.runActions)) { openAction = nil }
+        return nil
+    }
+
     /// The action a card or item offers, if the selected server lets the app start it (feature `run-actions` and
     /// listed in `GET /actions`). Nil = hide the button.
     public func startable(_ action: ItemAction?) -> ActionSpec? {

@@ -336,8 +336,16 @@ public struct ActionForm: Sendable, Equatable {
         values[variant][index] = value
     }
 
-    /// The argument to send, or nil while a part is missing or malformed. "" for an action without one.
+    /// The argument to send, or nil while a part is missing or malformed or it's too long. "" for an action without one.
     public var arg: String? {
+        joinedArg.flatMap { $0.unicodeScalars.count <= Self.maxArg ? $0 : nil }
+    }
+
+    /// The server takes arguments up to this many characters (code points).
+    public static let maxArg = 64
+
+    /// The parts joined, before the length check; nil while a part is missing or malformed.
+    private var joinedArg: String? {
         guard !spec.variants.isEmpty else { return "" }
         var out = ""
         for (i, part) in parts.enumerated() {
@@ -346,8 +354,11 @@ public struct ActionForm: Sendable, Equatable {
             guard Self.problem(part, v) == nil else { return nil }
             out += v
         }
-        return out.count <= 64 ? out : nil
+        return out
     }
+
+    /// Length as the server counts it: code points (Python's `len`), so "👨‍👩‍👧" is 5, not 1.
+    public static func length(_ text: String) -> Int { text.unicodeScalars.count }
 
     /// The payload to send: trimmed, without empty fields.
     public var payload: [String: String] {
@@ -365,6 +376,11 @@ public struct ActionForm: Sendable, Equatable {
         for (i, part) in parts.enumerated() {
             if let p = Self.problem(part, value(part: i).trimmingCharacters(in: .whitespaces)) { out.append(p) }
         }
+        // Every part fine but together too long: say so, or the form would be "not ready" without a reason.
+        if let joined = joinedArg, Self.length(joined) > Self.maxArg {
+            let name = spec.variants.count > 1 ? spec.variants[variant].label : spec.label
+            out.append("\(name) is too long (\(Self.maxArg) characters at most).")
+        }
         let payload = payload
         for field in spec.fields {
             let v = payload[field.name]
@@ -372,7 +388,7 @@ public struct ActionForm: Sendable, Equatable {
                 if field.required { out.append("\(field.label) is missing.") }
                 continue
             }
-            if v.count > field.max { out.append("\(field.label) is longer than \(field.max) characters.") }
+            if Self.length(v) > field.max { out.append("\(field.label) is longer than \(field.max) characters.") }
             switch field.kind {
             case .number where v.wholeMatch(of: /[0-9]{1,12}/) == nil: out.append("\(field.label) must be a whole number.")
             case .date where v.wholeMatch(of: Self.dayPattern) == nil: out.append("\(field.label) must be a day like 2026-11-07.")

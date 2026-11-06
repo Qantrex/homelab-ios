@@ -134,6 +134,26 @@ public enum APIError: Error, Equatable, Sendable {
         return self == .forbidden
     }
 
+    /// After a request that changes something (start an action, press a button): could it have run anyway? False
+    /// when the request never reached the server (no connection could be made) or the server refused it (4xx, a
+    /// redirect). True when the connection broke after sending, the answer was unreadable or the server failed
+    /// (5xx): then "didn't run" would be a guess.
+    public var mayHaveRun: Bool {
+        switch self {
+        case .notOnTailnet, .cannotFindHost, .tls, .unauthorized, .forbidden, .refused, .notFound, .tooManyRequests,
+             .badRequest, .unsupportedVersion, .redirected:
+            false
+        case .offline, .timeout, .cancelled, .server, .invalidResponse, .decoding, .tooLarge, .other:
+            true
+        }
+    }
+
+    /// Title and text for a failed start or button press: "Didn't run" only when it surely didn't.
+    public var actionFailure: (title: String, text: String) {
+        mayHaveRun ? ("Not sure it ran", message + "\n\nIt may have run anyway. Check the chat before trying again.")
+                   : ("Didn't run", message)
+    }
+
     /// Worth an automatic retry later (vs. a setup problem the user must fix).
     public var isTransient: Bool {
         switch self {
@@ -186,6 +206,13 @@ public enum APIError: Error, Equatable, Sendable {
             return .badRequest(serverErrorText(body) ?? "")
         default: return .server(status: status)
         }
+    }
+
+    /// The answer to `POST /actions/<name>`: a 404 ("no such action") or 429 ("one at a time") with the server's own
+    /// reason shows that reason; without one, the generic texts.
+    public static func fromAction(status: Int, body: Data) -> APIError? {
+        if status == 404 || status == 429, let text = serverErrorText(body) { return .badRequest(text) }
+        return from(status: status, body: body)
     }
 
     /// `{"error": "..."}` from the server, shortened, for 4xx messages.

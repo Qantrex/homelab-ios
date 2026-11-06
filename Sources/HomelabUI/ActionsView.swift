@@ -73,6 +73,7 @@ struct ActionsView: View {
             }
             .sheet(item: $formFor, onDismiss: {
                 if let r = afterSheet { result = r; afterSheet = nil }
+                openRequested()   // a link that came while the sheet was open
             }) { spec in
                 if let server = model.selected {
                     ActionFormView(model: model, server: server, spec: spec) { finished(spec, $0) }
@@ -92,14 +93,16 @@ struct ActionsView: View {
         }
     }
 
-    /// A requested form (deep link, launch argument) can open once the list knows the action.
-    private var openable: String? {
-        model.openAction.flatMap { name in startable.contains { $0.name == name } ? name : nil }
+    /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
+    private var openable: String {
+        let s = model.selectedStatus
+        return [model.openAction ?? "", startable.map(\.name).joined(separator: ","),
+                "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)"].joined(separator: "|")
     }
 
+    /// Opens a requested form once the list knows the action. While another form is open the request waits.
     private func openRequested() {
-        guard let name = openable, let spec = startable.first(where: { $0.name == name }) else { return }
-        model.openAction = nil
+        guard formFor == nil, let spec = model.takeOpenAction() else { return }
         formFor = spec
     }
 

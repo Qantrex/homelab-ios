@@ -168,9 +168,10 @@ struct ActionFormView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 TextField(field.label, text: text, prompt: Text(prompt(field)), axis: field.kind == .multiline ? .vertical : .horizontal)
                     .lineLimit(field.kind == .multiline ? 3...8 : 1...1)
-                if text.wrappedValue.count > field.max * 4 / 5 {
-                    Text("\(text.wrappedValue.count)/\(field.max)").font(Typo.mono(.caption2))
-                        .foregroundStyle(text.wrappedValue.count > field.max ? Palette.love : Palette.tertiary)
+                let count = ActionForm.length(text.wrappedValue)
+                if count > field.max * 4 / 5 {
+                    Text("\(count)/\(field.max)").font(Typo.mono(.caption2))
+                        .foregroundStyle(count > field.max ? Palette.love : Palette.tertiary)
                 }
             }
         case .number:

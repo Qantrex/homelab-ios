@@ -125,6 +125,38 @@ import Testing
         #expect(form.problems == ["To-do is longer than 120 characters."])
     }
 
+    @Test func tooLongArgumentsSayWhy() throws {
+        let list = try decode("""
+        {"actions": [{"name": "a", "label": "Restart", "arg": [{"label": "Host", "parts": [
+            {"kind": "word", "label": "Host"}, {"kind": "literal", "text": ":"}, {"kind": "word", "label": "Container"}]}],
+          "fields": [{"name": "note", "label": "Note", "max": 5}]}]}
+        """)
+        var form = ActionForm(list[0])
+        form.set(part: 0, String(repeating: "h", count: 40))
+        form.set(part: 2, String(repeating: "c", count: 30))
+        // Each part is fine, together 71 characters: not ready, and it says why.
+        #expect(form.arg == nil && !form.isReady)
+        #expect(form.problems == ["Restart is too long (64 characters at most)."])
+        form.set(part: 2, String(repeating: "c", count: 23))
+        #expect(form.arg?.count == 64 && form.problems.isEmpty)
+        // The server counts code points: a family emoji is 5 of them.
+        form.fieldValues["note"] = "👨‍👩‍👧"
+        #expect(ActionForm.length("👨‍👩‍👧") == 5 && form.problems.isEmpty)
+        form.fieldValues["note"] = "👨‍👩‍👧!"
+        #expect(form.problems == ["Note is longer than 5 characters."])
+    }
+
+    @Test func failuresSayWhetherItMayHaveRun() {
+        for e: APIError in [.badRequest("x"), .notFound, .tooManyRequests, .forbidden, .refused("x"), .unauthorized,
+                            .notOnTailnet(host: "h"), .cannotFindHost(host: "h"), .tls] {
+            #expect(!e.mayHaveRun && e.actionFailure.title == "Didn't run" && e.actionFailure.text == e.message)
+        }
+        for e: APIError in [.offline, .timeout, .cancelled, .other("x"), .decoding("x"), .server(status: 502)] {
+            #expect(e.mayHaveRun && e.actionFailure.title == "Not sure it ran")
+            #expect(e.actionFailure.text.hasPrefix(e.message) && e.actionFailure.text.contains("Check the chat"))
+        }
+    }
+
     @Test func numberAndRequiredDayFields() throws {
         var form = ActionForm(try spec("calendar-add"), now: now, calendar: vienna)
         #expect(form.fieldValues == ["start": "2026-11-07"])   // a required day starts at tomorrow
@@ -206,9 +238,23 @@ import Testing
         await #expect(throws: APIError.badRequest("payload is missing title")) {
             try await CompanionClient(baseURL: base, token: nil, transport: refused).run("a", arg: "", payload: [:])
         }
-        let limit = FakeTransport(status: 429, json: #"{"error": "too many"}"#)
-        await #expect(throws: APIError.tooManyRequests) {
+        // 404 and 429 carry the server's reason ("one action at a time"); without one, the generic texts.
+        let limit = FakeTransport(status: 429, json: #"{"error": "one action at a time"}"#)
+        await #expect(throws: APIError.badRequest("one action at a time")) {
             try await CompanionClient(baseURL: base, token: nil, transport: limit).run("a", arg: "", payload: [:])
+        }
+        let unknown = FakeTransport(status: 404, json: #"{"error": "unknown action: a"}"#)
+        await #expect(throws: APIError.badRequest("unknown action: a")) {
+            try await CompanionClient(baseURL: base, token: nil, transport: unknown).run("a", arg: "", payload: [:])
+        }
+        let bare = FakeTransport(status: 429, json: "{}")
+        await #expect(throws: APIError.tooManyRequests) {
+            try await CompanionClient(baseURL: base, token: nil, transport: bare).run("a", arg: "", payload: [:])
+        }
+        // Other endpoints keep the generic texts (a 404 there means a wrong address).
+        let state404 = FakeTransport(status: 404, json: #"{"error": "not found"}"#)
+        await #expect(throws: APIError.notFound) {
+            try await CompanionClient(baseURL: base, token: nil, transport: state404).state()
         }
         // A name the server can't have never leaves the phone.
         let never = FakeTransport(json: "{}")

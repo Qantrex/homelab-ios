@@ -703,6 +703,9 @@ class FixtureModeTest(unittest.TestCase):
         self.assertEqual((code, obj), (200, {"ok": True, "text": "Done: wake-set 2026-11-07T07:00 (fixture)"}))
         code, _, obj = call(self.port, "POST", "/api/v1/actions/todo-add", {"payload": {"summary": "Milk"}})
         self.assertEqual((code, obj["ok"]), (200, True))
+        # "arg": null is no argument, like a missing or empty one.
+        code, _, obj = call(self.port, "POST", "/api/v1/actions/todo-add", {"arg": None, "payload": {"summary": "Milk"}})
+        self.assertEqual((code, obj["ok"]), (200, True))
         msgs = call(self.port, "GET", "/api/v1/messages")[2]["messages"][-2:]
         self.assertEqual([m["text"] for m in msgs], ["Add a to-do: Milk", "Done: todo-add (fixture)"])
         bad = [("todo-add", {"payload": {}}), ("todo-add", {"payload": {"summary": "x", "evil": "y"}}),

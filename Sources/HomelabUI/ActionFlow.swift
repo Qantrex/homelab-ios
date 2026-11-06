@@ -23,7 +23,7 @@ struct ResultMessage: Identifiable {
         case .success(let res):
             (res.ok, ResultMessage(title: res.ok ? spec.label : String(localized: "\(spec.label) failed"), text: res.text))
         case .failure(let e):
-            (false, ResultMessage(title: String(localized: "Didn't run"), text: e.message))
+            (false, ResultMessage(title: e.actionFailure.title, text: e.actionFailure.text))
         }
     }
 }
@@ -95,9 +95,11 @@ struct ProposalDialog: ViewModifier {
         running.remove(c.action.id)
         switch r {
         case .success(let text): done(true, ResultMessage(title: c.action.title, text: text))
-        case .failure(let e):
+        case .failure(let e) where e.isForbidden:
             done(false, ResultMessage(title: String(localized: "Didn't work"),
-                                      text: e.isForbidden ? String(localized: "This button is no longer valid (already handled or expired).") : e.message))
+                                      text: String(localized: "This button is no longer valid (already handled or expired).")))
+        case .failure(let e):
+            done(false, ResultMessage(title: e.actionFailure.title, text: e.actionFailure.text))
         }
     }
 }

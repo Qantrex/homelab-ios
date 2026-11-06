@@ -172,6 +172,20 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         #expect(m.selectedStatus.snapshot?.state.status == .ok)
     }
 
+    @Test func requestedFormsOpenOnceListed() async throws {
+        let (m, _, _, _) = makeModel()
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        // Before the list is there the request waits.
+        m.openAction = "todo-add"
+        #expect(m.takeOpenAction() == nil && m.openAction == "todo-add")
+        await m.refresh()
+        #expect(m.takeOpenAction()?.name == "todo-add" && m.openAction == nil)
+        // A name the loaded list doesn't have is dropped, not kept for a later server.
+        m.openAction = "launch-rocket"
+        #expect(m.takeOpenAction() == nil && m.openAction == nil)
+    }
+
     @Test func simultaneousRefreshesCostOneFetch() async throws {
         let (m, server, _, _) = makeModel()
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)

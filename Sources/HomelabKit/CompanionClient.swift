@@ -80,7 +80,8 @@ public struct CompanionClient: CompanionAPI {
         guard ActionSpec.isValidName(action) else { throw APIError.badRequest("No such action.") }
         // The server waits up to ~100 s for the result, then answers "still running".
         let data = try JSONSerialization.data(withJSONObject: ["arg": arg, "payload": payload] as [String: Any])
-        return try await perform(request("actions/\(action)", method: "POST", body: data, timeout: 130))
+        return try await perform(request("actions/\(action)", method: "POST", body: data, timeout: 130),
+                                 errors: APIError.fromAction)
     }
 
     // MARK: - HTTP
@@ -113,7 +114,9 @@ public struct CompanionClient: CompanionAPI {
         return try await perform(request(path, method: "POST", body: data, timeout: timeout))
     }
 
-    func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
+    /// `errors` turns an HTTP status and body into an error (most endpoints: the generic texts).
+    func perform<T: Decodable>(_ request: URLRequest,
+                               errors: (Int, Data) -> APIError? = APIError.from(status:body:)) async throws -> T {
         let host = baseURL.host ?? "the server"
         let data: Data
         let response: HTTPURLResponse
@@ -122,7 +125,7 @@ public struct CompanionClient: CompanionAPI {
         } catch {
             throw APIError.from(error, host: host)
         }
-        if let error = APIError.from(status: response.statusCode, body: data) { throw error }
+        if let error = errors(response.statusCode, data) { throw error }
         // A hostile or broken server can't make the app hold hundreds of MB.
         if data.count > Self.maxResponseBytes { throw APIError.tooLarge }
         // A captive portal or web page instead of the API.
