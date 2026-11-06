@@ -20,7 +20,7 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 22) {
+                LazyVStack(alignment: .leading, spacing: 24) {
                     hero
                     if model.selected != nil {
                         if let error = status.error {
@@ -192,38 +192,42 @@ struct TodayView: View {
 
     /// Actions the agent proposed, so they are seen first thing. Tap opens Actions (with the confirm step there).
     private func waiting(_ pending: [PendingAction]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let shown = Array(pending.prefix(density == .overkill ? pending.count : 3))
+        return VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: "Waiting for you", trailing: "\(pending.count)")
             Button {
                 model.tab = .actions
             } label: {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(pending.prefix(density == .overkill ? pending.count : 3)) { p in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold)
-                            VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { i, p in
+                        if i > 0 { TodaySeparator() }
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).font(.subheadline)
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text([p.action, p.arg].compactMap { $0 }.joined(separator: " "))
-                                    .font(Typo.mono(.subheadline, weight: .semibold)).lineLimit(1)
+                                    .font(.headline).foregroundStyle(Palette.text).lineLimit(2)
                                 if let reason = p.reason {
-                                    Text(reason).font(.caption).foregroundStyle(Palette.secondary)
+                                    Text(reason).font(.subheadline).foregroundStyle(Palette.secondary)
                                         .lineLimit(density == .overkill ? nil : 2)
                                 }
                                 // Overkill's exact times are long: their own line, so the title keeps its room.
                                 if density.exactTimes, let created = p.created {
-                                    Text(when(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                                    Text(when(created)).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
                                 }
                             }
                             Spacer(minLength: 8)
                             if !density.exactTimes, let created = p.created {
-                                Text(when(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                                Text(when(created)).font(.footnote).foregroundStyle(Palette.tertiary)
                             }
                         }
+                        .multilineTextAlignment(.leading)
                     }
                     if density != .overkill, pending.count > 3 {
-                        Text("and \(pending.count - 3) more").font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                        TodaySeparator()
+                        Text("and \(pending.count - 3) more").font(.footnote).foregroundStyle(Palette.tertiary)
                     }
                 }
-                .card(accent: Palette.gold)
+                .panel()
             }
             .buttonStyle(.press)
             .accessibilityHint(Text("Opens Actions"))
@@ -238,16 +242,22 @@ struct TodayView: View {
     @ViewBuilder
     private func lastReport(_ state: HomelabState) -> some View {
         if let m = state.lastMessage, !m.text.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Last report", trailing: m.ts.map { when($0) })
                 Button {
                     model.tab = .chat
                 } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        if let job = m.job { Chip(job, color: statusColor(m.status)) }
-                        Text(markdown(m.text)).font(.subheadline).lineLimit(10).multilineTextAlignment(.leading)
+                        if let job = m.job {
+                            HStack(spacing: 8) {
+                                Circle().fill(statusColor(m.status)).frame(width: 8, height: 8).accessibilityHidden(true)
+                                Text(job).font(.headline).foregroundStyle(Palette.text)
+                            }
+                        }
+                        Text(markdown(m.text)).font(.subheadline).foregroundStyle(Palette.secondary)
+                            .lineLimit(10).multilineTextAlignment(.leading)
                     }
-                    .card()
+                    .panel()
                 }
                 .buttonStyle(.press)
                 .disabled(!model.availableTabs.contains(.chat))
@@ -270,19 +280,22 @@ struct DaySection: View {
         // Redrawn every minute, so the line and the countdown move while the screen is open.
         TimelineView(.everyMinute) { context in
             let line = DayTimeline(card: card, now: context.date)
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 if line.stops.isEmpty {
-                    Rectangle().fill(Palette.line).frame(height: 1)
                     if let text = line.text {
-                        Text(markdown(text)).font(.title3.weight(.medium)).foregroundStyle(Palette.secondary)
+                        Text(markdown(text)).font(.body).foregroundStyle(Palette.text)
                     } else {
                         DayNumbers(items: line.notes)
                     }
                 } else {
                     if line.across(accessibilityText: typeSize.isAccessibilitySize) { across(line) } else { down(line) }
-                    if !line.notes.isEmpty { notes(line.notes) }
+                    if !line.notes.isEmpty {
+                        TodaySeparator()
+                        notes(line.notes)
+                    }
                 }
             }
+            .panel()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(card.title ?? String(localized: "Today")))
@@ -296,7 +309,6 @@ struct DaySection: View {
     /// Top to bottom (huge text, or more stops than fit across): the line runs down the left edge.
     private func down(_ line: DayTimeline) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Rectangle().fill(Palette.line).frame(height: 1).padding(.bottom, 14)
             ForEach(Array(line.stops.enumerated()), id: \.offset) { i, stop in
                 DayStopLabel(stop: stop, countdown: line.minutesToNext)
                     .padding(.leading, 30)
@@ -314,14 +326,17 @@ struct DaySection: View {
         }
     }
 
+    /// Items without a time: a status dot in the item's colour (if it has one), then what it says, in words.
     private func notes(_ items: [Card.Item]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .semibold)).tracking(1)
-                        .foregroundStyle(item.tint?.color ?? Palette.secondary)
-                    Text([item.value, item.subtitle].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(item.tint?.color ?? Palette.secondary)
+                    if let tint = item.tint?.color {
+                        Circle().fill(tint).frame(width: 8, height: 8).accessibilityHidden(true)
+                    }
+                    (Text(item.title ?? "").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.text)
+                     + Text(" " + [item.value, item.subtitle].compactMap { $0 }.joined(separator: " · "))
+                        .font(.subheadline).foregroundStyle(Palette.secondary))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
@@ -330,7 +345,8 @@ struct DaySection: View {
     }
 }
 
-/// The day in big numbers, for a card without clock times: no panel, mono numbers.
+/// The day in big numbers, for a card without clock times: mono numbers, sentence-case labels (the section's panel
+/// is around it).
 struct DayNumbers: View {
     let items: [Card.Item]
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -339,19 +355,18 @@ struct DayNumbers: View {
         VStack(alignment: .leading, spacing: 12) {
             LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .topLeading)]
                                                             : [GridItem(.adaptive(minimum: 96), spacing: 12, alignment: .topLeading)],
-                      alignment: .leading, spacing: 14) {
+                      alignment: .leading, spacing: 16) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(item.value ?? "–")
-                            .font(.system(size: 30, weight: .semibold, design: .monospaced))
+                            .font(Typo.data(.title, weight: .semibold))
                             .minimumScaleFactor(0.6).lineLimit(1)
                             .foregroundStyle(item.tint?.color ?? Palette.text)
                             .contentTransition(.numericText())
                             .animation(.snappy, value: item.value)
-                        Text(item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .medium))
-                            .tracking(1).foregroundStyle(Palette.secondary).lineLimit(1)
+                        Text(item.title ?? "").font(.subheadline).foregroundStyle(Palette.secondary).lineLimit(1)
                         if let s = item.subtitle {
-                            Text(s).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                            Text(s).font(.footnote).foregroundStyle(Palette.tertiary).lineLimit(1)
                         }
                     }
                     .accessibilityElement(children: .combine)
@@ -370,53 +385,67 @@ struct MachineList: View {
     let exact: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: "Machines", trailing: "\(hosts.filter { $0.reachable == true }.count)/\(hosts.count) up")
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(hosts) { host in
+                ForEach(Array(hosts.enumerated()), id: \.element.id) { i, host in
+                    if i > 0 { TodaySeparator() }
                     let health = state.health(of: host)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Circle().fill(health.color).frame(width: 7, height: 7)
-                            Text(host.name).font(Typo.mono(.subheadline, weight: .semibold))
-                            if health != .ok { Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color) }
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
+                            Text(host.name).font(.headline)
+                            if health != .ok { Text(health.label).font(.subheadline).foregroundStyle(Palette.secondary) }
                             Spacer(minLength: 4)
                             if let checked = host.checked {
-                                Text(Format.when(checked, exact: exact)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                                Text(Format.when(checked, exact: exact)).font(.footnote).foregroundStyle(Palette.tertiary).lineLimit(1)
                             }
                         }
-                        Text(numbers(host)).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
+                        numbers(host)
                             .fixedSize(horizontal: false, vertical: true)
                         if let history = host.history, history.last(.load) != nil {
                             Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "\(host.name) load, last 24 hours"),
                                       lineWidth: 1.2, fill: false)
                                 .frame(height: 18)
-                                .padding(.top, 2)
+                                .padding(.top, 4)
                         }
                         if !host.flags.isEmpty {
-                            Text(host.flags.map(Format.flag).joined(separator: " · ")).font(Typo.mono(.caption2))
-                                .foregroundStyle(health == .problem ? Palette.love : Palette.gold)
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill").font(.footnote)
+                                    .foregroundStyle(health == .problem ? Palette.love : Palette.gold)
+                                    .accessibilityHidden(true)
+                                Text(host.flags.map(Format.flag).joined(separator: " · ")).font(.footnote)
+                                    .foregroundStyle(Palette.secondary)
+                            }
+                            .padding(.top, 2)
                         }
                     }
                     .accessibilityElement(children: .combine)
                 }
             }
-            .card()
+            .panel()
         }
     }
 
-    /// "LOAD 1.85/4 · RAM 71% · / 81% · /srv 40% · 63 °C · CT 14/14 · UPD 3 · REBOOT · BACKUP ok"
-    private func numbers(_ h: Host) -> String {
-        guard h.reachable == true else { return HostHealth(h).label }
-        var p: [String] = []
-        if h.load != nil { p.append("LOAD " + Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? "")) }
-        if h.memPct != nil { p.append("RAM " + Format.percent(h.memPct)) }
-        for (mount, pct) in h.disks.sorted(by: { $0.key < $1.key }) { p.append("\(mount) \(pct)%") }
-        if h.temp != nil { p.append(Format.temperature(h.temp)) }
-        if h.containersTotal != nil { p.append("CT " + Format.containers(up: h.containersUp, total: h.containersTotal)) }
-        if let u = h.upgradable, u > 0 { p.append("UPD \(u)") }
-        if h.rebootRequired == true { p.append("REBOOT") }
-        if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append("BACKUP " + b) }
-        return p.joined(separator: " · ")
+    /// "Load 1.85/4 · RAM 71% · / 81% · 63 °C · Containers 14/14 · Updates 3 · Reboot needed · Backup ok": the words
+    /// in the text style, only the values in the data font.
+    private func numbers(_ h: Host) -> Text {
+        guard h.reachable == true else { return Text(HostHealth(h).label).font(.subheadline).foregroundStyle(Palette.secondary) }
+        var p: [(label: String, value: String)] = []
+        if h.load != nil { p.append((String(localized: "Load"), Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? ""))) }
+        if h.memPct != nil { p.append((String(localized: "RAM"), Format.percent(h.memPct))) }
+        for (mount, pct) in h.disks.sorted(by: { $0.key < $1.key }) { p.append((mount, "\(pct)%")) }
+        if h.temp != nil { p.append(("", Format.temperature(h.temp))) }
+        if h.containersTotal != nil { p.append((String(localized: "Containers"), Format.containers(up: h.containersUp, total: h.containersTotal))) }
+        if let u = h.upgradable, u > 0 { p.append((String(localized: "Updates"), "\(u)")) }
+        if h.rebootRequired == true { p.append((String(localized: "Reboot needed"), "")) }
+        if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append((String(localized: "Backup"), b)) }
+        var out = Text("")
+        for (i, part) in p.enumerated() {
+            if i > 0 { out = out + Text("  ·  ").font(.subheadline).foregroundStyle(Palette.tertiary) }
+            if !part.label.isEmpty { out = out + Text(part.label + (part.value.isEmpty ? "" : " ")).font(.subheadline).foregroundStyle(Palette.secondary) }
+            if !part.value.isEmpty { out = out + Text(part.value).font(Typo.data(.subheadline)).foregroundStyle(Palette.text) }
+        }
+        return out
     }
 }

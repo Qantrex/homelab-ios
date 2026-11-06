@@ -45,12 +45,7 @@ struct CardView: View {
     private var stacked: Bool { typeSize.isAccessibilitySize }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
-            header
-            if let subtitle = card.subtitle { Text(subtitle).font(.caption).foregroundStyle(Palette.secondary) }
-            content
-        }
-        .card(padding: compact ? 10 : 14)
+        layout
         .animation(reduceMotion ? nil : .snappy, value: card.items)
         .onChange(of: card) { _, new in ticked.prune(new) }
         .sheet(item: $formFor, onDismiss: {
@@ -78,19 +73,43 @@ struct CardView: View {
         .actionFeedback(result: $result, outcome: outcome)
     }
 
+    /// On Today (docs/DESIGN.md §2): a title above, one panel under it with the rows split by separators. In a chat
+    /// bubble (`compact`): one small panel with a quiet header.
+    @ViewBuilder
+    private var layout: some View {
+        if compact {
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                if let subtitle = card.subtitle { Text(subtitle).font(.footnote).foregroundStyle(Palette.secondary) }
+                content
+            }
+            .card(padding: 10)
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                if let subtitle = card.subtitle {
+                    Text(subtitle).font(.subheadline).foregroundStyle(Palette.secondary).padding(.top, -8)
+                }
+                content.panel()
+            }
+        }
+    }
+
     // MARK: Header
 
     private var header: some View {
         HStack(spacing: 6) {
             // Card tints are decoration: the icon stays grey, colour is for status only.
-            Image(systemName: Symbols.safe(card.icon)).foregroundStyle(Palette.secondary).font(.footnote)
+            Image(systemName: Symbols.safe(card.icon)).foregroundStyle(Palette.secondary)
+                .font(compact ? .footnote : .subheadline)
                 .accessibilityHidden(true)
-            Text(card.title ?? card.id).textCase(.uppercase).font(Typo.mono(.caption, weight: .semibold)).tracking(1.2)
-                .foregroundStyle(Palette.secondary)
+            Text(card.title ?? card.id)
+                .font(compact ? .footnote.weight(.semibold) : Typo.sectionTitle)
+                .foregroundStyle(compact ? Palette.secondary : Palette.text)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 6)
             if !compact, let updated = card.updated {
-                Text(ServerDate.parse(updated).map { Format.age($0) } ?? updated).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                Text(ServerDate.parse(updated).map { Format.age($0) } ?? updated).font(.footnote).foregroundStyle(Palette.tertiary)
             }
             if let action = card.action, let spec = model?.startable(action) {
                 addButton(action, spec)
@@ -98,19 +117,19 @@ struct CardView: View {
         }
     }
 
-    /// "+ ADD": opens the card action's form, prefilled.
+    /// "+ Add": opens the card action's form, prefilled.
     private func addButton(_ action: ItemAction, _ spec: ActionSpec) -> some View {
         let label = action.label ?? spec.label
         return Button { formFor = spec } label: {
             HStack(spacing: 3) {
                 Image(systemName: "plus").accessibilityHidden(true)
-                Text(label).textCase(.uppercase).lineLimit(1)
+                Text(label).lineLimit(1)
             }
-            .font(Typo.mono(.caption2, weight: .semibold))
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(Palette.text)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 1))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Palette.raised, in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.press)
@@ -126,7 +145,7 @@ struct CardView: View {
         switch card.style {
         case .text:
             Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n")))
-                .font(compact ? .footnote : .subheadline)
+                .font(compact ? .footnote : .body)
         case .metrics:
             metrics
         case .list:
@@ -148,13 +167,16 @@ struct CardView: View {
     @ViewBuilder
     private func rows<Row: View>(_ items: [Card.Item], @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
         if items.isEmpty, let text = card.text {
-            Text(markdown(text)).font(compact ? .footnote : .subheadline).foregroundStyle(Palette.secondary)
+            Text(markdown(text)).font(compact ? .footnote : .body).foregroundStyle(Palette.secondary)
         } else {
             let shown = compact ? Array(items.prefix(Self.compactRows)) : items
-            VStack(alignment: .leading, spacing: compact ? 8 : 10) {
-                ForEach(Array(shown.enumerated()), id: \.offset) { _, item in row(item) }
+            VStack(alignment: .leading, spacing: compact ? 8 : 12) {
+                ForEach(Array(shown.enumerated()), id: \.offset) { i, item in
+                    if i > 0, !compact { TodaySeparator() }
+                    row(item)
+                }
                 if shown.count < items.count {
-                    Text("and \(items.count - shown.count) more").font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                    Text("and \(items.count - shown.count) more").font(.footnote).foregroundStyle(Palette.tertiary)
                 }
             }
         }
@@ -166,11 +188,11 @@ struct CardView: View {
                   alignment: .leading, spacing: compact ? 8 : 12) {
             ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title ?? "").font(.caption).foregroundStyle(Palette.secondary).lineLimit(1)
-                    Text(item.value ?? "–").font(Typo.mono(hero ? .title : compact ? .headline : .title3, weight: .semibold))
+                    Text(item.title ?? "").font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(1)
+                    Text(item.value ?? "–").font(Typo.data(hero ? .title : compact ? .headline : .title3, weight: .semibold))
                         .minimumScaleFactor(0.6).lineLimit(1)
                         .foregroundStyle(item.tint?.color ?? Palette.text)
-                    if let s = item.subtitle { Text(s).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary) }
+                    if let s = item.subtitle { Text(s).font(.footnote).foregroundStyle(Palette.tertiary) }
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -189,12 +211,12 @@ struct CardView: View {
                 Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? Palette.secondary)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.title ?? "").font(compact ? .footnote : .subheadline).lineLimit(2)
-                if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(Palette.secondary).lineLimit(stacked ? nil : 1) }
-                if stacked, let v = item.value { Text(v).font(Typo.mono(.caption)).foregroundStyle(item.tint?.color ?? Palette.secondary) }
+                Text(item.title ?? "").font(compact ? .footnote : .body).lineLimit(2)
+                if let s = item.subtitle { Text(s).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(stacked ? nil : 1) }
+                if stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(item.tint?.color ?? Palette.secondary) }
             }
             Spacer(minLength: 8)
-            if !stacked, let v = item.value { Text(v).font(Typo.mono(.caption)).foregroundStyle(item.tint?.color ?? Palette.secondary) }
+            if !stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(item.tint?.color ?? Palette.secondary) }
         }
         .accessibilityElement(children: .combine)
         .accessibilityValue(item.progress.map { Text("\(Format.ringPercent($0)) percent") } ?? Text(""))
@@ -224,14 +246,14 @@ struct CardView: View {
             circle(done: done, busy: busy, tick: tick)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title ?? "")
-                    .font(compact ? .footnote : .subheadline)
+                    .font(compact ? .footnote : .body)
                     .strikethrough(done, color: Palette.tertiary)
                     .foregroundStyle(done ? Palette.tertiary : Palette.text)
-                if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(Palette.tertiary) }
-                if stacked, let due { Text(due.text).font(Typo.mono(.caption)).foregroundStyle(dueColor) }
+                if let s = item.subtitle { Text(s).font(compact ? .caption : .subheadline).foregroundStyle(Palette.tertiary) }
+                if stacked, let due { Text(due.text).font(Typo.data(.subheadline)).foregroundStyle(dueColor) }
             }
             Spacer(minLength: 8)
-            if !stacked, let due { Text(due.text).font(Typo.mono(.caption)).foregroundStyle(dueColor).lineLimit(1) }
+            if !stacked, let due { Text(due.text).font(Typo.data(.subheadline)).foregroundStyle(dueColor).lineLimit(1) }
         }
         .contentShape(Rectangle())
         .onTapGesture { if let url = item.url { openURL(url) } }
@@ -295,8 +317,8 @@ struct CardView: View {
                              : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
         return layout {
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.title ?? "").font(compact ? .footnote : .subheadline).lineLimit(stacked ? nil : 2)
-                if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(Palette.secondary) }
+                Text(item.title ?? "").font(compact ? .footnote : .body).lineLimit(stacked ? nil : 2)
+                if let s = item.subtitle { Text(s).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary) }
             }
             if !stacked { Spacer(minLength: 8) }
             Text(c?.text ?? "–")
@@ -344,5 +366,12 @@ struct CardView: View {
         default: parts[1]
         }
         return parts.count > 2 ? String(localized: "\(n) \(unit) ago") : String(localized: "in \(n) \(unit)")
+    }
+}
+
+/// The line between two rows inside a panel (docs/DESIGN.md §2): a hairline, the panel's own 16 pt inset on both sides.
+struct TodaySeparator: View {
+    var body: some View {
+        Rectangle().fill(Palette.line).frame(height: 1).accessibilityHidden(true)
     }
 }

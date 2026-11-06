@@ -75,28 +75,28 @@ struct HomeTiles: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: "Home", action: home.entities.isEmpty ? nil : ("Edit", { picking = true }))
             if let error = home.error {
                 ErrorBanner(error: error, snapshotAge: nil) { Task { await load() } }
             }
             if pinned.isEmpty {
                 if home.loading && home.entities.isEmpty {
-                    ProgressView().frame(maxWidth: .infinity).card()
+                    ProgressView().frame(maxWidth: .infinity).panel()
                 } else if home.error == nil {
                     Button { picking = true } label: {
                         Label("Pin the lights or scripts you use most", systemImage: "pin")
                             .font(.subheadline)
                             .foregroundStyle(Palette.secondary)
-                            .card()
+                            .panel()
                     }
                     .buttonStyle(.press)
                     .disabled(home.entities.isEmpty)
                 }
             } else {
                 LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
-                                                                : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                          spacing: 10) {
+                                                                : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                          spacing: 12) {
                     ForEach(pinned) { e in
                         HomeTile(entity: e, busy: home.busy.contains(e.entityID)) {
                             Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
@@ -144,23 +144,24 @@ struct HomeTile: View {
             taps += 1
             tap()
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: entitySymbol(entity)).font(.title3)
                     Spacer()
                     if busy { ProgressView().controlSize(.small).tint(on ? Palette.onAccent : Palette.text) }
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entity.name).font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(.leading)
-                    Text(stateText.uppercased()).font(Typo.mono(.caption2)).opacity(0.7)
+                Spacer(minLength: 0)
+                // Name is a headline and always reserves two lines, so every tile is the same height.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entity.name).font(.headline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.leading)
+                    Text(stateText).font(.footnote).opacity(0.65).lineLimit(1)
                 }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .foregroundStyle(on ? Palette.onAccent : Palette.text)
-            .background(on ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? Color.clear : Palette.line, lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 14))
+            .background(on ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
             .animation(.snappy, value: on)
         }
         .buttonStyle(.press)
