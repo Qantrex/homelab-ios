@@ -141,6 +141,16 @@ import Testing
         try #require(try fixture(ActionList.self, "actions.json").actions.first { $0.name == name })
     }
 
+    @Test func parcelsOfferDeliveredAndATrackingLink() throws {
+        let s = try fixture(HomelabState.self, "state-problem.json")
+        let parcels = try #require(s.cards.first { $0.id == "parcels" })
+        let first = parcels.items[0]
+        #expect(first.action == ItemAction(name: "parcel-done", label: "Delivered", arg: "keyboard-1"))
+        #expect(first.url?.scheme == "https" && parcels.items[1].url == nil)
+        let form = ActionForm(try spec("parcel-done"), prefill: first.action, now: at("2026-11-06T15:00"), calendar: vienna)
+        #expect(form.arg == "keyboard-1" && form.isReady)
+    }
+
     @Test func prefillFromPayload() throws {
         let now = at("2026-11-06T15:00")
         let tick = ItemAction(name: "todo-done", label: "Tick off", payload: ["item": "Milk", "list": "shopping", "evil": "x"])
@@ -153,6 +163,26 @@ import Testing
         // No prefill: the same as the plain form.
         #expect(ActionForm(try spec("calendar-add"), prefill: nil, now: now, calendar: vienna)
             == ActionForm(try spec("calendar-add"), now: now, calendar: vienna))
+    }
+
+    /// Gap G1: the to-do's `uid` is a hidden field. It is not in the form, but a card's action must send it,
+    /// or the server can't tell two to-dos with the same text apart.
+    @Test func prefilledHiddenFieldsAreSent() throws {
+        let now = at("2026-11-06T15:00")
+        let tick = ItemAction(name: "todo-done", label: "Tick off",
+                              payload: ["item": "Milk", "list": "shopping", "uid": "a1b2-c3", "evil": "x"])
+        let form = ActionForm(try spec("todo-done"), prefill: tick, now: now, calendar: vienna)
+        #expect(form.payload == ["item": "Milk", "list": "shopping", "uid": "a1b2-c3"])
+        #expect(form.isReady && form.problems.isEmpty)
+        #expect(!form.visibleFields.map(\.name).contains("uid") && form.summary.map(\.label) == ["Item", "List"])
+        // Sent untouched, like the item text.
+        let spaced = ActionForm(try spec("todo-done"), prefill: ItemAction(name: "todo-done", payload: ["item": "a", "uid": " u "]),
+                                now: now, calendar: vienna)
+        #expect(spaced.payload["uid"] == " u ")
+        // An empty hidden value is not sent.
+        let empty = ActionForm(try spec("todo-done"), prefill: ItemAction(name: "todo-done", payload: ["item": "a", "uid": "  "]),
+                               now: now, calendar: vienna)
+        #expect(empty.payload == ["item": "a"])
     }
 
     @Test func prefillSplitsTheArgument() throws {
@@ -196,10 +226,17 @@ import Testing
         #expect(body["payload"] as? [String: String] == ["item": "Milk", "list": "shopping"])
         #expect(body["arg"] as? String == "")
 
+        // The hidden uid travels with the item action all the way to the request.
+        let withUID = ItemAction(name: "todo-done", payload: ["item": "Milk", "list": "shopping", "uid": "a1b2-c3"])
+        _ = await m.run(withUID, on: lab)
+        let sentUID = try #require(server.transport.requests.last { $0.url?.path == "/api/v1/actions/todo-done" })
+        let bodyUID = try #require(sentUID.httpBody.flatMap { try JSONSerialization.jsonObject(with: $0) as? [String: Any] })
+        #expect(bodyUID["payload"] as? [String: String] == ["item": "Milk", "list": "shopping", "uid": "a1b2-c3"])
+
         #expect(await m.run(ItemAction(name: "launch-rocket"), on: lab) == .failure(.notFound))
         // A required field the item doesn't fill never reaches the server.
         #expect(await m.run(ItemAction(name: "todo-done"), on: lab) == .failure(.badRequest("Item is missing.")))
-        #expect(server.calls("/api/v1/actions/todo-done") == 1)
+        #expect(server.calls("/api/v1/actions/todo-done") == 2)
     }
 }
 

@@ -16,11 +16,14 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
     /// Ways to build the argument; the form offers a picker when there is more than one. Empty = no argument.
     public var variants: [ArgVariant]
     public var fields: [Field]
+    /// Offered as a Start tile. False = only used through card/item actions (`start: false`).
+    public var start: Bool
 
     public var id: String { name }
 
     public init(name: String, label: String? = nil, icon: String? = nil, hint: String? = nil, destructive: Bool = false,
-                variants: [ArgVariant] = [], fields: [Field] = []) {
+                variants: [ArgVariant] = [], fields: [Field] = [], start: Bool = true) {
+        self.start = start
         self.name = name; self.label = label ?? name; self.icon = icon; self.hint = hint
         self.destructive = destructive; self.variants = variants; self.fields = fields
     }
@@ -142,6 +145,8 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         /// Other field name → values of it that hide this field (`hidden_when`): while that field holds one of them
         /// the form neither shows nor sends this one. Unknown names are harmless (the field stays visible).
         public var hiddenWhen: [String: [String]]
+        /// Never shown and never asked for; sent only when a card or item action prefilled it (a to-do's `uid`).
+        public var hidden: Bool
 
         public var id: String { name }
 
@@ -150,8 +155,9 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         }
 
         public init(name: String, label: String? = nil, kind: Kind = .text, max: Int = 200, required: Bool = false,
-                    options: [Option] = [], placeholder: String? = nil, hiddenWhen: [String: [String]] = [:]) {
-            self.hiddenWhen = hiddenWhen
+                    options: [Option] = [], placeholder: String? = nil, hiddenWhen: [String: [String]] = [:],
+                    hidden: Bool = false) {
+            self.hiddenWhen = hiddenWhen; self.hidden = hidden
             self.name = name; self.label = label ?? name
             // A choice without options can only be typed.
             self.kind = kind == .choice && options.isEmpty ? .text : kind
@@ -159,7 +165,7 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
             self.options = options; self.placeholder = placeholder
         }
 
-        enum CodingKeys: String, CodingKey { case name, label, kind, max, required, options, placeholder
+        enum CodingKeys: String, CodingKey { case name, label, kind, max, required, options, placeholder, hidden
             case hiddenWhen = "hidden_when"
         }
 
@@ -171,7 +177,8 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
             self.init(name: name, label: c.text(.label), kind: c.text(.kind).flatMap { Kind(rawValue: $0.lowercased()) } ?? .text,
                       max: c.int(.max) ?? 200, required: c.bool(.required) ?? false,
                       options: c.array(Option.self, .options), placeholder: c.text(.placeholder),
-                      hiddenWhen: (c.lenient([String: Lossy<[String]>].self, .hiddenWhen) ?? [:]).compactMapValues(\.value))
+                      hiddenWhen: (c.lenient([String: Lossy<[String]>].self, .hiddenWhen) ?? [:]).compactMapValues(\.value),
+                      hidden: c.bool(.hidden) ?? false)
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -184,10 +191,11 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
             if !options.isEmpty { try c.encode(options, forKey: .options) }
             try c.encodeIfPresent(placeholder, forKey: .placeholder)
             if !hiddenWhen.isEmpty { try c.encode(hiddenWhen, forKey: .hiddenWhen) }
+            if hidden { try c.encode(true, forKey: .hidden) }
         }
     }
 
-    enum CodingKeys: String, CodingKey { case name, label, icon, hint, destructive, arg, fields }
+    enum CodingKeys: String, CodingKey { case name, label, icon, hint, destructive, arg, fields, start }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -202,7 +210,8 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         var seen = Set<String>()
         let fields = c.array(Field.self, .fields).filter { seen.insert($0.name).inserted }
         self.init(name: name, label: c.text(.label), icon: c.text(.icon), hint: c.text(.hint),
-                  destructive: c.bool(.destructive) ?? false, variants: variants, fields: fields)
+                  destructive: c.bool(.destructive) ?? false, variants: variants, fields: fields,
+                  start: c.bool(.start) ?? true)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -214,6 +223,7 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         if destructive { try c.encode(true, forKey: .destructive) }
         if !variants.isEmpty { try c.encode(variants, forKey: .arg) }
         try c.encode(fields, forKey: .fields)
+        if !start { try c.encode(false, forKey: .start) }
     }
 }
 
@@ -280,7 +290,7 @@ public struct ActionForm: Sendable, Equatable {
             }
         }
         var f: [String: String] = [:]
-        for field in spec.fields where field.required {
+        for field in spec.fields where field.required && !field.hidden {
             f[field.name] = Self.defaultValue(field, now: now, calendar: calendar)
         }
         fieldValues = f
@@ -411,9 +421,9 @@ public struct ActionForm: Sendable, Equatable {
     }
 
     /// The fields to show and send, in form order.
-    public var visibleFields: [ActionSpec.Field] { spec.fields.filter { !isHidden($0) } }
+    public var visibleFields: [ActionSpec.Field] { spec.fields.filter { !$0.hidden && !isHidden($0) } }
 
-    /// The payload to send: without empty fields; trimmed, except an unchanged prefilled value (`prefilled`).
+    /// The payload to send: without empty fields, with prefilled hidden ones; trimmed, except an unchanged prefilled value (`prefilled`).
     public var payload: [String: String] {
         var out: [String: String] = [:]
         for field in visibleFields {
@@ -421,6 +431,10 @@ public struct ActionForm: Sendable, Equatable {
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
             out[field.name] = prefilled[field.name] == raw ? raw : trimmed
+        }
+        // Hidden fields are never shown or typed: only what a card or item action prefilled, untouched.
+        for field in spec.fields where field.hidden {
+            if let v = prefilled[field.name], !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { out[field.name] = v }
         }
         return out
     }

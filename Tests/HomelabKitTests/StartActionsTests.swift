@@ -20,7 +20,7 @@ import Testing
 
     @Test func fixtureDecodes() throws {
         let list = try specs()
-        #expect(list.map(\.name) == ["todo-add", "todo-done", "calendar-add", "wake-set", "commute-mode", "ha-control", "restart-container"])
+        #expect(list.map(\.name) == ["todo-add", "todo-done", "parcel-done", "calendar-add", "wake-set", "commute-mode", "ha-control", "restart-container"])
         let todo = try spec("todo-add")
         #expect(todo.variants.isEmpty)
         #expect(todo.fields.map(\.name) == ["summary", "due", "description", "list"])
@@ -28,7 +28,7 @@ import Testing
         #expect(todo.fields[1].kind == .dateOrDatetime && !todo.fields[1].required)
         #expect(todo.fields[3].options.map(\.label) == ["To-dos", "Shopping"])
         let wake = try spec("wake-set")
-        #expect(wake.variants.map(\.label) == ["Wake me", "No wake-up"])
+        #expect(wake.variants.map(\.label) == ["Wake me", "No wake-up", "Normal"])
         #expect(wake.variants[0].parts == [.date(label: "Day"), .literal("T"), .time(label: "Time")])
         #expect(try spec("restart-container").destructive)
         #expect(!todo.destructive)
@@ -84,7 +84,7 @@ import Testing
         form.variant = 0   // the other variant kept its own values
         #expect(form.arg == "2026-11-07T06:45")
         form.variant = 7
-        #expect(form.variant == 1)
+        #expect(form.variant == 2)
     }
 
     @Test func badPartsBlockTheArgument() throws {
@@ -187,6 +187,35 @@ import Testing
         #expect(todo.summary.map { "\($0.label)=\($0.value)" } == ["To-do=Milk", "List=Shopping"])
     }
 
+    @Test func hiddenFieldsAreNeverShownOrAsked() throws {
+        let done = try spec("todo-done")
+        #expect(!done.start && done.fields.last?.hidden == true && done.fields.last?.name == "uid")
+        #expect(try spec("todo-add").start && !(try spec("parcel-done").start))
+        // A Start tile (no prefill): no hidden field, not in the form, the summary, the problems or the payload.
+        var plain = ActionForm(done, now: now, calendar: vienna)
+        plain.fieldValues["item"] = "Milk"
+        plain.fieldValues["uid"] = "typed"   // even a stray value never goes out
+        #expect(!plain.visibleFields.map(\.name).contains("uid"))
+        #expect(plain.payload == ["item": "Milk"] && plain.problems.isEmpty)
+        #expect(plain.summary.map(\.label) == ["Item"])
+        // A hidden field that is required never blocks the form either.
+        let strict = try decode(#"{"actions": [{"name": "x", "fields": [{"name": "uid", "kind": "text", "required": true, "hidden": true}]}]}"#)[0]
+        #expect(ActionForm(strict).isReady && ActionForm(strict).payload.isEmpty)
+        // Round trip keeps the flags.
+        let again = try JSONDecoder().decode(ActionSpec.self, from: JSONEncoder().encode(done))
+        #expect(again == done)
+    }
+
+    @Test func wakeNormalVariantIsOnlyADayAndClear() throws {
+        var form = ActionForm(try spec("wake-set"), now: now, calendar: vienna)
+        form.variant = 2
+        #expect(form.arg == "2026-11-07:clear" && form.isReady)
+        #expect(form.summary.map { "\($0.label)=\($0.value)" } == ["=Normal", "Day=2026-11-07"])
+        let linked = ActionForm(try spec("wake-set"), prefill: ItemAction(name: "wake-set", arg: "2026-11-09:clear"),
+                                now: now, calendar: vienna)
+        #expect(linked.variant == 2 && linked.arg == "2026-11-09:clear")
+    }
+
     @Test func fieldsHideByAnotherFieldsValue() throws {
         let todo = try spec("todo-add")
         #expect(todo.fields[1].hiddenWhen == ["list": ["shopping"]])
@@ -247,7 +276,7 @@ import Testing
     @Test func clientListsActions() async throws {
         let t = FakeTransport(fixture: "actions.json")
         let list = try await CompanionClient(baseURL: base, token: nil, transport: t).actions()
-        #expect(list.count == 7)
+        #expect(list.count == 8)
         #expect(t.last?.url?.absoluteString == "https://homelab.example.ts.net/api/v1/actions")
     }
 
@@ -327,7 +356,7 @@ import Testing
 
     @Test func demoRunsAndTellsTheChat() async throws {
         let demo = DemoBackend(delay: .zero)
-        #expect(try await demo.actions().count == 7)
+        #expect(try await demo.actions().count == 8)
         let r = try await demo.run("ha-control", arg: "lamps-on", payload: [:])
         #expect(r.ok && r.text.contains("Living room"))
         let msgs = try await demo.messages(after: 0).messages.suffix(2)

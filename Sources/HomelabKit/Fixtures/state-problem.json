@@ -101,8 +101,11 @@
                {"title": "Tax return", "subtitle": "Paperwork", "due": "2026-11-04"},
                {"title": "Driving lesson", "subtitle": "Errands", "due": "2026-11-05T08:00"}]},
     {"id": "parcels", "title": "Parcels", "icon": "shippingbox", "style": "list",
-     "items": [{"title": "Keyboard", "subtitle": "DHL · out for delivery", "value": "today", "tint": "orange"},
-               {"title": "Phone case", "subtitle": "Post · in transit", "value": "Fri"}]}
+     "items": [{"title": "Keyboard", "subtitle": "DHL · out for delivery", "value": "today", "tint": "orange",
+                "url": "https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=00340434161094042557",
+                "action": {"name": "parcel-done", "label": "Delivered", "arg": "keyboard-1"}},
+               {"title": "Phone case", "subtitle": "Post · in transit", "value": "Fri",
+                "action": {"name": "parcel-done", "label": "Delivered", "arg": "case-2"}}]}
   ],
   "busy": ["chat"],
   "last_message": {"id": 1762290600000000000, "ts": "2026-11-04T21:10:00", "from": "agent", "job": "watchdog",
