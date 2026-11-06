@@ -4,7 +4,8 @@ import SwiftUI
 import WidgetKit
 
 /// Read-only widgets from the snapshot the app (or its background refresh) wrote into the App Group, in the app's
-/// look: true black, the mood headline in its colour (with Today's glow when something is wrong), mono numbers.
+/// look (docs/DESIGN.md): true black, a white headline, the mood as Today's glow plus a status icon, sentence-case
+/// meta in secondary, numbers in the data font. Margins are the system's per family; inside, a 4/8 grid.
 /// StaticConfiguration only: xtool can't build App Intents, so no configurable or interactive widgets.
 /// The widget never holds tokens and never talks to the network.
 @main
@@ -31,8 +32,8 @@ struct Entry: TimelineEntry {
     }
     var pending: Int { state?.pending.count ?? 0 }
     var age: String { snapshot.map { Format.age($0.fetched, now: date) } ?? "" }
-    /// "FRI 6"
-    var dateLine: String { date.formatted(.dateTime.weekday(.abbreviated).day()).uppercased() }
+    /// "Fri 6"
+    var dateLine: String { date.formatted(.dateTime.weekday(.abbreviated).day()) }
 }
 
 struct Provider: TimelineProvider {
@@ -75,18 +76,38 @@ struct Provider: TimelineProvider {
     }
 }
 
-/// Small mono capitals: "FRI 6", "HOMELAB · 2 MIN AGO".
-private struct Caps: View {
+/// Meta text (DESIGN.md §1): footnote, sentence case, secondary or tertiary. Not capitals, not mono.
+private struct Meta: View {
     let text: String
-    var color = Palette.tertiary
+    var color = Palette.secondary
 
-    init(_ text: String, color: Color = Palette.tertiary) {
+    init(_ text: String, color: Color = Palette.secondary) {
         self.text = text
         self.color = color
     }
 
     var body: some View {
-        Text(text.uppercased()).font(Typo.mono(.caption2, weight: .medium)).tracking(1).foregroundStyle(color).lineLimit(1)
+        Text(text).font(.footnote).foregroundStyle(color).lineLimit(1)
+    }
+}
+
+/// The mood as an icon next to the text; the headline itself stays white.
+private func statusSymbol(_ level: TodayMood.Level) -> String? {
+    switch level {
+    case .alarm: "exclamationmark.octagon.fill"
+    case .headsUp: "exclamationmark.triangle.fill"
+    case .calm: "checkmark.circle.fill"
+    case .unknown: nil
+    }
+}
+
+private struct StatusIcon: View {
+    let level: TodayMood.Level
+
+    var body: some View {
+        if let symbol = statusSymbol(level) {
+            Image(systemName: symbol).font(.footnote.weight(.semibold)).foregroundStyle(level.color).accessibilityHidden(true)
+        }
     }
 }
 
@@ -117,7 +138,7 @@ struct StatusView: View {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
                     Image(systemName: status.symbol).font(.title3)
-                    if entry.pending > 0 { Text("\(entry.pending)").font(Typo.mono(.caption2, weight: .bold)) }
+                    if entry.pending > 0 { Text("\(entry.pending)").font(Typo.data(.caption2, weight: .bold)) }
                 }
             }
             .widgetURL(URL(string: entry.pending > 0 ? "homelab://actions" : "homelab://today"))
@@ -126,7 +147,7 @@ struct StatusView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.mood.headline).font(.headline.weight(.heavy)).lineLimit(1)
                 Text(line).font(.caption).lineLimit(1).privacySensitive()
-                Text(footer).font(Typo.mono(.caption2)).foregroundStyle(.secondary).lineLimit(1)
+                Text(footer).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
             .widgetURL(URL(string: "homelab://today"))
         case .accessoryInline:
@@ -138,14 +159,16 @@ struct StatusView: View {
 
     private var small: some View {
         let mood = entry.mood
+        let level = entry.stale ? TodayMood.Level.unknown : mood.level
         return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Caps(entry.dateLine)
+            HStack(spacing: 6) {
+                StatusIcon(level: level)
+                Meta(entry.dateLine)
                 Spacer(minLength: 4)
                 if entry.pending > 0 {
-                    HStack(spacing: 3) {
-                        Image(systemName: "checkmark.shield").font(.caption2.weight(.bold))
-                        Text("\(entry.pending)").font(Typo.mono(.caption, weight: .bold))
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.shield.fill").font(.footnote.weight(.semibold))
+                        Text("\(entry.pending)").font(Typo.data(.footnote, weight: .semibold))
                     }
                     .foregroundStyle(Palette.gold)
                     .accessibilityElement(children: .ignore)
@@ -156,11 +179,11 @@ struct StatusView: View {
             Text(mood.headline)
                 .font(.system(size: 26, weight: .heavy))
                 .tracking(-0.8)
-                .foregroundStyle(mood.level.color)
+                .foregroundStyle(Palette.text)
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
-            Text(line).font(.caption).foregroundStyle(Palette.text.opacity(0.85)).lineLimit(2).privacySensitive()
-            Caps(footer).padding(.top, 2)
+            Text(line).font(.footnote).foregroundStyle(Palette.secondary).lineLimit(2).privacySensitive()
+            Text(footer).font(.caption2).foregroundStyle(Palette.tertiary).lineLimit(1).padding(.top, 4)
         }
         .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
         .widgetURL(URL(string: entry.pending > 0 ? "homelab://actions" : "homelab://today"))
@@ -177,7 +200,7 @@ struct StatusView: View {
         return entry.mood.detail ?? String(localized: "\(state.hosts.count) machines")
     }
 
-    /// "HOMELAB · 2 MIN AGO"
+    /// "Homelab · 2 min ago"
     private var footer: String {
         [entry.snapshot?.serverName ?? "Homelab", entry.age].filter { !$0.isEmpty }.joined(separator: " · ")
     }
@@ -214,7 +237,7 @@ struct DayView: View {
                 if let stop = focus, let line {
                     Text("\(stop.item.title ?? "") \(stop.item.value ?? "")").font(.headline).lineLimit(1)
                     Text(detail(stop, line)).font(.caption).lineLimit(1)
-                    Text(rest(line)).font(Typo.mono(.caption2)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(rest(line)).font(Typo.data(.caption2)).foregroundStyle(.secondary).lineLimit(1)
                 } else {
                     Text("Today").font(.headline)
                     Text(empty).font(.caption).lineLimit(2)
@@ -235,16 +258,16 @@ struct DayView: View {
     }
 
     private var small: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Caps(entry.dateLine)
+        VStack(alignment: .leading, spacing: 4) {
+            Meta(entry.dateLine)
             Spacer(minLength: 0)
             if let stop = focus, let line {
-                Caps(stop.item.title ?? "", color: Palette.secondary)
+                Text(stop.item.title ?? "").font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary).lineLimit(1)
                 Text(stop.item.value ?? "")
                     .font(.system(size: 34, weight: .semibold, design: .monospaced))
                     .minimumScaleFactor(0.6).lineLimit(1)
                     .foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.text)
-                Text(detail(stop, line)).font(Typo.mono(.caption2, weight: stop.phase == .next ? .bold : .regular))
+                Text(detail(stop, line)).font(.footnote.weight(stop.phase == .next ? .semibold : .regular))
                     .foregroundStyle(stop.phase == .next ? Palette.text : Palette.tertiary).lineLimit(1)
                 // The whole day as dots, filled up to now.
                 HStack(spacing: 0) {
@@ -261,17 +284,18 @@ struct DayView: View {
     }
 
     private var medium: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Caps((card?.title ?? String(localized: "Today")) + " · " + entry.dateLine, color: Palette.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(card?.title ?? String(localized: "Today")).font(.headline).foregroundStyle(Palette.text).lineLimit(1)
+                Meta(entry.dateLine)
                 Spacer(minLength: 4)
-                Caps(entry.age)
+                Meta(entry.age, color: Palette.tertiary)
             }
             if let line, !line.stops.isEmpty {
                 DayLineAcross(line: line, valueSize: 26)
                 if let note = line.notes.first {
                     Text([note.title, note.value, note.subtitle].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption2).foregroundStyle(note.tint?.color ?? Palette.secondary).lineLimit(1)
+                        .font(.footnote).foregroundStyle(note.tint?.color ?? Palette.secondary).lineLimit(1)
                 }
             } else {
                 Spacer(minLength: 0)
@@ -286,7 +310,7 @@ struct DayView: View {
     /// "in 26 min · U6 07:36" for the next stop, "passed" once the day is over.
     private func detail(_ stop: DayTimeline.Stop, _ line: DayTimeline) -> String {
         let when = stop.phase == .next ? Format.countdown(minutes: line.minutesToNext ?? 0) : String(localized: "passed")
-        return ([when] + [stop.item.subtitle].compactMap { $0 }).joined(separator: " · ").uppercased()
+        return ([when] + [stop.item.subtitle].compactMap { $0 }).joined(separator: " · ")
     }
 
     /// The other stops in one line: "06:20 · 08:00".
@@ -324,19 +348,22 @@ struct HostsView: View {
     var body: some View {
         let state = entry.state
         let mood = entry.mood
+        let level = entry.stale ? TodayMood.Level.unknown : mood.level
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                StatusIcon(level: level)
                 Text(mood.headline).font(.system(size: 20, weight: .heavy)).tracking(-0.5)
-                    .foregroundStyle(mood.level.color).lineLimit(1).minimumScaleFactor(0.7)
+                    .foregroundStyle(Palette.text).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 6)
-                Caps([entry.snapshot?.serverName ?? "Homelab", entry.age].filter { !$0.isEmpty }.joined(separator: " · "))
+                Meta([entry.snapshot?.serverName ?? "Homelab", entry.age].filter { !$0.isEmpty }.joined(separator: " · "),
+                     color: Palette.tertiary)
             }
             if entry.redacted, let hosts = state?.hosts, !hosts.isEmpty {
                 // App lock on: no host names or numbers on the home screen, only how many are up.
                 Spacer()
                 Text("\(hosts.filter { $0.reachable == true }.count) of \(hosts.count) machines up")
-                    .font(Typo.mono(.title3, weight: .semibold))
-                Caps(String(localized: "Open the app for details"))
+                    .font(.title3.weight(.semibold))
+                Meta(String(localized: "Open the app for details"))
             } else if let hosts = state?.hosts, !hosts.isEmpty {
                 let limit = family == .systemLarge ? 8 : 4
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
@@ -348,17 +375,16 @@ struct HostsView: View {
                     Rectangle().fill(Palette.line).frame(height: 1)
                     ForEach(problems.prefix(4)) { p in
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Image(systemName: p.severity.symbol).font(.caption2)
-                            Text(p.text).font(.caption).lineLimit(1)
+                            Image(systemName: p.severity.symbol).font(.caption).foregroundStyle(p.severity.color)
+                            Text(p.text).font(.footnote).foregroundStyle(Palette.text).lineLimit(1)
                         }
-                        .foregroundStyle(p.severity.color)
                         .privacySensitive()
                     }
                 }
             } else {
                 Spacer()
                 Text(entry.snapshot == nil ? "Open Homelab to load your machines." : "No machines reported.")
-                    .font(.caption).foregroundStyle(Palette.secondary)
+                    .font(.footnote).foregroundStyle(Palette.secondary)
             }
             Spacer(minLength: 0)
         }
@@ -371,17 +397,18 @@ struct HostCell: View {
     let health: HostHealth
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
                 Circle().fill(health.color).frame(width: 6, height: 6)
-                Text(host.name).font(Typo.mono(.caption, weight: .semibold)).lineLimit(1)
+                Text(host.name).font(.footnote.weight(.semibold)).foregroundStyle(Palette.text).lineLimit(1)
             }
             if host.reachable == true {
-                Text("L \(Format.load(host.load)) · RAM \(Format.percent(host.memPct))")
-                    .font(Typo.mono(.caption2)).foregroundStyle(Palette.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                (Text("Load ") + Text(Format.load(host.load)).font(Typo.data(.caption2))
+                    + Text(" · RAM ") + Text(Format.percent(host.memPct)).font(Typo.data(.caption2)))
+                    .font(.caption2).foregroundStyle(Palette.secondary).lineLimit(1).minimumScaleFactor(0.8)
                 if let d = Format.worstDisk(host.disks) { Meter(Double(d.percent) / 100, warns: true) }
             } else {
-                Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color)
+                Text(health.label).font(.caption2.weight(.semibold)).foregroundStyle(health.color)
             }
         }
         .accessibilityElement(children: .combine)

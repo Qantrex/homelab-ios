@@ -70,6 +70,8 @@ final class ShareModel {
     }
 }
 
+/// The share sheet (docs/DESIGN.md): what it got, where it goes, one filled Send button; the result as a status
+/// icon with words. One column, 16 pt margins, one panel with separators.
 struct ShareView: View {
     @Bindable var model: ShareModel
     let cancel: () -> Void
@@ -78,24 +80,24 @@ struct ShareView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 24) {
                     switch model.phase {
                     case .loading:
-                        HStack(spacing: 10) { ProgressView(); Text("Reading what you shared…").foregroundStyle(Palette.secondary) }
+                        progress(String(localized: "Reading what you shared…"))
                     case .refused(let text):
-                        result(symbol: "xmark.circle", color: Palette.love, title: "Can't send this", text: text)
+                        result(symbol: "xmark.circle.fill", color: Palette.love, title: "Can't send this", text: text)
                     case .ready(let share):
                         ready(share)
                     case .sending(let text):
-                        HStack(spacing: 10) { ProgressView(); Text(text).font(Typo.mono(.subheadline)) }
+                        progress(text)
                     case .done(let outcome):
                         finished(outcome)
                     }
                 }
-                .padding(20)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .background(Palette.background)
+            .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Send to Homelab")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -107,54 +109,88 @@ struct ShareView: View {
         .tint(Palette.accent)
     }
 
+    private func progress(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            ProgressView()
+            Text(text).font(.body).foregroundStyle(Palette.secondary)
+        }
+    }
+
     @ViewBuilder private func ready(_ share: LoadedShare) -> some View {
         let destination = ShareRouter.destination(for: share.item)
-        VStack(alignment: .leading, spacing: 6) {
-            Label(destination.label, systemImage: symbol(destination)).font(.headline)
-            Text(share.detail).font(Typo.mono(.subheadline)).foregroundStyle(Palette.secondary).lineLimit(2)
-            if case .willhaben(let ad) = destination {
-                Text("AD \(ad)").font(Typo.mono(.caption)).foregroundStyle(Palette.tertiary)
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: symbol(destination)).font(.title3).foregroundStyle(Palette.text)
+                    .frame(width: 28).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(destination.label).font(.headline).foregroundStyle(Palette.text)
+                    Text(share.detail).font(.subheadline).foregroundStyle(Palette.secondary).lineLimit(2)
+                }
+                Spacer(minLength: 0)
             }
-            Text("To \(model.server?.name ?? "your server")").font(.subheadline).foregroundStyle(Palette.secondary)
+            .padding(16)
+            separator
+            row("To") { Text(model.server?.name ?? String(localized: "your server")).foregroundStyle(Palette.text) }
+            if case .willhaben(let ad) = destination {
+                separator
+                row("Ad") { Text(ad).font(Typo.data(.body)).foregroundStyle(Palette.text) }
+            }
+            if share.editableTitle {
+                separator
+                TextField("Title", text: $model.title)
+                    .font(.body)
+                    .padding(16)
+            }
         }
-        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        if share.editableTitle {
-            TextField("Title", text: $model.title)
-                .textFieldStyle(.roundedBorder)
-        }
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         Button {
             Task { await model.send() }
         } label: {
-            Text("Send").frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
+            Text("Send").font(.headline).frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
+    }
+
+    private var separator: some View {
+        Rectangle().fill(Palette.line).frame(height: 1 / 3).padding(.leading, 16)
+    }
+
+    private func row<V: View>(_ label: LocalizedStringKey, @ViewBuilder value: () -> V) -> some View {
+        HStack(spacing: 12) {
+            Text(label).font(.body).foregroundStyle(Palette.secondary)
+            Spacer(minLength: 8)
+            value().font(.body).lineLimit(1)
+        }
+        .padding(16)
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private func finished(_ outcome: ShareOutcome) -> some View {
         switch outcome {
-        case .sent(let text): result(symbol: "checkmark.circle", color: Palette.text, title: "Sent", text: text)
-        case .queued: result(symbol: "tray.and.arrow.up", color: Palette.gold, title: "Saved", text: ShareOutcome.queuedText)
-        case .failed(let text): result(symbol: "xmark.circle", color: Palette.love, title: "Not sent", text: text)
+        case .sent(let text): result(symbol: "checkmark.circle.fill", color: Palette.text, title: "Sent", text: text)
+        case .queued: result(symbol: "tray.and.arrow.up.fill", color: Palette.gold, title: "Saved", text: ShareOutcome.queuedText)
+        case .failed(let text): result(symbol: "xmark.circle.fill", color: Palette.love, title: "Not sent", text: text)
         }
         Button(action: done) {
-            Text("Done").frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
+            Text("Done").font(.headline).frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
     }
 
+    /// Status icon, a title (white) and the reason in words.
     private func result(symbol: String, color: Color, title: LocalizedStringKey, text: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label { Text(title).font(.headline) } icon: { Image(systemName: symbol).foregroundStyle(color) }
-            Text(text).font(.subheadline).foregroundStyle(Palette.secondary)
+            Image(systemName: symbol).font(.largeTitle).foregroundStyle(color).accessibilityHidden(true)
+            Text(title).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+            Text(text).font(.body).foregroundStyle(Palette.secondary)
             if case .refused = model.phase {
-                Button("Close", action: cancel).buttonStyle(.bordered).padding(.top, 6)
+                Button("Close", action: cancel).buttonStyle(.bordered).padding(.top, 8)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func symbol(_ d: ShareDestination) -> String {
