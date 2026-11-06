@@ -53,22 +53,6 @@ import Testing
         #expect(m.level == .headsUp && m.headline == "Heads up." && m.detail == "disk 91%" && m.warnings == 1)
     }
 
-    @Test func liveHostFlagsAreWarningsEvenWhenTheServerSaysOk() {
-        // Live 2026-11-06: pi-media throttled now, the server's status ok, Today said "All quiet.".
-        let throttled = Host(id: "pi-media", name: "pi-media", reachable: true, flags: ["undervoltage_now", "throttled_now"])
-        let sinceBoot = Host(id: "pi-two", name: "pi-two", reachable: true, flags: ["undervoltage_since_boot"])
-        let s = HomelabState(status: .ok, hosts: [throttled, sinceBoot])
-        #expect(s.hostAlerts == ["pi-media: under-voltage now, throttled now"])
-        #expect(ProblemTally(s) == ProblemTally(problems: 0, warnings: 1))
-        let m = TodayMood(state: s)
-        #expect(m.level == .headsUp && m.headline == "Heads up." && m.detail == "pi-media: under-voltage now, throttled now")
-        // Informational flags alone stay calm; a host the server already lists is not counted twice.
-        #expect(TodayMood(state: HomelabState(status: .ok, hosts: [sinceBoot])).headline == "All quiet.")
-        let listed = HomelabState(status: .warning, problems: [Problem(text: "pi-media: throttled", host: "pi-media", severity: .warning)],
-                                  hosts: [throttled])
-        #expect(ProblemTally(listed) == ProblemTally(problems: 0, warnings: 1))
-    }
-
     @Test func demoFixture() throws {
         let s = try #require(Fixtures.decode(HomelabState.self, "state-problem.json"))
         let m = TodayMood(state: s)

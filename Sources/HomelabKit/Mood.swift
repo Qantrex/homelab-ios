@@ -36,13 +36,8 @@ public struct TodayMood: Equatable, Sendable {
         let up = hosts.filter { $0.reachable == true }.count
         let machines = hosts.isEmpty ? nil : "\(up) of \(hosts.count) machines up"
         let first = (state.problems.first { $0.severity != .warning } ?? state.problems.first)?.text
-            ?? state.hostAlerts.first
         let tally = ProblemTally(state)
         switch state.status {
-        case .ok where tally.warnings > 0:
-            // The server says ok, but a host reports under-voltage or throttling right now (live, 2026-11-06:
-            // pi-media throttled while Today said "All quiet.").
-            self.init(level: .headsUp, headline: "Heads up.", detail: first ?? machines, warnings: tally.warnings)
         case .ok:
             self.init(level: .calm, headline: "All quiet.", detail: machines)
         case .warning where tally.problems == 0:
@@ -69,25 +64,9 @@ public struct ProblemTally: Equatable, Sendable {
         self.warnings = warnings
     }
 
-    /// Hosts with an alarming flag now (under-voltage, throttled) and no listed problem of their own count as
-    /// warnings too, so the headline never says "All quiet." next to a yellow dot.
     public init(_ state: HomelabState) {
         let p = state.problems.filter { $0.severity != .warning }.count
-        self.init(problems: state.status == .problem ? max(p, 1) : p,
-                  warnings: state.problems.count - p + state.hostAlerts.count)
-    }
-}
-
-public extension HomelabState {
-    /// "pi-media: under-voltage now, throttled now" for each reachable host with an alarming flag that the server
-    /// doesn't already list as a problem.
-    var hostAlerts: [String] {
-        hosts.compactMap { host in
-            guard host.reachable == true, !problems.contains(where: { $0.host == host.id }) else { return nil }
-            let alarming = host.flags.filter(Format.isAlarming)
-            guard !alarming.isEmpty else { return nil }
-            return "\(host.name): " + alarming.map { Format.flag($0).lowercased() }.joined(separator: ", ")
-        }
+        self.init(problems: state.status == .problem ? max(p, 1) : p, warnings: state.problems.count - p)
     }
 }
 

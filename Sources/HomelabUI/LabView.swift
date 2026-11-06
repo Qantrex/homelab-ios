@@ -108,10 +108,7 @@ struct LabView: View {
     private var headline: String {
         guard let state else { return String(localized: "Not loaded") }
         switch state.status {
-        case .ok where state.hostAlerts.isEmpty: return String(localized: "All good")
-        case .ok:
-            let n = state.hostAlerts.count
-            return n == 1 ? String(localized: "1 warning") : String(localized: "\(n) warnings")
+        case .ok: return String(localized: "All good")
         case .unknown: return String(localized: "Status unknown")
         case .warning, .problem:
             let t = ProblemTally(state)
