@@ -51,10 +51,14 @@ public struct MoodGlow: View {
 public struct DayLineAcross: View {
     let line: DayTimeline
     let valueSize: CGFloat?
+    /// The quiet track under Today's "Leave by" statement: small times, no countdown or subtitle (they are in the
+    /// statement above). The widget keeps the full labels.
+    let compact: Bool
 
-    public init(line: DayTimeline, valueSize: CGFloat? = nil) {
+    public init(line: DayTimeline, valueSize: CGFloat? = nil, compact: Bool = false) {
         self.line = line
         self.valueSize = valueSize
+        self.compact = compact
     }
 
     public var body: some View {
@@ -63,7 +67,8 @@ public struct DayLineAcross: View {
                 VStack(alignment: .leading, spacing: 10) {
                     DayRail(phase: stop.phase, fill: line.fill(after: i), axis: .horizontal)
                         .frame(height: 18)
-                    DayStopLabel(stop: stop, countdown: line.minutesToNext, valueSize: valueSize)
+                    DayStopLabel(stop: stop, countdown: compact ? nil : line.minutesToNext,
+                                 valueSize: compact ? 15 : valueSize, compact: compact)
                         .padding(.trailing, 8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,11 +152,13 @@ public struct DayStopLabel: View {
     let stop: DayTimeline.Stop
     let countdown: Int?
     let valueSize: CGFloat?
+    let compact: Bool
 
-    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat? = nil) {
+    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat? = nil, compact: Bool = false) {
         self.stop = stop
         self.countdown = countdown
         self.valueSize = valueSize
+        self.compact = compact
     }
 
     private var valueColor: Color {
@@ -170,10 +177,10 @@ public struct DayStopLabel: View {
                 .foregroundStyle(valueColor)
                 .contentTransition(.numericText())
             Text(stop.item.title ?? "")
-                .font(.subheadline.weight(stop.phase == .next ? .semibold : .regular))
+                .font((compact ? Font.footnote : .subheadline).weight(stop.phase == .next ? .semibold : .regular))
                 .foregroundStyle(stop.phase == .past ? Palette.tertiary : stop.phase == .next ? Palette.text : Palette.secondary)
                 .lineLimit(1).minimumScaleFactor(0.8)
-            if let s = stop.item.subtitle {
+            if !compact, let s = stop.item.subtitle {
                 Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
             }
             if stop.phase == .next, let countdown {

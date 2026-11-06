@@ -144,23 +144,23 @@ struct HomeTile: View {
             taps += 1
             tap()
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: entitySymbol(entity)).font(.title3)
-                    Spacer()
-                    if busy { ProgressView().controlSize(.small).tint(on ? Palette.onAccent : Palette.text) }
+            // Design research #3: an "on" tile is not a white block (it outshone the hero): a lifted panel, a filled
+            // white symbol and "On" in white; "off" stays a plain panel with an outline symbol and grey words.
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: entitySymbol(entity))
+                    .font(.title3).foregroundStyle(on ? Palette.text : Palette.secondary)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entity.name).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
+                        .lineLimit(2).multilineTextAlignment(.leading)
+                    Text(stateText).font(Typo.meta).foregroundStyle(on ? Palette.text : Palette.tertiary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                // Name is a headline and always reserves two lines, so every tile is the same height.
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(entity.name).font(.headline).lineLimit(2, reservesSpace: true).multilineTextAlignment(.leading)
-                    Text(stateText).font(.footnote).opacity(0.65).lineLimit(1)
-                }
+                if busy { ProgressView().controlSize(.small).tint(Palette.text) }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .foregroundStyle(on ? Palette.onAccent : Palette.text)
-            .background(on ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+            .background(on ? Palette.raised : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 16))
             .animation(.snappy, value: on)
         }

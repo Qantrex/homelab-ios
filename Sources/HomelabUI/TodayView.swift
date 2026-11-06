@@ -94,27 +94,23 @@ struct TodayView: View {
                     .minimumScaleFactor(0.6)
                     .contentTransition(.numericText())
                     .padding(.top, 4)
-                if let detail = m.detail {
-                    Text(detail).font(.title3.weight(.semibold)).foregroundStyle(Palette.text)
+                // The fact line: the first problem, and the warnings inline (gold glyph, white words; research #8).
+                if m.detail != nil || m.warnings > 0 {
+                    factLine(m)
+                        .font(Typo.headline).foregroundStyle(Palette.text)
                         .lineLimit(3).multilineTextAlignment(.leading)
                         .padding(.top, 8)
                 }
                 // The voice: what it thinks of the facts above, in words (DESIGN.md §4). Tap the line for another.
                 if let take = take(m) {
-                    Text(take).font(.title3).foregroundStyle(Palette.secondary)
+                    Text(take).font(Typo.body).foregroundStyle(Palette.secondary).lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 8)
+                        .padding(.top, 6)
                         .id(take)
                         .transition(.opacity)
                         .onTapGesture { pokes += 1 }
                         .sensoryFeedback(.selection, trigger: pokes)
-                }
-                if m.warnings > 0 {
-                    Label(m.warnings == 1 ? "and 1 warning" : "and \(m.warnings) warnings",
-                          systemImage: "exclamationmark.triangle.fill")
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.gold)
-                        .padding(.top, 8)
                 }
                 Text(facts).font(Typo.meta).foregroundStyle(Palette.tertiary).padding(.top, 12)
                 // The weather card's one line ("Rain from 15:00, take an umbrella"), in every density.
@@ -133,6 +129,17 @@ struct TodayView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint(Text("Opens Lab"))
+    }
+
+    /// "sonarr on media is unhealthy · ⚠ 1 warning": only the glyph is gold.
+    private func factLine(_ m: TodayMood) -> Text {
+        var t = Text(m.detail ?? "")
+        if m.warnings > 0 {
+            if m.detail != nil { t = t + Text(" · ") }
+            t = t + Text(Image(systemName: "exclamationmark.triangle.fill")).foregroundColor(Palette.gold)
+                + Text(m.warnings == 1 ? " 1 warning" : " \(m.warnings) warnings")
+        }
+        return t
     }
 
     private func statusSymbol(_ level: TodayMood.Level) -> String? {
@@ -314,7 +321,14 @@ struct DaySection: View {
                         DayNumbers(items: line.notes)
                     }
                 } else {
-                    if line.across(accessibilityText: typeSize.isAccessibilitySize) { across(line) } else { down(line) }
+                    if line.across(accessibilityText: typeSize.isAccessibilitySize) {
+                        // One clear statement first ("Leave by 21:27 · in 26 min"), the line under it as a quiet track
+                        // (design research #2: the three big times competed with the hero).
+                        if let next = line.next { statement(next, countdown: line.minutesToNext) }
+                        DayLineAcross(line: line, compact: line.next != nil)
+                    } else {
+                        down(line)
+                    }
                     if !line.notes.isEmpty {
                         TodaySeparator()
                         notes(line.notes)
@@ -325,6 +339,22 @@ struct DaySection: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text(line.isTomorrow ? String(localized: "Tomorrow") : line.isStale ? Self.staleText(line.staleDays, card.date) : String(localized: "Today")))
         }
+    }
+
+    /// The next stop as a sentence: "Leave by **21:27**", then "in 26 min · U6 21:32".
+    private func statement(_ next: DayTimeline.Stop, countdown: Int?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(next.item.title ?? "").font(.title2.weight(.semibold)).foregroundStyle(Palette.text)
+                Text(next.item.value ?? "").font(Typo.displayData).foregroundStyle(next.item.tint?.color ?? Palette.text)
+                    .contentTransition(.numericText())
+            }
+            let parts = [countdown.map { Format.countdown(minutes: $0) }, next.item.subtitle].compactMap { $0 }
+            if !parts.isEmpty {
+                Text(parts.joined(separator: " · ")).font(Typo.secondary).foregroundStyle(Palette.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     /// "From yesterday", "From Wed 4 Nov": the cached card is older than today, so nothing on it counts down.

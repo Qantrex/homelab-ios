@@ -1,3 +1,4 @@
+import HomelabDesign
 import HomelabKit
 import HomelabUI
 import SwiftUI
@@ -12,6 +13,8 @@ struct HomelabApp: App {
 
     init() {
         UNUserNotificationCenter.current().delegate = NotificationRouter.shared
+        // The Actions badge says "waiting for you": love like every other status, not the system red (research #8).
+        UITabBarItem.appearance().badgeColor = UIColor(Palette.love)
     }
 
     var body: some Scene {
