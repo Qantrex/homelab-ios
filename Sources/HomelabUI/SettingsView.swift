@@ -23,23 +23,18 @@ struct SettingsView: View {
                                     Button("Delete", role: .destructive) { deleting = s }
                                 }
                         }
-                        Button { adding = true } label: { Label("Add server", systemImage: "plus") }
-                    } header: {
-                        Text("Servers")
-                    } footer: {
-                        SettingsFooter("Tap a server to edit it. Today and Lab show the one with the checkmark; swipe to delete.")
-                    }
-
-                    if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
-                        Section {
-                            Picker("Today, Lab, actions and chat", selection: Binding(
+                        if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
+                            Picker("Shown", selection: Binding(
                                 get: { model.selected?.id ?? UUID() },
                                 set: { model.select($0) })) {
                                 ForEach(model.servers.servers.filter(\.speaksCompanionAPI)) { Text($0.name).tag($0.id) }
                             }
-                        } header: {
-                            Text("Shown server")
                         }
+                        Button { adding = true } label: { Label("Add server", systemImage: "plus") }
+                    } header: {
+                        Text("Servers")
+                    } footer: {
+                        SettingsFooter("Tap a server to edit it, swipe to delete. Today, Lab, Actions and Chat show the one with the checkmark.")
                     }
 
                     Section {
@@ -48,22 +43,23 @@ struct SettingsView: View {
                             ForEach(Density.allCases) { Text($0.title).tag($0) }
                         }
                         .pickerStyle(.segmented)
-                        Picker("Personality", selection: Binding(get: { model.settings.voice },
-                                                                 set: { model.settings.voice = $0 })) {
-                            ForEach(Personality.allCases) { Text($0.title).tag($0) }
-                        }
                         NavigationLink {
                             TodayLayoutEditor(model: model)
                         } label: {
                             LabeledContent("Sections") {
                                 Text("\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
-                                    .font(Typo.data(.body)).foregroundStyle(Palette.secondary)
+                                    .font(Typo.rowValue).foregroundStyle(Palette.secondary)
                             }
                         }
+                        Picker("Personality", selection: Binding(get: { model.settings.voice },
+                                                                 set: { model.settings.voice = $0 })) {
+                            ForEach(Personality.allCases) { Text($0.title).tag($0) }
+                        }
+                        PersonalityPreview(model: model)
                     } header: {
                         Text("Today")
                     } footer: {
-                        Text("Calm: the headline, the day's numbers and Home. Standard: the sections you choose. Overkill: everything at once, every machine's numbers and exact times. Personality: a line of commentary under the headline, on empty screens and in notifications; the facts stay the same.")
+                        SettingsFooter(verbatim: todayFooter)
                     }
 
                     Section {
@@ -87,25 +83,27 @@ struct SettingsView: View {
                             get: { model.settings.faceIDLock },
                             set: { on in Task { await setLock(on) } }))
                             .disabled(!Biometrics.available)
+                        Button("Reset everything", role: .destructive) { confirmReset = true }
+                    } header: {
+                        Text("Privacy")
                     } footer: {
-                        SettingsFooter("Asks for Face ID or the passcode when the app opens. Tokens are always in the Keychain.")
+                        SettingsFooter("Face ID or the passcode when the app opens; tokens always stay in the Keychain. Reset deletes all servers, tokens, cached data and settings from this phone.")
                     }
 
                     Section {
                         Toggle("Demo servers", isOn: Binding(get: { model.isDemo }, set: { model.setDemo($0) }))
+                    } header: {
+                        Text("Demo")
                     } footer: {
                         SettingsFooter("Example data to look around. Your own servers stay.")
                     }
 
                     Section {
+                        NavigationLink("About Homelab") { AboutView() }
                         NavigationLink("Diagnostics") { DiagnosticsView(model: model) }
-                        NavigationLink("About") { AboutView() }
-                    }
-
-                    Section {
-                        Button("Reset everything", role: .destructive) { confirmReset = true }
-                    } footer: {
-                        SettingsFooter("Deletes all servers, tokens, cached data and settings from this phone.")
+                        DataRow("Version", "\(AppVersion.short) (\(AppVersion.build))")
+                    } header: {
+                        Text("About")
                     }
                 }
                 .surfaceRows()
@@ -125,6 +123,17 @@ struct SettingsView: View {
                 Button("Delete all data", role: .destructive) { model.resetAll() }
             }
         }
+    }
+
+    /// What the chosen detail shows, in one line; the personality speaks for itself in the preview above.
+    private var todayFooter: String {
+        let density = switch model.settings.todayDensity {
+        case .calm: String(localized: "Calm: the headline, your day and Home.")
+        case .standard: String(localized: "Standard: the sections you choose.")
+        case .overkill: String(localized: "Overkill: everything, every machine's numbers and exact times.")
+        }
+        guard model.settings.voice == .ultrakill else { return density }
+        return density + " " + String(localized: "Ultrakill is rude on purpose.")
     }
 
     private func notifyBinding(_ key: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
@@ -151,6 +160,63 @@ struct SettingsView: View {
         if await Biometrics.authenticate(reason: String(localized: on ? "Turn on the app lock" : "Turn off the app lock")) {
             model.settings.faceIDLock = on
         }
+    }
+}
+
+/// Today's headline and what the chosen personality says about it right now (`Voice.sample`, the same take Today
+/// shows), so each voice can be heard before it's kept. Changes as the picker moves; a tap asks for another line.
+struct PersonalityPreview: View {
+    let model: AppModel
+    @State private var variant = 0
+
+    private var state: HomelabState? { model.selectedStatus.snapshot?.state }
+
+    private var mood: TodayMood {
+        model.selected == nil ? TodayMood(level: .unknown, headline: String(localized: "Home."), detail: nil)
+                              : TodayMood(state: state, checking: model.selectedStatus.error == nil)
+    }
+
+    private var symbol: String? {
+        switch mood.level {
+        case .alarm: "exclamationmark.octagon.fill"
+        case .headsUp: "exclamationmark.triangle.fill"
+        case .calm: "checkmark.circle.fill"
+        case .unknown: nil
+        }
+    }
+
+    var body: some View {
+        let voice = model.settings.voice
+        let m = mood
+        let line = Voice.sample(for: state, level: m.level, personality: voice, variant: variant)
+        Button { variant += 1 } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("On Today now").font(Typo.meta).foregroundStyle(Palette.tertiary)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if let symbol {
+                        Image(systemName: symbol).font(Typo.secondary.weight(.semibold)).foregroundStyle(m.level.color)
+                            .accessibilityHidden(true)
+                    }
+                    Text(verbatim: m.headline).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+                }
+                Text(verbatim: line ?? String(localized: "No commentary: just the facts."))
+                    .font(Typo.body)
+                    .foregroundStyle(line == nil ? Palette.tertiary : Palette.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                    .id(voice)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(line == nil)
+        .animation(.easeInOut(duration: 0.2), value: line)
+        .onChange(of: voice) { variant = 0 }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("Preview: \(m.headline) \(line ?? String(localized: "No commentary."))"))
+        .accessibilityHint(line == nil ? Text("") : Text("Shows another line"))
     }
 }
 
@@ -322,6 +388,17 @@ struct ServerEditor: View {
                 }
             }
             .onChange(of: kind) { _, new in if new == .homeAssistant { auth = .token } }
+            // VoiceOver hears the test result and a save error, wherever the focus is.
+            .onChange(of: testResult) { _, new in
+                switch new {
+                case .success(let text): AccessibilityNotification.Announcement(text).post()
+                case .failure(let e): AccessibilityNotification.Announcement(e.message).post()
+                case nil: break
+                }
+            }
+            .onChange(of: saveError) { _, new in
+                if let new { AccessibilityNotification.Announcement(new).post() }
+            }
         }
     }
 
@@ -337,6 +414,7 @@ struct ServerEditor: View {
     private func test() async {
         guard let c = config() else { return }
         testing = true
+        testResult = nil   // a repeated result is announced again
         defer { testing = false }
         let typed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         let t = typed.isEmpty ? (storedTokenUsable ? model.tokens.token(for: c.id) : nil) : typed
