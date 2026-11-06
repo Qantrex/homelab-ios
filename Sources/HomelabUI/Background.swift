@@ -24,6 +24,12 @@ public enum BackgroundRefresh {
     public static func run(storage: Storage = .shared(), tokens: any TokenStore = KeychainTokenStore(),
                            transport: any HTTPTransport = URLSessionTransport()) async {
         schedule()
+        // Shares and scans the app couldn't send earlier (the extension stores them in the App Group).
+        let list0 = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
+        await Outbox(directory: storage.url("outbox")).drain(servers: list0) { (server: ServerConfig) -> any CompanionAPI in
+            if server.kind == .demo { return DemoBackend(delay: .zero) }
+            return CompanionClient(config: server, tokens: tokens, transport: transport)
+        }
         let settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
         let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
         guard let server = list.selectedServer else { return }
@@ -94,7 +100,7 @@ public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegat
         }
     }
 
-    func route(_ url: URL) {
+    public func route(_ url: URL) {
         guard url.scheme == "homelab" else { return }
         if let open { open(url) } else { pending = url }
     }

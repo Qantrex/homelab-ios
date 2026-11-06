@@ -14,7 +14,11 @@ struct ActionsView: View {
     @State private var sheetToken = UUID()
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
+    /// The Scan screen (feature `documents`).
+    @State private var scanning = false
 
+    /// Scan tile: only where the server takes documents.
+    private var canScan: Bool { model.selected != nil && model.selectedStatus.features.contains(.documents) }
     private var pending: [PendingAction] { model.selectedStatus.snapshot?.state.pending ?? [] }
     private var startable: [ActionSpec] {
         model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions : []
@@ -35,10 +39,16 @@ struct ActionsView: View {
                     }
                     .cardRow()
                 }
-                if !startable.isEmpty {
+                if !startable.isEmpty || canScan {
                     Section {
-                        StartGrid(actions: startable) { formFor = $0 }
-                            .cardRow(top: 4)
+                        if !startable.isEmpty {
+                            StartGrid(actions: startable) { formFor = $0 }
+                                .cardRow(top: 4)
+                        }
+                        if canScan {
+                            ScanStartRow(waiting: model.outboxCount) { scanning = true }
+                                .cardRow(top: startable.isEmpty ? 4 : 0)
+                        }
                     } header: {
                         SectionTitle(text: "Start").textCase(nil).sectionHeaderInsets()
                     }
@@ -76,7 +86,7 @@ struct ActionsView: View {
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startable.isEmpty && model.selectedStatus.snapshot != nil
+                } else if pending.isEmpty && startable.isEmpty && !canScan && model.selectedStatus.snapshot != nil
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
@@ -90,6 +100,9 @@ struct ActionsView: View {
                         .onAppear { model.formSheet(sheetToken, open: true) }
                         .onDisappear { model.formSheet(sheetToken, open: false) }
                 }
+            }
+            .sheet(isPresented: $scanning, onDismiss: { openRequested() }) {
+                if let server = model.selected { ScanView(model: model, server: server) }
             }
             .onChange(of: openable) { _, _ in openRequested() }
             .onAppear { openRequested() }
@@ -108,7 +121,7 @@ struct ActionsView: View {
     /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
     private var openable: String {
         let s = model.selectedStatus
-        return [model.openAction ?? "", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
+        return [model.openAction ?? "", "\(model.openScan)", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
                 "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)", "\(model.formSheetOpen)"]
             .joined(separator: "|")
     }
@@ -116,6 +129,10 @@ struct ActionsView: View {
     /// Opens a requested form once this tab shows and the list knows the action. While another tab shows or a form
     /// is open (here or a card's) the request waits (`AppModel.takeOpenAction`).
     private func openRequested() {
+        if model.tab == .actions, formFor == nil, !scanning, model.takeOpenScan() {   // homelab://scan
+            scanning = true
+            return
+        }
         guard model.tab == .actions, formFor == nil, let spec = model.takeOpenAction() else { return }
         formFor = spec
     }

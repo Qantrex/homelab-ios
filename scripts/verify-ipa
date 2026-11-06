@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: scripts/verify-ipa PATH/TO/App.ipa
-# Checks that the IPA holds Payload/Homelab.app with the widget at PlugIns/HomelabWidget.appex, and that both carry
-# the App Group entitlement group.com.qantrex.homelab. scripts/build-ipa runs it after every build.
+# Checks that the IPA holds Payload/Homelab.app with the widget at PlugIns/HomelabWidget.appex and the share extension
+# at PlugIns/HomelabShare.appex (with its share-services NSExtension), and that all three carry the App Group
+# entitlement group.com.qantrex.homelab. scripts/build-ipa runs it after every build.
 # Entitlements come from `codesign` (macOS), `ldid`, or else python3 reading the plist embedded in the signature.
 set -euo pipefail
 
@@ -13,11 +14,13 @@ trap 'rm -rf "$tmp"' EXIT
 unzip -q "$ipa" -d "$tmp"
 app="$tmp/Payload/Homelab.app"
 appex="$app/PlugIns/HomelabWidget.appex"
+share="$app/PlugIns/HomelabShare.appex"
 echo "== contents of $(basename "$ipa") ($(wc -c < "$ipa" | tr -d ' ') bytes)"
 (cd "$tmp" && find Payload -maxdepth 4 | sort)
 
 [ -d "$app" ]   || { echo "FAIL: Payload/Homelab.app missing"; exit 1; }
 [ -d "$appex" ] || { echo "FAIL: Payload/Homelab.app/PlugIns/HomelabWidget.appex missing"; exit 1; }
+[ -d "$share" ] || { echo "FAIL: Payload/Homelab.app/PlugIns/HomelabShare.appex missing"; exit 1; }
 
 # entitlements BUNDLE: prints the bundle's signed entitlements. Without codesign/ldid (plain Linux) it reads the
 # entitlements plist that the code signature embeds in the executable (xtool signs ad hoc when it packages).
@@ -42,7 +45,14 @@ plist_value() {
   python3 -I -c 'import plistlib, sys; print(plistlib.load(open(sys.argv[1], "rb")).get(sys.argv[2], ""))' "$1" "$2" 2>/dev/null || true
 }
 
-for b in "$app" "$appex"; do
+# The share extension must be a share-services extension that names its principal class (and the class is in the binary:
+# without the linker flag in Package.swift the signing step fails, so a built IPA already proves it).
+point=$(python3 -I -c 'import plistlib, sys; d = plistlib.load(open(sys.argv[1], "rb")).get("NSExtension", {}); print(d.get("NSExtensionPointIdentifier", ""), d.get("NSExtensionPrincipalClass", ""))' "$share/Info.plist" 2>/dev/null || true)
+[ "$point" = "com.apple.share-services ShareViewController" ] \
+  || { echo "FAIL: HomelabShare.appex NSExtension is '$point', expected 'com.apple.share-services ShareViewController'"; exit 1; }
+echo "ok: HomelabShare.appex is a share-services extension (ShareViewController)"
+
+for b in "$app" "$appex" "$share"; do
   name=${b#"$tmp"/}
   if command -v plutil >/dev/null; then
     plutil -p "$b/Info.plist" | grep -E 'CFBundle(Identifier|ShortVersionString|Version)"' || true

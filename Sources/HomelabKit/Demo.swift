@@ -173,6 +173,24 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         return ActionResult(ok: true, text: text)
     }
 
+    public func upload(pdf: Data, title: String?, id: String) async throws -> ShareReply {
+        try await Task.sleep(for: delay * 3)
+        let name = ShareRouter.cleanTitle(title, max: ShareLimits.maxPDFTitle) ?? "Scan"
+        let kb = max(1, pdf.count / 1024)
+        page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .me, text: "Scan '\(name)' (\(kb) KB) → Paperless"))
+        let text = "Demo mode, so nothing was sent to Paperless."
+        page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .agent, job: "action", status: "OK", text: text))
+        current.lastMessage = page.messages.last
+        return ShareReply(id: id, text: text)
+    }
+
+    public func share(url: URL, title: String?, id: String) async throws -> ShareReply {
+        try await Task.sleep(for: delay * 2)
+        let wh = ShareRouter.willhabenAdID(url) != nil
+        return ShareReply(id: id, route: wh ? "willhaben" : "read-later",
+                          text: "Demo mode, so \(wh ? "no price check ran" : "nothing was saved").")
+    }
+
     /// A ticked-off to-do shows as done (a real server would drop it from the open items).
     private func tickOff(_ title: String) {
         current.cards = current.cards.map { card in

@@ -44,11 +44,13 @@ public struct RootView: View {
             case .active:
                 model.reloadSettings()
                 model.validateTab()
+                Task { await model.drainOutbox() }   // what the share extension or a scan couldn't send
             default:
                 break
             }
         }
         .onChange(of: model.availableTabs) { _, _ in model.validateTab() }
+        .task { await model.drainOutbox() }
         .tint(Palette.accent)
     }
 
@@ -70,7 +72,8 @@ public struct RootView: View {
                 TodayView(model: model)
             }
             // Proposals to approve, or actions the app starts itself (like AppModel.availableTabs).
-            if model.selectedStatus.features.contains(.actions) || model.selectedStatus.features.contains(.runActions) {
+            if model.selectedStatus.features.contains(.actions) || model.selectedStatus.features.contains(.runActions)
+                || model.selectedStatus.features.contains(.documents) {
                 Tab("Actions", systemImage: "checkmark.shield", value: AppTab.actions) {
                     ActionsView(model: model)
                 }
