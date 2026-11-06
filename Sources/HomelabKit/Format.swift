@@ -8,10 +8,10 @@ public enum Format {
         let s = now.timeIntervalSince(date)
         if s < -60 { return "in the future" }
         if s < 45 { return "just now" }
-        if s < 3600 { return "\(max(Int((s / 60).rounded()), 1)) min ago" }
-        if s < 86400 { return "\(Int(s / 3600)) h ago" }
+        if s < 3600 { return "\(max(Int(clamping: s / 60), 1)) min ago" }
+        if s < 86400 { return "\(Int(clamping: s / 3600, rounding: .towardZero)) h ago" }
         if s < 2 * 86400 { return "yesterday" }
-        return "\(Int(s / 86400)) d ago"
+        return "\(Int(clamping: s / 86400, rounding: .towardZero)) d ago"
     }
 
     /// Overkill: the exact time ("23:41:07", with the day when it isn't today) and the age; else just the age.
@@ -62,13 +62,13 @@ public enum Format {
         }
         let s = due.timeIntervalSince(now)
         if s >= 0 {
-            if s < 3600 { return ("\(max(Int(s / 60), 1)) min", .soon) }
-            if s < 86400 { return ("\(Int(s / 3600)) h", .soon) }
+            if s < 3600 { return ("\(max(Int(clamping: s / 60, rounding: .towardZero), 1)) min", .soon) }
+            if s < 86400 { return ("\(Int(clamping: s / 3600, rounding: .towardZero)) h", .soon) }
             return ("\(max(days, 1)) d", .later)
         }
         let ago = -s
-        if ago < 3600 { return ("\(max(Int(ago / 60), 1)) min ago", .past) }
-        if ago < 86400 { return ("\(Int(ago / 3600)) h ago", .past) }
+        if ago < 3600 { return ("\(max(Int(clamping: ago / 60, rounding: .towardZero), 1)) min ago", .past) }
+        if ago < 86400 { return ("\(Int(clamping: ago / 3600, rounding: .towardZero)) h ago", .past) }
         return ("\(max(-days, 1)) d ago", .past)
     }
 
@@ -100,7 +100,7 @@ public enum Format {
     /// The number inside a progress ring, 0…100. Rounded down, so 100 only shows when it's really done.
     public static func ringPercent(_ progress: Double) -> Int {
         guard progress.isFinite else { return 0 }
-        return Int((min(max(progress, 0), 1) * 100 + 1e-9).rounded(.down))
+        return Int(clamping: min(max(progress, 0), 1) * 100 + 1e-9, in: 0...100, rounding: .down)
     }
 
     /// Same default as the reference server's `temp_warning`.
@@ -112,8 +112,8 @@ public enum Format {
 
     /// "63°C", without a space: any space (even U+202F) renders as a full cell in the mono font.
     public static func temperature(_ celsius: Double?) -> String {
-        guard let celsius else { return "–" }
-        return "\(Int(celsius.rounded()))°C"
+        guard let celsius, celsius.isFinite else { return "–" }
+        return "\(Int(clamping: celsius))°C"
     }
 
     /// Between a number and its unit ("21.4 kWh"). Percent and degrees go without a space ("71%", "63°C").

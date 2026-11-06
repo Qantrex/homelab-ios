@@ -173,7 +173,7 @@ public extension Voice {
             return (.disk(host: full.0.name, mount: full.1.mount, percent: full.1.percent), .headsUp)
         }
         if let h = up.filter({ ($0.temp ?? 0) > 75 }).max(by: { ($0.temp ?? 0) < ($1.temp ?? 0) }), let t = h.temp {
-            return (.hot(host: h.name, celsius: Int(t.rounded())), .headsUp)
+            return (.hot(host: h.name, celsius: Int(clamping: t)), .headsUp)
         }
         func share(_ h: Host) -> Double { Format.loadShare(h.load, cores: h.cpuCount) ?? 0 }
         if let h = up.filter({ share($0) > 2 }).max(by: { share($0) < share($1) }), let l = h.load {
@@ -291,7 +291,7 @@ public extension Voice {
         }
         if has("temp", "hot", "°c", "overheat", "thermal") {
             let said = text.firstMatch(of: /(\d{2,3}(?:\.\d+)?)\s*°/).flatMap { Double($0.1) }
-            if let c = said ?? host?.temp { return .hot(host: hostName, celsius: Int(c.rounded())) }
+            if let c = said ?? host?.temp { return .hot(host: hostName, celsius: Int(clamping: c)) }
             return generic
         }
         if words.contains("load"), let l = host?.load {
@@ -320,7 +320,7 @@ public extension Voice {
             }
             if Format.backupFailed(h.backupResult) { return .backupFailed(host: h.name) }
             if let m = h.memPct, m >= 95 { return .problem(host: h.name, text: "memory at \(m)%") }
-            if let t = h.temp, t >= Format.hotCelsius { return .hot(host: h.name, celsius: Int(t.rounded())) }
+            if let t = h.temp, t >= Format.hotCelsius { return .hot(host: h.name, celsius: Int(clamping: t)) }
         }
         return nil
     }

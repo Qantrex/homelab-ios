@@ -44,11 +44,13 @@ public struct HostHistory: Codable, Sendable, Equatable, Hashable {
             }
         }
         set {
-            var values = Array(newValue.suffix(Self.maxPoints)).map { v in v.flatMap { $0.isFinite ? $0 : nil } }
-            switch series {
-            case .memPct, .diskPct: values = values.map { $0.map { Swift.min(Swift.max($0, 0), 100) } }
-            case .load: values = values.map { $0.map { Swift.max($0, 0) } }
-            case .temp: break
+            // The same ranges as the host's own numbers (`ServerNumber`); a temperature outside is a gap.
+            let values: [Double?] = Array(newValue.suffix(Self.maxPoints)).map { v in
+                switch series {
+                case .memPct, .diskPct: ServerNumber.clamp(v, ServerNumber.percentRange)
+                case .load: ServerNumber.clamp(v, ServerNumber.loadRange)
+                case .temp: ServerNumber.temp(v)
+                }
             }
             switch series {
             case .load: load = values
@@ -183,7 +185,7 @@ public extension HostHistory.Series {
     func format(_ value: Double) -> String {
         switch self {
         case .load: Format.load(value)
-        case .memPct, .diskPct: Format.percent(Int(value.rounded()))
+        case .memPct, .diskPct: Format.percent(ServerNumber.percent(rounding: value))
         case .temp: Format.temperature(value)
         }
     }

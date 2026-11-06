@@ -165,7 +165,12 @@ public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
                 backupResult: String? = nil, flags: [String] = [], url: URL? = nil, history: HostHistory? = nil,
                 containerList: [ContainerInfo] = []) {
         self.id = id; self.name = name ?? id; self.kind = kind; self.reachable = reachable; self.checked = checked
-        self.load = load; self.cpuCount = cpuCount; self.memPct = memPct; self.temp = temp; self.disks = disks
+        // Into their ranges (`ServerNumber`): a broken sensor's 3.4e38 °C must not reach a conversion to Int.
+        self.load = ServerNumber.clamp(load, ServerNumber.loadRange)
+        self.cpuCount = cpuCount.flatMap { $0 > 0 ? Swift.min($0, 100_000) : nil }
+        self.memPct = memPct.map { ServerNumber.percent($0) }
+        self.temp = ServerNumber.temp(temp)
+        self.disks = disks.mapValues { ServerNumber.percent($0) }
         self.containersUp = containersUp; self.containersTotal = containersTotal; self.upgradable = upgradable
         self.rebootRequired = rebootRequired; self.backupLast = backupLast; self.backupResult = backupResult
         self.flags = flags; self.url = url
@@ -192,8 +197,8 @@ public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
         }
         self.init(id: id, name: c.text(.name), kind: c.text(.kind), reachable: c.bool(.reachable),
                   checked: c.date(.checked), load: c.double(.load), cpuCount: c.int(.cpuCount),
-                  memPct: c.int(.memPct).map { min(max($0, 0), 100) }, temp: c.double(.temp),
-                  disks: c.numberMap(.disks).mapValues { min(max(Int($0.rounded()), 0), 100) },
+                  memPct: c.int(.memPct), temp: c.double(.temp),
+                  disks: c.numberMap(.disks).compactMapValues { ServerNumber.percent(rounding: $0) },
                   flags: c.strings(.flags), url: c.text(.url).flatMap(URLPolicy.webURL),
                   containerList: c.array(ContainerInfo.self, .containerList))
         // Without its own end, the history ends when the host was checked.
@@ -423,7 +428,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                     icon: String? = nil, url: URL? = nil, tint: Tint? = nil, done: Bool? = nil, due: Date? = nil,
                     dueIsDay: Bool = false, action: ItemAction? = nil, cancelled: Bool? = nil, image: String? = nil) {
             self.title = title; self.subtitle = subtitle; self.value = value
-            self.progress = progress.map { min(max($0, 0), 1) }; self.icon = icon; self.url = url; self.tint = tint
+            self.progress = ServerNumber.clamp(progress, ServerNumber.progressRange); self.icon = icon; self.url = url; self.tint = tint
             self.done = done; self.due = due; self.dueIsDay = due != nil && dueIsDay; self.action = action
             self.cancelled = cancelled
             self.image = image.flatMap(URLPolicy.cleanImageReference)

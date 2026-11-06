@@ -49,7 +49,7 @@ public struct DayTimeline: Equatable, Sendable {
         let behind = Self.daysBehind(card.date, now: now, calendar: calendar)
         let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
         // Tomorrow: minus the real minutes left until tomorrow's midnight. Stale: past every stop of the day.
-        let untilMidnight = startOfTomorrow.map { max(Int(($0.timeIntervalSince(now) / 60).rounded()), 0) } ?? (24 * 60 - today)
+        let untilMidnight = startOfTomorrow.map { Int(clamping: $0.timeIntervalSince(now) / 60, in: 0...Int.max) } ?? (24 * 60 - today)
         let nowMinute = behind > 0 ? 24 * 60 : tomorrow ? -untilMidnight : today
         var timed: [(item: Card.Item, minute: Int)] = []
         var notes: [Card.Item] = []
@@ -71,7 +71,7 @@ public struct DayTimeline: Equatable, Sendable {
             let m = sorted[next].minute
             if tomorrow, let start = startOfTomorrow,
                let at = calendar.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: start) {
-                toNext = Int((at.timeIntervalSince(now) / 60).rounded(.down))
+                toNext = Int(clamping: at.timeIntervalSince(now) / 60, rounding: .down)
             } else {
                 toNext = m - nowMinute
             }

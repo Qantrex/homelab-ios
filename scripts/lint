@@ -33,5 +33,24 @@ check "token-ish value interpolated into a log call" \
 check "try! in Sources/HomelabKit"             'try!'                       Sources/HomelabKit
 check "fatalError( in Sources/HomelabKit"      '(^|[^A-Za-z0-9_])fatalError\(' Sources/HomelabKit
 
+# Int(x) on a Double traps on NaN, infinity and anything past Int's range: a server's 3.4e38 °C killed the app.
+# Use Int(clamping:) (Numbers.swift). grep can't see types, so this flags an Int( / Int64( / UInt8( ... whose
+# argument looks like a Double: rounding, Double, pow, * or /, time intervals, or a server number's name. The safe
+# labelled forms (clamping:, exactly:, bitPattern:, truncatingIfNeeded:) are taken out first.
+check_conversions() {
+  local dir=$1 hits
+  [ -d "$dir" ] || return 0
+  hits=$(grep -rnE --include='*.swift' -- '(^|[^A-Za-z0-9_.])U?Int(8|16|32|64)?\(' "$dir" | filter \
+    | sed -E 's/U?Int(8|16|32|64)?\((clamping|exactly|bitPattern|truncatingIfNeeded):/safe(/g' \
+    | grep -E '(^|[^A-Za-z0-9_.])U?Int(8|16|32|64)?\([^)]*(\.rounded|Double|pow\(|[A-Za-z0-9_)][[:space:]]*[*/][[:space:]]*[A-Za-z0-9_(.]|timeInterval|celsius|temp|progress|load|value|scale|[Pp]ct)' \
+    || true)
+  if [ -n "$hits" ]; then
+    echo "lint: Int( on a Double in $dir (use Int(clamping:), or end the line with // lint:allow)"
+    echo "$hits" | sed 's/^/  /'
+    fail=1
+  fi
+}
+check_conversions Sources/HomelabKit
+
 if [ "$fail" = 0 ]; then echo "lint: ok"; fi
 exit "$fail"

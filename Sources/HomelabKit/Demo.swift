@@ -346,7 +346,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     private func nextID() -> Int64 {
-        let now = Int64(Date().timeIntervalSince1970 * 1e9)
+        let now = Int64(Int(clamping: Date().timeIntervalSince1970 * 1e9))
         return max(now, (page.messages.last?.id ?? 0) + 1)
     }
 }

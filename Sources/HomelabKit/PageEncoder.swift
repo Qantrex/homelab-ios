@@ -30,8 +30,8 @@ public enum PageEncoder {
     public static func jpeg(from image: CGImage, maxPixel: Int = maxPixel) -> Data? {
         let longSide = max(image.width, image.height)
         let scale = longSide > maxPixel ? Double(maxPixel) / Double(longSide) : 1
-        let width = max(1, Int((Double(image.width) * scale).rounded()))
-        let height = max(1, Int((Double(image.height) * scale).rounded()))
+        let width = Int(clamping: Double(image.width) * scale, in: 1...maxPixel)
+        let height = Int(clamping: Double(image.height) * scale, in: 1...maxPixel)
         // Redrawn into plain RGB (white behind transparent parts): no CMYK, grey or alpha JPEGs reach the PDF.
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
               let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,

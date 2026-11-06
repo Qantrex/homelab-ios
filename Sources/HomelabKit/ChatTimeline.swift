@@ -148,7 +148,7 @@ public enum PollPolicy {
 
     /// Backoff after errors: 5 s, 10 s, 20 s … up to 2 min.
     public static func backoff(failures: Int) -> Duration {
-        let s = min(5 * Int(pow(2, Double(max(failures - 1, 0)))), 120)
+        let s = Int(clamping: 5 * pow(2, Double(max(failures - 1, 0))), in: 5...120)
         return .seconds(s)
     }
 }

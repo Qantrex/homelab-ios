@@ -66,7 +66,7 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         if alerts.count > Self.maxPerRun {
             let rest = alerts.count - (Self.maxPerRun - 1)
             alerts = Array(alerts.prefix(Self.maxPerRun - 1))
-            alerts.append(Alert(id: "summary-\(Int(now.timeIntervalSince1970))", kind: .summary,
+            alerts.append(Alert(id: "summary-\(Int(clamping: now.timeIntervalSince1970, rounding: .down))", kind: .summary,
                                 title: server, body: "\(rest) more new items. Open the app to see them."))
         }
         return alerts
