@@ -244,7 +244,7 @@ import Testing
     @Test func dueTimesFollowTheClock() async throws {
         // A fixed noon (not the real clock): a run just after midnight must not change which day things fall on.
         let now = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 6, hour: 12))!
-        let demo = DemoBackend(delay: .zero, now: now)
+        let demo = DemoBackend(scene: .problem, delay: .zero, now: now)
         let state = try await demo.state()
         let todos = try #require(state.cards.first { $0.id == "todos" })
         // "Call the plumber" was due 3 h 28 min before the fixture's check, which is 2 min ago now.
@@ -264,7 +264,7 @@ import Testing
     }
 
     @Test func answeringAProposalClearsTheBubble() async throws {
-        let demo = DemoBackend(delay: .zero)
+        let demo = DemoBackend(scene: .problem, delay: .zero)
         #expect(try await demo.messages(after: 0).messages.last?.pending.count == 1)
         #expect(try await demo.state().lastMessage?.pending.count == 1)
         _ = try await demo.press("HOMELAB_DENY_ab12_2123456789abcdef")

@@ -120,11 +120,16 @@ struct ActionsView: View {
                     SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)")
                 }
                 if quiet {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Image(systemName: "checkmark.shield").font(Typo.body).foregroundStyle(Palette.tertiary)
+                    // A small empty state: the shield over the sentence, both centred in the panel.
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.shield").font(Typo.sectionTitle.weight(.regular))
+                            .foregroundStyle(Palette.tertiary)
                             .accessibilityHidden(true)
                         Text(nothingToApprove).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity)
                     .panel()
                     .transition(.opacity)
                 } else {

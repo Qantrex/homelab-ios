@@ -52,7 +52,7 @@ struct ActionFormView: View {
                         ForEach(inputParts, id: \.index) { item in partRow(item.index, item.part) }
                     } footer: {
                         if let arg = form.arg, !arg.isEmpty {
-                            Text(arg).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
+                            Text(arg).font(Typo.meta).foregroundStyle(Palette.tertiary)
                                 .accessibilityLabel(Text("Sends \(arg)"))
                         }
                     }
@@ -346,7 +346,7 @@ struct StartTile: View {
                             .numberMotion(statusValue)
                     }
                 } else if let meta {
-                    Text(meta).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                    Text(meta).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)

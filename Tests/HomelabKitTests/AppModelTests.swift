@@ -396,7 +396,7 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         #expect(m.isDemo && m.homeAssistant?.isDemoHomeAssistant == true && m.selected?.id == lab.id)
         m.select(m.servers.servers.first { $0.kind == .demo && $0.speaksCompanionAPI }!.id)
         await m.refresh()
-        #expect(m.selectedStatus.snapshot?.state.pending.count == 2)
+        #expect(m.selectedStatus.snapshot?.state.pending.count == 1)   // the calm demo: one proposal
         m.setDemo(false)
         #expect(!m.isDemo && m.selected?.id == lab.id)
         m.settings.faceIDLock = true

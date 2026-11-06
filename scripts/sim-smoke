@@ -5,13 +5,13 @@
 #   OUT_DIR   where the PNG screenshots, app-log.txt, server-log.txt and summary.txt go
 # macOS only. Boots the newest iPhone simulator, installs the app, starts the fixture server
 # (server/reference_server.py on 127.0.0.1:8791, the simulator shares the host network) and takes, numbered in order:
-#   01-15  demo mode, every tab (today actions chat lab settings) in light, dark and accessibility-XL text
+#   01-15  demo mode (the calm day), every tab (today actions chat lab settings) in light, dark and accessibility-XL text
 #   16-21  live mode against the fixture server: problem, tomorrow, chat, pending (actions), huge, ok
 #   22     offline: the fixture server is stopped, the app relaunches with its cached data (error bar + age)
 #   23-24  the smallest iPhone available (SE / "e" model / smallest screen): demo today + actions
 #   25-26  action forms (demo, reset first): Wake-up in dark, Add an event with accessibility-XL text (-HomelabAction)
-#   27     demo host detail (reset first) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
-#   28     demo Today (reset first) in Overkill with the Snarky personality (last: both settings stay set afterwards)
+#   27     demo host detail (reset first, problem scene) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
+#   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality (last: both settings stay set afterwards)
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
@@ -196,6 +196,8 @@ DEMO=(-HomelabDemo YES)
 LIVE=(-HomelabResetState YES -HomelabServer "$SERVER_URL")
 # After the live and offline shots: a clean demo, without the fixture server and its cache from 16-22.
 FRESH_DEMO=(-HomelabResetState YES -HomelabDemo YES)
+# The demo's stress scene (an unhealthy and an exited container, a warning, U6 delays) instead of its calm day.
+PROBLEM=(-HomelabDemoScene problem)
 
 # 01-15: demo mode, every tab, in light, dark and accessibility-extra-large text
 for look in light dark xxl; do
@@ -261,11 +263,11 @@ xcrun simctl ui "$dev" content_size large || true
 
 # 27: a host's details (Lab), opened with -HomelabHost: sparklines, containers (problems first) and Restart buttons
 xcrun simctl ui "$dev" appearance dark || true
-scene demo-host-media-dark "${FRESH_DEMO[@]}" -HomelabTab lab -HomelabHost media
+scene demo-host-media-dark "${FRESH_DEMO[@]}" "${PROBLEM[@]}" -HomelabTab lab -HomelabHost media
 xcrun simctl ui "$dev" appearance light || true
 
 # 28: everything at once, with a personality
-scene demo-today-overkill-snarky "${FRESH_DEMO[@]}" -HomelabTab today -HomelabDensity overkill -HomelabPersonality snarky
+scene demo-today-overkill-snarky "${FRESH_DEMO[@]}" "${PROBLEM[@]}" -HomelabTab today -HomelabDensity overkill -HomelabPersonality snarky
 
 # App log for this run (Logger subsystem com.qantrex.homelab), from the main simulator
 xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \

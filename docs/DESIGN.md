@@ -21,12 +21,14 @@ roles in `Typo`; no screen picks a size by hand.
 | Headline | `Typo.headline` (17 semibold) | The name of a row or card ("restart media sonarr", "Living room"), the fact line |
 | Body | `Typo.body` (17 regular) | Text people read: chat, the voice line |
 | Secondary | `Typo.secondary` (15), `Palette.secondary` | What explains a row: reason, subtitle, the status line of a screen |
-| Meta | `Typo.meta` (13), `Palette.tertiary` | When, where from ("checked 2 min ago"), column headers, footers |
+| Meta | `Typo.meta` (13), `Palette.tertiary` | When, where from ("checked 2 min ago"), column headers, footers, ids |
 | Data | `Typo.data(…)` (SF Pro, fixed-width digits); `Typo.rowValue` (15 medium) | **Numbers only**: 3.10, 88%, 07:30. In a row's right-hand column: `rowValue` |
 | Code | `Typo.code(…)` (SF Mono) | Code in chat only (code blocks, inline code) |
 
 - One typeface: SF Pro. Numbers use its fixed-width digits (`Typo.data`), so columns line up without a second font.
   SF Mono only for code in chat. Owner, 2026-11-06: "too many different fonts and mono font".
+- Words and ids are text, not data: "3 of 3 up" (not "3/3 up"), a proposal's id and an action's name in `Typo.meta`.
+  Fixed-width digits only for numbers that change or sit in a column.
 - No uppercase labels with tracking (the "terminal caption" look). Section titles are sentence case.
 - No italics. Emphasis is weight or colour, not slant.
 - Minimum 11 pt; prefer Regular, Medium, Semibold, Bold.
@@ -87,6 +89,10 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 - No mascot, no character art, no speech bubbles. The line is plain `.body`/`.title3` text in `Palette.secondary`,
   directly under what it comments on.
 - The fact is always shown plainly next to the joke, so the joke can be ignored.
+- Under the hero, plain text, never part of its button: the weather as one sentence with its symbol ("☁ Clear, 3 °C
+  now", `Typo.secondary`), and where the data is from ("homelab · checked 4 min ago", meta) **only** while a pull to
+  refresh runs, after a failed fetch, or when the data is older than 10 min (`FreshnessLine`; Overkill always).
+  A line that is always there says nothing (owner, 2026-11-06).
 - Off by default; Dry, Snarky, Ultrakill in Settings.
 
 ## 5. Platform patterns
@@ -128,8 +134,15 @@ when there is something to say. Overkill density keeps the host tiles. At access
 the name with their labels.
 
 Cards use it too (to-dos, parcels, deadlines, lessons, downloads): the leading glyph at 17, the reason on at most two
-lines, a progress ring 20 pt inline after the value (no number inside it; the value column has it). Proposals
-(Actions, chat) are rows with Approve (filled white capsule), Always (`raised` capsule) and Deny (text) inline.
+lines, a progress ring 20 pt inline after the value (no number inside it; the value column has it).
+
+Lab cards (tailnet, ad blocking, backups) are rows of the same grammar in one panel: dot · title · subtitle · value,
+a thin bar only where there is progress. A row that needs a look has the warning glyph (gold / love, grey for a
+tailnet device that is away) in the dot's place and its word in the value column; "online" says nothing. A list of more
+than 3 rows shows 3 and a "Show N more" row (`LabRows`, `rowMotion`; "Show less" closes it).
+
+Proposals (Actions, chat) are rows with Approve (filled white capsule), Always (`raised` capsule) and Deny (text)
+inline; on the right the age with the clock time under it ("18 min ago" / "21:03", "Thu 21:03" another day), both meta.
 
 ## 7. Buttons, motion and haptics
 

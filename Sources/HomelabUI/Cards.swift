@@ -40,6 +40,8 @@ struct CardView: View {
     @State private var outcome: ActionOutcome?
     /// Requested from a poster here (the confirm ran ok): drawn "requested" without its button.
     @State private var requested: Set<ItemAction> = []
+    /// Lab: a long list (more than `LabRows.folded` rows) shows all its rows.
+    @State private var expanded = false
 
     /// The item whose circle was tapped, waiting for its confirm.
     struct TickOff: Identifiable {
@@ -107,7 +109,8 @@ struct CardView: View {
         } else {
             VStack(alignment: .leading, spacing: Space.titleToPanel) {
                 header
-                if let subtitle = card.subtitle {
+                // Lab rows: the card's `text` too ("Key expiry off on all servers"), as the rows are the panel.
+                if let subtitle = usesRows ? LabRows.subtitle(card) : card.subtitle {
                     Text(subtitle).font(Typo.secondary).foregroundStyle(Palette.secondary).padding(.top, -8)
                 }
                 if usesRows { content.rowsPanel() } else { content.panel() }
@@ -460,48 +463,101 @@ struct CardView: View {
         }
     }
 
+    /// The rows in one panel, split by separators. A list with more than three rows shows three and a "Show 5 more"
+    /// row that opens the rest ("Show less" closes them); the rows spring in and out (`rowMotion`).
     private var labRows: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(card.items.enumerated()), id: \.offset) { i, item in
+        let shown = LabRows.shown(card, expanded: expanded)
+        return VStack(spacing: 0) {
+            ForEach(Array(Self.keyed(shown).enumerated()), id: \.element.key) { i, keyed in
                 if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
-                labRow(item)
+                labRow(keyed.item).transition(.opacity)
+            }
+            if LabRows.folds(card) {
+                Divider().overlay(Palette.line).padding(.leading, 16)
+                moreRow(hidden: card.items.count - LabRows.folded)
             }
         }
+        .rowMotion(expanded)
     }
 
-    /// Row grammar (docs/DESIGN.md §6): status dot (the only colour) · name 17 semibold · reason 15 secondary · the
-    /// value 15 mono medium at the right (under the name at accessibility sizes). A progress shows as a thin grey bar.
+    /// "Show 5 more" / "Show less": secondary text and a chevron, the row's full width (at least 44 pt) as the target.
+    private func moreRow(hidden: Int) -> some View {
+        let label = expanded ? String(localized: "Show less") : String(localized: "Show \(hidden) more")
+        return Button {
+            expanded.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Text(label).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.down").font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.tertiary)
+                    .rotationEffect(.degrees(expanded ? 180 : 0))
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle(scale: 1))
+        .accessibilityLabel(Text(label))
+        .accessibilityHint(expanded ? Text("Shows the first \(LabRows.folded) rows only.")
+                                    : Text("Shows all \(card.items.count) rows."))
+    }
+
+    /// Row grammar (docs/DESIGN.md §6): status dot · name 17 semibold · reason 15 secondary · the value 15 medium at
+    /// the right (under the name at accessibility sizes); a thin grey bar only for an item with `progress`. A row that
+    /// needs a look (a warm or red tint, a tailnet device that is away) has a warning glyph instead of its dot and its
+    /// word in the value column ("offline", "seen 3 h ago"); a tailnet device that is simply online shows no value. A
+    /// grey item ("not set up") has a grey dot and a grey "–".
     private func labRow(_ item: Card.Item) -> some View {
         let status = Self.statusColor(item.tint)
         let warm = item.tint == .orange || item.tint == .yellow, red = item.tint == .red
-        let value = item.value.flatMap { $0.isEmpty ? nil : $0 }
+        let warns = LabRows.warns(item, in: card)
+        let value = LabRows.value(item, in: card)
+        let valueColor = warm || red ? status : value == "–" ? Palette.tertiary : Palette.secondary
         let row = HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Circle().fill(item.tint == nil || item.tint == .gray ? Palette.text : status).frame(width: 8, height: 8)
-                .accessibilityHidden(true)
-                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+            marker(item, warns: warns)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title ?? "").font(Typo.headline).foregroundStyle(Palette.text)
                     .fixedSize(horizontal: false, vertical: true)
                 if let s = item.subtitle {
                     Text(s).font(Typo.secondary).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                if let p = item.progress { Meter(p).padding(.top, 2) }
-                if stacked, let value { Text(value).font(Typo.rowValue).foregroundStyle(warm || red ? status : Palette.secondary) }
+                if let p = item.progress { Meter(p).padding(.top, 4) }
+                if stacked, let value { Text(value).font(Typo.rowValue).foregroundStyle(valueColor) }
             }
             Spacer(minLength: 8)
             if !stacked, let value {
-                Text(value).font(Typo.rowValue).foregroundStyle(warm || red ? status : Palette.secondary)
+                Text(value).font(Typo.rowValue).foregroundStyle(valueColor)
                     .multilineTextAlignment(.trailing)
+                    .numberMotion(value)
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityValue(red ? Text("problem") : warm ? Text("warning") : Text(""))
+        .accessibilityValue(red ? Text("problem") : warm ? Text("warning") : warns ? Text("away") : Text(""))
         let main = Group {
             if let url = item.url { Button { openURL(url) } label: { row }.buttonStyle(.plain) } else { row }
         }
         return withAction(item, main: main)
             .padding(.horizontal, 16).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A lab row's leading mark: an 8 pt dot (white; grey for an inactive item), or a small warning glyph centred in
+    /// the same 8 pt column (it reaches a little into the gaps), so every name starts at the same place.
+    @ViewBuilder
+    private func marker(_ item: Card.Item, warns: Bool) -> some View {
+        if warns {
+            Image(systemName: item.tint == .red ? Problem.Severity.problem.symbol : Problem.Severity.warning.symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(item.tint == .red || item.tint == .orange || item.tint == .yellow
+                                 ? Self.statusColor(item.tint) : Palette.secondary)
+                .frame(width: 8)
+                .accessibilityHidden(true)
+        } else {
+            Circle().fill(item.tint == .gray ? Palette.tertiary : Palette.text).frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+        }
     }
 
     // MARK: Poster grid
@@ -532,7 +588,10 @@ struct CardView: View {
             PosterImage(model: model, path: item.image, icon: card.icon)
             Text(item.title ?? "").font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
                 .lineLimit(2, reservesSpace: false).fixedSize(horizontal: false, vertical: true)
-            if let s = item.subtitle { Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(2) }
+            // Requested here: the server's "· not requested" goes, the value says "requested".
+            if let s = item.subtitle.map({ done ? PosterText.withoutRequestState($0) : $0 }) {
+                Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(2)
+            }
             if let value { Text(value).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(2) }
             if let action, let spec {
                 actionButton(TickOff(item: item, action: action, spec: spec), busy: running.contains(action),
