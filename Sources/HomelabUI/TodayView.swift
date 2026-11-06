@@ -193,7 +193,7 @@ struct TodayView: View {
 
     @ViewBuilder
     private func otherCards(_ state: HomelabState) -> some View {
-        ForEach(state.cards.filter { $0.id != dayCard?.id }) { CardView(card: $0) }
+        ForEach(state.cards.filter { $0.id != dayCard?.id }) { CardView(card: $0, model: model) }
     }
 
     @ViewBuilder

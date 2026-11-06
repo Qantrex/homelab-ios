@@ -46,6 +46,9 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O3 | Hosts | One tile per host, "x/y up" in the title, load/RAM/disk bars, a sleeping PC shows "Asleep", not red | | |
 | O4 | Host detail | Tap a tile: Status, System, Disks, Maintenance, Flags as the host has them. "Open web interface" opens Safari | | |
 | O5 | Cards | Server cards show (title, icon, items or text). A card item with a link opens Safari | | |
+| O11 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked or gone (HA too). Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
+| O12 | Card button | To-dos "+ ADD" → the Add a to-do form with the list already chosen → Run → sheet closes, alert with the agent's answer | | |
+| O13 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
 | O6 | Services | Service buttons are grouped and open the right page in Safari | | |
 | O7 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
 | O9 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
@@ -78,6 +81,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | C5 | Quick commands | With the agent: `/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help` each send and get an answer. A server without `commands` in /info shows no button row | | |
 | C6 | Long text limit | Paste 4100 characters: a counter shows, red above 4000, the send button is greyed out | | |
 | C7 | Send while offline | Tailscale off, send: "Not sent: … Tap to edit." Tap puts the text back in the field | | |
+| C9 | Proposal in a bubble | A watchdog message with a proposal shows it under the text with Approve / Always / Deny → the same dialogs as Actions → result alert and haptic; the buttons go away once it is answered (here, in Actions or by /approve) | | |
+| C10 | Card in a bubble | A reply with a card shows it small under the text (at most 6 rows, "and N more") | | |
 | C8 | No duplicates | Leave the app for a minute, come back: no message shows twice | | |
 
 ## Home (Home Assistant)
@@ -140,7 +145,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
 | X1 | Dynamic Type XXL | iOS Larger Text at the biggest non-accessibility size and one accessibility size: no clipped text, action buttons stack instead of wrapping | | |
-| X2 | VoiceOver | Host tiles read "`<name>`, `<status>`", the send button reads "Send", chat bubbles read "You: …" / "Agent: …" | | |
+| X2 | VoiceOver | Host tiles read "`<name>`, `<status>`", the send button reads "Send", chat bubbles read "You: …" / "Agent: …". A to-do reads "Milk, Shopping, due today, not done" with the action "Tick off"; a deadline "Tax return, Paperwork, today" | | |
 | X3 | Dark mode | Every tab and the widgets are readable in dark mode | | |
 
 ## SideStore refresh

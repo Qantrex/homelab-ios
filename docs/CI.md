@@ -45,7 +45,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | 01–05 | Demo mode, every tab (today, actions, chat, lab, settings), light. **Core**: sim-smoke fails without them |
 | 06–10 | The same, dark |
 | 11–15 | The same, accessibility extra-large text (`-xxl`) |
-| 16–20 | Live mode against the fixture server: `state-problem.json` today and chat, `state-pending.json` actions, `state-huge.json` lab, `state-ok.json` today |
+| 16–20 | Live mode against the fixture server: `state-problem.json` today and chat (a proposal with its buttons and a card inside the bubbles), `state-pending.json` actions, `state-huge.json` lab, `state-ok.json` today |
 | 21 | Offline: the fixture server is stopped and the app relaunched; it should show the cached data with its age and the error bar |
 | 22–23 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini; never a two-screen model like "iPhone Duo"): demo today and actions |
 | 24–25 | Forms of actions the app starts (`-HomelabAction`): Wake-up in dark, Add an event with accessibility extra-large text |

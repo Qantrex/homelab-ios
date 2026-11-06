@@ -67,7 +67,8 @@ public struct RootView: View {
             Tab("Today", systemImage: "sun.horizon", value: AppTab.today) {
                 TodayView(model: model)
             }
-            if model.selectedStatus.features.contains(.actions) {
+            // Proposals to approve, or actions the app starts itself (like AppModel.availableTabs).
+            if model.selectedStatus.features.contains(.actions) || model.selectedStatus.features.contains(.runActions) {
                 Tab("Actions", systemImage: "checkmark.shield", value: AppTab.actions) {
                     ActionsView(model: model)
                 }

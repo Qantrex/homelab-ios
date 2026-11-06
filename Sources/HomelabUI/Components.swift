@@ -126,10 +126,11 @@ extension ButtonStyle where Self == PressStyle {
 /// A panel: slightly lifted from the black background, with a hairline border.
 struct CardBackground: ViewModifier {
     var accent: Color?
+    var padding: CGFloat = 14
 
     func body(content: Content) -> some View {
         content
-            .padding(14)
+            .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -138,8 +139,11 @@ struct CardBackground: ViewModifier {
 }
 
 extension View {
-    /// A panel; `accent` colours its border (a problem panel gets a love border).
-    func card(accent: Color? = nil) -> some View { modifier(CardBackground(accent: accent)) }
+    /// A panel; `accent` colours its border (a problem panel gets a love border). Less `padding` for a small one
+    /// (a card inside a chat bubble).
+    func card(accent: Color? = nil, padding: CGFloat = 14) -> some View {
+        modifier(CardBackground(accent: accent, padding: padding))
+    }
 
     /// The screen background behind scroll views and lists.
     func screenBackground() -> some View {

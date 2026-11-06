@@ -16,11 +16,13 @@ struct ActionFormView: View {
     @State private var blocked = 0
     @Environment(\.dismiss) private var dismiss
 
-    init(model: AppModel, server: ServerConfig, spec: ActionSpec, finished: @escaping (Result<ActionResult, APIError>) -> Void) {
+    /// `prefill`: a card's action (its `payload` and `arg` fill the form, e.g. the list for "Add").
+    init(model: AppModel, server: ServerConfig, spec: ActionSpec, prefill: ItemAction? = nil,
+         finished: @escaping (Result<ActionResult, APIError>) -> Void) {
         self.model = model
         self.server = server
         self.finished = finished
-        _form = State(initialValue: ActionForm(spec))
+        _form = State(initialValue: ActionForm(spec, prefill: prefill))
     }
 
     private var spec: ActionSpec { form.spec }

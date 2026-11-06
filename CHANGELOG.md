@@ -11,6 +11,10 @@ App:
   pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Calm,
   Standard or Overkill density (Overkill adds every machine's numbers, exact times and busy jobs).
 - Progress in cards (downloads, now playing) as rings with the percent inside.
+- Checklist cards (to-dos): a circle per item, done ones struck through, the due day gold today and love when
+  overdue; tap the circle to tick an item off (one confirm, then it runs at once). Countdown cards (deadlines): big
+  mono "2 d", "5 h", "today", "3 d ago", soonest first. A card's header button ("+ Add") opens its action's form
+  prefilled. All only when the server lets the app start that action.
 - Lab (was Overview): overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
   host details, a service launcher (opens Safari). Pull to refresh, refresh every 30 s while open, last data with its
   age when offline.
@@ -24,7 +28,8 @@ App:
   `homelab://actions/<name>` open a form directly. For the owner's agent: add a to-do, tick one off, add an event,
   wake-up, bike or U6, living room, restart a container.
 - Chat: chat with a homelab agent. "Working…" state, report tags, inline Markdown, copy, quick commands, 4000-character
-  limit with a counter, failed messages can be edited and sent again.
+  limit with a counter, failed messages can be edited and sent again. Proposals in a message get Approve, Always
+  and Deny in the bubble (same confirm as the Actions tab), cards in a message show small under its text.
 - Home Assistant with a long-lived token: pin a few lights, switches, fans, toggles, automations, scripts, scenes,
   buttons or sensors as tiles on Today; tap to toggle or run them. No separate Home tab.
 - Settings: several servers (Homelab API or Home Assistant), Tailscale identity or token login, test connection,

@@ -232,6 +232,25 @@ import Testing
         #expect(try await demo.state().lastMessage?.pending.isEmpty == true)
     }
 
+    @Test func openPendingFollowsANewerState() throws {
+        let page = try fixture(MessagePage.self, "messages.json")
+        var state = try fixture(HomelabState.self, "state-problem.json")
+        let m = try #require(page.messages.last)
+        let ts = try #require(m.ts)
+        let id = UUID()
+        // No state, or one older than the message: the message's own list.
+        #expect(m.openPending(in: nil).map(\.id) == ["ab12"])
+        state.pending = []
+        let older = Snapshot(serverID: id, serverName: "x", state: state, fetched: ts.addingTimeInterval(-60))
+        #expect(m.openPending(in: older).map(\.id) == ["ab12"])
+        // A newer state without the proposal: answered, no buttons.
+        let newer = Snapshot(serverID: id, serverName: "x", state: state, fetched: ts.addingTimeInterval(60))
+        #expect(m.openPending(in: newer).isEmpty)
+        state.pending = try fixture(HomelabState.self, "state-problem.json").pending
+        let stillOpen = Snapshot(serverID: id, serverName: "x", state: state, fetched: ts.addingTimeInterval(60))
+        #expect(m.openPending(in: stillOpen).map(\.id) == ["ab12"])
+    }
+
     @Test func tickingOffInTheDemo() async throws {
         let demo = DemoBackend(delay: .zero)
         let r = try await demo.run("todo-done", arg: "", payload: ["item": "Milk", "list": "shopping"])

@@ -100,3 +100,14 @@ public enum PollPolicy {
         return .seconds(s)
     }
 }
+
+public extension ChatMessage {
+    /// The proposals the bubble still offers buttons for. The chat only loads messages newer than the last one, so
+    /// an older message keeps proposals answered since (here, in the Actions tab or elsewhere). A state fetched after
+    /// the message is newer: it decides which are still open.
+    func openPending(in snapshot: Snapshot?) -> [PendingAction] {
+        guard !pending.isEmpty, let snapshot, let ts, snapshot.fetched >= ts else { return pending }
+        let open = Set(snapshot.state.pending.map(\.id))
+        return pending.filter { open.contains($0.id) }
+    }
+}

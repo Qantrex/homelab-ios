@@ -74,6 +74,11 @@ struct ChatView: View {
     @State private var sent = 0
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focused: Bool
+    /// Approve / Always / Deny in a bubble: the same confirm and press as the Actions tab.
+    @State private var confirm: ProposalConfirmation?
+    @State private var running: Set<String> = []
+    @State private var result: ResultMessage?
+    @State private var outcome: ActionOutcome?
 
     private var emptyMessage: LocalizedStringKey {
         let hint = quick.contains("/help") ? String(localized: "Ask your homelab anything, or try /help.")
@@ -99,6 +104,11 @@ struct ChatView: View {
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .sensoryFeedback(.impact(weight: .light), trigger: sent)
+            .proposalDialog($confirm, running: $running, model: model) { ok, message in
+                outcome = ActionOutcome(ok: ok)
+                result = message
+            }
+            .actionFeedback(result: $result, outcome: outcome)
             // Restarts on server change and when the app comes back; stops while it's in the background.
             .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active, kick: chat.kick)) {
                 chat.reset(for: model.selected)
@@ -125,7 +135,11 @@ struct ChatView: View {
                             .padding(.top, 40)
                     }
                     ForEach(chat.timeline.messages) { m in
-                        Bubble(message: m).id("m\(m.id)")
+                        Bubble(message: m, pending: m.openPending(in: model.selectedStatus.snapshot), running: running,
+                               model: model) { p, verb in
+                            confirm = ProposalConfirmation(action: p, verb: verb)
+                        }
+                        .id("m\(m.id)")
                     }
                     ForEach(chat.timeline.outgoing) { o in
                         OutgoingBubble(outgoing: o) {
@@ -214,8 +228,16 @@ struct ChatView: View {
 
 struct Bubble: View {
     let message: ChatMessage
+    /// The message's proposals that are still open (`ChatMessage.openPending`).
+    var pending: [PendingAction] = []
+    var running: Set<String> = []
+    /// For the cards' actions; nil = cards only show.
+    var model: AppModel?
+    var tap: (PendingAction, PendingAction.Verb) -> Void = { _, _ in }
 
     var mine: Bool { message.from == .me }
+    /// Only text: one VoiceOver element. With buttons or cards inside, each part is its own.
+    private var plain: Bool { pending.isEmpty && message.cards.isEmpty }
 
     var body: some View {
         HStack {
@@ -224,26 +246,65 @@ struct Bubble: View {
                 if message.isReport, let job = message.job {
                     Chip(job, color: statusColor(message.status), symbol: "clock")
                 }
-                Text(markdown(message.text))
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(mine ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(mine ? Color.clear : Palette.line, lineWidth: 1))
-                    .foregroundStyle(mine ? Palette.onAccent : Palette.text)
-                    .contextMenu {
-                        Button { UIPasteboardBridge.copy(message.text) } label: { Label("Copy", systemImage: "doc.on.doc") }
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(markdown(message.text))
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .contextMenu {
+                            Button { UIPasteboardBridge.copy(message.text) } label: { Label("Copy", systemImage: "doc.on.doc") }
+                        }
+                        .accessibilityLabel(Text(mine ? "You: \(message.text)" : "Agent: \(message.text)"))
+                    ForEach(pending) { proposal($0) }
+                    ForEach(message.cards) { CardView(card: $0, compact: true, model: model) }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(mine ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(mine ? Color.clear : Palette.line, lineWidth: 1))
+                .foregroundStyle(mine ? Palette.onAccent : Palette.text)
                 if let ts = message.ts {
                     Text(ts, format: .dateTime.hour().minute()).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                 }
             }
             if !mine { Spacer(minLength: 40) }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(mine ? "You: \(message.text)" : "Agent: \(message.text)"))
+        .modifier(BubbleAccessibility(plain: plain, label: mine ? "You: \(message.text)" : "Agent: \(message.text)"))
+    }
+
+    /// A proposal made in this message: what it would run and its buttons (none without a hub token: then it's
+    /// answered in the chat).
+    private func proposal(_ p: PendingAction) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Rectangle().fill(Palette.line).frame(height: 1).accessibilityHidden(true)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
+                Text(p.title).font(Typo.mono(.footnote, weight: .semibold))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("Proposed: \(p.title)"))
+            if running.contains(p.id) {
+                HStack { ProgressView(); Text("Running…").font(.footnote).foregroundStyle(Palette.secondary) }
+            } else if p.buttons.isEmpty {
+                Text("The server offers no buttons for this action. Answer it in the chat.")
+                    .font(.caption).foregroundStyle(Palette.secondary)
+            } else {
+                ProposalButtons(action: p, compact: true) { tap(p, $0) }
+            }
+        }
+    }
+}
+
+struct BubbleAccessibility: ViewModifier {
+    let plain: Bool
+    let label: LocalizedStringKey
+
+    func body(content: Content) -> some View {
+        if plain {
+            content.accessibilityElement(children: .combine).accessibilityLabel(Text(label))
+        } else {
+            content.accessibilityElement(children: .contain)
+        }
     }
 }
 
