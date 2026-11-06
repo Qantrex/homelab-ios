@@ -366,6 +366,9 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
     public var items: [Item]
     /// The header button: opens this action's form, prefilled with its `arg` and `payload` ("Add" on a to-do list).
     public var action: ItemAction?
+    /// The day the card is about, "2026-11-06" (the "today" card sends it; tomorrow's card has tomorrow's date). Nil =
+    /// not sent. Kept as the server's text; `isPlainDay` decides whether it is usable.
+    public var date: String?
 
     public enum Style: String, Codable, Sendable {
         case list, metrics, text
@@ -392,13 +395,16 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         public var dueIsDay: Bool
         /// One tap runs this action after a confirm (a checklist circle ticks the item off).
         public var action: ItemAction?
+        /// A lesson that falls out: struck through and grey. Nil = not sent (it takes place).
+        public var cancelled: Bool?
 
         public init(title: String? = nil, subtitle: String? = nil, value: String? = nil, progress: Double? = nil,
                     icon: String? = nil, url: URL? = nil, tint: Tint? = nil, done: Bool? = nil, due: Date? = nil,
-                    dueIsDay: Bool = false, action: ItemAction? = nil) {
+                    dueIsDay: Bool = false, action: ItemAction? = nil, cancelled: Bool? = nil) {
             self.title = title; self.subtitle = subtitle; self.value = value
             self.progress = progress.map { min(max($0, 0), 1) }; self.icon = icon; self.url = url; self.tint = tint
             self.done = done; self.due = due; self.dueIsDay = due != nil && dueIsDay; self.action = action
+            self.cancelled = cancelled
         }
 
         /// "2026-11-09": a day without a time.
@@ -416,7 +422,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             due.map { Format.due($0, dayOnly: dueIsDay, now: now, calendar: calendar) }
         }
 
-        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action }
+        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action, cancelled }
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -424,7 +430,8 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                       progress: c.double(.progress), icon: c.text(.icon),
                       url: c.text(.url).flatMap(URLPolicy.webURL),
                       tint: c.text(.tint).map { Tint(lenient: $0) }, done: c.bool(.done), due: c.date(.due),
-                      dueIsDay: c.text(.due).map(Self.isPlainDay) ?? false, action: c.lenient(ItemAction.self, .action))
+                      dueIsDay: c.text(.due).map(Self.isPlainDay) ?? false, action: c.lenient(ItemAction.self, .action),
+                      cancelled: c.bool(.cancelled))
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -440,17 +447,19 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             // A day stays a plain day in the cache, so it is the same calendar day after a time-zone change.
             try c.encodeIfPresent(due.map { dueIsDay ? Format.dayString($0) : ServerDate.string($0) }, forKey: .due)
             try c.encodeIfPresent(action, forKey: .action)
+            try c.encodeIfPresent(cancelled, forKey: .cancelled)
         }
     }
 
     public init(id: String, title: String? = nil, subtitle: String? = nil, icon: String? = nil, tint: Tint = .gray,
                 style: Style = .list, updated: String? = nil, text: String? = nil, items: [Item] = [],
-                action: ItemAction? = nil) {
+                action: ItemAction? = nil, date: String? = nil) {
         self.id = id; self.title = title; self.subtitle = subtitle; self.icon = icon; self.tint = tint
         self.style = style; self.updated = updated; self.text = text; self.items = items; self.action = action
+        self.date = date.flatMap { Item.isPlainDay($0) ? $0.trimmingCharacters(in: .whitespaces) : nil }
     }
 
-    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action }
+    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action, date }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -461,7 +470,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                   tint: Tint(lenient: c.text(.tint)),
                   style: c.text(.style).flatMap { Style(rawValue: $0.lowercased()) } ?? .list,
                   updated: c.text(.updated), text: c.text(.text), items: c.array(Item.self, .items),
-                  action: c.lenient(ItemAction.self, .action))
+                  action: c.lenient(ItemAction.self, .action), date: c.text(.date))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -476,6 +485,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         try c.encodeIfPresent(text, forKey: .text)
         try c.encode(items, forKey: .items)
         try c.encodeIfPresent(action, forKey: .action)
+        try c.encodeIfPresent(date, forKey: .date)
     }
 
     /// Items in countdown order: soonest `due` first (overdue ones lead), items without `due` last, ties in the

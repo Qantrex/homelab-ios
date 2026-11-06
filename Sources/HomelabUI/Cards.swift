@@ -205,22 +205,34 @@ struct CardView: View {
     @ViewBuilder
     private func itemRow(_ item: Card.Item) -> some View {
         // A row with progress (a download, an episode) leads with a ring; the others with their icon.
+        // A cancelled lesson is struck through and grey; a substitution or room change (a lesson with a tint) gets a
+        // gold dot (the status colour for "look at this"), so it isn't only the colour of the time that says it.
+        let cancelled = item.cancelled == true
+        let changed = !cancelled && card.id == "lessons" && item.tint.map { $0 != .gray } == true
+        let valueColor = cancelled ? Palette.tertiary : item.tint?.color ?? Palette.secondary
         let row = HStack(alignment: item.progress == nil ? .firstTextBaseline : .center, spacing: 10) {
             if let p = item.progress {
                 ProgressRing(p, tint: item.tint?.color ?? Palette.text, size: compact ? ringSize * 0.8 : ringSize)
             } else if let icon = item.icon {
                 Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? Palette.secondary)
+            } else if changed {
+                Circle().fill(Palette.gold).frame(width: 8, height: 8).accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title ?? "").font(compact ? .footnote : .body).lineLimit(2)
-                if let s = item.subtitle { Text(s).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(stacked ? nil : 1) }
-                if stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(item.tint?.color ?? Palette.secondary) }
+                    .strikethrough(cancelled).foregroundStyle(cancelled ? Palette.tertiary : Palette.text)
+                if let s = item.subtitle {
+                    Text(s).font(compact ? .caption : .subheadline).foregroundStyle(cancelled ? Palette.tertiary : Palette.secondary)
+                        .strikethrough(cancelled).lineLimit(stacked ? nil : 1)
+                }
+                if stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(valueColor).strikethrough(cancelled) }
             }
             Spacer(minLength: 8)
-            if !stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(item.tint?.color ?? Palette.secondary) }
+            if !stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(valueColor).strikethrough(cancelled) }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityValue(item.progress.map { Text("\(Format.ringPercent($0)) percent") } ?? Text(""))
+        .accessibilityValue(item.progress.map { Text("\(Format.ringPercent($0)) percent") }
+                            ?? (cancelled ? Text("cancelled") : changed ? Text("changed") : Text("")))
         let main = Group {
             if let url = item.url {
                 Button { openURL(url) } label: { row }.buttonStyle(.plain)

@@ -123,7 +123,12 @@ prepare "$udid"
 
 # Fixture server, starting in the "problem" state; /__control switches it later.
 if [ -f server/reference_server.py ]; then
-  python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port "$PORT" \
+  # state-tomorrow.json is "tomorrow" only on one day: a copy of the fixtures with the card dates moved to tomorrow.
+  FIXTURES="$OUT_DIR/fixtures"
+  rm -rf "$FIXTURES"; cp -R Sources/HomelabKit/Fixtures "$FIXTURES"
+  tomorrow=$(date -v+1d +%F 2>/dev/null || date -d tomorrow +%F)
+  sed -i.bak "s/\"date\": \"2026-11-05\"/\"date\": \"$tomorrow\"/" "$FIXTURES/state-tomorrow.json" && rm -f "$FIXTURES/state-tomorrow.json.bak"
+  python3 server/reference_server.py --fixtures "$FIXTURES" --port "$PORT" \
     --state state-problem.json > "$OUT_DIR/server-log.txt" 2>&1 &
   server_pid=$!
   for _ in $(seq 1 50); do
@@ -212,6 +217,7 @@ live() {   # live NAME STATE_FILE TAB
   fi
 }
 live live-today-problem    state-problem.json today
+live live-today-tomorrow   state-tomorrow.json today
 live live-chat             state-problem.json chat
 live live-actions-pending  state-pending.json actions
 live live-lab-huge         state-huge.json    lab

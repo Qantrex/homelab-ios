@@ -433,6 +433,12 @@ components:
       description: A generic box on the overview, so each homelab can show its own data (media, school, weather…).
       properties:
         id: { type: string }
+        date:
+          type: string
+          example: "2026-11-07"
+          description: The day the card is about, a plain day. On the `today` card the app switches to its tomorrow mode
+            (header "Tomorrow", countdown to the first stop) when this is the day after the phone's today. Not a plain
+            day = ignored.
         title: { type: string }
         subtitle: { type: string }
         icon: { type: string, description: An SF Symbol name, e.g. play.tv. Unknown names fall back to a square. }
@@ -464,6 +470,7 @@ components:
               url: { type: string, format: uri }
               tint: { type: string }
               done: { type: boolean, description: Checklist items. Ticked off or not. }
+              cancelled: { type: boolean, description: A lesson that falls out. Drawn struck through and grey. }
               due:
                 type: string
                 description: A day (`2026-11-07`) or a time (`2026-11-07T18:00`, local without a zone). Countdown items

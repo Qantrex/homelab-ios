@@ -163,4 +163,76 @@ import Testing
         }
         #expect(t.stops.count == 3)
     }
+
+    // MARK: Tomorrow (step 6b)
+
+    let tomorrowCard = Card(id: "today", title: "Tomorrow", style: .metrics, items: [
+        .init(title: "Wake-up", value: "06:20"),
+        .init(title: "First lesson", value: "08:00"),
+        .init(title: "Leave by", subtitle: "U6 07:36", value: "07:31"),
+    ], date: "2026-11-07")
+
+    @Test func tomorrowModeFromTheCardDate() {
+        // 2026-11-06 20:00: the card is for the 7th.
+        let t = line(20, 0, tomorrowCard)
+        #expect(t.isTomorrow && t.now == 20 * 60 - 1440)
+        #expect(t.stops.map(\.phase) == [.next, .later, .later])
+        #expect(t.next?.item.title == "Wake-up" && t.minutesToNext == 10 * 60 + 20)
+        #expect(Format.countdown(minutes: t.minutesToNext!) == "in 10 h 20 min")
+        #expect((0..<3).map(t.fill(after:)) == [0, 0, 0])
+        // Just before midnight, and after midnight (the card is now today's: normal mode, the line fills).
+        #expect(line(23, 59, tomorrowCard).minutesToNext == 6 * 60 + 21)
+        #expect(!DayTimeline(card: tomorrowCard, now: Self.at(24, 5), calendar: Self.utc).isTomorrow)
+        // No date, the same day, an old day, garbage: today's rules.
+        for d in [nil, "2026-11-06", "2026-11-05", "tomorrow", "2026-11-8"] as [String?] {
+            var c = tomorrowCard; c.date = d
+            #expect(!line(20, 0, c).isTomorrow, "\(d ?? "nil")")
+        }
+        #expect(!line(20, 0).isTomorrow && line(20, 0).stops.allSatisfy { $0.phase == .past })
+    }
+
+    @Test func tomorrowAcrossMonthEnd() {
+        var c = tomorrowCard; c.date = "2026-12-01"
+        let nov30 = Date(timeIntervalSince1970: 1_793_923_200 + 24 * 86400 + 20 * 3600)   // 2026-11-30 20:00 UTC
+        #expect(DayTimeline(card: c, now: nov30, calendar: Self.utc).isTomorrow)
+    }
+
+    @Test func tomorrowWidgetRedraws() {
+        // Only the 15-minute ones in the evening: no per-minute countdown, nothing turns past.
+        let d = DayTimeline.redrawDates(card: tomorrowCard, now: Self.at(20, 0), calendar: Self.utc)
+        #expect(d == [Self.at(20, 0), Self.at(20, 15), Self.at(20, 30), Self.at(20, 45)])
+    }
+
+    @Test func cancelledAndDateDecode() throws {
+        let json = #"""
+        {"id": "lessons", "style": "list", "date": "2026-11-07", "items": [
+          {"title": "Maths", "value": "08:00-08:50", "cancelled": true},
+          {"title": "German", "tint": "orange", "cancelled": "perhaps"},
+          {"title": "English", "cancelled": false}, {"title": "Art"}]}
+        """#
+        let c = try JSONDecoder().decode(Card.self, from: Data(json.utf8))
+        #expect(c.date == "2026-11-07" && c.items.map(\.cancelled) == [true, nil, false, nil])
+        let again = try JSONDecoder().decode(Card.self, from: JSONEncoder().encode(c))
+        #expect(again == c)
+        let bad = try JSONDecoder().decode(Card.self, from: Data(#"{"id": "today", "date": "soon"}"#.utf8))
+        #expect(bad.date == nil)
+        #expect(Card(id: "x", date: "2026-11-07T10:00").date == nil)
+    }
+
+    @Test func fixturesCarryTheNewCards() throws {
+        let s = try fixture(HomelabState.self, "state-problem.json")
+        let lessons = try #require(s.cards.first { $0.id == "lessons" })
+        #expect(lessons.items.map(\.cancelled) == [nil, nil, true, nil] && lessons.items.filter { $0.tint == .orange }.count == 2)
+        #expect(s.cards.first { $0.id == "weather" }?.subtitle == "Rain from 15:00, take an umbrella")
+        #expect(s.cards.first { $0.id == "briefing" }?.style == .text)
+        #expect(s.dayCard?.date == "2026-11-04")
+        let t = try fixture(HomelabState.self, "state-tomorrow.json")
+        #expect(t.dayCard?.title == "Tomorrow" && t.dayCard?.date == "2026-11-05")
+        let at = Self.at(20, 0).addingTimeInterval(-86400)   // 2026-11-05 20:00 UTC
+        let line = DayTimeline(card: try #require(t.dayCard), now: at, calendar: Self.utc)
+        #expect(line.isTomorrow == false)   // the 5th is the card's own day
+        let before = Self.at(20, 0).addingTimeInterval(-2 * 86400)   // the 4th, 20:00
+        let tl = DayTimeline(card: try #require(t.dayCard), now: before, calendar: Self.utc)
+        #expect(tl.isTomorrow && tl.next?.item.title == "Wake-up" && tl.notes.map(\.title) == ["Substitution"])
+    }
 }
