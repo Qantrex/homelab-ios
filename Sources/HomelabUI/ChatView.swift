@@ -110,8 +110,8 @@ struct ChatView: View {
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .sensoryFeedback(.impact(weight: .light), trigger: sent)
-            .proposalDialog($confirm, model: model) { ok, message in
-                outcome = ActionOutcome(ok: ok)
+            .proposalDialog($confirm, model: model) { pressed, message in
+                outcome = pressed
                 result = message
             }
             .actionFeedback(result: $result, outcome: outcome)
@@ -349,9 +349,10 @@ struct AgentMessage: View {
             tag
             VStack(alignment: .leading, spacing: 12) {
                 text
-                ForEach(pending) { proposal($0) }
+                ForEach(pending) { proposal($0).transition(.opacity) }
                 ForEach(message.cards) { CardView(card: $0, compact: true, model: model) }
             }
+            .rowMotion(pending.map(\.id))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(BubbleAccessibility(plain: plain, label: label))
@@ -422,23 +423,9 @@ struct AgentMessage: View {
     /// A proposal made in this message, as a panel: what it would run and its buttons (none without a hub token:
     /// then it's answered in the chat).
     private func proposal(_ p: PendingAction) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: "checkmark.shield.fill").foregroundStyle(Palette.gold).accessibilityHidden(true)
-                Text(p.title).font(Typo.headline)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(Text("Proposed: \(p.title)"))
-            if running.contains(p.id) {
-                HStack { ProgressView(); Text("Running…").font(Typo.meta).foregroundStyle(Palette.secondary) }
-            } else if p.buttons.isEmpty {
-                Text("The server offers no buttons for this action. Answer it in the chat.")
-                    .font(Typo.meta).foregroundStyle(Palette.secondary)
-            } else {
-                ProposalButtons(action: p, compact: true) { tap(p, $0) }
-            }
-        }
-        .panel()
+        // The same row and buttons as the Actions tab (`ProposalRow`), title and buttons only.
+        ProposalRow(action: p, running: running.contains(p.id), hasChat: true, compact: true) { tap(p, $0) }
+            .panel()
     }
 }
 

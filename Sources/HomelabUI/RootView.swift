@@ -93,6 +93,8 @@ public struct RootView: View {
                 SettingsView(model: model)
             }
         }
+        // A new problem on a refresh is felt on every tab (Motion).
+        .newProblemFeedback(model)
     }
 }
 
