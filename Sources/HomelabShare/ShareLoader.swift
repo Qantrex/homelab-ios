@@ -21,7 +21,9 @@ enum ShareLoader {
     static func load(_ input: SharedItems) async -> Result<LoadedShare, ShareRefusal> {
         let items = input.items
         let providers = items.flatMap { $0.attachments ?? [] }
-        let pageTitle = items.compactMap { $0.attributedTitle?.string ?? $0.attributedContentText?.string }.first
+        // Only the item's title. Its content text is never sent: some apps put the selected text, a whole note or a
+        // message there, which the owner never sees in the share sheet.
+        let pageTitle = items.compactMap { $0.attributedTitle?.string }.first
 
         if let pdf = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) }) {
             return await loadPDF(pdf)

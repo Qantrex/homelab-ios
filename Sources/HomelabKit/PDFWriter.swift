@@ -6,6 +6,13 @@ import Foundation
 public enum PDFWriter {
     /// Width, height and colour components (1 grey, 3 RGB) from the JPEG's start-of-frame segment.
     public static func jpegInfo(_ data: Data) -> (width: Int, height: Int, components: Int)? {
+        guard let f = jpegFrame(data), f.components == 1 || f.components == 3 else { return nil }
+        return f
+    }
+
+    /// The first start-of-frame segment's width, height and colour components (any number), read without decoding.
+    /// Nil when there is none in the first MB or it declares a zero size.
+    static func jpegFrame(_ data: Data) -> (width: Int, height: Int, components: Int)? {
         let b = [UInt8](data.prefix(1 << 20))
         guard b.count > 4, b[0] == 0xFF, b[1] == 0xD8 else { return nil }
         var i = 2
@@ -21,7 +28,7 @@ public enum PDFWriter {
                 let height = Int(b[i + 5]) << 8 | Int(b[i + 6])
                 let width = Int(b[i + 7]) << 8 | Int(b[i + 8])
                 let components = Int(b[i + 9])
-                guard width > 0, height > 0, components == 1 || components == 3 else { return nil }
+                guard width > 0, height > 0, components > 0 else { return nil }
                 return (width, height, components)
             }
             if marker == 0xDA { return nil }   // image data before any frame header

@@ -70,8 +70,10 @@ public enum URLPolicy {
             guard given.scheme == nil, given.host == nil else { return nil }
             if !prefix.isEmpty, !path.hasPrefix(prefix + "/") { path = prefix + path }
         } else {
+            // Under the server's own path only: with a base of `/homelab`, `/other-app/...` on the same host is
+            // another service, which must not get this server's token.
             guard given.scheme?.lowercased() == scheme, given.host?.lowercased() == host, given.port == out.port,
-                  given.user == nil, given.password == nil else { return nil }
+                  given.user == nil, given.password == nil, prefix.isEmpty || path.hasPrefix(prefix + "/") else { return nil }
         }
         let lower = path.lowercased()
         let dotSegment = path.split(separator: "/", omittingEmptySubsequences: false).contains { seg in
@@ -87,13 +89,51 @@ public enum URLPolicy {
     }
 
     /// Where the app may use plain http: what iOS ATS allows with NSAllowsLocalNetworking (single-label names,
-    /// `.local`) plus private and tailnet IP addresses. Not `.lan`/`.home.arpa`: ATS blocks those over http.
+    /// `.local`) plus private and tailnet IP addresses. Not `.lan`/`.home.arpa`: ATS blocks those over http. Not a
+    /// number written as one label (`134744072`, `0x08080808`): the resolver reads that as a public IPv4 address.
     public static func allowsPlainHTTP(host rawHost: String) -> Bool {
         let host = rawHost.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
         if host == "localhost" || host.hasSuffix(".local") { return true }
-        if !host.contains(".") && !host.contains(":") { return true }
+        if isSingleLabelName(host) { return true }
         if ipv4(host) != nil || host.contains(":") { return isLocal(host: host) }
         return false
+    }
+
+    /// May a bearer token travel to `url`? `https` always. Plain `http` only to this device (`localhost`,
+    /// `127.0.0.1`, `::1`) and to Tailscale MagicDNS names (`*.ts.net`): those resolve only inside the tailnet, so
+    /// the traffic is WireGuard-encrypted. Not to a raw `100.64/10` address (carrier CGNAT when Tailscale is off),
+    /// a private LAN address, `.local` or a single-label name: anyone on that network could read the token.
+    public static func allowsToken(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), var host = url.host?.lowercased(), !host.isEmpty else { return false }
+        if scheme == "https" { return true }
+        guard scheme == "http" else { return false }
+        host = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if host.hasSuffix(".") { host.removeLast() }
+        if ["localhost", "127.0.0.1", "::1"].contains(host) { return true }
+        let tailnet = ".ts.net"
+        return host.hasSuffix(tailnet) && host.count > tailnet.count && !host.contains(":")
+    }
+
+    /// Why a token must not go to `url`, or nil when it may (`allowsToken`).
+    public static func tokenProblem(_ url: URL) -> String? {
+        allowsToken(url) ? nil : tokenOverHTTPMessage
+    }
+
+    public static let tokenOverHTTPMessage =
+        "This server uses a token over plain http. Use https (tailscale serve) or its .ts.net name."
+
+    /// A name without dots that DNS (or mDNS) resolves on the LAN. A label of digits or `0x` hex is not one: it is
+    /// an IPv4 address in another notation.
+    static func isSingleLabelName(_ host: String) -> Bool {
+        guard !host.isEmpty, !host.contains("."), !host.contains(":") else { return false }
+        return !isNumericLabel(host)
+    }
+
+    /// `134744072`, `0x08080808`, `0X1`, `017`: what inet_aton would read as a number.
+    static func isNumericLabel(_ label: String) -> Bool {
+        let l = label.lowercased()
+        if l.hasPrefix("0x") { return l.dropFirst(2).allSatisfy(\.isHexDigit) }
+        return l.allSatisfy { $0.isASCII && $0.isNumber }
     }
 
     /// True for names and addresses that don't leave the LAN or tailnet (used to explain errors).
@@ -103,7 +143,7 @@ public enum URLPolicy {
             || host.hasSuffix(".internal") {
             return true
         }
-        if !host.contains(".") && !host.contains(":") { return true }   // single-label name (LAN DNS)
+        if isSingleLabelName(host) { return true }   // single-label name (LAN DNS)
         if let v4 = ipv4(host) {
             switch (v4.0, v4.1) {
             case (10, _), (127, _), (192, 168), (169, 254): return true
@@ -118,9 +158,13 @@ public enum URLPolicy {
         return false
     }
 
+    /// Dotted decimal only: four parts of 1-3 digits, no sign and no leading zero (`010` is octal 8 to the resolver,
+    /// so `010.8.8.8` would be checked as 10.8.8.8 but reach 8.8.8.8).
     static func ipv4(_ host: String) -> (Int, Int, Int, Int)? {
         let parts = host.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count == 4 else { return nil }
+        guard parts.count == 4, parts.allSatisfy({ p in
+            (1...3).contains(p.count) && p.allSatisfy { $0.isASCII && $0.isNumber } && (p == "0" || p.first != "0")
+        }) else { return nil }
         let n = parts.compactMap { Int($0) }
         guard n.count == 4, n.allSatisfy({ (0...255).contains($0) }) else { return nil }
         return (n[0], n[1], n[2], n[3])

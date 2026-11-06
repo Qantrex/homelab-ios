@@ -113,8 +113,10 @@ Assistant app stays the place for everything else.
 
 Notes:
 
-- Plain `http://` only works for local and tailnet addresses (private IPs, `100.x`, `.local`, …), not for public
-  names. See the URL rules in [SETUP.md](SETUP.md#launch-arguments).
+- Home Assistant needs `https://`: its token is a login to your home, and the app never sends a token over plain
+  `http://` (not to `http://homeassistant.local:8123`, a LAN IP or a raw `100.x` tailnet IP either: anyone on that
+  network could read it). Put HA behind `tailscale serve` (`sudo tailscale serve --bg --https=8443 http://127.0.0.1:8123`,
+  then `https://<machine>.<tailnet>.ts.net:8443`) or use HA's own TLS. See [SECURITY.md](SECURITY.md) → Plain http.
 - The token is stored in the iOS Keychain. Anyone with it can control your home, so delete it in HA if the phone is
   lost.
 - If HA is behind a reverse proxy, HA must trust that proxy (`use_x_forwarded_for` and `trusted_proxies` in its

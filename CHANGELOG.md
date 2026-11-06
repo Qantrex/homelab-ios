@@ -4,6 +4,22 @@
 
 First release.
 
+Security review fixes:
+
+- A token never goes over plain `http://`: a token server or Home Assistant needs `https://` (or `http://` to
+  `localhost` or a `*.ts.net` name). A token server on a LAN IP, `.local`, a single name or a raw `100.x` address now
+  gets nothing and says "This server uses a token over plain http. Use https (tailscale serve) or its .ts.net name."
+  Identity (Tailscale) servers keep the old http rules; all-digit or `0x…` hosts and leading-zero IPs are no longer
+  local.
+- A card item's action sends exactly its argument; one that no longer fits the server's action is refused instead of
+  running the form's default.
+- Server numbers are put into range when read (a 3.4e38 °C sensor crashed the app); Double to Int only through a
+  clamping helper, with a lint check.
+- Posters: pixel size checked from the header (more than 4000×6000 refused) and decoded as thumbnails; absolute
+  picture URLs must sit under the server's base path; pictures are cached per server and deleted with it.
+- Share extension: only the item's title is sent, never its content text. Tokens left in the Keychain by a deleted
+  install are wiped on the first launch. API answers stop at 8 MB (Home Assistant 32 MB).
+
 App:
 
 - Lab rows: host names wrap to two lines instead of being cut, the sparkline drops first on a narrow row, the value

@@ -330,6 +330,29 @@ public struct ActionForm: Sendable, Equatable {
         return nil
     }
 
+    /// The form a card item's action (`ItemAction`) runs with, at once after a confirm: exactly its `arg`
+    /// (`prefilled(_:arg:)`, outer spaces trimmed) and the payload values of fields the spec has. Nil when the arg fits
+    /// no variant exactly, or an action without an argument gets one: the server's action changed since the item was
+    /// made, and the lenient form would run its default instead ("lamps-offf" would switch the lamps on).
+    public static func prefilled(_ spec: ActionSpec, action: ItemAction) -> ActionForm? {
+        let arg = action.arg.trimmingCharacters(in: .whitespaces)
+        var form: ActionForm
+        if spec.variants.isEmpty {
+            guard arg.isEmpty else { return nil }
+            form = ActionForm(spec)
+        } else {
+            guard let exact = prefilled(spec, arg: arg) else { return nil }
+            form = exact
+        }
+        for field in spec.fields {
+            if let v = action.payload[field.name] { form.fieldValues[field.name] = v; form.prefilled[field.name] = v }
+        }
+        return form
+    }
+
+    /// What `AppModel.run(_ action:on:)` says when `prefilled(_:action:)` is nil.
+    public static let itemActionMismatch = "This item's action no longer fits the server."
+
     /// Splits an argument back into part values ("" for literals), or nil if it doesn't fit these parts. Every part
     /// value passes the form's own check (`problem`); free parts try the shortest value first and back off when the
     /// rest doesn't fit ("a.b:c" with word `:` word).

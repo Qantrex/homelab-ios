@@ -14,7 +14,7 @@
   {"name": "parcel-done", "label": "Parcel delivered", "icon": "shippingbox", "hint": "Marks the parcel as delivered.", "start": false,
    "fields": [], "arg": [{"label": "Parcel", "parts": [{"kind": "word", "label": "Parcel"}]}]},
   {"name": "seerr-request", "label": "Request in Seerr", "icon": "film", "hint": "Radarr or Sonarr downloads it.", "start": false,
-   "fields": [], "arg": [{"label": "Title", "parts": [{"kind": "word", "label": "Title"}]}]},
+   "fields": [], "arg": [{"label": "Title", "parts": [{"kind": "choice", "label": "Type", "options": [{"value": "movie", "label": "Movie"}, {"value": "tv", "label": "Show"}]}, {"kind": "literal", "text": ":"}, {"kind": "number", "label": "Id"}]}]},
   {"name": "dns-pause", "label": "Pause ad blocking", "icon": "shield.slash", "hint": "Both Pi-holes. Blocking comes back on by itself.",
    "fields": [], "arg": [{"label": "Pause", "parts": [{"kind": "choice", "label": "For", "options": [{"value": "5", "label": "5 min"}, {"value": "15", "label": "15 min"}, {"value": "30", "label": "30 min"}]}]},
                          {"label": "Resume now", "parts": [{"kind": "choice", "label": "Do", "options": [{"value": "on", "label": "Resume"}]}]}]},

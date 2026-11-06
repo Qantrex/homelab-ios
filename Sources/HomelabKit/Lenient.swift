@@ -40,7 +40,8 @@ enum Scalar: Decodable {
 
     var double: Double? {
         switch self {
-        case .string(let s): Double(s.trimmingCharacters(in: .whitespaces))
+        // "nan", "inf" and "1e999" parse as Doubles too: only finite numbers count.
+        case .string(let s): Double(s.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite ? $0 : nil }
         case .number(let d): d.isFinite ? d : nil
         case .bool: nil
         }
@@ -79,9 +80,9 @@ extension KeyedDecodingContainer {
         lenient(Scalar.self, key)?.double
     }
 
+    /// A whole number, rounded and clamped into `ServerNumber.intRange` (1e30 becomes 1 000 000 000, not a trap).
     func int(_ key: Key) -> Int? {
-        guard let d = double(key), d.isFinite, abs(d) < Double(Int.max) else { return nil }
-        return Int(d.rounded())
+        double(key).map { Int(clamping: $0, in: ServerNumber.intRange) }
     }
 
     func int64(_ key: Key) -> Int64? {
@@ -136,10 +137,13 @@ public enum ServerDate {
 
     public static func fromEpoch(_ value: Double) -> Date? {
         guard value.isFinite, value > 0 else { return nil }
-        if value > 1e17 { return Date(timeIntervalSince1970: value / 1e9) }   // nanoseconds
-        if value > 1e14 { return Date(timeIntervalSince1970: value / 1e6) }   // microseconds
-        if value > 1e11 { return Date(timeIntervalSince1970: value / 1e3) }   // milliseconds
-        return Date(timeIntervalSince1970: value)
+        let seconds = value > 1e17 ? value / 1e9   // nanoseconds
+            : value > 1e14 ? value / 1e6           // microseconds
+            : value > 1e11 ? value / 1e3           // milliseconds
+            : value
+        // Past the year 5000 is no server time (1e30 ns would be 1e21 s): dropped, so no date arithmetic overflows.
+        guard seconds < 1e11 else { return nil }
+        return Date(timeIntervalSince1970: seconds)
     }
 
     /// For writing times the server will read (and for caches): ISO 8601 with zone.

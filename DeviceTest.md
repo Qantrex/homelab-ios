@@ -33,6 +33,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | R3 | Bad address | `ftp://x` or `http://example.com` shows red text under the field, Save is greyed out | | |
 | R4 | Tailscale off | Turn Tailscale off, pull to refresh: "Can't reach `<host>`. Is Tailscale (or your VPN) on?" with Retry. No crash. Turn it back on: Retry loads the data | | |
 | R6 | Wrong login | With a token server: a wrong token gives "The server refused access…" or "The server wants a login or token…", not a crash | | |
+| R7 | No token over plain http | Edit a server: Homelab API, `http://<LAN IP>:<port>` or `http://100.x.y.z:<port>`, Login Token: the editor shows "This server uses a token over plain http…" as an error. Saved anyway (an old entry): Test and refresh show the same text and the server's log has no request. Login Tailscale on the same address, or the token server at its `https://….ts.net` address, still works | | |
 
 ## Today and Lab
 
@@ -229,6 +230,7 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | D2 | Data survives | Servers, pinned HA devices, settings and the Face ID lock are still there. No token error | | |
 | D3 | Widget still works | Same App Group in Diagnostics as before, the widget shows data after opening the app once | | |
 | D4 | Tailscale after refresh | After SideStore's VPN step, Tailscale is back on (or turning it on fixes "Is Tailscale on?") | | |
+| D5 | Keychain group | Read the entitlements SideStore signed Homelab with (from the installed app's IPA: `ldid -e Payload/Homelab.app/Homelab` on Linux, `codesign -d --entitlements - Payload/Homelab.app` on a Mac). `keychain-access-groups` is missing or lists only `<TEAMID>.com.qantrex.homelab…`, not `<TEAMID>.*`. With the wildcard, every app sideloaded with the same Apple ID can read the Homelab tokens: note it here (docs/SECURITY.md, "SideStore and the Keychain") | | |
 
 ## Report
 

@@ -31,6 +31,7 @@ public struct CompanionClient: CompanionAPI {
     let transport: any HTTPTransport
 
     public static let maxMessageLength = 4000
+    /// The largest API answer read (`/state` is about 11 KB, a chat page a few hundred). Reading stops there.
     public static let maxResponseBytes = 8 * 1024 * 1024
     /// A poster is a few dozen KB; anything past this is not a poster.
     public static let maxImageBytes = 1024 * 1024
@@ -116,10 +117,11 @@ public struct CompanionClient: CompanionAPI {
         guard let url = URLPolicy.imageURL(path, server: baseURL) else {
             throw APIError.badRequest("That picture is not on this server.")
         }
+        try checkTokenTransport()
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         r.httpMethod = "GET"
         r.setValue("image/jpeg, image/png, image/webp", forHTTPHeaderField: "Accept")
-        if let token { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
+        if let token = sendableToken { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         r.httpShouldHandleCookies = false
         let data: Data
         let response: HTTPURLResponse
@@ -164,6 +166,15 @@ public struct CompanionClient: CompanionAPI {
 
     // MARK: - HTTP
 
+    /// The token, when it may travel to this server (`URLPolicy.allowsToken`); else nil and nothing is attached.
+    var sendableToken: String? { URLPolicy.allowsToken(baseURL) ? token : nil }
+
+    /// A token server on plain http outside this device and the tailnet's `.ts.net` names: nothing is sent at all,
+    /// not even without the token (the server would answer 401 and the owner would hunt for a wrong token).
+    func checkTokenTransport() throws {
+        if token != nil, let problem = URLPolicy.tokenProblem(baseURL) { throw APIError.badRequest(problem) }
+    }
+
     func request(_ path: String, query: [URLQueryItem] = [], method: String = "GET", body: Data? = nil,
                  timeout: TimeInterval) -> URLRequest {
         var url = baseURL.appendingPathComponent("api/v1").appendingPathComponent(path)
@@ -174,7 +185,7 @@ public struct CompanionClient: CompanionAPI {
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         r.httpMethod = method
         r.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let token { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
+        if let token = sendableToken { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         if let body {
             r.httpBody = body
             r.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
@@ -195,16 +206,17 @@ public struct CompanionClient: CompanionAPI {
     /// `errors` turns an HTTP status and body into an error (most endpoints: the generic texts).
     func perform<T: Decodable>(_ request: URLRequest,
                                errors: (Int, Data) -> APIError? = APIError.from(status:body:)) async throws -> T {
+        try checkTokenTransport()
         let host = baseURL.host ?? "the server"
         let data: Data
         let response: HTTPURLResponse
         do {
-            (data, response) = try await transport.send(request)
+            (data, response) = try await transport.send(request, maxBytes: Self.maxResponseBytes)
         } catch {
             throw APIError.from(error, host: host)
         }
         if let error = errors(response.statusCode, data) { throw error }
-        // A hostile or broken server can't make the app hold hundreds of MB.
+        // A hostile or broken server can't make the app hold hundreds of MB (the transport stops reading there too).
         if data.count > Self.maxResponseBytes { throw APIError.tooLarge }
         // A captive portal or web page instead of the API.
         let type = response.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
