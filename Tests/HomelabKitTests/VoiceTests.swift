@@ -23,8 +23,9 @@ import Testing
                 let lines = Voice.lines(m, p)
                 #expect(!lines.isEmpty, "\(p) \(m)")
                 #expect(Set(lines).count == lines.count, "duplicate in \(p) \(m)")
-                // One line on a small phone, a full sentence.
-                for l in lines { #expect(l.count <= 48 && (l.hasSuffix(".") || l.hasSuffix("?")), "\(l)") }
+                // Within the place's length (one line under the headline), a full sentence.
+                for l in lines { #expect(l.count <= m.spot.place.maxLength && (l.hasSuffix(".") || l.hasSuffix("?")), "\(l)") }
+                #expect(lines == Voice.lines(for: m.spot, p))
                 #expect(lines.contains(Voice.line(m, p, on: day, calendar: Self.utc)!))
             }
         }
@@ -72,7 +73,7 @@ import Testing
         #expect(n.settings.voice == .off)                                     // unknown value: ignored
     }
 
-    @Test func alertsCarryTheirMoment() {
+    @Test func alertsCarryTheirMoment() throws {
         let now = Date(timeIntervalSince1970: 1_762_291_800)
         var t = AlertTracker()
         _ = t.update(with: HomelabState(status: .ok), server: "lab", now: now)
@@ -80,7 +81,13 @@ import Testing
                                  problems: [Problem(text: "disk 91%", severity: .warning), Problem(text: "sonarr down")],
                                  pending: [PendingAction(id: "p1", action: "restart", arg: "sonarr")])
         let alerts = t.update(with: state, server: "lab", now: now + 60)
-        #expect(alerts.map(\.moment) == [.headsUp, .alarm, .waiting])
+        #expect(alerts.map(\.moment) == [.notice(.warning), .notice(.problem), .notice(.waiting)])
+        for a in alerts {
+            let spot = try #require(a.moment)
+            let line = try #require(Voice.line(spot, .ultrakill, on: now))
+            #expect(Voice.lines(for: spot, .ultrakill).contains(line) && line.count <= 48)
+            #expect(Voice.line(spot, .off, on: now) == nil)
+        }
         // The summary line has none.
         var u = AlertTracker()
         _ = u.update(with: HomelabState(status: .ok), server: "lab", now: now)

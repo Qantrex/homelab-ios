@@ -386,15 +386,16 @@ public extension Voice {
     }
 
     /// FNV-1a: the same on every launch (Swift's `Hasher` is seeded per process).
-    private static func stableHash(_ s: String) -> UInt64 {
+    internal static func stableHash(_ s: String) -> UInt64 {
         s.utf8.reduce(14_695_981_039_346_656_037 as UInt64) { ($0 ^ UInt64($1)) &* 1_099_511_628_211 }
     }
 }
 
 /// The templates. Rules: one line on a 5.4" phone once filled (90 characters with the longest values), the fact's
 /// values in every one, no "Ah,", "Well, well", "Oh look", "Let's" or em-dashes. Ultrakill goes all the way on dark
-/// humour and politically incorrect takes on institutions and ideas, with only the odd swear word. Never slurs or jokes
-/// demeaning protected groups, anything sexual, self-harm, real people or threats against people.
+/// humour and politically incorrect satire of institutions, ideologies and current politics, with only the odd swear
+/// word. It mocks ideas and systems, never groups of people: no slurs, nothing about protected groups, nothing sexual,
+/// no self-harm, no real named people, no violence against people (VoiceTests enforces a banned-word list).
 enum TakeLines {
     static func all(_ kind: Take.Fact.Kind, _ p: Personality) -> [String] {
         switch p {
@@ -629,6 +630,7 @@ enum TakeLines {
             "{host} is unreachable. Even your ISP has better uptime. Low bar.",
             "{host} is offline. Somewhere a tech billionaire felt nothing.",
             "{host} is down, like every startup's promises. Go poke it.",
+            "{host} is down. Tell the Magistrat: form 7b, in triplicate, six weeks.",
         ]
         case .container: [
             "{container} on {host} is {state}. Draft the obituary. Keep it short.",
@@ -639,6 +641,7 @@ enum TakeLines {
             "{container} on {host} is {state}. Its last words were YAML.",
             "{container} is {state} on {host}. HR calls it 'a growth opportunity'.",
             "{container} on {host}: {state}. Open source: free, like a puppy.",
+            "{container} on {host} is {state}. Pivot to AI and raise a round.",
         ]
         case .disk: [
             "{host} is {pct} full of 'Linux ISOs'. The copyright lobby sends regards.",
@@ -649,6 +652,7 @@ enum TakeLines {
             "{mount} on {host}: {pct}. Streaming exists. Your pride doesn't allow it.",
             "{pct} used on {host}. Delete something, or let the disk choose. It will.",
             "{host} at {pct}. Purists buy disks forever rather than pay 10 euros.",
+            "{host} at {pct}. Fuller than the waiting list for a council flat.",
         ]
         case .hot: [
             "{host} is at {temp}. Climate change, but make it a cupboard.",
@@ -657,6 +661,7 @@ enum TakeLines {
             "{host} at {temp}. No amount of 'sustainability' marketing saves this one.",
             "{temp} on {host}. Heat death of the universe, early access edition.",
             "{host} is at {temp}. Point a fan at it, or let the Danube cool it for good.",
+            "{host} hits {temp}. The next climate summit will discuss it, arriving by jet.",
         ]
         case .load: [
             "{host} at load {load} on {cores}. Works harder than any LinkedIn hustler.",
@@ -665,6 +670,7 @@ enum TakeLines {
             "{host} has load {load} on {cores}. Mercy-kill whatever's running.",
             "Load {load} on {host} ({cores}). A crypto bro would call this mining.",
             "{host}: load {load} on {cores}. Exploited labour, but it's silicon. Fine.",
+            "{host}: load {load} on {cores}. Doing the work of an AI startup's 'agents'.",
         ]
         case .power: [
             "{host} reports {flag}. The power company gets paid. It doesn't.",
@@ -673,6 +679,7 @@ enum TakeLines {
             "{host}: {flag}. Cheap PSU, cheap results, cheap owner.",
             "{host}: {flag}. Running on austerity. Brussels would approve.",
             "{flag} on {host}. Feed it properly or give it a mercy kill.",
+            "{host}: {flag}. Energy prices reach silicon. Thank the market.",
         ]
         case .backupFailed: [
             "{host}'s backup failed. Every memory you own, one bad sector from oblivion.",
@@ -681,6 +688,7 @@ enum TakeLines {
             "{host} botched its backup. Self-hosting your own data loss. Very sovereign.",
             "{host}'s backup failed. Even the tax office keeps better records than you.",
             "{host}'s backup failed. Start the eulogy for your photo library.",
+            "{host}'s backup failed. Should've let a data broker keep a copy.",
         ]
         case .problem: [
             "{text}. Shit's broken. Fix it before it spreads.",
@@ -690,6 +698,7 @@ enum TakeLines {
             "{host}: {text}. That's on you, champ.",
             "{text}. Fix it, bury it, or give it to the Danube.",
             "{text}. Big Tech breaks too, but with a status page.",
+            "{text}. The AI Act covers this. Nobody read it.",
         ]
         case .overdue: [
             "{todos} overdue. {title}. Still. The heat death will get there first.",
@@ -698,6 +707,7 @@ enum TakeLines {
             "Overdue: {todos}. Do {title}, you lazy sod, or admit defeat.",
             "{title} is overdue, plus {more}. Run like a government project.",
             "Overdue: {todos}. {title} will make your obituary at this rate.",
+            "{todos} overdue, oldest {title}. Running later than the U5.",
         ]
         case .deadline: [
             "{title} is due {when}. Austrian bureaucracy moves faster than you.",
@@ -706,6 +716,7 @@ enum TakeLines {
             "{title} is due {when}. The Magistrat won't take your excuses either.",
             "{title} due {when}. Panic now. It's cheaper than panicking later.",
             "{title} is due {when}. Tabs, spaces, who cares. Just bloody do it.",
+            "{title} is due {when}. Unlike election promises, this one gets checked.",
         ]
         case .waiting: [
             "{actions} waiting. Faster than the Magistrat is a low bar. Clear it.",
@@ -715,6 +726,7 @@ enum TakeLines {
             "{actions} to approve. The AI hype was real. Your reaction time isn't.",
             "{actions} pending. Approve them. Nobody's watching, it's not LinkedIn.",
             "{actions} waiting. Even the EU passes regulations faster than this.",
+            "{actions} waiting. Fewer than the cookie banners you clicked today.",
         ]
         case .parcel: [
             "{title} is out for delivery. Consumerism: the ideology with tracking.",
@@ -723,6 +735,7 @@ enum TakeLines {
             "{title} is on the van. Miss the doorbell: pickup-point purgatory.",
             "{title} comes today. Hide it from whoever pays the electricity bill.",
             "{title} arrives today. Another thing to outlive you in a drawer.",
+            "{title} arrives today. Shipped round the planet to save two euros. Green.",
         ]
         case .allFine: [
             "{machines} up, {containers} running. Nothing lasts. Enjoy it anyway.",
@@ -736,6 +749,7 @@ enum TakeLines {
             "{containers} running to dodge a 10-euro subscription. Big brain move.",
             "{machines} up. Your lab has more uptime than your social life.",
             "{machines} up. The electricity company sends its warmest regards.",
+            "{machines} up, no cookie banner, no consent form. Probably illegal in the EU.",
         ]
         }
     }
