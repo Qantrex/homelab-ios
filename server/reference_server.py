@@ -1061,6 +1061,13 @@ class FixtureApp:
             self.routes["messages"] = {"GET": self.get_messages, "POST": self.post_message}
         if self.services_doc is not None:
             self.routes["services"] = {"GET": lambda q, b: (200, self.services_doc)}
+        # Actions the app may start (feature run-actions): actions.json, one POST route per listed name.
+        self.actions_doc = self._load("actions.json", optional=True)
+        if isinstance(self.actions_doc, dict):
+            self.routes["actions"] = {"GET": lambda q, b: (200, self.actions_doc)}
+            for a in self.actions_doc.get("actions") or []:
+                if isinstance(a, dict) and re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", str(a.get("name", ""))):
+                    self.routes["actions/" + a["name"]] = {"POST": lambda q, b, a=a: self.run_action(a, b)}
 
     def _load(self, name, optional=False):
         path = os.path.join(self.dir, name)
@@ -1114,6 +1121,30 @@ class FixtureApp:
         if action not in valid or not m:
             return 403, {"error": "unknown button"}
         return 200, {"text": "%s %s (fixture)" % (self.VERBS[m.group(1)], m.group(2))}
+
+    def run_action(self, spec, body):
+        """A mock run: checks the shape the app sends (arg text, payload of text, required fields), runs nothing."""
+        arg, payload = body.get("arg", ""), body.get("payload") or {}
+        if not isinstance(arg, str) or not isinstance(payload, dict) or not all(isinstance(v, str) for v in payload.values()):
+            raise BadRequest("arg must be text and payload an object of texts")
+        if bool(spec.get("arg")) != bool(arg.strip()):
+            raise BadRequest("%s needs a choice" % spec.get("label", spec["name"]) if spec.get("arg") else "takes no choice")
+        fields = {f.get("name"): f for f in spec.get("fields") or [] if isinstance(f, dict)}
+        unknown = sorted(set(payload) - set(fields))
+        if unknown:
+            raise BadRequest("unknown payload field '%s'" % unknown[0])
+        missing = [n for n, f in fields.items() if f.get("required") and not payload.get(n, "").strip()]
+        if missing:
+            raise BadRequest("payload is missing " + ", ".join(missing))
+        text = "Done: %s %s (fixture)" % (spec["name"], arg) if arg else "Done: %s (fixture)" % spec["name"]
+        with self.lock:
+            shown = " · ".join([arg] + [v for v in payload.values() if v.strip()]).strip(" ·")
+            label = spec.get("label", spec["name"])
+            self.messages.append({"id": self._next_id(), "ts": now_iso(), "from": "me", "job": "", "status": "",
+                                  "text": "%s: %s" % (label, shown) if shown else label})
+            self.messages.append({"id": self._next_id(), "ts": now_iso(), "from": "agent", "job": "action",
+                                  "status": "OK", "text": text})
+        return 200, {"ok": True, "text": text}
 
     def _next_id(self):
         last = max([m.get("id", 0) for m in self.messages if isinstance(m.get("id"), int)] or [0])

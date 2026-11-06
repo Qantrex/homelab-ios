@@ -79,6 +79,9 @@ public struct ServerStatus: Sendable, Equatable {
     public var failures = 0
     public var services: [Service] = []
     public var servicesFetched: Date?
+    /// Actions the app may start (feature `run-actions`), fetched like services.
+    public var actions: [ActionSpec] = []
+    public var actionsFetched: Date?
     public var infoFetched: Date?
 
     public init(snapshot: Snapshot? = nil) {
@@ -153,7 +156,7 @@ public final class AppModel {
         if selected != nil {
             let f = selectedStatus.features
             t.insert(.lab)
-            if f.contains(.actions) { t.insert(.actions) }
+            if f.contains(.actions) || f.contains(.runActions) { t.insert(.actions) }
             if f.contains(.chat) { t.insert(.chat) }
         }
         return t
@@ -345,6 +348,14 @@ public final class AppModel {
                     s.servicesFetched = Date()
                 }
             }
+            if s.features.contains(.runActions), s.actionsFetched.map({ Date().timeIntervalSince($0) > 600 }) ?? true {
+                if let list = try? await api.actions() {
+                    s.actions = list
+                    s.actionsFetched = Date()
+                }
+            } else if !s.features.contains(.runActions) {
+                s.actions = []
+            }
         } catch {
             let e = APIError.from(error, host: server.host)
             if e != .cancelled {
@@ -376,6 +387,22 @@ public final class AppModel {
         let result: Result<String, APIError>
         do {
             result = .success(try await companion(for: server).press(button))
+        } catch {
+            result = .failure(APIError.from(error, host: server.host))
+        }
+        await refresh(server)
+        return result
+    }
+
+    /// Start an action from its form; returns the server's answer. Returns after the state is fresh again (a to-do
+    /// or wake-up shows on Today right away).
+    public func run(_ form: ActionForm, on server: ServerConfig) async -> Result<ActionResult, APIError> {
+        guard let arg = form.arg, form.problems.isEmpty else {
+            return .failure(.badRequest(form.problems.first ?? "The form isn't complete."))
+        }
+        let result: Result<ActionResult, APIError>
+        do {
+            result = .success(try await companion(for: server).run(form.spec.name, arg: arg, payload: form.payload))
         } catch {
             result = .failure(APIError.from(error, host: server.host))
         }

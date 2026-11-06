@@ -15,6 +15,8 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `POST /messages` | `{text}` (1–4000 chars) | `{ok, id}` | Sending a chat message or slash command |
 | `POST /button` | `{action: "<signed string>"}` | `{text}` | Approve / Always / Deny on a pending action |
 | `GET /services` | – | `{services: [{name, url, group, icon, description}]}` | The service launcher |
+| `GET /actions` | – | `{actions: [{name, label, icon, hint, destructive, arg, fields}]}` | Feature `run-actions`: the "Start" list on the Actions tab and its forms |
+| `POST /actions/<name>` | `{arg, payload}` | `{ok, text, running}` | Starting one of them, after the app's confirm step |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429
 (too many runs), 5xx. A forged or expired button gets 403; the app shows the error and refreshes the list.
@@ -82,6 +84,20 @@ is the "everything odd at once" example.
 
 `POST /button` with `{"action": "HOMELAB_APPROVE_ab12_0123456789abcdef"}` → `{"text": "approved ab12"}`
 
+`GET /actions` (feature `run-actions`)
+
+```json
+{"actions": [{"name": "wake-set", "label": "Wake-up", "icon": "alarm", "fields": [],
+              "arg": [{"label": "Wake me", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": "T"},
+                                                     {"kind": "time", "label": "Time"}]},
+                      {"label": "No wake-up", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": ":off"}]}]},
+             {"name": "todo-add", "label": "Add a to-do", "icon": "checklist",
+              "fields": [{"name": "summary", "label": "To-do", "kind": "text", "max": 120, "required": true},
+                         {"name": "due", "label": "Due", "kind": "date-or-datetime", "max": 25}]}]}
+```
+
+`POST /actions/wake-set` with `{"arg": "2026-11-07T07:30", "payload": {}}` → `{"ok": true, "text": "Done: wake-set 2026-11-07T07:30"}`
+
 `GET /services`
 
 ```json
@@ -92,11 +108,28 @@ is the "everything odd at once" example.
 
 | Field | Effect |
 |---|---|
-| `features` | Which tabs and sections show. No `actions` → no Actions tab; no `chat` → no Chat tab; no `services` → no launcher. Missing list = `status` + `hosts` only |
+| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher. Missing list = `status` + `hosts` only |
 | `commands` | Quick buttons above the chat input. Only `/word` entries, at most 24 chars, no spaces, the first 8. Empty = no buttons |
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
 | `api` | Must be `1`. Anything else: an error that asks to update the app |
+
+## Actions the app starts (`run-actions`)
+
+`pending` are actions the server **proposes**; the owner approves them. With `run-actions` the owner can also
+**start** actions: the Actions tab lists `GET /actions` under "Start", each opens a form, and after a confirm step
+the app sends `POST /actions/<name>`. The server runs it at once (the owner asked, not a model) and answers with its
+output. It must check everything again; the form only keeps obviously wrong input from being sent.
+
+| Part of an action | The form shows |
+|---|---|
+| `arg` (list of variants) | A picker between the variants when there are several ("Wake me" / "No wake-up"), then one control per part: `date` a day picker, `time` a time picker, `choice` a menu, `number` and `word` a text field. `literal` parts are fixed text. The argument is the parts joined: `2026-11-07` + `T` + `07:30`. A day starts at tomorrow, a time at 07:00, a choice at its first option |
+| `fields` | The payload: `text` and `multiline` text fields, `date`/`datetime`/`date-or-datetime` a picker behind a switch when the field is optional (a day sends `2026-11-07`, with a time `2026-11-07T08:00`, local time), `number` a number field, `choice` a menu. Empty optional fields are not sent |
+| `destructive` | The confirm button is red |
+| `hint` | One line under the form |
+
+The result shows as an alert: `ok` false is an error, `running` says the result will come in the chat. A variant
+with a part kind the app doesn't know is dropped; an action left with no usable variant is not shown.
 
 A pending action only shows the buttons the server sends: a missing `always` means no Always button; no buttons at
 all means the action is shown for information only.

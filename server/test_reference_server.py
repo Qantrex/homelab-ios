@@ -674,6 +674,23 @@ class FixtureModeTest(unittest.TestCase):
         self.assertEqual(call(self.port, "POST", "/api/v1/button",
                               {"action": "HOMELAB_APPROVE_ab12_0123456789abcdef"})[0], 403)
 
+    def test_actions(self):
+        self.assertEqual(call(self.port, "GET", "/api/v1/actions")[2], fixture("actions.json"))
+        self.assertIn("run-actions", fixture("info.json")["features"])
+        code, _, obj = call(self.port, "POST", "/api/v1/actions/wake-set", {"arg": "2026-11-07T07:00", "payload": {}})
+        self.assertEqual((code, obj), (200, {"ok": True, "text": "Done: wake-set 2026-11-07T07:00 (fixture)"}))
+        code, _, obj = call(self.port, "POST", "/api/v1/actions/todo-add", {"payload": {"summary": "Milk"}})
+        self.assertEqual((code, obj["ok"]), (200, True))
+        msgs = call(self.port, "GET", "/api/v1/messages")[2]["messages"][-2:]
+        self.assertEqual([m["text"] for m in msgs], ["Add a to-do: Milk", "Done: todo-add (fixture)"])
+        bad = [("todo-add", {"payload": {}}), ("todo-add", {"payload": {"summary": "x", "evil": "y"}}),
+               ("todo-add", {"payload": {"summary": 5}}), ("wake-set", {"arg": ""}), ("todo-add", {"arg": "x"}),
+               ("todo-add", {"payload": ["x"]})]
+        for name, body in bad:
+            self.assertEqual(call(self.port, "POST", "/api/v1/actions/" + name, body)[0], 400, (name, body))
+        self.assertEqual(call(self.port, "POST", "/api/v1/actions/nope", {})[0], 404)
+        self.assertEqual(call(self.port, "GET", "/api/v1/actions/todo-add")[0], 405)
+
     def test_validation(self):
         self.assertEqual(call(self.port, "POST", "/api/v1/messages", {"text": ""})[0], 400)
         self.assertEqual(call(self.port, "POST", "/api/v1/messages", None, raw=b"hi", ctype="text/plain")[0], 415)

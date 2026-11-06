@@ -128,6 +128,54 @@ paths:
                   services:
                     type: array
                     items: { $ref: "#/components/schemas/Service" }
+  /actions:
+    get:
+      summary: Actions the app may start itself, with what their forms need (feature `run-actions`).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  actions:
+                    type: array
+                    items: { $ref: "#/components/schemas/ActionSpec" }
+  /actions/{name}:
+    post:
+      summary: Start an action now (feature `run-actions`).
+      description: |
+        The owner started it and confirmed it in the app, so it runs at once, not as a proposal. The server checks
+        everything again: the action must be on its list, `arg` must fit one of the action's `arg` variants, and
+        `payload` may only hold the action's fields (text, within `max`, required ones present). It waits up to
+        ~100 s for the result; a slower action answers `running: true` and reports in the chat.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[a-z0-9][a-z0-9_-]{0,63}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                arg: { type: string, description: "The built argument (see ArgVariant). Empty or missing: none.", example: "2026-11-07T07:30" }
+                payload:
+                  type: object
+                  additionalProperties: { type: string }
+                  example: { summary: Milk, list: shopping }
+      responses:
+        "200":
+          description: It ran (or still runs). `ok` false = it ran and failed; `text` is its output.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ActionResult" }
+        "400": { description: "Argument or payload refused; `error` says why." }
+        "404": { description: Not an action the app may start. }
+        "429": { description: Too many actions from the app in the last hour. }
 components:
   securitySchemes:
     identityHeader:
@@ -154,7 +202,10 @@ components:
           type: array
           items:
             type: string
-            enum: [status, hosts, actions, chat, cards, services]
+            enum: [status, hosts, actions, run-actions, chat, cards, services]
+          description: |
+            `actions`: proposed actions to approve (`pending`, `/button`). `run-actions`: the app may start actions
+            itself (`/actions`). The other values switch the matching tabs and sections.
         auth: { type: string, enum: [identity, token, none] }
         commands:
           type: array
@@ -299,6 +350,70 @@ components:
         busy:
           type: array
           items: { type: string }
+    ActionSpec:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, pattern: "^[a-z0-9][a-z0-9_-]{0,63}$", example: wake-set }
+        label: { type: string, example: Wake-up }
+        icon: { type: string, description: SF Symbol name. }
+        hint: { type: string, description: One line under the form. }
+        destructive: { type: boolean, description: The app asks with a red button. }
+        arg:
+          type: array
+          description: Ways to build the argument; the form offers a picker when there are several. Missing = none.
+          items: { $ref: "#/components/schemas/ArgVariant" }
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/ActionField" }
+    ArgVariant:
+      type: object
+      required: [parts]
+      description: The argument is the parts' values joined, e.g. date + "T" + time = "2026-11-07T07:30".
+      properties:
+        label: { type: string, example: Wake me }
+        parts:
+          type: array
+          items: { $ref: "#/components/schemas/ArgPart" }
+    ArgPart:
+      type: object
+      required: [kind]
+      description: A variant with a part the app doesn't know is dropped (it couldn't build the argument).
+      properties:
+        kind: { type: string, enum: [literal, date, time, number, word, choice], description: "date 2026-11-07, time 07:30, word [A-Za-z0-9._-]" }
+        label: { type: string, example: Day }
+        text: { type: string, description: "literal only: the fixed text, e.g. T or :off" }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/ActionOption" }
+    ActionField:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        label: { type: string }
+        kind:
+          type: string
+          enum: [text, multiline, date, datetime, date-or-datetime, number, choice]
+          description: "Unknown = text. Values are always text: date 2026-11-07, datetime 2026-11-07T08:00 (local time)."
+        max: { type: integer, description: Maximum length. }
+        required: { type: boolean }
+        options:
+          type: array
+          items: { $ref: "#/components/schemas/ActionOption" }
+        placeholder: { type: string }
+    ActionOption:
+      type: object
+      required: [value]
+      properties:
+        value: { type: string }
+        label: { type: string }
+    ActionResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        text: { type: string }
+        running: { type: boolean, description: Still running; the result comes in the chat. }
     Service:
       type: object
       required: [name, url]

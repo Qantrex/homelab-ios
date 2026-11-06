@@ -42,6 +42,10 @@ final class FakeServer: @unchecked Sendable {
             return infoStatus == 200 ? .init(body: Fixtures.data("info.json") ?? Data()) : .init(status: infoStatus)
         case "/api/v1/state": return .init(body: Fixtures.data(state) ?? Data())
         case "/api/v1/services": return .init(body: Fixtures.data("services.json") ?? Data())
+        case "/api/v1/actions": return .init(body: Fixtures.data("actions.json") ?? Data())
+        case "/api/v1/actions/todo-add":
+            lock.withLock { _state = "state-ok.json" }
+            return .init(body: Data(#"{"ok": true, "text": "Done: todo-add"}"#.utf8))
         case "/api/v1/button":
             lock.withLock { _state = "state-ok.json" }   // the press handled the action
             return .init(body: Data(#"{"text":"done"}"#.utf8))
@@ -143,6 +147,27 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         #expect(m.selectedStatus.snapshot?.state.pending.isEmpty == true)
         #expect(server.calls("/api/v1/state") == 3)
         await poll.value
+    }
+
+    @Test func startedActionsLoadAndRefresh() async throws {
+        let (m, server, _, _) = makeModel()
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        await m.refresh()
+        #expect(m.selectedStatus.actions.map(\.name).first == "todo-add")
+        await m.refresh()
+        #expect(server.calls("/api/v1/actions") == 1)   // like services: not on every poll
+        var form = ActionForm(try #require(m.selectedStatus.actions.first))
+        // An unfinished form never reaches the server.
+        let refused = await m.run(form, on: lab)
+        #expect(refused == .failure(.badRequest("To-do is missing.")))
+        #expect(server.calls("/api/v1/actions/todo-add") == 0)
+        form.fieldValues["summary"] = "Milk"
+        let before = server.calls("/api/v1/state")
+        let result = await m.run(form, on: lab)
+        #expect(result == .success(ActionResult(ok: true, text: "Done: todo-add")))
+        #expect(server.calls("/api/v1/state") == before + 1)   // fresh state when it returns
+        #expect(m.selectedStatus.snapshot?.state.status == .ok)
     }
 
     @Test func simultaneousRefreshesCostOneFetch() async throws {

@@ -17,6 +17,8 @@ public struct ServerInfo: Codable, Sendable, Equatable {
 
     public enum Feature: String, Codable, Sendable, CaseIterable {
         case status, hosts, actions, chat, cards, services
+        /// The app may start actions itself (GET /actions, POST /actions/<name>).
+        case runActions = "run-actions"
     }
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,

@@ -11,6 +11,10 @@ public protocol CompanionAPI: Sendable {
     func send(_ text: String) async throws -> Int64?
     func press(_ button: String) async throws -> String
     func services() async throws -> [Service]
+    /// Actions the app may start (feature `run-actions`).
+    func actions() async throws -> [ActionSpec]
+    /// Starts one now. The server checks the argument and payload again.
+    func run(_ action: String, arg: String, payload: [String: String]) async throws -> ActionResult
 }
 
 public struct CompanionClient: CompanionAPI {
@@ -65,6 +69,18 @@ public struct CompanionClient: CompanionAPI {
     public func services() async throws -> [Service] {
         let list: ServiceList = try await get("services", timeout: 10)
         return list.services
+    }
+
+    public func actions() async throws -> [ActionSpec] {
+        let list: ActionList = try await get("actions", timeout: 10)
+        return list.actions
+    }
+
+    public func run(_ action: String, arg: String, payload: [String: String]) async throws -> ActionResult {
+        guard ActionSpec.isValidName(action) else { throw APIError.badRequest("No such action.") }
+        // The server waits up to ~100 s for the result, then answers "still running".
+        let data = try JSONSerialization.data(withJSONObject: ["arg": arg, "payload": payload] as [String: Any])
+        return try await perform(request("actions/\(action)", method: "POST", body: data, timeout: 130))
     }
 
     // MARK: - HTTP

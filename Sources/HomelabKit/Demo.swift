@@ -120,6 +120,24 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         return Fixtures.decode(ServiceList.self, "services.json")?.services ?? []
     }
 
+    public func actions() async throws -> [ActionSpec] {
+        try await Task.sleep(for: delay)
+        return Fixtures.decode(ActionList.self, "actions.json")?.actions ?? []
+    }
+
+    public func run(_ action: String, arg: String, payload: [String: String]) async throws -> ActionResult {
+        try await Task.sleep(for: delay * 3)
+        guard let spec = Fixtures.decode(ActionList.self, "actions.json")?.actions.first(where: { $0.name == action }) else {
+            throw APIError.notFound
+        }
+        let shown = ([arg] + spec.fields.compactMap { payload[$0.name] }).filter { !$0.isEmpty }.joined(separator: " · ")
+        page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .me, text: shown.isEmpty ? spec.label : "\(spec.label): \(shown)"))
+        let text = "Done: \(spec.label). Demo mode, so nothing ran."
+        page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .agent, job: "action", status: "OK", text: text))
+        current.lastMessage = page.messages.last
+        return ActionResult(ok: true, text: text)
+    }
+
     // MARK: Home Assistant
 
     public func check() async throws -> String { "API running. (demo)" }
