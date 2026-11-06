@@ -3,7 +3,13 @@
    "text": "**Morning.** All hosts fine. Backups ran at 04:45.\n\n- 3 updates on pi\n- Off-site backup: 6.1 of 8 GB used"},
   {"id": 1762290000000000000, "ts": "2026-11-04T21:00:00", "from": "me", "job": "", "status": "", "text": "is the media server ok?"},
   {"id": 1762290060000000000, "ts": "2026-11-04T21:01:00", "from": "agent", "job": "chat", "status": "OK",
-   "text": "Yes. The media server is up, 1 stream (direct play), CPU at 12%."},
+   "text": "Yes. The media server is up, 1 stream (direct play), CPU at 12%.",
+   "cards": [{"id": "media-now", "title": "media", "icon": "server.rack", "style": "metrics",
+              "items": [{"title": "Streams", "value": "1"}, {"title": "CPU", "value": "12%"}, {"title": "Disk", "value": "93%", "tint": "orange"}]}]},
   {"id": 1762290600000000000, "ts": "2026-11-04T21:10:00", "from": "agent", "job": "watchdog", "status": "ALERT",
-   "text": "media: sonarr unhealthy. Proposed: `restart media sonarr` (ab12). Approve it in the Actions tab."}
+   "text": "media: sonarr unhealthy. Proposed: `restart media sonarr` (ab12).",
+   "pending": [{"id": "ab12", "job": "watchdog", "action": "restart", "arg": "media sonarr",
+                "reason": "sonarr has been unhealthy for 20 minutes; a restart usually fixes it.", "created": "2026-11-04T21:12:00",
+                "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "always": "HOMELAB_ALWAYS_ab12_1123456789abcdef",
+                            "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}}]}
 ], "busy": ["chat"]}

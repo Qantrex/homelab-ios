@@ -20,7 +20,7 @@ import Testing
 
     @Test func fixtureDecodes() throws {
         let list = try specs()
-        #expect(list.map(\.name) == ["todo-add", "calendar-add", "wake-set", "commute-mode", "ha-control", "restart-container"])
+        #expect(list.map(\.name) == ["todo-add", "todo-done", "calendar-add", "wake-set", "commute-mode", "ha-control", "restart-container"])
         let todo = try spec("todo-add")
         #expect(todo.variants.isEmpty)
         #expect(todo.fields.map(\.name) == ["summary", "due", "description", "list"])
@@ -176,7 +176,7 @@ import Testing
     @Test func clientListsActions() async throws {
         let t = FakeTransport(fixture: "actions.json")
         let list = try await CompanionClient(baseURL: base, token: nil, transport: t).actions()
-        #expect(list.count == 6)
+        #expect(list.count == 7)
         #expect(t.last?.url?.absoluteString == "https://homelab.example.ts.net/api/v1/actions")
     }
 
@@ -225,7 +225,7 @@ import Testing
 
     @Test func demoRunsAndTellsTheChat() async throws {
         let demo = DemoBackend(delay: .zero)
-        #expect(try await demo.actions().count == 6)
+        #expect(try await demo.actions().count == 7)
         let r = try await demo.run("ha-control", arg: "lamps-on", payload: [:])
         #expect(r.ok && r.text.contains("Living room"))
         let msgs = try await demo.messages(after: 0).messages.suffix(2)

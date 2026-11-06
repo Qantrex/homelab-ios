@@ -316,9 +316,20 @@ components:
         subtitle: { type: string }
         icon: { type: string, description: An SF Symbol name, e.g. play.tv. Unknown names fall back to a square. }
         tint: { type: string, enum: [gray, blue, green, orange, red, purple, teal, yellow, pink] }
-        style: { type: string, enum: [list, metrics, text], default: list }
+        style:
+          type: string
+          enum: [list, metrics, text, checklist, countdown]
+          default: list
+          description: |
+            `checklist`: to-dos, a circle per item (filled when `done`), with `due` as a short day/time.
+            `countdown`: each item counts down to its `due` ("2 d", "5 h", "today", "3 d ago"); the app sorts by `due`.
+            Older apps show both as `list`.
         updated: { type: string, description: Free text or a date-time. }
         text: { type: string, description: For style text. Inline Markdown. }
+        action:
+          $ref: "#/components/schemas/ItemAction"
+          description: A button in the card's header that opens this action's form, prefilled with `arg` and `payload`
+            (e.g. "Add" on a to-do list). Hidden unless `GET /actions` lists the action.
         items:
           type: array
           items:
@@ -331,6 +342,31 @@ components:
               icon: { type: string }
               url: { type: string, format: uri }
               tint: { type: string }
+              done: { type: boolean, description: Checklist items. Ticked off or not. }
+              due:
+                type: string
+                description: A day (`2026-11-07`) or a time (`2026-11-07T18:00`, local without a zone). Countdown items
+                  count to it; checklist items show it.
+                example: "2026-11-07T18:00"
+              action:
+                $ref: "#/components/schemas/ItemAction"
+                description: One tap runs this action after a confirm (`label` is the confirm text), then the app
+                  refreshes. On a checklist the item's circle does it (tick off). Hidden unless `GET /actions` lists
+                  the action.
+    ItemAction:
+      type: object
+      required: [name]
+      description: An action from `GET /actions` (feature `run-actions`) with its argument and payload filled in. The app
+        sends it as `POST /actions/<name>` with `{arg, payload}`; the server checks it like any other start.
+      properties:
+        name: { type: string, pattern: "^[a-z0-9][a-z0-9_-]{0,63}$", example: todo-done }
+        label: { type: string, example: Tick off, description: Button or confirm text. Default the action's own label. }
+        arg: { type: string, default: "", description: Must fit one of the action's `arg` variants, or be empty. }
+        payload:
+          type: object
+          additionalProperties: { type: string }
+          description: Field values. Fields the action doesn't have are dropped; other values than strings too.
+          example: { item: Milk, list: shopping }
     Message:
       type: object
       required: [id]
@@ -341,6 +377,16 @@ components:
         job: { type: string, description: "Empty or chat = a conversation reply; other = a scheduled report (morning, watchdog…)." }
         status: { type: string, description: "OK, WARN, ALERT, ERROR or empty." }
         text: { type: string }
+        pending:
+          type: array
+          items: { $ref: "#/components/schemas/PendingAction" }
+          description: Proposals made in this message that are still waiting, the same objects (and signed buttons) as
+            in `State.pending`. Computed when the server answers; approved, denied or expired ones are left out. The
+            app shows Approve / Always / Deny in the bubble.
+        cards:
+          type: array
+          items: { $ref: "#/components/schemas/Card" }
+          description: Cards shown compactly inside the bubble, under the text. Any style.
     MessagePage:
       type: object
       properties:

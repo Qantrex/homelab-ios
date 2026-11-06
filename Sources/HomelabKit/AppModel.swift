@@ -413,6 +413,22 @@ public final class AppModel {
         return result
     }
 
+    /// The action a card or item offers, if the selected server lets the app start it (feature `run-actions` and
+    /// listed in `GET /actions`). Nil = hide the button.
+    public func startable(_ action: ItemAction?) -> ActionSpec? {
+        guard let action else { return nil }
+        return selectedStatus.actions.first { $0.name == action.name }
+    }
+
+    /// Runs a card item's action at once (after the view's confirm): its form prefilled with the action's `arg` and
+    /// `payload`, sent like `run(_ form:on:)`. `.notFound` when the server doesn't list the action.
+    public func run(_ action: ItemAction, on server: ServerConfig) async -> Result<ActionResult, APIError> {
+        guard let spec = status[server.id]?.actions.first(where: { $0.name == action.name }) else {
+            return .failure(.notFound)
+        }
+        return await run(ActionForm(spec, prefill: action), on: server)
+    }
+
     /// The widget reads the selected server's snapshot from shared storage.
     func writeWidgetSnapshot() {
         if let snap = selectedStatus.snapshot {

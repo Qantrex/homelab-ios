@@ -32,6 +32,62 @@ public enum Format {
         return m == 0 ? "in \(h) h" : "in \(h) h \(m) min"
     }
 
+    /// How close a `due` is, for its colour: past (love), under 24 h ahead or today (gold), later (plain).
+    public enum Level: String, Sendable, Equatable, CaseIterable {
+        case past, soon, later
+    }
+
+    /// A due date sent as a day without a time: it reads as local midnight.
+    public static func isDayOnly(_ date: Date, calendar: Calendar = .current) -> Bool {
+        let c = calendar.dateComponents([.hour, .minute, .second], from: date)
+        return c.hour == 0 && c.minute == 0 && c.second == 0
+    }
+
+    /// A countdown card's big value: "40 min", "5 h", "2 d", "today" (a day-only due on today), "3 h ago",
+    /// "3 d ago". Whole days count calendar days; hours and minutes are rounded down, but a due still ahead never
+    /// shows "0 min".
+    public static func countdown(_ due: Date, now: Date = Date(), calendar: Calendar = .current) -> (text: String, level: Level) {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
+                                           to: calendar.startOfDay(for: due)).day ?? 0
+        if isDayOnly(due, calendar: calendar) {
+            if days == 0 { return ("today", .soon) }
+            return days > 0 ? ("\(days) d", .later) : ("\(-days) d ago", .past)
+        }
+        let s = due.timeIntervalSince(now)
+        if s >= 0 {
+            if s < 3600 { return ("\(max(Int(s / 60), 1)) min", .soon) }
+            if s < 86400 { return ("\(Int(s / 3600)) h", .soon) }
+            return ("\(max(days, 1)) d", .later)
+        }
+        let ago = -s
+        if ago < 3600 { return ("\(max(Int(ago / 60), 1)) min ago", .past) }
+        if ago < 86400 { return ("\(Int(ago / 3600)) h ago", .past) }
+        return ("\(max(-days, 1)) d ago", .past)
+    }
+
+    /// A checklist item's due, short: "today", "today 18:00", "tomorrow 09:00", "Mon", "Mon 18:00" within a week,
+    /// "12.11." or "12.11. 18:00" further out, "yesterday" / "3 d ago" when it's past (with the time on the same day).
+    public static func due(_ due: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
+                                           to: calendar.startOfDay(for: due)).day ?? 0
+        let t = calendar.dateComponents([.hour, .minute], from: due)
+        let clock = isDayOnly(due, calendar: calendar) ? nil : String(format: "%02d:%02d", t.hour ?? 0, t.minute ?? 0)
+        let day: String
+        switch days {
+        case 0: day = "today"
+        case 1: day = "tomorrow"
+        case -1: day = "yesterday"
+        case 2...6:
+            let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+            day = weekdays[(calendar.component(.weekday, from: due) - 1 + 7) % 7]
+        case ..<(-1): return "\(-days) d ago"
+        default:
+            let d = calendar.dateComponents([.day, .month], from: due)
+            day = String(format: "%02d.%02d.", d.day ?? 0, d.month ?? 0)
+        }
+        return clock.map { "\(day) \($0)" } ?? day
+    }
+
     /// The number inside a progress ring, 0…100. Rounded down, so 100 only shows when it's really done.
     public static func ringPercent(_ progress: Double) -> Int {
         guard progress.isFinite else { return 0 }

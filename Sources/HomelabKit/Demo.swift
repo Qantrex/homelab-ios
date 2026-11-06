@@ -27,13 +27,21 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         var page = Fixtures.decode(MessagePage.self, "messages.json") ?? MessagePage()
         // Shift every fixture time so "checked" is 2 minutes ago.
         let shift = state.checked.map { now.addingTimeInterval(-120).timeIntervalSince($0) } ?? 0
+        let days = Self.dayShift(from: state.checked, to: now.addingTimeInterval(-120))
         func s(_ d: Date?) -> Date? { d?.addingTimeInterval(shift) }
         state.time = s(state.time); state.checked = s(state.checked)
         state.problems = state.problems.map { var p = $0; p.since = s(p.since); return p }
         state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
-        page.messages = page.messages.map { var m = $0; m.ts = s(m.ts); return m }
-        state.cards = state.cards.map { $0.id == "today" ? Self.demoDay($0, now: now) : $0 }
+        func card(_ c: Card) -> Card { Self.shiftDue(c, by: shift, days: days) }
+        page.messages = page.messages.map { m in
+            var m = m
+            m.ts = s(m.ts)
+            m.pending = m.pending.map { var p = $0; p.created = s(p.created); return p }
+            m.cards = m.cards.map(card)
+            return m
+        }
+        state.cards = state.cards.map { $0.id == "today" ? Self.demoDay($0, now: now) : card($0) }
         state.lastMessage = page.messages.last
         state.busy = []
         page.busy = []
@@ -41,6 +49,27 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         self.page = page
         entities = Fixtures.decode([Lossy<HAEntity>].self, "ha-states.json")?.compactMap(\.value) ?? []
         self.delay = delay
+    }
+
+    /// Whole calendar days between two times (for moving day-only dues, which must stay on midnight).
+    static func dayShift(from: Date?, to: Date, calendar: Calendar = .current) -> Int {
+        guard let from else { return 0 }
+        return calendar.dateComponents([.day], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).day ?? 0
+    }
+
+    /// Moves the items' `due` like the other fixture times: a time by the same interval, a day by whole days.
+    public static func shiftDue(_ card: Card, by interval: TimeInterval, days: Int, calendar: Calendar = .current) -> Card {
+        var card = card
+        card.items = card.items.map { item in
+            var item = item
+            if let due = item.due {
+                item.due = Format.isDayOnly(due, calendar: calendar)
+                    ? calendar.date(byAdding: .day, value: days, to: due)
+                    : due.addingTimeInterval(interval)
+            }
+            return item
+        }
+        return card
     }
 
     /// The day's clock times follow the real clock too: the first stop was 45 min ago, so the day line always has a
@@ -108,6 +137,9 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             throw APIError.forbidden
         }
         current.pending.removeAll { $0.id == action.id }
+        // Answered proposals leave the chat bubbles too, as on a real server.
+        page.messages = page.messages.map { var m = $0; m.pending.removeAll { $0.id == action.id }; return m }
+        if current.lastMessage != nil { current.lastMessage?.pending.removeAll { $0.id == action.id } }
         switch verb {
         case .deny: return "Dropped \(action.title) (demo)."
         case .always: return "Ran \(action.title), and it may run by itself from now on (demo)."
@@ -132,10 +164,27 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         }
         let shown = ([arg] + spec.fields.compactMap { payload[$0.name] }).filter { !$0.isEmpty }.joined(separator: " · ")
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .me, text: shown.isEmpty ? spec.label : "\(spec.label): \(shown)"))
+        if action == "todo-done", let item = payload["item"] { tickOff(item) }
         let text = "Done: \(spec.label). Demo mode, so nothing ran."
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .agent, job: "action", status: "OK", text: text))
         current.lastMessage = page.messages.last
         return ActionResult(ok: true, text: text)
+    }
+
+    /// A ticked-off to-do shows as done (a real server would drop it from the open items).
+    private func tickOff(_ title: String) {
+        current.cards = current.cards.map { card in
+            guard card.style == .checklist else { return card }
+            var card = card
+            card.items = card.items.map { item in
+                guard item.title == title, item.done != true else { return item }
+                var item = item
+                item.done = true
+                item.action = nil
+                return item
+            }
+            return card
+        }
     }
 
     // MARK: Home Assistant

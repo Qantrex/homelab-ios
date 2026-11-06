@@ -389,7 +389,7 @@ struct CardView: View {
                         .accessibilityElement(children: .combine)
                     }
                 }
-            case .list:
+            case .list, .checklist, .countdown:
                 ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
                     itemRow(item)
                 }

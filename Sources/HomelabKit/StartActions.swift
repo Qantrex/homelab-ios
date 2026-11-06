@@ -264,6 +264,51 @@ public struct ActionForm: Sendable, Equatable {
         fieldValues = f
     }
 
+    /// The form of a card or item action (`ItemAction`): starts like `init(_:now:calendar:)`, then takes the payload
+    /// values of fields the action has (others are dropped) and, when `arg` fits one of the variants, that variant
+    /// with its part values. An `arg` that fits none is ignored.
+    public init(_ spec: ActionSpec, prefill: ItemAction?, now: Date = Date(), calendar: Calendar = .current) {
+        self.init(spec, now: now, calendar: calendar)
+        guard let prefill else { return }
+        for field in spec.fields {
+            if let v = prefill.payload[field.name] { fieldValues[field.name] = v }
+        }
+        let arg = prefill.arg.trimmingCharacters(in: .whitespaces)
+        guard !arg.isEmpty else { return }
+        for (i, v) in spec.variants.enumerated() {
+            if let parts = Self.split(arg, into: v.parts) {
+                values[i] = parts
+                variant = i
+                return
+            }
+        }
+    }
+
+    /// Splits an argument back into part values ("" for literals), or nil if it doesn't fit these parts.
+    static func split(_ arg: String, into parts: [ActionSpec.ArgPart]) -> [String]? {
+        func esc(_ t: String) -> String { NSRegularExpression.escapedPattern(for: t) }
+        var pattern = "^"
+        for part in parts {
+            switch part {
+            case .literal(let t): pattern += esc(t)
+            case .date: pattern += "([0-9]{4}-[0-1][0-9]-[0-3][0-9])"
+            case .time: pattern += "([0-2][0-9]:[0-5][0-9])"
+            case .number: pattern += "([0-9]{1,12})"
+            case .word: pattern += "([A-Za-z0-9._-]{1,64})"
+            case .choice(_, let options): pattern += "(" + options.map { esc($0.value) }.joined(separator: "|") + ")"
+            }
+        }
+        pattern += "$"
+        guard let re = try? NSRegularExpression(pattern: pattern),
+              let m = re.firstMatch(in: arg, range: NSRange(arg.startIndex..., in: arg)) else { return nil }
+        var group = 0
+        return parts.map { part in
+            if case .literal = part { return "" }
+            group += 1
+            return Range(m.range(at: group), in: arg).map { String(arg[$0]) } ?? ""
+        }
+    }
+
     /// What a field starts with when it's required or switched on: tomorrow for a day (also for "day or time"),
     /// the next full hour for a time, the first option of a choice. Nil for text.
     public static func defaultValue(_ field: ActionSpec.Field, now: Date = Date(), calendar: Calendar = .current) -> String? {

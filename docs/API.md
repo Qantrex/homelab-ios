@@ -11,7 +11,7 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 |---|---|---|---|
 | `GET /info` | – | `{api, name, server, version, features, auth, commands, standing_approvals}` | "Test connection", which tabs to show |
 | `GET /state` | – | `{time, status, checked, problems, hosts, pending, cards, busy, last_message}` | Today, Lab, Actions, widgets, background refresh |
-| `GET /messages?after=<id>` | – | `{messages: [...], busy: [...]}` | Chat (polls; `after` is the last id it has) |
+| `GET /messages?after=<id>` | – | `{messages: [...], busy: [...]}` | Chat (polls; `after` is the last id it has). A message may carry `pending` and `cards` |
 | `POST /messages` | `{text}` (1–4000 chars) | `{ok, id}` | Sending a chat message or slash command |
 | `POST /button` | `{action: "<signed string>"}` | `{text}` | Approve / Always / Deny on a pending action |
 | `GET /services` | – | `{services: [{name, url, group, icon, description}]}` | The service launcher |
@@ -47,6 +47,7 @@ Other people's servers send odd JSON, so the app is forgiving. A server can rely
 | Duplicate ids | Keeps the first |
 | A problem as a plain string | Treats it as `{text}` |
 | A link that isn't `http`/`https` | Drops the link |
+| An item or card `action` without a valid `name`, or a `payload` value that isn't a string | Drops the action; drops that value |
 | Times: ISO 8601 with or without zone, or epoch s/ms/µs/ns | Reads them; without a zone they mean the server's local time, read in the phone's zone (the same in a homelab). Send a zone if they can differ |
 
 The fixtures in `Sources/HomelabKit/Fixtures/` show all of this, and the tests check it. `state-unknown-fields.json`
@@ -141,8 +142,45 @@ all means the action is shown for information only.
 | A card with `id: "today"` (else the first `metrics` card) | The day under the headline. Items whose `value` is a clock time (`"06:20"`, `"7:05"`) become stops on a line through the day, in time order (not your order); the line fills up to now, past stops fade, the next one shows a countdown ("in 26 min"). Items without a clock time (`"?"`, `"too late"`, no value) are notes under the line. No clock times at all: the values in big numbers. No items: the card's `text` |
 | `progress` (0–1) on a `list` item | A ring with the percent in front of the row (a check mark at 1) |
 | `tint` on an item | Warm tints (`orange`, `yellow`) are gold, `red` is love, `purple`/`pink` iris, the rest grey. Use it for status, not decoration |
+| `style: "checklist"` | To-dos: a circle per item (filled when `done: true`), the title, the subtitle and `due` as a short day or time ("today 18:00", "tomorrow", "Mon", "13.11."). Tapping the circle of an item with an `action` asks once ("Tick off Milk?"), then runs it |
+| `style: "countdown"` | Each item counts down to its `due` in big mono numbers: "40 min", "5 h", "2 d", "today" (a day without a time), "3 d ago". Gold when it's under 24 h ahead (or today), love when it's past. The app sorts the items by `due`, soonest first; items without `due` last |
+| `due` on an item | A day (`"2026-11-07"`) or a time (`"2026-11-07T18:00"`, local without a zone). A time of exactly 00:00 counts as a day |
+| `action` on an item: `{name, label, arg, payload}` | One tap runs that action (`POST /actions/<name>` with `arg` and `payload`, all strings) after a confirm with `label` as its text, then Today refreshes. Shown only with `run-actions` and when `GET /actions` lists the action; payload fields the action doesn't have are dropped, and the server checks everything again |
+| `action` on a card | A button in the card's header (`label`, else "+") that opens that action's form, **prefilled** with `payload` and `arg` (an `arg` that fits one of the action's variants picks it and fills its parts). Same rule: hidden unless `GET /actions` lists it |
+
+Older apps show `checklist` and `countdown` cards as `list` and ignore `done`, `due` and `action`.
+
+```json
+{"id": "todos", "title": "To-dos", "icon": "checklist", "style": "checklist",
+ "action": {"name": "todo-add", "label": "Add", "payload": {"list": "todo"}},
+ "items": [{"title": "Milk", "subtitle": "Shopping",
+            "action": {"name": "todo-done", "label": "Tick off", "payload": {"item": "Milk", "list": "shopping"}}},
+           {"title": "Water the plants", "done": true}]}
+```
+
+```json
+{"id": "deadlines", "title": "Deadlines", "icon": "hourglass", "style": "countdown",
+ "items": [{"title": "Project hand-in", "subtitle": "School", "due": "2026-11-09"},
+           {"title": "Driving lesson", "due": "2026-11-05T08:00"}]}
+```
 
 Clock times are read in the phone's time zone, like times without a zone (see above).
+
+## Chat messages with proposals and cards
+
+A message from `GET /messages` (and `state.last_message`) may carry two more lists:
+
+| Field | The chat shows |
+|---|---|
+| `pending` | Proposals made in this message that are **still waiting**: the same objects, with the same signed buttons, as in `state.pending`. Approve / Always / Deny right in the bubble, with the same confirm and `POST /button` as the Actions tab. The server computes the list when it answers, so approved, denied or expired proposals disappear from the message |
+| `cards` | Cards inside the bubble, compact, under the text. Any style |
+
+```json
+{"id": 1762290600000000000, "from": "agent", "job": "watchdog", "status": "ALERT",
+ "text": "media: sonarr unhealthy. Proposed: `restart media sonarr` (ab12).",
+ "pending": [{"id": "ab12", "action": "restart", "arg": "media sonarr",
+              "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}}]}
+```
 
 ## Versioning
 

@@ -674,6 +674,28 @@ class FixtureModeTest(unittest.TestCase):
         self.assertEqual(call(self.port, "POST", "/api/v1/button",
                               {"action": "HOMELAB_APPROVE_ab12_0123456789abcdef"})[0], 403)
 
+    def test_message_proposals_have_working_buttons(self):
+        msgs = call(self.port, "GET", "/api/v1/messages")[2]["messages"]
+        pending = [p for m in msgs for p in m.get("pending", [])]
+        self.assertTrue(pending)
+        self.assertTrue(any(m.get("cards") for m in msgs))
+        for p in pending:
+            for verb, button in p["buttons"].items():
+                self.assertEqual(call(self.port, "POST", "/api/v1/button", {"action": button})[0], 200, verb)
+
+    def test_card_item_actions_are_listed(self):
+        names = {a["name"] for a in fixture("actions.json")["actions"]}
+        cards = fixture("state-problem.json")["cards"]
+        used = [c["action"] for c in cards if "action" in c] + [i["action"] for c in cards for i in c.get("items", [])
+                                                                 if "action" in i]
+        self.assertTrue(used)
+        for a in used:
+            self.assertIn(a["name"], names)
+            if a["name"] == "todo-done":
+                code, _, obj = call(self.port, "POST", "/api/v1/actions/todo-done",
+                                    {"arg": a.get("arg", ""), "payload": a["payload"]})
+                self.assertEqual((code, obj["ok"]), (200, True))
+
     def test_actions(self):
         self.assertEqual(call(self.port, "GET", "/api/v1/actions")[2], fixture("actions.json"))
         self.assertIn("run-actions", fixture("info.json")["features"])

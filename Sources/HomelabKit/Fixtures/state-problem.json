@@ -36,9 +36,30 @@
     {"id": "today", "title": "Today", "icon": "sun.max", "tint": "orange", "style": "metrics",
      "items": [{"title": "Wake-up", "value": "06:20"}, {"title": "First lesson", "value": "08:00"},
                {"title": "Leave by", "value": "07:31", "subtitle": "U6 07:36"}]},
-    {"id": "note", "title": "Note", "icon": "text.bubble", "style": "text", "text": "Off-site backup is at **6.1 of 8 GB**."}
+    {"id": "note", "title": "Note", "icon": "text.bubble", "style": "text", "text": "Off-site backup is at **6.1 of 8 GB**."},
+    {"id": "todos", "title": "To-dos", "icon": "checklist", "style": "checklist",
+     "action": {"name": "todo-add", "label": "Add", "payload": {"list": "todo"}},
+     "items": [{"title": "Call the plumber", "subtitle": "To-dos", "due": "2026-11-04T18:00",
+                "action": {"name": "todo-done", "label": "Tick off", "payload": {"item": "Call the plumber", "list": "todo"}}},
+               {"title": "Milk", "subtitle": "Shopping",
+                "action": {"name": "todo-done", "label": "Tick off", "payload": {"item": "Milk", "list": "shopping"}}},
+               {"title": "Renew the bike lock code", "subtitle": "To-dos", "due": "2026-11-06",
+                "action": {"name": "todo-done", "label": "Tick off", "payload": {"item": "Renew the bike lock code", "list": "todo"}}},
+               {"title": "Water the plants", "subtitle": "To-dos", "done": true}]},
+    {"id": "deadlines", "title": "Deadlines", "icon": "hourglass", "style": "countdown",
+     "items": [{"title": "Project hand-in", "subtitle": "School", "due": "2026-11-09"},
+               {"title": "Library books", "subtitle": "Errands", "due": "2026-11-03"},
+               {"title": "Tax return", "subtitle": "Paperwork", "due": "2026-11-04"},
+               {"title": "Driving lesson", "subtitle": "Errands", "due": "2026-11-05T08:00"}]},
+    {"id": "parcels", "title": "Parcels", "icon": "shippingbox", "style": "list",
+     "items": [{"title": "Keyboard", "subtitle": "DHL · out for delivery", "value": "today", "tint": "orange"},
+               {"title": "Phone case", "subtitle": "Post · in transit", "value": "Fri"}]}
   ],
   "busy": ["chat"],
   "last_message": {"id": 1762290600000000000, "ts": "2026-11-04T21:10:00", "from": "agent", "job": "watchdog",
-                   "status": "ALERT", "text": "media: sonarr unhealthy. Proposed: restart (ab12)."}
+                   "status": "ALERT", "text": "media: sonarr unhealthy. Proposed: restart (ab12).",
+                   "pending": [{"id": "ab12", "job": "watchdog", "action": "restart", "arg": "media sonarr",
+                                "reason": "sonarr has been unhealthy for 20 minutes; a restart usually fixes it.", "created": "2026-11-04T21:12:00",
+                                "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "always": "HOMELAB_ALWAYS_ab12_1123456789abcdef",
+                                            "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}}]}
 }

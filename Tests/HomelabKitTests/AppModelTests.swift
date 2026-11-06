@@ -46,6 +46,8 @@ final class FakeServer: @unchecked Sendable {
         case "/api/v1/actions/todo-add":
             lock.withLock { _state = "state-ok.json" }
             return .init(body: Data(#"{"ok": true, "text": "Done: todo-add"}"#.utf8))
+        case "/api/v1/actions/todo-done":
+            return .init(body: Data(#"{"ok": true, "text": "Ticked off"}"#.utf8))
         case "/api/v1/button":
             lock.withLock { _state = "state-ok.json" }   // the press handled the action
             return .init(body: Data(#"{"text":"done"}"#.utf8))

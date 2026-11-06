@@ -221,7 +221,7 @@ public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
     }
 }
 
-public struct PendingAction: Codable, Sendable, Equatable, Identifiable {
+public struct PendingAction: Codable, Sendable, Equatable, Hashable, Identifiable {
     public var id: String
     public var job: String?
     public var action: String?
@@ -293,7 +293,45 @@ public enum Tint: String, Codable, Sendable, CaseIterable {
     }
 }
 
-public struct Card: Codable, Sendable, Equatable, Identifiable {
+/// One tap in a card: an action the app may start (`POST /actions/<name>` with `arg` and `payload`). On an item it runs
+/// after one confirm; on a card it opens that action's form, prefilled. The app offers it only when `GET /actions`
+/// lists the action (see `AppModel.startable`).
+public struct ItemAction: Codable, Sendable, Equatable, Hashable {
+    /// The action's name, as in `GET /actions` (always a valid name; an invalid one drops the whole action).
+    public var name: String
+    /// Button or confirm text ("Tick off", "Add"). Nil = the app uses the action's own label.
+    public var label: String?
+    /// The argument; "" for none.
+    public var arg: String
+    /// Payload values by field name.
+    public var payload: [String: String]
+
+    public init(name: String, label: String? = nil, arg: String = "", payload: [String: String] = [:]) {
+        self.name = name; self.label = label; self.arg = arg; self.payload = payload
+    }
+
+    enum CodingKeys: String, CodingKey { case name, label, arg, payload }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        guard let name = c.text(.name), ActionSpec.isValidName(name) else {
+            throw DecodingError.keyNotFound(CodingKeys.name, .init(codingPath: c.codingPath, debugDescription: "no valid name"))
+        }
+        // Payload values are text; anything else (numbers, lists) is dropped rather than guessed.
+        let raw = c.lenient([String: Lossy<String>].self, .payload) ?? [:]
+        self.init(name: name, label: c.text(.label), arg: c.string(.arg) ?? "", payload: raw.compactMapValues(\.value))
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(label, forKey: .label)
+        if !arg.isEmpty { try c.encode(arg, forKey: .arg) }
+        if !payload.isEmpty { try c.encode(payload, forKey: .payload) }
+    }
+}
+
+public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
     public var id: String
     public var title: String?
     public var subtitle: String?
@@ -303,10 +341,18 @@ public struct Card: Codable, Sendable, Equatable, Identifiable {
     public var updated: String?
     public var text: String?
     public var items: [Item]
+    /// The header button: opens this action's form, prefilled with its `arg` and `payload` ("Add" on a to-do list).
+    public var action: ItemAction?
 
-    public enum Style: String, Codable, Sendable { case list, metrics, text }
+    public enum Style: String, Codable, Sendable {
+        case list, metrics, text
+        /// To-dos: a circle per item (filled when `done`), title, subtitle and `due`.
+        case checklist
+        /// Items count down to their `due` ("2 d", "5 h", "today", "3 d ago"), soonest first (`sortedForCountdown`).
+        case countdown
+    }
 
-    public struct Item: Codable, Sendable, Equatable {
+    public struct Item: Codable, Sendable, Equatable, Hashable {
         public var title: String?
         public var subtitle: String?
         public var value: String?
@@ -314,31 +360,55 @@ public struct Card: Codable, Sendable, Equatable, Identifiable {
         public var icon: String?
         public var url: URL?
         public var tint: Tint?
+        /// Checklist items: ticked off or not. Nil = not sent (open).
+        public var done: Bool?
+        /// When it's due. A day without a time is local midnight (`Format.isDayOnly`).
+        public var due: Date?
+        /// One tap runs this action after a confirm (a checklist circle ticks the item off).
+        public var action: ItemAction?
 
         public init(title: String? = nil, subtitle: String? = nil, value: String? = nil, progress: Double? = nil,
-                    icon: String? = nil, url: URL? = nil, tint: Tint? = nil) {
+                    icon: String? = nil, url: URL? = nil, tint: Tint? = nil, done: Bool? = nil, due: Date? = nil,
+                    action: ItemAction? = nil) {
             self.title = title; self.subtitle = subtitle; self.value = value
             self.progress = progress.map { min(max($0, 0), 1) }; self.icon = icon; self.url = url; self.tint = tint
+            self.done = done; self.due = due; self.action = action
         }
 
-        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint }
+        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action }
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             self.init(title: c.text(.title), subtitle: c.text(.subtitle), value: c.text(.value),
                       progress: c.double(.progress), icon: c.text(.icon),
                       url: c.text(.url).flatMap(URLPolicy.webURL),
-                      tint: c.text(.tint).map { Tint(lenient: $0) })
+                      tint: c.text(.tint).map { Tint(lenient: $0) }, done: c.bool(.done), due: c.date(.due),
+                      action: c.lenient(ItemAction.self, .action))
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encodeIfPresent(title, forKey: .title)
+            try c.encodeIfPresent(subtitle, forKey: .subtitle)
+            try c.encodeIfPresent(value, forKey: .value)
+            try c.encodeIfPresent(progress, forKey: .progress)
+            try c.encodeIfPresent(icon, forKey: .icon)
+            try c.encodeIfPresent(url, forKey: .url)
+            try c.encodeIfPresent(tint, forKey: .tint)
+            try c.encodeIfPresent(done, forKey: .done)
+            try c.encodeIfPresent(due.map(ServerDate.string), forKey: .due)
+            try c.encodeIfPresent(action, forKey: .action)
         }
     }
 
     public init(id: String, title: String? = nil, subtitle: String? = nil, icon: String? = nil, tint: Tint = .gray,
-                style: Style = .list, updated: String? = nil, text: String? = nil, items: [Item] = []) {
+                style: Style = .list, updated: String? = nil, text: String? = nil, items: [Item] = [],
+                action: ItemAction? = nil) {
         self.id = id; self.title = title; self.subtitle = subtitle; self.icon = icon; self.tint = tint
-        self.style = style; self.updated = updated; self.text = text; self.items = items
+        self.style = style; self.updated = updated; self.text = text; self.items = items; self.action = action
     }
 
-    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items }
+    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -348,7 +418,35 @@ public struct Card: Codable, Sendable, Equatable, Identifiable {
         self.init(id: id, title: c.text(.title), subtitle: c.text(.subtitle), icon: c.text(.icon),
                   tint: Tint(lenient: c.text(.tint)),
                   style: c.text(.style).flatMap { Style(rawValue: $0.lowercased()) } ?? .list,
-                  updated: c.text(.updated), text: c.text(.text), items: c.array(Item.self, .items))
+                  updated: c.text(.updated), text: c.text(.text), items: c.array(Item.self, .items),
+                  action: c.lenient(ItemAction.self, .action))
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encodeIfPresent(title, forKey: .title)
+        try c.encodeIfPresent(subtitle, forKey: .subtitle)
+        try c.encodeIfPresent(icon, forKey: .icon)
+        try c.encode(tint, forKey: .tint)
+        try c.encode(style, forKey: .style)
+        try c.encodeIfPresent(updated, forKey: .updated)
+        try c.encodeIfPresent(text, forKey: .text)
+        try c.encode(items, forKey: .items)
+        try c.encodeIfPresent(action, forKey: .action)
+    }
+
+    /// Items in countdown order: soonest `due` first (overdue ones lead), items without `due` last, ties in the
+    /// server's order.
+    public var sortedForCountdown: [Item] {
+        items.enumerated().sorted { a, b in
+            switch (a.element.due, b.element.due) {
+            case let (x?, y?): x == y ? a.offset < b.offset : x < y
+            case (_?, nil): true
+            case (nil, _?): false
+            case (nil, nil): a.offset < b.offset
+            }
+        }.map(\.element)
     }
 }
 
@@ -359,22 +457,33 @@ public struct ChatMessage: Codable, Sendable, Equatable, Identifiable, Hashable 
     public var job: String?
     public var status: String?
     public var text: String
+    /// Proposals made in this message that still wait for an answer (Approve / Always / Deny in the bubble). The
+    /// server computes them when it answers; approved, denied or expired ones are gone.
+    public var pending: [PendingAction]
+    /// Cards shown inside the bubble, under the text.
+    public var cards: [Card]
 
     public enum Sender: String, Codable, Sendable { case me, agent }
 
-    public init(id: Int64, ts: Date? = nil, from: Sender, job: String? = nil, status: String? = nil, text: String) {
+    public init(id: Int64, ts: Date? = nil, from: Sender, job: String? = nil, status: String? = nil, text: String,
+                pending: [PendingAction] = [], cards: [Card] = []) {
         self.id = id; self.ts = ts; self.from = from; self.job = job; self.status = status; self.text = text
+        self.pending = pending; self.cards = cards
     }
 
-    enum CodingKeys: String, CodingKey { case id, ts, from, job, status, text }
+    enum CodingKeys: String, CodingKey { case id, ts, from, job, status, text, pending, cards }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         guard let id = c.int64(.id) else {
             throw DecodingError.keyNotFound(CodingKeys.id, .init(codingPath: c.codingPath, debugDescription: "no id"))
         }
+        var pendingIDs = Set<String>()
+        var cardIDs = Set<String>()
         self.init(id: id, ts: c.date(.ts), from: c.string(.from)?.lowercased() == "me" ? .me : .agent,
-                  job: c.text(.job), status: c.text(.status)?.uppercased(), text: c.string(.text) ?? "")
+                  job: c.text(.job), status: c.text(.status)?.uppercased(), text: c.string(.text) ?? "",
+                  pending: c.array(PendingAction.self, .pending).filter { pendingIDs.insert($0.id).inserted },
+                  cards: c.array(Card.self, .cards).filter { cardIDs.insert($0.id).inserted })
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -385,6 +494,8 @@ public struct ChatMessage: Codable, Sendable, Equatable, Identifiable, Hashable 
         try c.encodeIfPresent(job, forKey: .job)
         try c.encodeIfPresent(status, forKey: .status)
         try c.encode(text, forKey: .text)
+        if !pending.isEmpty { try c.encode(pending, forKey: .pending) }
+        if !cards.isEmpty { try c.encode(cards, forKey: .cards) }
     }
 
     /// A scheduled report (morning, watchdog…) rather than a reply in the conversation.
