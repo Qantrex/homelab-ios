@@ -61,7 +61,7 @@ struct HostDetailView: View {
                                         Text(mount).font(Typo.data(.body))
                                         Spacer()
                                         Text("\(pct)%").font(Typo.data(.body))
-                                            .foregroundStyle(Meter.valueColor(Double(pct) / 100))
+                                            .foregroundStyle(Meter.valueColor(HostHistory.Series.diskPct.level(of: Double(pct), cores: nil)))
                                     }
                                     Meter(Double(pct) / 100, warns: true)
                                 }
@@ -268,9 +268,7 @@ struct HistorySection: View {
         let last = history.points(series).last
         let shown = now ?? history.last(series) ?? 0
         let lo = history.min(series) ?? shown, hi = history.max(series) ?? shown
-        let limits = series.limits(cores: cores)
-        let nowColor = now.map { $0 >= limits.problem ? Palette.love : $0 >= limits.warning ? Palette.gold : Palette.text }
-            ?? Palette.tertiary
+        let nowColor = now.map { Meter.valueColor(series.level(of: $0, cores: cores)) } ?? Palette.tertiary
         let spokenNow = now.map { String(localized: "now \(series.format($0))") }
             ?? last.map { String(localized: "until \($0.date.formatted(date: .omitted, time: .shortened)): \(series.format($0.value))") }
             ?? String(localized: "no current value")
@@ -288,10 +286,10 @@ struct HistorySection: View {
                 .frame(height: 44)
             HStack(spacing: 4) {
                 Text("Min").foregroundStyle(Palette.tertiary)
-                Text(series.format(lo)).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
+                Text(series.format(lo)).font(Typo.data(.footnote)).foregroundStyle(Palette.secondary)
                 Spacer()
                 Text("Max").foregroundStyle(Palette.tertiary)
-                Text(series.format(hi)).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
+                Text(series.format(hi)).font(Typo.data(.footnote)).foregroundStyle(Palette.secondary)
             }
             .font(.footnote)
         }

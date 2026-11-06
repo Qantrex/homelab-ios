@@ -6,6 +6,11 @@ First release.
 
 App:
 
+- Lab rows: host names wrap to two lines instead of being cut, the sparkline drops first on a narrow row, the value
+  columns have a fixed width that grows with the text size, and at accessibility sizes each value gets its own
+  "Load 0.42" line. Numbers turn gold or love at the same limits as the sparkline's dot and the detail chart (load per
+  core 1x / 2x, RAM 90 / 95 %, disk 75 / 90 %, temperature 80 / 90 C); VoiceOver says "high". Meta text and light-mode
+  gold have enough contrast.
 - Find and request (feature `search`): the Actions tab has a "Find a movie or show" tile (and `homelab://search?q=`);
   the search field asks the server 400 ms after the last key (2 to 100 characters) and shows the answered cards as a
   poster grid with a Request button per title (one confirm, then it runs). New card style `poster-grid` and item
