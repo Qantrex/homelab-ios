@@ -17,8 +17,8 @@ import Testing
         }
     }
 
-    @Test func dryAndSnarkyHaveALineForEveryMoment() {
-        for p in [Personality.dry, .snarky] {
+    @Test func everyPersonalityHasALineForEveryMoment() {
+        for p in [Personality.dry, .snarky, .ultrakill] {
             for m in Voice.Moment.allCases {
                 let lines = Voice.lines(m, p)
                 #expect(!lines.isEmpty, "\(p) \(m)")
@@ -28,9 +28,9 @@ import Testing
                 #expect(lines.contains(Voice.line(m, p, on: day, calendar: Self.utc)!))
             }
         }
-        // The two personalities don't share lines.
-        let dry = Set(Voice.Moment.allCases.flatMap { Voice.lines($0, .dry) })
-        #expect(dry.isDisjoint(with: Voice.Moment.allCases.flatMap { Voice.lines($0, .snarky) }))
+        // The personalities don't share lines.
+        let sets = [Personality.dry, .snarky, .ultrakill].map { p in Set(Voice.Moment.allCases.flatMap { Voice.lines($0, p) }) }
+        #expect(sets[0].isDisjoint(with: sets[1]) && sets[0].isDisjoint(with: sets[2]) && sets[1].isDisjoint(with: sets[2]))
     }
 
     @Test func sameLineAllDayNextDayAnother() {
@@ -39,8 +39,11 @@ import Testing
         let tomorrow = Voice.line(.calm, .snarky, on: day.addingTimeInterval(30 * 3600), calendar: Self.utc)
         #expect(morning == night && morning != tomorrow)
         // Over a few days every calm line comes up.
-        let week = Set((0..<7).compactMap { Voice.line(.calm, .dry, on: day.addingTimeInterval(Double($0) * 86400), calendar: Self.utc) })
-        #expect(week == Set(Voice.lines(.calm, .dry)))
+        for p in [Personality.dry, .snarky, .ultrakill] {
+            let n = Voice.lines(.calm, p).count
+            let days = Set((0..<n).compactMap { Voice.line(.calm, p, on: day.addingTimeInterval(Double($0) * 86400), calendar: Self.utc) })
+            #expect(days == Set(Voice.lines(.calm, p)))
+        }
     }
 
     @Test func moodLevelsMapToMoments() {
