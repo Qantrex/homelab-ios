@@ -64,7 +64,9 @@ struct TodayView: View {
     // MARK: Hero
 
     private var mood: TodayMood {
-        model.selected == nil ? TodayMood(level: .unknown, headline: String(localized: "Home."), detail: nil) : TodayMood(state: state)
+        // Before the first answer: "Checking…" (grey) while it's on its way, "No signal." once it failed.
+        model.selected == nil ? TodayMood(level: .unknown, headline: String(localized: "Home."), detail: nil)
+                              : TodayMood(state: state, checking: status.error == nil)
     }
 
     /// The big "now": date, how the lab is doing in two words, the first problem. Tap opens Lab.
@@ -147,7 +149,7 @@ struct TodayView: View {
         case .report:
             if let state, model.selected != nil { lastReport(state) }
         case .machines:
-            if let state, model.selected != nil, !state.hosts.isEmpty { MachineList(hosts: state.hosts, exact: density.exactTimes) }
+            if let state, model.selected != nil, !state.hosts.isEmpty { MachineList(hosts: state.hosts, problems: state.problems, exact: density.exactTimes) }
         }
     }
 
@@ -326,6 +328,8 @@ struct DayNumbers: View {
 /// details screen.
 struct MachineList: View {
     let hosts: [Host]
+    /// The server's problems, for each host's level (`HostHealth.init(_:problems:)`).
+    let problems: [Problem]
     let exact: Bool
 
     var body: some View {
@@ -333,7 +337,7 @@ struct MachineList: View {
             SectionTitle(text: "Machines", trailing: "\(hosts.filter { $0.reachable == true }.count)/\(hosts.count) up")
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(hosts) { host in
-                    let health = HostHealth(host)
+                    let health = HostHealth(host, problems: problems)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Circle().fill(health.color).frame(width: 7, height: 7)

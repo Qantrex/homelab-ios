@@ -5,6 +5,7 @@
 # Needs once: the iPhone plugged in, unlocked (Auto-Lock off while testing), trusted, Developer Mode on, usbmuxd
 # running, `xtool auth login`. The developer disk image is mounted automatically. No root: pymobiledevice3 talks to
 # iOS 17+ through its userspace tunnel. It lives in .venv/ (created on the first run).
+# WAIT (default 4) is the time from launch to screenshot, FIRST_WAIT (default 8) the same for the first, reset shot.
 # The phone keeps its own appearance and text size; CI covers dark/light, XXL text and other screen sizes.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -13,7 +14,8 @@ install=1
 if [ "${1:-}" = --no-install ]; then install=0; shift; fi
 OUT=${1:-shots-phone}
 PMD_VERSION=11.50.0
-WAIT=${WAIT:-4}
+WAIT=${WAIT:-4}               # seconds from launch to screenshot
+FIRST_WAIT=${FIRST_WAIT:-8}   # the first (reset) shot: a fresh debug build needs longer for its first data
 
 if [ ! -x .venv/bin/pymobiledevice3 ]; then
   python3 -m venv .venv
@@ -38,11 +40,23 @@ if [ "$install" = 1 ]; then
   done
   kill -- "-$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
-  if [ "$installed" = 0 ] && ! grep -q 'Installing to device' "$log"; then
-    # Only the compiler's errors with their source lines, not the long command lines.
-    tr '\r' '\n' < "$log" | sed 's/\x1b\[[0-9;]*m//g' | grep -E '(error|warning): ' -A3 \
-      | grep -vE 'Failed frontend|swift-frontend|Command line' | head -30
+  # Only "[Installing] 100%" is an install: xtool also prints "Installing to device" before it stops at
+  # "[Provisioning]" (2026-11-06).
+  if [ "$installed" = 0 ]; then
+    clean=$(tr '\r' '\n' < "$log" | sed 's/\x1b\[[0-9;]*[A-Za-z]//g')
     rm -f "$log"
+    if grep -q 'must be revoked' <<< "$clean"; then
+      echo "xtool needs to revoke a certificate: run \`xtool dev run --usb\` once yourself and confirm, then \`scripts/phone-shots --no-install\`"
+      echo "install failed"; exit 1
+    fi
+    # The compiler's errors with their source lines (not the long command lines); else the end of the log
+    # without the progress lines.
+    errors=$(grep -E 'error: ' -A3 <<< "$clean" | grep -vE 'Failed frontend|swift-frontend|Command line' | head -30 || true)
+    if [ -n "$errors" ]; then
+      echo "$errors"
+    else
+      grep -vE '^[[:space:]]*$|[0-9]+(\.[0-9]+)?%[[:space:]]*$' <<< "$clean" | tail -20 || true
+    fi
     echo "install failed"; exit 1
   fi
   rm -f "$log"
@@ -60,6 +74,7 @@ pmd mounter auto-mount >/dev/null 2>&1 || true   # fails harmlessly when already
 mkdir -p "$OUT"
 rm -f "$OUT"/*.png
 n=0
+wait_s=$FIRST_WAIT
 shot() {   # shot NAME LAUNCH_ARGS...
   local name=$1; shift
   n=$((n + 1))
@@ -68,7 +83,7 @@ shot() {   # shot NAME LAUNCH_ARGS...
   local try
   for try in 1 2; do   # right after an install the first launch sometimes fails; once more after a pause
     if pmd developer dvt launch --userspace "$bundle $*" >/dev/null 2>&1; then
-      sleep "$WAIT"
+      sleep "$wait_s"
       if pmd developer dvt screenshot --userspace "$file" >/dev/null 2>&1; then echo "ok   $file"; return; fi
     fi
     [ "$try" = 1 ] && sleep 3
@@ -77,6 +92,7 @@ shot() {   # shot NAME LAUNCH_ARGS...
 }
 
 shot demo-today    -HomelabResetState YES -HomelabDemo YES -HomelabTab today
+wait_s=$WAIT
 for tab in actions chat lab settings; do
   shot "demo-$tab" -HomelabDemo YES -HomelabTab "$tab"
 done

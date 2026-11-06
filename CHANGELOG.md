@@ -9,7 +9,8 @@ App:
 - Today: a mood headline on top (calm when all is fine, gold or love with a glow and a haptic when not), the server's
   "today" card as a day line (clock times in order, filled up to now, countdown to the next stop), actions waiting,
   pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Calm,
-  Standard or Overkill density (Overkill adds every machine's numbers, exact times and busy jobs).
+  Standard or Overkill density (Overkill adds every machine's numbers, exact times and busy jobs). Until the first
+  answer the headline says "Checking…" in grey; "No signal." only once a fetch failed.
 - Progress in cards (downloads, now playing) as rings with the percent inside.
 - Checklist cards (to-dos): a circle per item, done ones struck through, the due day gold today and love when
   overdue; tap the circle to tick an item off (one confirm, then it runs at once; the item stays ticked until the
@@ -20,7 +21,10 @@ App:
   start that action.
 - Lab (was Overview): overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
   host details, a service launcher (opens Safari). Pull to refresh, refresh every 30 s while open, last data with its
-  age when offline.
+  age when offline. Problems and warnings are counted apart like on Today ("1 problem · 1 warning"), each problem's
+  border has its own colour, and a host the server lists a problem for takes that problem's level. On a narrow tile
+  the host name keeps its room and the state word gives way to the dot; a sleeping machine is grey, with when it was
+  last seen.
 - Lab history and containers (servers that send `history` and `container_list` on hosts): a 24 h load sparkline on
   each host tile; host details with 24 h sparklines for load, memory, temperature and the fullest disk (min, max and
   now in mono, gold or love only when the newest value is over a limit, gaps where the host was down) and the
@@ -44,7 +48,8 @@ App:
   wake-up, bike or U6, living room, restart a container.
 - Chat: chat with a homelab agent. "Working…" state, report tags, inline Markdown, copy, quick commands, 4000-character
   limit with a counter, failed messages can be edited and sent again. Proposals in a message get Approve, Always
-  and Deny in the bubble (same confirm as the Actions tab), cards in a message show small under its text.
+  and Deny in the bubble (same confirm as the Actions tab), cards in a message show small under its text. A day line
+  ("Today", "Yesterday", "Mon") above the first message of each day.
 - Home Assistant with a long-lived token: pin a few lights, switches, fans, toggles, automations, scripts, scenes,
   buttons or sensors as tiles on Today; tap to toggle or run them. No separate Home tab.
 - Settings: several servers (Homelab API or Home Assistant), Tailscale identity or token login, test connection,

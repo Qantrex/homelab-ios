@@ -114,13 +114,22 @@ struct LabView: View {
         case .ok: return String(localized: "All good")
         case .unknown: return String(localized: "Status unknown")
         case .warning, .problem:
-            let n = state.problems.count
-            return n == 1 ? String(localized: "1 problem") : String(localized: "\(n) problems")
+            // Counted like Today's mood: warnings apart (they go in the subline).
+            let t = ProblemTally(state)
+            if t.problems > 0 { return t.problems == 1 ? String(localized: "1 problem") : String(localized: "\(t.problems) problems") }
+            if t.warnings > 0 { return t.warnings == 1 ? String(localized: "1 warning") : String(localized: "\(t.warnings) warnings") }
+            return String(localized: "Warning")
         }
     }
 
     private var sublines: [String] {
         var parts: [String] = []
+        if let state, state.status == .warning || state.status == .problem {
+            let t = ProblemTally(state)
+            if t.problems > 0, t.warnings > 0 {
+                parts.append(t.warnings == 1 ? String(localized: "1 warning") : String(localized: "\(t.warnings) warnings"))
+            }
+        }
         if let checked = state?.checked { parts.append(String(localized: "checked \(Format.age(checked))")) }
         if let fetched = status.snapshot?.fetched, status.snapshot?.isStale() == true {
             parts.append(String(localized: "updated \(Format.age(fetched))"))
@@ -148,8 +157,8 @@ struct LabView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
+                    .card(accent: p.severity.color)   // each card its own severity
                 }
-                .card(accent: state.problems.contains { $0.severity != .warning } ? Palette.love : Palette.gold)
             }
         }
 
@@ -176,7 +185,7 @@ struct LabView: View {
                 LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
                                                                 : [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
                     ForEach(state.hosts) { host in
-                        NavigationLink(value: host) { HostTile(host: host) }
+                        NavigationLink(value: host) { HostTile(host: host, health: state.health(of: host)) }
                             .buttonStyle(.press)
                     }
                 }
@@ -225,17 +234,28 @@ struct StatePolling: ViewModifier {
 
 struct HostTile: View {
     let host: Host
+    /// With the server's problems for this host (`HomelabState.health(of:)`).
+    let health: HostHealth
+
+    /// Flags the tile lists below the numbers; "asleep" is already the state word.
+    private var shownFlags: [String] { host.flags.filter { $0 != "asleep" } }
 
     var body: some View {
-        let health = HostHealth(host)
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(Palette.secondary)
+                // The name first; the state word only where it still fits (the dot and VoiceOver keep the state).
                 Text(host.name).font(Typo.mono(.subheadline, weight: .semibold)).lineLimit(1)
+                    .layoutPriority(2)
                 Spacer(minLength: 0)
                 // Colour plus a word, so the state doesn't depend on seeing colour.
                 if health != .ok {
-                    Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color).lineLimit(1)
+                    ViewThatFits(in: .horizontal) {
+                        Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color)
+                            .lineLimit(1).fixedSize()
+                        Color.clear.frame(width: 0, height: 0)
+                    }
+                    .layoutPriority(1)
                 }
                 Circle().fill(health.color).frame(width: 7, height: 7)
             }
@@ -258,13 +278,20 @@ struct HostTile: View {
                     }
                 }
             } else {
-                Text(health.label).font(Typo.mono(.caption)).foregroundStyle(health.color)
+                // A sleeping machine: the header already says so. A down one keeps its word here too, in case the
+                // header had no room for it.
+                if health != .asleep {
+                    Text(health.label).font(Typo.mono(.caption)).foregroundStyle(health.color)
+                }
+                if let checked = host.checked {
+                    Text("last seen \(Format.age(checked))").font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
+                }
                 Spacer(minLength: 0)
             }
-            if !host.flags.isEmpty {
-                Text(host.flags.map(Format.flag).joined(separator: ", "))
+            if !shownFlags.isEmpty {
+                Text(shownFlags.map(Format.flag).joined(separator: ", "))
                     .font(.caption2)
-                    .foregroundStyle(host.flags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)
+                    .foregroundStyle(shownFlags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)
                     .lineLimit(2)
             }
         }
@@ -279,7 +306,10 @@ struct HostTile: View {
 
     /// What VoiceOver reads after the name: the numbers the tile shows.
     private var spokenMetrics: String {
-        guard host.reachable == true else { return host.flags.map(Format.flag).joined(separator: ", ") }
+        guard host.reachable == true else {
+            let seen = host.checked.map { [String(localized: "last seen \(Format.age($0))")] } ?? []
+            return (seen + shownFlags.map(Format.flag)).joined(separator: ", ")
+        }
         var parts = [String(localized: "load \(Format.load(host.load))"), String(localized: "memory \(Format.percent(host.memPct))")]
         if let d = Format.worstDisk(host.disks) { parts.append(String(localized: "disk \(d.mount) \(d.percent) percent")) }
         if host.temp != nil { parts.append(Format.temperature(host.temp)) }
@@ -289,7 +319,7 @@ struct HostTile: View {
         if let h = host.history, let lo = h.min(.load), let hi = h.max(.load) {
             parts.append(String(localized: "load 24 h: min \(Format.load(lo)), max \(Format.load(hi))"))
         }
-        parts += host.flags.map(Format.flag)
+        parts += shownFlags.map(Format.flag)
         return parts.joined(separator: ", ")
     }
 

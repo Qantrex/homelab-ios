@@ -12,6 +12,24 @@ import Testing
         #expect(m.level == .unknown && m.headline == "No signal." && m.detail == nil)
     }
 
+    @Test func checkingWhileTheFirstFetchRuns() {
+        let m = TodayMood(state: nil, checking: true)
+        #expect(m.level == .unknown && m.headline == "Checking…" && m.detail == nil)
+        // Once there is data, checking doesn't matter.
+        #expect(TodayMood(state: HomelabState(status: .ok), checking: true).headline == "All quiet.")
+    }
+
+    @Test func tallyCountsProblemsAndWarningsApart() throws {
+        let s = try #require(Fixtures.decode(HomelabState.self, "state-problem.json"))
+        #expect(ProblemTally(s) == ProblemTally(problems: 1, warnings: 1))
+        let warnings = HomelabState(status: .warning, problems: [Problem(text: "a", severity: .warning), Problem(text: "b", severity: .warning)])
+        #expect(ProblemTally(warnings) == ProblemTally(problems: 0, warnings: 2))
+        // A problem status always counts at least one problem.
+        #expect(ProblemTally(HomelabState(status: .problem)) == ProblemTally(problems: 1, warnings: 0))
+        #expect(ProblemTally(HomelabState(status: .problem, problems: [Problem(text: "a", severity: .warning)]))
+                == ProblemTally(problems: 1, warnings: 1))
+    }
+
     @Test func calmCountsMachinesButNotSleepingOnes() {
         let m = TodayMood(state: HomelabState(status: .ok, hosts: [up, up, asleep]))
         #expect(m.level == .calm && m.headline == "All quiet." && m.detail == "2 of 2 machines up")

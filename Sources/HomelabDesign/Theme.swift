@@ -7,8 +7,8 @@ import UIKit
 // Colours, icons and small building blocks shared by the app and the widget.
 //
 // The look (owner, 2026-11-05): true black, monochrome white/grey type, numbers in a mono font, thin borders instead
-// of filled cards. Colour only for status, from Rosé Pine Moon: love = problem, gold = warning, iris = links and
-// "asleep". No blue anywhere. Light mode is the same in white/black. Change colours here only.
+// of filled cards. Colour only for status, from Rosé Pine Moon: love = problem, gold = warning, iris = links. A
+// sleeping machine is plain grey (tapping it doesn't wake it). No blue anywhere. Light mode is the same in white/black. Change colours here only.
 
 /// Every colour the app and the widget use.
 public enum Palette {
@@ -99,7 +99,7 @@ public extension HostHealth {
         case .ok: Palette.text
         case .warning: Palette.gold
         case .problem: Palette.love
-        case .asleep: Palette.iris
+        case .asleep: Palette.secondary
         case .unknown: Palette.tertiary
         }
     }

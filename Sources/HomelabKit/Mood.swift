@@ -25,29 +25,47 @@ public struct TodayMood: Equatable, Sendable {
         self.warnings = warnings
     }
 
-    /// `state` nil means nothing loaded yet.
-    public init(state: HomelabState?) {
+    /// `state` nil means nothing loaded yet: `checking` while the first fetch is still on its way ("Checking…"),
+    /// else the fetch failed ("No signal.").
+    public init(state: HomelabState?, checking: Bool = false) {
         guard let state else {
-            self.init(level: .unknown, headline: "No signal.", detail: nil)
+            self.init(level: .unknown, headline: checking ? "Checking…" : "No signal.", detail: nil)
             return
         }
         let hosts = state.hosts.filter { HostHealth($0) != .asleep }   // a sleeping PC is not "down"
         let up = hosts.filter { $0.reachable == true }.count
         let machines = hosts.isEmpty ? nil : "\(up) of \(hosts.count) machines up"
-        let problems = state.problems.filter { $0.severity != .warning }
-        let first = (problems.first ?? state.problems.first)?.text
+        let first = (state.problems.first { $0.severity != .warning } ?? state.problems.first)?.text
+        let tally = ProblemTally(state)
         switch state.status {
         case .ok:
             self.init(level: .calm, headline: "All quiet.", detail: machines)
-        case .warning where problems.isEmpty:
-            self.init(level: .headsUp, headline: "Heads up.", detail: first ?? machines, warnings: state.problems.count)
+        case .warning where tally.problems == 0:
+            self.init(level: .headsUp, headline: "Heads up.", detail: first ?? machines, warnings: tally.warnings)
         case .warning, .problem:
-            let n = max(problems.count, state.problems.isEmpty ? 1 : 0)
-            let headline = n <= 1 ? "1 problem." : "\(n) problems."
-            self.init(level: .alarm, headline: headline, detail: first ?? machines,
-                      warnings: state.problems.count - problems.count)
+            let headline = tally.problems == 1 ? "1 problem." : "\(tally.problems) problems."
+            self.init(level: .alarm, headline: headline, detail: first ?? machines, warnings: tally.warnings)
         case .unknown:
             self.init(level: .unknown, headline: "Status unknown.", detail: machines)
         }
+    }
+}
+
+/// The lab's problems and warnings, counted the same way on Today (the mood) and in Lab (the header).
+public struct ProblemTally: Equatable, Sendable {
+    /// Listed problems (severity problem). At least 1 when the server's status is `problem`, even if it lists
+    /// only warnings or nothing.
+    public var problems: Int
+    /// Listed warnings.
+    public var warnings: Int
+
+    public init(problems: Int, warnings: Int) {
+        self.problems = problems
+        self.warnings = warnings
+    }
+
+    public init(_ state: HomelabState) {
+        let p = state.problems.filter { $0.severity != .warning }.count
+        self.init(problems: state.status == .problem ? max(p, 1) : p, warnings: state.problems.count - p)
     }
 }

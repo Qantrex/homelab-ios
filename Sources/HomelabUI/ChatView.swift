@@ -133,7 +133,16 @@ struct ChatView: View {
                         Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right", message: emptyMessage)
                             .padding(.top, 40)
                     }
+                    let days = chat.timeline.dayHeaders()
                     ForEach(chat.timeline.messages) { m in
+                        if let day = days[m.id] {
+                            // "TODAY", "YESTERDAY": a message from 23:50 doesn't read as this morning.
+                            Text(day.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).tracking(1.5)
+                                .foregroundStyle(Palette.tertiary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 6)
+                                .accessibilityAddTraits(.isHeader)
+                        }
                         Bubble(message: m, pending: chat.timeline.openPending(m, in: model.selectedStatus.snapshot), running: model.proposalsSending,
                                model: model) { p, verb in
                             confirm = ProposalConfirmation(action: p, verb: verb)

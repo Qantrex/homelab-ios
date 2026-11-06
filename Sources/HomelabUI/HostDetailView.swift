@@ -19,7 +19,7 @@ struct HostDetailView: View {
 
     var body: some View {
         let host = current
-        let health = HostHealth(host)
+        let health = model.selectedStatus.snapshot?.state.health(of: host) ?? HostHealth(host)
         List {
             Group {
                 Section {

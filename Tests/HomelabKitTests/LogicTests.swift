@@ -136,6 +136,27 @@ import Testing
         #expect(PollPolicy.backoff(failures: 3) == .seconds(20))
         #expect(PollPolicy.backoff(failures: 30) == .seconds(120))
     }
+
+    @Test func dayHeadersAboveTheFirstMessageOfEachDay() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = try #require(TimeZone(identifier: "Europe/Vienna"))
+        func at(_ day: Int, _ hour: Int, _ minute: Int = 0) -> Date {
+            cal.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour, minute: minute))!
+        }
+        var t = ChatTimeline()
+        t.merge(MessagePage(messages: [
+            ChatMessage(id: 1, ts: at(1, 9), from: .agent, text: "a"),        // Sunday, 5 days back
+            ChatMessage(id: 2, ts: at(4, 12), from: .agent, text: "b"),       // 2 days back: weekday
+            ChatMessage(id: 3, ts: at(5, 23, 50), from: .agent, text: "Morning."),
+            ChatMessage(id: 4, from: .me, text: "no time"),
+            ChatMessage(id: 5, ts: at(6, 15), from: .me, text: "c"),
+            ChatMessage(id: 6, ts: at(6, 15, 1), from: .agent, text: "d"),
+        ]))
+        let h = t.dayHeaders(now: at(6, 15, 20), calendar: cal)
+        #expect(h == [1: "Sun", 2: "Wed", 3: "Yesterday", 5: "Today"])
+        #expect(t.dayHeaders(now: at(20, 12), calendar: cal)[1] == "01.11.")
+        #expect(ChatTimeline().dayHeaders().isEmpty)
+    }
 }
 
 @Suite struct StorageTests {
@@ -216,7 +237,7 @@ import Testing
 
     @Test func numbers() {
         #expect(Format.percent(nil) == "–" && Format.percent(42) == "42%")
-        #expect(Format.temperature(52.6) == "53 °C")
+        #expect(Format.temperature(52.6) == "53\u{202F}°C")   // narrow no-break space, no wide gap in mono
         #expect(Format.load(0.4) == "0.40")
         #expect(Format.loadShare(2, cores: 4) == 0.5 && Format.loadShare(2, cores: nil) == 2)
         #expect(Format.containers(up: 3, total: 4) == "3/4" && Format.containers(up: nil, total: nil) == "–")
@@ -243,6 +264,21 @@ import Testing
         #expect(HostHealth(Host(id: "x", reachable: false)) == .problem)
         #expect(HostHealth(Host(id: "x")) == .unknown)
         #expect(HostHealth(Host(id: "x", reachable: true, flags: ["undervoltage_now"])) == .problem)
+    }
+
+    @Test func hostHealthTakesTheServersProblemsForTheHost() throws {
+        let s = try fixture(HomelabState.self, "state-problem.json")
+        let h = Dictionary(uniqueKeysWithValues: s.hosts.map { ($0.id, s.health(of: $0)) })
+        #expect(h["media"] == .problem)     // "container sonarr is unhealthy" is a problem, not just 10/11 up
+        #expect(h["pi"] == .warning)        // its listed problem is a warning
+        #expect(h["server"] == .ok && h["gpu"] == .asleep)
+        // Never lower than the host's own level, and only problems of this host count.
+        let down = Host(id: "x", reachable: false)
+        #expect(HostHealth(down, problems: [Problem(text: "x: slow", host: "x", severity: .warning)]) == .problem)
+        let fine = Host(id: "y", reachable: true)
+        #expect(HostHealth(fine, problems: [Problem(text: "x: down", host: "x")]) == .ok)
+        #expect(HostHealth(fine, problems: [Problem(text: "y: hot", host: "y", severity: .warning)]) == .warning)
+        #expect(HostHealth(fine, problems: [Problem(text: "y: hot", host: "y", severity: .warning), Problem(text: "y: down", host: "y")]) == .problem)
     }
 }
 

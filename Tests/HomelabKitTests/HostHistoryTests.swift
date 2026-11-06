@@ -178,7 +178,7 @@ import Testing
         #expect(limits.map(\.problem) == [8, 2, 90, 90])
         #expect(HostHistory.Series.load.format(1.849) == "1.85")
         #expect(HostHistory.Series.memPct.format(70.6) == "71%")
-        #expect(HostHistory.Series.temp.format(63.2) == "63 °C")
+        #expect(HostHistory.Series.temp.format(63.2) == "63\u{202F}°C")
     }
 
     // MARK: Restart from Lab

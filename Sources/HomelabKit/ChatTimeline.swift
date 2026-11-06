@@ -92,6 +92,35 @@ public struct ChatTimeline: Sendable, Equatable {
         received = [:]
     }
 
+    /// The day line above the first message of each day, by message id: "Today", "Yesterday", "Mon" within a week,
+    /// else "03.11.". Messages without a time get none and don't start a day.
+    public func dayHeaders(now: Date = Date(), calendar: Calendar = .current) -> [Int64: String] {
+        var out: [Int64: String] = [:]
+        var current: Date?
+        for m in messages {
+            guard let ts = m.ts else { continue }
+            let day = calendar.startOfDay(for: ts)
+            guard day != current else { continue }
+            current = day
+            out[m.id] = Self.dayLabel(day, now: now, calendar: calendar)
+        }
+        return out
+    }
+
+    static func dayLabel(_ day: Date, now: Date, calendar: Calendar) -> String {
+        let ago = calendar.dateComponents([.day], from: day, to: calendar.startOfDay(for: now)).day ?? 0
+        switch ago {
+        case 0: return "Today"
+        case 1: return "Yesterday"
+        case 2...6:
+            let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+            return weekdays[(calendar.component(.weekday, from: day) - 1 + 7) % 7]
+        default:
+            let d = calendar.dateComponents([.day, .month], from: day)
+            return String(format: "%02d.%02d.", d.day ?? 0, d.month ?? 0)
+        }
+    }
+
     /// The proposals `message` still offers buttons for. The chat only loads messages newer than the last one, so
     /// an older message keeps proposals answered since (here, in the Actions tab or elsewhere). A state fetched after
     /// the message's page came in is newer: it decides which are still open. A proposal counts as the same one only

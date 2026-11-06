@@ -110,10 +110,14 @@ public enum Format {
         value.map { "\($0)%" } ?? "–"
     }
 
+    /// "63 °C" with a narrow no-break space (U+202F): no wide gap in mono chips, never a line break before the unit.
     public static func temperature(_ celsius: Double?) -> String {
         guard let celsius else { return "–" }
-        return "\(Int(celsius.rounded())) °C"
+        return "\(Int(celsius.rounded()))\(unitSpace)°C"
     }
+
+    /// Between a number and its unit ("63 °C", "21.4 kWh"). Percent goes without a space ("71%").
+    public static let unitSpace = "\u{202F}"
 
     public static func load(_ load: Double?) -> String {
         guard let load else { return "–" }
@@ -190,4 +194,28 @@ public enum HostHealth: Sendable, Equatable {
         if !host.flags.isEmpty { self = .warning; return }
         self = .ok
     }
+
+    /// The host's own level, raised by the server's problems for it (`Problem.host == host.id`): the worst of both.
+    /// A down container is only a warning by the numbers, but when the server calls it a problem, so does the tile.
+    public init(_ host: Host, problems: [Problem]) {
+        let own = HostHealth(host)
+        let mine = problems.filter { $0.host == host.id }
+        guard !mine.isEmpty else { self = own; return }
+        let listed: HostHealth = mine.contains { $0.severity != .warning } ? .problem : .warning
+        self = listed.rank > own.rank ? listed : own
+    }
+
+    /// Worse is higher; asleep, unknown and ok are all below a warning.
+    private var rank: Int {
+        switch self {
+        case .problem: 2
+        case .warning: 1
+        case .ok, .asleep, .unknown: 0
+        }
+    }
+}
+
+public extension HomelabState {
+    /// A host's level with this state's problems (`HostHealth.init(_:problems:)`).
+    func health(of host: Host) -> HostHealth { HostHealth(host, problems: problems) }
 }
