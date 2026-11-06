@@ -92,8 +92,10 @@ the signed button again in its data, never keeps it in the notification) and the
 approved restart server jellyfin" with the server's answer, or why it didn't go through ("No longer valid" when it was
 answered elsewhere). Tapping a notification still opens Actions.
 
-With the **app lock** on there are no buttons: the notification only says "An action is waiting for you." and you
-answer it in the app, after Face ID. A press on an older notification after the lock was turned on is refused ("The
-app lock is on: open Homelab to answer.").
+With the **app lock** on the buttons stay: the notification names the action, and Approve or Deny runs only after
+Face ID or the passcode (iOS asks for it before the press). iOS hides notification previews on the locked lock screen
+by default (Settings → Notifications → Show Previews: When Unlocked), so the name shows once Face ID has recognised you;
+with "Always" it would show on the locked screen too. The result notification then only says "Approved. Open the app
+for the answer." Other notifications stay vague with the lock on ("Something needs a look.").
 
 Notifications come only as often as iOS runs the background refresh (every 20 minutes at best, often less).

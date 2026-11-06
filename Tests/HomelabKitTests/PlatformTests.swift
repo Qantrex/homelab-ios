@@ -217,15 +217,44 @@ import Testing
 
     private func state() throws -> HomelabState { try fixture(HomelabState.self, "state-pending.json") }
 
-    @Test func categoriesFollowTheButtonsAndTheLock() throws {
+    @Test func categoriesFollowTheButtons() throws {
         let p = try state().pending
-        #expect(ProposalNotice.category(for: p[0], hidden: false) == .approveDeny)   // Always stays in the app
-        #expect(ProposalNotice.category(for: p[0], hidden: true) == nil)             // lock on: no buttons
-        #expect(ProposalNotice.category(for: p[3], hidden: false) == nil)            // information only
-        #expect(ProposalNotice.category(for: PendingAction(id: "x", buttons: [.approve: "s"]), hidden: false) == .approve)
-        #expect(ProposalNotice.category(for: PendingAction(id: "x", buttons: [.deny: "s", .always: "t"]), hidden: false) == .deny)
+        #expect(ProposalNotice.category(for: p[0]) == .approveDeny)   // Always stays in the app
+        #expect(ProposalNotice.category(for: p[3]) == nil)            // information only
+        #expect(ProposalNotice.category(for: PendingAction(id: "x", buttons: [.approve: "s"])) == .approve)
+        #expect(ProposalNotice.category(for: PendingAction(id: "x", buttons: [.deny: "s", .always: "t"])) == .deny)
         #expect(ProposalNotice.Category.approveDeny.verbs == [.approve, .deny])
         #expect(Set(ProposalNotice.Category.allCases.map(\.rawValue)).count == 3)
+    }
+
+    /// Owner, 2026-11-06: with the app lock on, a proposal keeps Approve / Deny (iOS asks for Face ID before a press)
+    /// and may name its action (iOS hides previews on the locked lock screen by default). Everything else stays vague.
+    @Test func withTheLockOnlyAnswerableProposalsNameTheirAction() throws {
+        let p = try state().pending
+        let proposal = AlertTracker.Alert(id: "pending-pa01", kind: .pending, title: "lab: approve \(p[0].title)?",
+                                          body: "Disk almost full.", moment: .waiting, proposal: p[0])
+        let open = ProposalNotice.content(for: proposal, locked: false, voice: .snarky)
+        #expect(open.title == proposal.title && open.body == "Disk almost full." && open.category == .approveDeny)
+        #expect(open.subtitle != nil)                                    // the personality's line
+        let locked = ProposalNotice.content(for: proposal, locked: true, voice: .snarky)
+        #expect(locked.title == proposal.title && locked.body == "Disk almost full.")
+        #expect(locked.category == .approveDeny && locked.subtitle == nil)
+
+        // Information only (no buttons): nothing to answer on the lock screen, so it stays vague.
+        let info = AlertTracker.Alert(id: "pending-pa04", kind: .pending, title: "lab: approve \(p[3].title)?",
+                                      body: "Reboot.", moment: .waiting, proposal: p[3])
+        let lockedInfo = ProposalNotice.content(for: info, locked: true)
+        #expect(lockedInfo == .init(title: "Homelab", subtitle: nil, body: "An action is waiting for you.", category: nil))
+        #expect(ProposalNotice.content(for: info, locked: false).title == info.title)
+
+        // Problems and the summary: vague with the lock on, as before.
+        let problem = AlertTracker.Alert(id: "problem-1", kind: .problem, title: "lab: problem", body: "nas: disk 97%",
+                                         moment: .alarm)
+        let lockedProblem = ProposalNotice.content(for: problem, locked: true, voice: .snarky)
+        #expect(lockedProblem == .init(title: "Homelab", subtitle: nil, body: "Something needs a look.", category: nil))
+        let summary = AlertTracker.Alert(id: "summary-1", kind: .summary, title: "lab", body: "3 more new items.")
+        #expect(ProposalNotice.content(for: summary, locked: true).body == "Something needs a look.")
+        #expect(ProposalNotice.content(for: problem, locked: false).body == "nas: disk 97%")
     }
 
     @Test func requestsComeOnlyFromOurButtonsAndIds() {

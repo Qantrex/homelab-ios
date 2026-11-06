@@ -1,13 +1,17 @@
 import Foundation
 
 /// Approve / Deny right on a "waiting for you" notification. The background refresh posts the notification with a
-/// category that names the buttons the proposal has; pressing one (after the phone is unlocked) runs `press` from the
-/// notification response handler and posts a short result notification (`message`).
+/// category that names the buttons the proposal has; pressing one (after Face ID or the passcode: the actions are
+/// `authenticationRequired`) runs `press` from the notification response handler and posts a short result
+/// notification (`message`).
 ///
 /// The signed buttons never go into the notification: it carries only the server id and the proposal id, and the
-/// button is looked up again in the cached state (or a fresh one) when it is pressed. With the app lock on there are
-/// no buttons (the notification can't say what would run), and a press that arrives after the lock was turned on is
-/// refused.
+/// button is looked up again in the cached state (or a fresh one) when it is pressed.
+///
+/// With the app lock on, a proposal that gets buttons still names its action (owner, 2026-11-06: "the approve deny
+/// buttons should show on lock screen notifications after face id is detected"): nobody can answer what they can't
+/// read. It relies on iOS hiding notification previews on the locked lock screen ("Show Previews: When Unlocked", the
+/// default), and the press itself needs Face ID. Every other notification stays vague with the lock on (`content`).
 public enum ProposalNotice {
     public static let approveAction = "com.qantrex.homelab.approve"
     public static let denyAction = "com.qantrex.homelab.deny"
@@ -28,10 +32,9 @@ public enum ProposalNotice {
         }
     }
 
-    /// The category for `proposal`'s notification, or nil for a plain one: no approve or deny button, or `hidden`
-    /// (the app lock is on).
-    public static func category(for proposal: PendingAction, hidden: Bool) -> Category? {
-        guard !hidden else { return nil }
+    /// The category for `proposal`'s notification, or nil for a plain one (no approve or deny button). The same with
+    /// the app lock on: iOS asks for Face ID before it runs a press.
+    public static func category(for proposal: PendingAction) -> Category? {
         switch (proposal.buttons[.approve] != nil, proposal.buttons[.deny] != nil) {
         case (true, true): return .approveDeny
         case (true, false): return .approve
@@ -132,8 +135,32 @@ public enum ProposalNotice {
         }
     }
 
-    /// Refused because the app lock was turned on after the notification came.
-    public static let lockedMessage = (title: "Homelab", body: "The app lock is on: open Homelab to answer.")
+    /// What a background-refresh notification shows.
+    public struct Content: Sendable, Equatable {
+        public var title: String
+        /// The personality's line; never with the app lock on.
+        public var subtitle: String?
+        public var body: String
+        /// Approve / Deny for a proposal that has them.
+        public var category: Category?
+
+        public init(title: String, subtitle: String?, body: String, category: Category?) {
+            self.title = title; self.subtitle = subtitle; self.body = body; self.category = category
+        }
+    }
+
+    /// The notification for `alert`. `locked` (the app lock is on): a problem or a summary only says that something
+    /// needs a look, and a proposal without buttons that an action waits; a proposal with Approve / Deny names its
+    /// action and keeps its buttons, so it can be answered after Face ID (see the type's comment).
+    public static func content(for alert: AlertTracker.Alert, locked: Bool, voice: Personality = .off) -> Content {
+        let buttons = alert.proposal.flatMap { Self.category(for: $0) }
+        if locked && buttons == nil {
+            let body = alert.kind == .pending ? "An action is waiting for you." : "Something needs a look."
+            return Content(title: "Homelab", subtitle: nil, body: body, category: nil)
+        }
+        let line = locked ? nil : alert.moment.flatMap { Voice.line($0, voice) }
+        return Content(title: alert.title, subtitle: line, body: alert.body, category: buttons)
+    }
 
     static func short(_ text: String) -> String {
         let one = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
