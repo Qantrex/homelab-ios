@@ -534,6 +534,7 @@ components:
         icon: { type: string, description: SF Symbol name. }
         hint: { type: string, description: One line under the form. }
         destructive: { type: boolean, description: The app asks with a red button. }
+        start: { type: boolean, default: true, description: "false = no Start tile; the action is only used through card/item actions (todo-done, parcel-done)." }
         arg:
           type: array
           description: Ways to build the argument; the form offers a picker when there are several. Missing = none.
@@ -577,6 +578,7 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ActionOption" }
         placeholder: { type: string }
+        hidden: { type: boolean, default: false, description: "Never shown and never asked for. The app sends it only when a card/item action prefilled it (a to-do's uid); a Start tile sends no hidden field." }
         hidden_when:
           type: object
           description: "Other field name -> values of it. While that field holds one of them the app hides this field and doesn't send it (Due on the shopping list). Unknown names and non-list values are ignored."

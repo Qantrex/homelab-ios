@@ -21,7 +21,7 @@ struct ActionsView: View {
     private var canScan: Bool { model.selected != nil && model.selectedStatus.features.contains(.documents) }
     private var pending: [PendingAction] { model.selectedStatus.snapshot?.state.pending ?? [] }
     private var startable: [ActionSpec] {
-        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions : []
+        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
     }
     private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
     private var nothingToApprove: LocalizedStringKey {

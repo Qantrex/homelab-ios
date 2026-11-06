@@ -149,7 +149,8 @@ struct CardView: View {
         case .metrics:
             metrics
         case .list:
-            rows(card.items) { itemRow($0) }
+            // An item ticked off here (a delivered parcel) disappears until the server's list catches up.
+            rows(card.items.filter { !ticked.covers($0) }) { itemRow($0) }
         case .checklist:
             // Redrawn every minute, so "today 18:00" turns love when it passes.
             TimelineView(.everyMinute) { context in
@@ -220,10 +221,36 @@ struct CardView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityValue(item.progress.map { Text("\(Format.ringPercent($0)) percent") } ?? Text(""))
-        if let url = item.url {
-            Button { openURL(url) } label: { row }.buttonStyle(.plain)
+        let main = Group {
+            if let url = item.url {
+                Button { openURL(url) } label: { row }.buttonStyle(.plain)
+            } else {
+                row
+            }
+        }
+        if let action = item.action, let spec = model?.startable(action) {
+            // A row with its own action (a parcel's "Delivered"): the button at the end asks first, like a checklist tick.
+            let tick = TickOff(item: item, action: action, spec: spec)
+            let busy = running.contains(action)
+            HStack(alignment: .center, spacing: 10) {
+                main
+                Button { ask = tick } label: {
+                    Group {
+                        if busy { ProgressView().controlSize(.small) } else { Text(tick.verb).lineLimit(1) }
+                    }
+                    .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
+                    .foregroundStyle(Palette.text)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Palette.raised, in: Capsule())
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.press)
+                .fixedSize()
+                .disabled(busy)
+                .accessibilityLabel(Text("\(tick.verb) \(item.title ?? "")"))
+            }
         } else {
-            row
+            main
         }
     }
 

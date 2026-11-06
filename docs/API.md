@@ -167,6 +167,16 @@ output. It must check everything again; the form only keeps obviously wrong inpu
 | `destructive` | The confirm button is red |
 | `hint` | One line under the form |
 
+A field may carry `"hidden": true` (a to-do's `uid`): the app never shows it and never asks for it, but when an action is
+started from a card or an item (`action.payload`), every prefilled value of a known field is sent, hidden ones included.
+A form started from a Start tile sends no hidden field. An action may carry `"start": false` (missing = true): no Start
+tile, only card and item actions use it (`todo-done`, `read-later-done`, `parcel-done`). A parcel item in a list card can
+carry `action: {"name": "parcel-done", "label": "Delivered", "arg": "<parcel id>"}` (a trailing button, with a confirm) and
+`url` (its tracking page, https, opened on tap). `wake-set` may offer a third variant `{Day}:clear` ("Normal").
+
+Links from pushes and notifications: `homelab://today`, `homelab://actions`, `homelab://chat`, `homelab://lab` open that
+tab (`overview` and `home` still open Today).
+
 The result shows as an alert: `ok` false is an error, `running` says the result will come in the chat. A variant
 with a part kind the app doesn't know is dropped; an action left with no usable variant is not shown.
 

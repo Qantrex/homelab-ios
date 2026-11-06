@@ -50,6 +50,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O7 | Restart a container | Restart only on containers from the host's restart list (none when the server has no `restart-container`). Tap → "Restart `<name>`?" with a red Restart → spinner in the row → alert "Restarted `<name>`" with the agent's output, success haptic. Until the host's next check (up to ~10 min) the row says "restarted HH:MM, waiting for the next check" and has no Restart button; after that check its state is running (demo: checked at once, so no such line). A refused restart: "Restart of `<name>` failed" or "Didn't run", error haptic | | |
 | O8 | Overkill machines | Settings → Detail → Overkill: under each machine's numbers on Today a thin 24 h load line | | |
 | O9 | Cards | Server cards show (title, icon, items or text). A card item with a link opens Safari | | |
+| O9b | Parcels | Each parcel row has a trailing "Delivered" button: tap → "Delivered Keyboard?" → Delivered → the row disappears, the next state has no such parcel. A parcel with a tracking link opens it on tap (Safari); one without does nothing | | |
 | O10 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked at once and stays ticked (not tappable) until the server's list drops it (HA too, up to 3 min). A to-do with double spaces in its text ticks off too. Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
 | O11 | Card button | To-dos "+ ADD" → the Add a to-do form. List: the card's list when the server sends one in the card action's `payload` (`{"list": "todo"}`), else "–" (pick one); both are fine → Run → sheet closes, alert with the agent's answer | | |
 | O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
@@ -72,6 +73,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | A9 | Start: a form | Wake-up: "Wake me" / "No wake-up" switch, day picker starts at tomorrow, time at 07:00, the argument in mono under it (`2026-11-07T07:00`). Add a to-do with an empty To-do: Run → gold "To-do is missing." and a warning haptic, nothing sent. Due switch on → a day; "At a time" on → a time | | |
 | A10 | Start: run | Add a to-do "Test from the app" → confirm shows the fields and "Runs at once on …" → Run now → sheet closes, alert "Add a to-do" with the agent's output, success haptic. The to-do is in HA; the chat shows what I started and the result. Restart a container asks with a red button | | |
 | A11 | Start: refused | Restart a container with a name not on the host's list → alert "Restart a container failed" with the helper's output; error haptic | | |
+| A13 | Hidden uid and card-only actions | Start grid has no "Tick off a to-do", "Parcel delivered" or read-later-done tile. Tick off a to-do that has a twin with the same text: only the ticked one is done (needs the server's hidden `uid`) | | |
+| A14 | Wake-up: Normal | Wake-up form → "Normal" → a day: arg `2026-11-07:clear`; after Run the one-off for that day is gone (HA helpers off) | | |
 | A12 | Start: link | `homelab://actions/wake-set` (Safari or Shortcuts) opens the app on Actions with the Wake-up form. Right after a reset (before the server's info), open the link and tap another tab at once: the form doesn't pop up later | | |
 
 ## Scan and share
@@ -138,6 +141,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | B1 | Off by default | Settings → Notifications: both toggles off on a fresh install | | |
 | B2 | Permission prompt | Turn on "New problems": iOS asks once. Deny → the note "Notifications are off for Homelab…" and the toggle stays off | | |
 | B3 | Background runs | After a day of normal use: Diagnostics → Background → Last run has a time and Result starts with "ok" | | |
+| B3b | Push opens the app | Tap a push whose link is `homelab://chat` / `actions` / `lab` / `today`: the app opens on that tab (also from a cold start) | | |
 | B4 | One notification per new problem | Make a problem (stop a checked service): one notification "`<server>`: problem" within the next runs | | |
 | B5 | No repeats | The same problem never notifies again while it lasts | | |
 | B6 | New action | A new pending action gives "`<server>`: approve …?". Tapping it opens Actions | | |
