@@ -9,6 +9,11 @@ public struct ChatTimeline: Sendable, Equatable {
         public var text: String
         public var created: Date
         public var state: State
+
+        var failed: Bool {
+            if case .failed = state { return true }
+            return false
+        }
     }
 
     public private(set) var messages: [ChatMessage] = []
@@ -20,10 +25,39 @@ public struct ChatTimeline: Sendable, Equatable {
 
     public static let keep = 500
 
+    /// "Clear" in the chat hides the messages up to this id on this phone (`clear`). The server keeps them: no
+    /// server in this project has a command that deletes its chat, so the app doesn't pretend to.
+    public private(set) var clearedThrough: Int64 = 0
+
     public init() {}
 
-    /// The id to poll after.
-    public var cursor: Int64 { messages.last?.id ?? 0 }
+    /// The id to poll after: the newest message, or the newest cleared one when nothing came since.
+    public var cursor: Int64 { max(messages.last?.id ?? 0, clearedThrough) }
+
+    /// Something is on screen that Clear would hide.
+    public var canClear: Bool { !messages.isEmpty || outgoing.contains(where: \.failed) }
+
+    /// Hides everything shown now (and failed sends); a message still on its way stays. Polling goes on after the
+    /// newest hidden id, so only newer messages come in.
+    public mutating func clear() {
+        clearedThrough = cursor
+        messages = []
+        received = [:]
+        outgoing.removeAll(where: \.failed)
+    }
+
+    /// The mark of an earlier clear (from `ChatClears`), set after `reset` before the first load.
+    public mutating func restore(clearedThrough mark: Int64) {
+        clearedThrough = max(mark, 0)
+        messages.removeAll { $0.id <= clearedThrough }
+    }
+
+    /// Shows the cleared messages again: the next load starts from the beginning.
+    public mutating func unclear() {
+        clearedThrough = 0
+        messages = []
+        received = [:]
+    }
 
     /// A sent message counts as "working" for at most this long: a server that never echoes it (or changes the
     /// text) must not keep the chat in 2-second polling forever.
@@ -41,7 +75,7 @@ public struct ChatTimeline: Sendable, Equatable {
     /// Adds a page of server messages, received at `now`.
     public mutating func merge(_ page: MessagePage, now: Date = Date()) {
         var byID = Dictionary(messages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
-        for m in page.messages {
+        for m in page.messages where m.id > clearedThrough {
             byID[m.id] = m
             received[m.id] = now
         }
@@ -90,6 +124,7 @@ public struct ChatTimeline: Sendable, Equatable {
         outgoing = []
         busy = []
         received = [:]
+        clearedThrough = 0
     }
 
     /// A centred time line (the iMessage pattern): above the first message of each day with its day ("Today 14:32"),
@@ -152,6 +187,25 @@ public struct ChatTimeline: Sendable, Equatable {
         }
         let open = snapshot.state.pending
         return message.pending.filter { p in open.contains { $0.id == p.id && $0.buttons == p.buttons } }
+    }
+}
+
+/// Where each server's chat was cleared on this phone (`ChatTimeline.clearedThrough`), by `ServerConfig.target`:
+/// another address or type starts with a full chat again. `chat-cleared.json`.
+public struct ChatClears: Codable, Sendable, Equatable {
+    public var through: [String: Int64]
+
+    public init(through: [String: Int64] = [:]) {
+        self.through = through
+    }
+
+    public static let fileName = "chat-cleared.json"
+
+    public func mark(for target: String) -> Int64 { through[target] ?? 0 }
+
+    /// 0 removes the entry.
+    public mutating func set(_ mark: Int64, for target: String) {
+        through[target] = mark > 0 ? mark : nil
     }
 }
 

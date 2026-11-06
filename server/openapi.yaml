@@ -318,8 +318,17 @@ components:
         auth: { type: string, enum: [identity, token, none] }
         commands:
           type: array
-          items: { type: string, pattern: "^/\\S{1,23}$" }
-          description: Slash commands the chat understands. The app shows them as quick buttons (at most 8).
+          items:
+            oneOf:
+              - { type: string, pattern: "^/\\S{1,23}$" }
+              - type: object
+                required: [command]
+                properties:
+                  command: { type: string, pattern: "^/\\S{1,23}$" }
+                  description: { type: string, maxLength: 80, description: One line, what the command does. }
+          description: >-
+            Slash commands the chat understands. The app lists them in its "/" menu (at most 8), each with its
+            description, or a built-in line for the agent's commands, or none.
         standing_approvals:
           type: boolean
           description: The server remembers an "always" approval and runs that action by itself later.

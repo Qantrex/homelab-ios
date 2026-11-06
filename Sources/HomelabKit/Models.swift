@@ -10,8 +10,10 @@ public struct ServerInfo: Codable, Sendable, Equatable {
     public var version: String?
     public var features: Set<Feature>
     public var auth: String?
-    /// Slash commands the server's chat understands, offered as quick buttons. Empty = no buttons.
+    /// Slash commands the server's chat understands, offered in the chat's "/" menu. Empty = no menu.
     public var commands: [String]
+    /// What a command does, when the server says so (`{"command": "/x", "description": "…"}` in `commands`).
+    public var commandHelp: [String: String]
     /// The server keeps standing approvals ("Always"). Changes what the confirm text promises.
     public var standingApprovals: Bool
 
@@ -29,10 +31,10 @@ public struct ServerInfo: Codable, Sendable, Equatable {
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,
                 features: Set<Feature> = Set(Feature.allCases), auth: String? = nil, commands: [String] = [],
-                standingApprovals: Bool = false) {
+                commandHelp: [String: String] = [:], standingApprovals: Bool = false) {
         self.api = api; self.name = name; self.server = server; self.version = version
         self.features = features; self.auth = auth; self.commands = commands
-        self.standingApprovals = standingApprovals
+        self.commandHelp = commandHelp; self.standingApprovals = standingApprovals
     }
 
     enum CodingKeys: String, CodingKey {
@@ -53,8 +55,16 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         let raw = c.strings(.features)
         features = c.contains(.features) ? Set(raw.compactMap(Feature.init(rawValue:))) : [.status, .hosts]
         auth = c.text(.auth)
-        // Only "/word" commands, short, at most 8: they become buttons.
-        commands = Array(c.strings(.commands).filter { $0.hasPrefix("/") && $0.count <= 24 && !$0.contains(" ") }.prefix(8))
+        // Only "/word" commands, short, at most 8: they become the "/" menu. An entry is "/x" or
+        // {"command": "/x", "description": "one line"}; the line is cut to 80 characters.
+        let entries = c.lenient(CommandEntry.self, .commands).map { [$0] }
+            ?? c.array(CommandEntry.self, .commands)
+        let usable = entries.filter { $0.name.hasPrefix("/") && $0.name.count <= 24 && !$0.name.contains(where: \.isWhitespace) }
+        var seen = Set<String>()
+        let kept = Array(usable.filter { seen.insert($0.name).inserted }.prefix(8))
+        commands = kept.map(\.name)
+        commandHelp = Dictionary(kept.compactMap { e in e.help.map { (e.name, String($0.prefix(80))) } },
+                                 uniquingKeysWith: { first, _ in first })
         standingApprovals = c.bool(.standingApprovals) ?? false
     }
 
@@ -66,8 +76,45 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         try c.encodeIfPresent(version, forKey: .version)
         try c.encode(features.map(\.rawValue).sorted(), forKey: .features)
         try c.encodeIfPresent(auth, forKey: .auth)
-        try c.encode(commands, forKey: .commands)
+        try c.encode(commands.map { CommandEntry(name: $0, help: commandHelp[$0]) }, forKey: .commands)
         try c.encode(standingApprovals, forKey: .standingApprovals)
+    }
+
+    /// One `commands` entry: "/x", or an object with the command and what it does. Written back the same way.
+    struct CommandEntry: Codable {
+        var name: String
+        var help: String?
+
+        init(name: String, help: String?) {
+            self.name = name; self.help = help
+        }
+
+        enum Keys: String, CodingKey { case command, description }
+
+        init(from decoder: any Decoder) throws {
+            if let s = try? decoder.singleValueContainer().decode(String.self) {
+                name = s
+                help = nil
+                return
+            }
+            let c = try decoder.container(keyedBy: Keys.self)
+            guard let n = c.text(.command) else {
+                throw DecodingError.keyNotFound(Keys.command, .init(codingPath: c.codingPath, debugDescription: "no command"))
+            }
+            name = n
+            help = c.text(.description)
+        }
+
+        func encode(to encoder: any Encoder) throws {
+            guard let help else {
+                var c = encoder.singleValueContainer()
+                try c.encode(name)
+                return
+            }
+            var c = encoder.container(keyedBy: Keys.self)
+            try c.encode(name, forKey: .command)
+            try c.encode(help, forKey: .description)
+        }
     }
 }
 
