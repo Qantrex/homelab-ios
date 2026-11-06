@@ -24,11 +24,13 @@ Today when you add a Home Assistant server.
 
 | Widget | Sizes | Shows |
 |---|---|---|
-| Homelab status | small, lock screen (circular, rectangular, inline) | Status, first problem, actions waiting |
-| Homelab hosts | medium (4 hosts), large (8 hosts + problems) | Each host with load, RAM and disk |
+| Homelab status | small, lock screen (circular, rectangular, inline) | Today's headline ("All quiet.", "1 problem.") in its colour with the glow, the first problem, actions waiting |
+| Homelab day | small, medium, lock screen (rectangular, inline) | The "today" card's day line: the next stop big with its countdown (small, lock screen), every stop on the line (medium) |
+| Homelab hosts | medium (4 hosts), large (8 hosts + problems) | The headline, then each host with load, RAM and disk |
 
-Tapping a widget opens the right tab. Data older than 2 hours is dimmed and says how old it is. The status text is
-hidden on the lock screen while the phone is locked.
+The day widget redraws every minute while a stop is less than an hour away. Tapping a widget opens the right tab. Data older than 2 hours is dimmed and says how old it is. The status text is
+hidden on the lock screen while the phone is locked. With the app lock on, the widgets show only counts: no problem
+text, host names or day.
 
 ## Who it is for
 

@@ -31,8 +31,9 @@ App:
   panels slide in and out, rings and meters fill smoothly. Haptics on toggles, approve/deny results and sending.
 - Tabs show only what the server offers (`features` in `/api/v1/info`).
 - Demo mode with built-in data, no network.
-- Widgets: status (small and lock screen: circular, rectangular, inline) and hosts (medium, large). Read-only, tap
-  opens the right tab, old data is marked.
+- Widgets in the app's look: status (small and lock screen: circular, rectangular, inline) with the mood headline and
+  glow, day (small, medium, lock screen: the day line and the countdown to the next stop) and hosts (medium, large).
+  Read-only, tap opens the right tab, old data is marked.
 - Background refresh with optional local notifications for new problems and new actions. Off by default, no repeats,
   no alert storm after being offline.
 - `homelab://` links for each tab.

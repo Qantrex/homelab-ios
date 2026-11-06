@@ -1,5 +1,13 @@
 import Foundation
 
+extension HomelabState {
+    /// The card Today shows as the day under the headline (and the Day widget): the server's "today" card, else the
+    /// first metrics card.
+    public var dayCard: Card? {
+        cards.first { $0.id == "today" } ?? cards.first { $0.style == .metrics }
+    }
+}
+
 /// The server's "today" card as a line through the day. Items whose value is a clock time ("06:20") become stops in
 /// time order; the rest (a disruption, "Leave by ?", "too late") stay notes under the line. "Now" sits between two
 /// stops, so the line fills up as the day goes on. Pure, so it's tested on Linux.
@@ -67,6 +75,28 @@ public struct DayTimeline: Equatable, Sendable {
         let b = stops[i + 1].minute
         guard b > a else { return now > a ? 1 : 0 }
         return min(max(Double(now - a) / Double(b - a), 0), 1)
+    }
+
+    /// When a widget should redraw, from `now` on: every 15 minutes for the data's age (as before the day line), every
+    /// minute while a stop is less than an hour away (its countdown), and a minute after each later stop (it turns
+    /// past). Sorted, without duplicates, at most `limit`. Without a card only the 15-minute ones.
+    public static func redrawDates(card: Card?, now: Date, calendar: Calendar = .current, limit: Int = 100) -> [Date] {
+        var dates: Set<Date> = [now]
+        for i in 1...3 { dates.insert(now.addingTimeInterval(Double(i) * 15 * 60)) }
+        if let card {
+            let line = DayTimeline(card: card, now: now, calendar: calendar)
+            let future = line.stops.filter { $0.phase != .past }
+            let minute = calendar.dateInterval(of: .minute, for: now)?.start ?? now
+            if let last = future.last {
+                for i in 0..<min(last.minute - line.now, 60) { dates.insert(minute.addingTimeInterval(Double(i + 1) * 60)) }
+            }
+            for stop in future {
+                if let at = calendar.date(bySettingHour: stop.minute / 60, minute: stop.minute % 60, second: 0, of: now) {
+                    dates.insert(at.addingTimeInterval(60))
+                }
+            }
+        }
+        return Array(dates.filter { $0 >= now }.sorted().prefix(limit))
     }
 
     /// Side by side when there are few stops and the text isn't huge; else top to bottom.

@@ -91,6 +91,32 @@ import Testing
         #expect(n.stops.isEmpty && n.notes.count == 2 && n.text == nil && n.next == nil)
     }
 
+    @Test func dayCardIsTodayElseFirstMetrics() {
+        let other = Card(id: "load", style: .metrics)
+        #expect(HomelabState(cards: [other, card]).dayCard?.id == "today")
+        #expect(HomelabState(cards: [Card(id: "note", style: .text), other]).dayCard?.id == "load")
+        #expect(HomelabState(cards: [Card(id: "note", style: .text)]).dayCard == nil)
+    }
+
+    @Test func widgetRedraws() {
+        func t(_ h: Int, _ m: Int) -> Date { Self.at(h, m) }
+        // No card: the 15-minute ones only.
+        #expect(DayTimeline.redrawDates(card: nil, now: t(7, 5), calendar: Self.utc) == [t(7, 5), t(7, 20), t(7, 35), t(7, 50)])
+        // 07:05, stops at 07:31 and 08:00 ahead: every minute up to 08:00, then 08:01 (the last stop turns past).
+        let d = DayTimeline.redrawDates(card: card, now: t(7, 5), calendar: Self.utc)
+        #expect(d.first == t(7, 5) && d.last == t(8, 1) && d.count == 57)
+        #expect(d.contains(t(7, 32)) && zip(d, d.dropFirst()).allSatisfy { $0 < $1 })
+        // 05:00: an hour of minutes (to 06:00), then a minute after each stop.
+        let early = DayTimeline.redrawDates(card: card, now: t(5, 0), calendar: Self.utc)
+        #expect(early.count == 1 + 60 + 3 && early.suffix(3) == [t(6, 21), t(7, 32), t(8, 1)])
+        // Evening: the day is over, back to every 15 minutes. A capped list keeps the earliest.
+        #expect(DayTimeline.redrawDates(card: card, now: t(20, 0), calendar: Self.utc).count == 4)
+        #expect(DayTimeline.redrawDates(card: card, now: t(5, 0), calendar: Self.utc, limit: 10).last == t(5, 9))
+        // Mid-minute: the minute ticks fall on whole minutes.
+        let odd = Self.at(7, 5).addingTimeInterval(30)
+        #expect(DayTimeline.redrawDates(card: card, now: odd, calendar: Self.utc).dropFirst().first == t(7, 6))
+    }
+
     @Test func acrossOrDown() {
         #expect(line(7, 5).across(accessibilityText: false))
         #expect(!line(7, 5).across(accessibilityText: true))

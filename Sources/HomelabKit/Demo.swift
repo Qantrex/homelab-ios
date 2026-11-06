@@ -46,7 +46,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     /// The day's clock times follow the real clock too: the first stop was 45 min ago, so the day line always has a
     /// "now" between its stops. Times inside subtitles ("U6 07:36") move along. Late at night, when the day wouldn't
     /// fit before midnight, the fixture's times stay.
-    static func demoDay(_ card: Card, now: Date, calendar: Calendar = .current) -> Card {
+    public static func demoDay(_ card: Card, now: Date, calendar: Calendar = .current) -> Card {
         let minutes = card.items.compactMap { DayTimeline.minute($0.value) }
         guard let first = minutes.min(), let last = minutes.max() else { return card }
         let c = calendar.dateComponents([.hour, .minute], from: now)

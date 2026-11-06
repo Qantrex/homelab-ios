@@ -90,12 +90,13 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| W1 | Small | Long-press home screen → + → Homelab → "Homelab status": status icon, server name, first problem or "x/y hosts up", age, pending badge | | |
+| W1 | Small | Long-press home screen → + → Homelab → "Homelab status": date, headline in its colour (glow when not calm), first problem or "x of y machines up", server and age, pending badge | | |
 | W2 | Medium | "Homelab hosts" medium: 4 hosts with load, RAM and disk bar | | |
 | W3 | Large | Large: up to 8 hosts and up to 4 problems | | |
 | W4 | Lock screen | Circular, rectangular and inline widgets show status (and pending count) | | |
-| W5 | Tap opens the right tab | Small with pending actions → Actions. Small without, medium, large, rectangular → Today | | |
+| W5 | Tap opens the right tab | Status with pending actions → Actions. Status without, day, rectangular → Today. Hosts (medium, large) → Lab | | |
 | W6 | Stale data marked | Tailscale off, wait 15+ min: "Data is old" and a grey question mark, not a green check | | |
+| W7 | Day | "Homelab day" small: next stop big with "in N min", the line as dots; medium: every stop like on Today; lock screen rectangular and inline: next stop and countdown. The countdown moves on its own within a few minutes; after the last stop it says "passed". App lock on: "Open the app" | | |
 
 ## Background and notifications
 
