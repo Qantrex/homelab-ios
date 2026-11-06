@@ -74,4 +74,25 @@ import Testing
         let m = TodayMood(state: s)
         #expect(m.level == .alarm && m.headline == "1 problem." && m.warnings == 1)
     }
+
+    @Test func newProblemWarnsOnlyForANewOneOnTheSameServer() {
+        let one = HomelabState(status: .problem, problems: [Problem(text: "x")])
+        let two = HomelabState(status: .problem, problems: [Problem(text: "x"), Problem(text: "disk 91%", severity: .warning)])
+        let w = { (server: String?, s: HomelabState?) in ProblemWatch(server: server, state: s) }
+        // A new id on a refresh: a warning tap.
+        #expect(ProblemWatch.warns(from: w("a", one), to: w("a", two)))
+        // The same list, one gone, or nothing loaded before: nothing.
+        #expect(!ProblemWatch.warns(from: w("a", one), to: w("a", one)))
+        #expect(!ProblemWatch.warns(from: w("a", two), to: w("a", one)))
+        #expect(!ProblemWatch.warns(from: w("a", nil), to: w("a", two)))
+        // Another server's problems are not new.
+        #expect(!ProblemWatch.warns(from: w("a", one), to: w("b", two)))
+        // Calm to alarm: Today's error tap says it, no second tap.
+        #expect(!ProblemWatch.warns(from: w("a", HomelabState(status: .ok)), to: w("a", one)))
+        // Warnings only, and a new warning: a tap.
+        let warn = HomelabState(status: .warning, problems: [Problem(text: "a", severity: .warning)])
+        let warn2 = HomelabState(status: .warning, problems: [Problem(text: "a", severity: .warning),
+                                                              Problem(text: "b", severity: .warning)])
+        #expect(ProblemWatch.warns(from: w("a", warn), to: w("a", warn2)))
+    }
 }

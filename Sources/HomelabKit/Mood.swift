@@ -90,3 +90,28 @@ public extension HomelabState {
         }
     }
 }
+
+/// What one answer said about problems, to feel a new one (research #10): a warning tap when a refresh lists a
+/// problem the last answer from the same server didn't have.
+public struct ProblemWatch: Equatable, Sendable {
+    /// The server the answer came from; another server's problems are not new.
+    public var server: String?
+    /// The listed problems' ids (warnings too); nil before the first answer.
+    public var ids: Set<String>?
+    /// The mood was alarm.
+    public var alarm: Bool
+
+    public init(server: String?, state: HomelabState?) {
+        self.server = server
+        ids = state.map { Set($0.problems.map(\.id)) }
+        alarm = state.map { TodayMood(state: $0).level == .alarm } ?? false
+    }
+
+    /// True when `new` lists a problem `old` didn't, on the same server, after a first answer. Not when the lab just
+    /// turned to alarm: Today taps an error for that, and two taps for one change feel like a bug.
+    public static func warns(from old: ProblemWatch, to new: ProblemWatch) -> Bool {
+        guard old.server == new.server, let before = old.ids, let now = new.ids else { return false }
+        if new.alarm && !old.alarm { return false }
+        return !now.isSubset(of: before)
+    }
+}

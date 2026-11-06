@@ -105,7 +105,9 @@ struct SectionTitle: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(text).font(Typo.sectionTitle).foregroundStyle(Palette.text)
-            if let trailing { Text(trailing).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary) }
+            if let trailing {
+                Text(trailing).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary).numberMotion(trailing)
+            }
             Spacer()
             if let action {
                 Button(action: action.run) { Text(action.label).font(.subheadline.weight(.semibold)) }
@@ -123,21 +125,22 @@ struct PressStyle: ButtonStyle {
     var scale: CGFloat = 0.97
 
     func makeBody(configuration: Configuration) -> some View {
-        Pressable(label: configuration.label, pressed: configuration.isPressed, scale: scale)
+        configuration.label.modifier(PressFeel(pressed: configuration.isPressed, scale: scale))
     }
+}
 
-    private struct Pressable: View {
-        let label: Configuration.Label
-        let pressed: Bool
-        let scale: CGFloat
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+/// How a pressed button gives way (`PressStyle`, `CapsuleButtonStyle`): smaller and dimmer while held, springing
+/// back; only dimmer with Reduce Motion.
+struct PressFeel: ViewModifier {
+    let pressed: Bool
+    var scale: CGFloat = 0.97
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-        var body: some View {
-            label
-                .scaleEffect(pressed && !reduceMotion ? scale : 1)
-                .opacity(pressed ? 0.75 : 1)
-                .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6), value: pressed)
-        }
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(pressed && !reduceMotion ? scale : 1)
+            .opacity(pressed ? 0.75 : 1)
+            .motion(.spring(response: 0.25, dampingFraction: 0.6), value: pressed)
     }
 }
 
