@@ -120,7 +120,7 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 ## 6. Row grammar
 
 One row, everywhere (problems, hosts, containers): status glyph or dot (the only colour) · name 17 semibold · reason
-15 secondary · right column: values 15 mono medium, or an age 13 tertiary. Hosts (Lab, Standard): dot · name ·
+15 secondary · right column: values 15 medium (fixed-width digits), or an age 13 tertiary. Hosts (Lab, Standard): dot · name ·
 sparkline 56x20 · Load, RAM, Disk in three right-aligned columns under a 13 header; a meta line under the name only
 when there is something to say. Overkill density keeps the host tiles. At accessibility sizes the values go under
 the name with their labels.
