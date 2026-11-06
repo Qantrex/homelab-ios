@@ -133,6 +133,7 @@ More: [docs/SECURITY.md](docs/SECURITY.md).
 | [docs/CI.md](docs/CI.md) | CI and releases |
 | [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) | Installing from a Linux PC over USB (no Mac) |
 | [docs/API.md](docs/API.md) | The API in plain words, for writing your own server |
+| [docs/ADAPTING.md](docs/ADAPTING.md) | Fork it for your homelab: turn modules off, add your own (with Claude) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Building, testing, code rules |
 | [docs/RELEASE.md](docs/RELEASE.md) | Building and publishing a release by hand |
 | [CHANGELOG.md](CHANGELOG.md) | What changed |
