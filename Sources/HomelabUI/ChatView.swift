@@ -350,7 +350,7 @@ struct AgentMessage: View {
             VStack(alignment: .leading, spacing: 12) {
                 text
                 ForEach(pending) { proposal($0).transition(.opacity) }
-                ForEach(message.cards) { CardView(card: $0, compact: true, model: model) }
+                ForEach(message.cards) { CardView(card: $0, compact: true, model: model, allowsItemActions: false) }
             }
             .rowMotion(pending.map(\.id))
         }
