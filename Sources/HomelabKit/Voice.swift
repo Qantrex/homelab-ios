@@ -6,7 +6,8 @@ import Foundation
 /// with it, and every take names the fact it comments on.
 public enum Personality: String, Codable, CaseIterable, Sendable, Identifiable {
     case off, dry, snarky
-    /// The unhinged one: rude, sweary, dark. No slurs, nothing hateful, sexual or about self-harm.
+    /// CARROT's far end: gallows humour, bleak cynicism, politically incorrect takes on institutions and ideas, the odd
+    /// swear word. Never slurs, jokes demeaning protected groups, anything sexual, self-harm, real people or threats.
     case ultrakill
 
     public var id: String { rawValue }
@@ -104,24 +105,25 @@ public enum Voice {
             ["Say something. It's lonely in here.", "It knows your lab better than you do."]
 
         case (.ultrakill, .calm):
-            ["Nothing's broken. Don't you dare touch it.", "All quiet. Pure dumb luck.",
-             "Hell froze over: everything works.", "It works. Leave it the hell alone.", "No fires. Go touch some grass."]
+            ["Nothing's broken. Enjoy it. Nothing lasts.", "All quiet. Entropy is just pacing itself.",
+             "Everything works. Suspicious, in this economy.", "It works. Leave it alone, you menace.",
+             "Calm. Like a morgue."]
         case (.ultrakill, .headsUp):
-            ["Something's whining. Deal with it.", "Not dead yet. Give it time.",
-             "A warning. Ignore it, see what happens.", "Your lab is sulking. Damn divas."]
+            ["Something's dying slowly. Like the EU's plans.", "Not dead yet. Give it time.",
+             "A warning. Ignore it like the climate reports.", "Your lab is sulking. Draft the eulogy."]
         case (.ultrakill, .alarm):
-            ["Shit's broken. Go fix it.", "What the hell did you do?", "Something died. Go find the body.",
-             "Bloody hell. Phone down, terminal up."]
+            ["Shit's broken. Go fix it.", "Something died. Go find the body.",
+             "Time of death: just now. Cause: you.", "Another casualty of your homelab."]
         case (.ultrakill, .unknown):
-            ["The lab's ignoring you. Smart lab.", "No signal. Did you unplug the damn thing?",
-             "Silence. Either dead or plotting."]
+            ["The lab's ignoring you. Smart lab.", "No signal. Either dead or unionising.",
+             "Silence. Like the Magistrat on a Friday."]
         case (.ultrakill, .waiting):
-            ["Approve it or deny it, damn it.", "The bot did the work. Press the button.",
-             "Decide. It's one tap, not surgery."]
+            ["Decide. Faster than the Magistrat, ideally.", "The bot did the work. Press the button.",
+             "Approve it before entropy does."]
         case (.ultrakill, .nothingToApprove):
-            ["Nothing to approve. Go do something useful.", "No requests. The bot gave up on you."]
+            ["Nothing to approve. Go be productive. Or don't.", "No requests. The bot gave up on you."]
         case (.ultrakill, .emptyChat):
-            ["Say something. Make it worth my while.", "Type something, damn it."]
+            ["Say something. We're all dying anyway.", "Type something. The void is listening."]
         }
     }
 }

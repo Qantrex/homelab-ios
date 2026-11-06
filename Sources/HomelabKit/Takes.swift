@@ -392,8 +392,9 @@ public extension Voice {
 }
 
 /// The templates. Rules: one line on a 5.4" phone once filled (90 characters with the longest values), the fact's
-/// values in every one, no "Ah,", "Well, well", "Oh look", "Let's" or em-dashes. Ultrakill may swear and insult the
-/// owner and his machines; never slurs, groups of people, anything sexual, self-harm or real people.
+/// values in every one, no "Ah,", "Well, well", "Oh look", "Let's" or em-dashes. Ultrakill goes all the way on dark
+/// humour and politically incorrect takes on institutions and ideas, with only the odd swear word. Never slurs or jokes
+/// demeaning protected groups, anything sexual, self-harm, real people or threats against people.
 enum TakeLines {
     static func all(_ kind: Take.Fact.Kind, _ p: Personality) -> [String] {
         switch p {
@@ -612,112 +613,129 @@ enum TakeLines {
         }
     }
 
-    // MARK: Ultrakill: rude, crude, dark. Swearing yes; slurs, hate, sex and self-harm never.
+    // MARK: Ultrakill: CARROT's far end. Gallows humour, bleak cynicism, politically incorrect takes on institutions,
+    // ideas and the owner's life choices; swearing only now and then. Never: slurs, jokes demeaning people for who
+    // they are (ethnicity, nationality, religion, gender, sexuality, disability), anything sexual, self-harm, real
+    // people, threats against people.
 
     static func ultrakill(_ kind: Take.Fact.Kind) -> [String] {
         switch kind {
         case .hostDown: [
-            "{host} is dead. Find the body and hit the power button like you mean it.",
-            "{host} fell off the network. What the hell did you do to it?",
-            "{host} isn't answering. Can't blame it. I wouldn't answer you either.",
-            "{host} is down. Kick it. Not literally. Okay, a little bit.",
-            "{host} is unreachable. Bloody hell, it had one job: be switched on.",
-            "{host} went dark. Either it crashed or it finally escaped you.",
+            "{host} is dead. Time of death: now. Cause: you.",
+            "{host} stopped answering. Obituary: it tried, which is more than you did.",
+            "{host} is gone. Entropy wins again. It always does, champ.",
+            "{host} is down. Give it a burial at sea. The Danube takes all.",
+            "{host} went dark. Faster than the Magistrat ever answered anything.",
+            "{host} is unreachable. Even your ISP has better uptime. Low bar.",
+            "{host} is offline. Somewhere a tech billionaire felt nothing.",
+            "{host} is down, like every startup's promises. Go poke it.",
         ]
         case .container: [
-            "{container} on {host} is {state}. Restart it or drag it out back.",
-            "{container} is {state} on {host}. Shit container, shit afternoon.",
-            "{host} reports {container} {state}. What the hell is it doing in there?",
-            "{container} on {host} is {state}. Pathetic. One job, one healthcheck.",
-            "{container} is {state} on {host}. Kill it, restart it, make an example.",
-            "{container} on {host}: {state}. Bloody thing. Restart it.",
-            "{container} is {state} on {host}. Your YAML, your damn mess.",
+            "{container} on {host} is {state}. Draft the obituary. Keep it short.",
+            "{container} is {state} on {host}. Docker was a mistake. Exhibit A.",
+            "{container} on {host}: {state}. Mercy-kill it. It's what it'd want.",
+            "{host} reports {container} {state}. Dead at birth, like most startups.",
+            "{container} is {state} on {host}. In lieu of flowers, restart it.",
+            "{container} on {host} is {state}. Its last words were YAML.",
+            "{container} is {state} on {host}. HR calls it 'a growth opportunity'.",
+            "{container} on {host}: {state}. Open source: free, like a puppy.",
         ]
         case .disk: [
-            "{host} is {pct} full. Delete your crap before the disk does it for you.",
-            "{mount} on {host} at {pct}. What the hell are you hoarding? Don't answer.",
-            "{pct} on {host}. That's not a library, that's a landfill with a web UI.",
-            "{host} at {pct} disk. One more 'Linux ISO' and the whole bloody thing chokes.",
-            "{host} is {pct} full. Start deleting or start praying. Your call.",
-            "{mount} on {host}: {pct}. Damn. You will never watch all that shit.",
-            "{pct} used on {host}. The disk is choking and you're still adding to the queue.",
+            "{host} is {pct} full of 'Linux ISOs'. The copyright lobby sends regards.",
+            "{mount} on {host} at {pct}. Hoarding: the one hobby they can't tax.",
+            "{pct} on {host}. You'll be dead before you watch half of that.",
+            "{host} at {pct} disk. Entropy only goes one way. So does your hoarding.",
+            "{host} is {pct} full. Write a will. Decide who inherits the ISOs.",
+            "{mount} on {host}: {pct}. Streaming exists. Your pride doesn't allow it.",
+            "{pct} used on {host}. Delete something, or let the disk choose. It will.",
+            "{host} at {pct}. Purists buy disks forever rather than pay 10 euros.",
         ]
         case .hot: [
-            "{host} is at {temp}. It's cooking itself and you're scrolling. Great.",
-            "{temp} on {host}. Give it some air before it melts into a damn puddle.",
-            "{host} hits {temp}. One more degree and I'm calling it arson.",
-            "{host} at {temp}. Hell has better airflow than wherever you shoved it.",
-            "{temp} on {host}. Hot as hell and twice as stupid. Point a fan at it.",
+            "{host} is at {temp}. Climate change, but make it a cupboard.",
+            "{temp} on {host}. Self-cremation saves on funeral costs, at least.",
+            "{host} hits {temp}. The electricity company thanks you for your service.",
+            "{host} at {temp}. No amount of 'sustainability' marketing saves this one.",
+            "{temp} on {host}. Heat death of the universe, early access edition.",
+            "{host} is at {temp}. Point a fan at it, or let the Danube cool it for good.",
         ]
         case .load: [
-            "{host} at load {load} on {cores}. It's screaming. Whatever you started, kill it.",
-            "Load {load} on {cores}. {host} is getting wrecked by your crap.",
-            "{host}: load {load}, {cores}. That's not a server, it's a hostage situation.",
-            "{host} has load {load} on {cores}. Put the poor thing out of its misery.",
-            "Load {load} on {host} ({cores}). What the hell is running on there?",
+            "{host} at load {load} on {cores}. Works harder than any LinkedIn hustler.",
+            "Load {load} on {cores}. {host} is being worked like a startup intern.",
+            "{host}: load {load}, {cores}. Productivity culture claims another victim.",
+            "{host} has load {load} on {cores}. Mercy-kill whatever's running.",
+            "Load {load} on {host} ({cores}). A crypto bro would call this mining.",
+            "{host}: load {load} on {cores}. Exploited labour, but it's silicon. Fine.",
         ]
         case .power: [
-            "{host}: {flag}. Buy a real damn PSU, you cheapskate.",
-            "{flag} on {host}. That shitty cable is strangling it. Bin it.",
-            "{host}: {flag}. Starving your own hardware of volts. Classy.",
-            "{host}: {flag}. Feed it properly or let it die in peace.",
-            "{flag} on {host}. Cheap PSU, cheap results, cheap owner.",
+            "{host} reports {flag}. The power company gets paid. It doesn't.",
+            "{flag} on {host}. Starved by a landlord-grade power supply.",
+            "{host}: {flag}. Pis are toys, and you feed it like one.",
+            "{host}: {flag}. Cheap PSU, cheap results, cheap owner.",
+            "{host}: {flag}. Running on austerity. Brussels would approve.",
+            "{flag} on {host}. Feed it properly or give it a mercy kill.",
         ]
         case .backupFailed: [
-            "{host}'s backup failed. One dead disk and all your crap is gone. Fix it.",
-            "Backup failed on {host}. You absolute gambler. Fix it before the disk decides.",
-            "{host}: backup failed. Enjoy losing everything, you reckless idiot.",
-            "{host} botched its backup. Hell of a way to find out you trusted it.",
-            "{host}'s backup failed. No backup, no mercy. Go fix the damn thing.",
+            "{host}'s backup failed. Every memory you own, one bad sector from oblivion.",
+            "Backup failed on {host}. RAID isn't a backup. Neither is faith.",
+            "{host}: backup failed. Nothing lasts. You just found out early.",
+            "{host} botched its backup. Self-hosting your own data loss. Very sovereign.",
+            "{host}'s backup failed. Even the tax office keeps better records than you.",
+            "{host}'s backup failed. Start the eulogy for your photo library.",
         ]
         case .problem: [
-            "{text}. Shit's broken. Go fix it before it spreads.",
-            "{host} says {text}. What the hell did you break?",
-            "{text}. Bloody marvellous. Phone down, fix it.",
-            "{text}. Crime scene, and you're the suspect.",
-            "{host}: {text}. Damn. That's on you, champ.",
-            "{text}. Fix it or burn it down. Those are the options.",
+            "{text}. Shit's broken. Fix it before it spreads.",
+            "{host}: {text}. Another empire falls.",
+            "{text}. Works on your machine? This isn't your machine.",
+            "{text}. Self-hosting is a cope, and here's the receipt.",
+            "{host}: {text}. That's on you, champ.",
+            "{text}. Fix it, bury it, or give it to the Danube.",
+            "{text}. Big Tech breaks too, but with a status page.",
         ]
         case .overdue: [
-            "{todos} overdue. {title}. Still. What the hell are you doing all day?",
+            "{todos} overdue. {title}. Still. The heat death will get there first.",
             "{title} is overdue, plus {more}. Your servers outwork you.",
-            "{todos} overdue, oldest {title}. Pathetic. Even the Pi gets more done.",
+            "{todos} overdue, oldest {title}. Hustle culture lied. Do it anyway.",
             "Overdue: {todos}. Do {title}, you lazy sod, or admit defeat.",
-            "Overdue: {todos}. {title} is rotting in there. Damn shameful.",
+            "{title} is overdue, plus {more}. Run like a government project.",
+            "Overdue: {todos}. {title} will make your obituary at this rate.",
         ]
         case .deadline: [
-            "{title} is due {when}. Stop fiddling with Docker and do the damn thing.",
-            "{when}: {title}. Hell is coming, and it has a deadline.",
-            "{title}, due {when}. Do it now or enjoy the consequences, genius.",
-            "{title} is due {when}. Your excuses are flimsier than your PSU.",
+            "{title} is due {when}. Austrian bureaucracy moves faster than you.",
+            "{when}: {title}. Death and deadlines. The taxman handles the rest.",
+            "{title}, due {when}. Do it now or it haunts you from beyond.",
+            "{title} is due {when}. The Magistrat won't take your excuses either.",
             "{title} due {when}. Panic now. It's cheaper than panicking later.",
+            "{title} is due {when}. Tabs, spaces, who cares. Just bloody do it.",
         ]
         case .waiting: [
-            "{actions} waiting. Approve the damn things, the agent's losing its mind.",
-            "{actions} pending. The bot did all the work and you can't press a button?",
-            "{actions} waiting, first up: {first}. Yes, no, anything, damn it.",
-            "{actions} waiting on you. The slowest part of this homelab is you.",
-            "{actions} to approve. Hell, even the Pi decides faster than you.",
-            "{actions} pending. Tap a button. It's not open-heart surgery.",
+            "{actions} waiting. Faster than the Magistrat is a low bar. Clear it.",
+            "{actions} pending. The bot did the work. Late-stage capitalism, at home.",
+            "{actions} waiting, first up: {first}. Decide before entropy does.",
+            "{actions} waiting on you. The slowest component in this homelab is you.",
+            "{actions} to approve. The AI hype was real. Your reaction time isn't.",
+            "{actions} pending. Approve them. Nobody's watching, it's not LinkedIn.",
+            "{actions} waiting. Even the EU passes regulations faster than this.",
         ]
         case .parcel: [
-            "{title} is out for delivery. Stay home or it ends up in a damn bush.",
-            "{title} arrives today. More crap for the pile. Congratulations.",
-            "Out for delivery: {title}. Your bank account sends its condolences.",
-            "{title} is on the van. Miss the doorbell and enjoy pickup-point hell.",
-            "{title} comes today. Hide it from whoever pays the power bill.",
+            "{title} is out for delivery. Consumerism: the ideology with tracking.",
+            "{title} arrives today. Your bank account has requested a funeral.",
+            "Out for delivery: {title}. Stay home. You weren't going out anyway.",
+            "{title} is on the van. Miss the doorbell: pickup-point purgatory.",
+            "{title} comes today. Hide it from whoever pays the electricity bill.",
+            "{title} arrives today. Another thing to outlive you in a drawer.",
         ]
         case .allFine: [
-            "{machines} up, {containers} running. Nothing's broken. Don't you dare touch it.",
+            "{machines} up, {containers} running. Nothing lasts. Enjoy it anyway.",
             "{machines} up and quiet. Shocking, given who set them up.",
             "{containers} running fine. Pure dumb luck, frankly.",
-            "{machines} up. {quiet} is doing bugger all, just like its owner.",
-            "{machines} up. Hell must have frozen over.",
-            "All quiet on {machines}. Go touch grass before you ruin it.",
-            "{containers} running, zero problems. I'm as surprised as you are, damn it.",
-            "{machines} up. Your lab works better when you leave it the hell alone.",
-            "{containers} running for an audience of one. Worth every damn watt.",
-            "{machines} up, nothing on fire. Give it a week, you'll break something.",
+            "{machines} up. {quiet} is doing nothing, just like its owner.",
+            "{machines} up. Everything works, which is how the horror films start.",
+            "All quiet on {machines}. 'Touch grass', they say. Grass has no uptime.",
+            "{containers} running for an audience of one. Worth every watt, surely.",
+            "{machines} up, nothing on fire. Entropy is merely pacing itself.",
+            "{containers} running to dodge a 10-euro subscription. Big brain move.",
+            "{machines} up. Your lab has more uptime than your social life.",
+            "{machines} up. The electricity company sends its warmest regards.",
         ]
         }
     }

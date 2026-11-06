@@ -388,22 +388,27 @@ import Testing
         " " + s.lowercased().map { $0.isLetter || $0 == "-" ? String($0) : " " }.joined() + " "
     }
 
-    static let swears = ["shit", "damn", "hell", "crap", "bloody", "bugger", "idiot", "sod"]
+    /// Ultrakill's own lines (templates and moment lines), without the filled samples.
+    static let ultraLines = Fact.Kind.allCases.flatMap { Voice.templates($0, .ultrakill) }
+        + Voice.Moment.allCases.flatMap { Voice.lines($0, .ultrakill) }
+
+    static let swears = ["fuck", "fucking", "shit", "damn", "hell", "crap", "bloody", "bugger", "idiot", "sod"]
 
     static func allText(_ p: Personality) -> [String] {
         Fact.Kind.allCases.flatMap { Voice.templates($0, p) } + Voice.Moment.allCases.flatMap { Voice.lines($0, p) }
             + samples.flatMap { f in (0..<Voice.eligible(f, p).count).compactMap { take(f, p, Date(), $0)?.text } }
     }
 
-    @Test func ultrakillSwearsButNeverCrossesTheLine() {
+    @Test func ultrakillGoesDarkButNeverCrossesTheLine() {
         let ultra = Self.allText(.ultrakill)
         for line in ultra {
             let w = Self.words(line)
             for bad in Self.banned { #expect(!w.contains(" \(bad) "), "banned word in: \(line)") }
         }
-        // It does go all the way…
-        let sweary = ultra.filter { line in Self.swears.contains { Self.words(line).contains(" \($0) ") } }
-        #expect(sweary.count >= 40)
+        // Dark humour first, swearing only now and then: a few lines, at most a fifth of them.
+        let sweary = Self.ultraLines.filter { line in Self.swears.contains { Self.words(line).contains(" \($0) ") } }
+        #expect(sweary.count >= 2 && Double(sweary.count) <= Double(Self.ultraLines.count) * 0.2,
+                "\(sweary.count) of \(Self.ultraLines.count)")
         // …and the other levels don't.
         for p in [Personality.dry, .snarky] {
             for line in Self.allText(p) {
