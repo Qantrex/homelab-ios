@@ -165,10 +165,10 @@ struct HomeTile: View {
             .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             .background(on ? Palette.raised : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 16))
-            .reducedMotionAnimation(.snappy, value: on)
+            .motion(.snappy, value: on)
         }
         .buttonStyle(.press)
-        .sensoryFeedback(.impact(weight: .medium), trigger: taps)
+        .selectionFeedback(trigger: taps)
         .disabled(busy || !entity.isAvailable || entity.control == .none)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(entity.name))

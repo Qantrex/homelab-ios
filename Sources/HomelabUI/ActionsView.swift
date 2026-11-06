@@ -8,6 +8,8 @@ struct ActionsView: View {
     let model: AppModel
     @State private var confirm: ProposalConfirmation?
     @State private var formFor: ActionSpec?
+    /// What a link filled in for `formFor` (`homelab://actions/<name>?…`); nil for a Start tile.
+    @State private var formPrefill: ItemAction?
     /// A started action's result, shown once its form sheet is gone (an alert can't show over the sheet).
     @State private var afterSheet: ResultMessage?
     /// This view's form sheet, for `AppModel.formSheetOpen`.
@@ -27,6 +29,8 @@ struct ActionsView: View {
         model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
     }
     private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
+    /// The Start section: tiles to start actions, or the Scan tile.
+    private var hasStart: Bool { !startable.isEmpty || canScan || canSearch }
     private var nothingToApprove: LocalizedStringKey {
         Voice.line(.nothingToApprove, model.settings.voice)
             .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
@@ -42,20 +46,24 @@ struct ActionsView: View {
                             Task { await model.refresh() }
                         }
                     }
-                    if !startable.isEmpty || canScan || canSearch {
+                    // What waits for me first (it is time-critical), then what I can start (research #7).
+                    if approves { approveSection }
+                    if hasStart {
                         VStack(alignment: .leading, spacing: Space.titleToPanel) {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
-                                      open: { formFor = $0 }, scan: { scanning = true },
+                                      open: { formPrefill = nil; formFor = $0 }, scan: { scanning = true },
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil)
                             if !model.outboxDropped.isEmpty {
                                 NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
+                                    .padding(.top, Space.row - Space.titleToPanel)
+                                    .transition(.opacity)
                             }
                         }
                     }
-                    if approves { approveSection }
                 }
+                .rowMotion(model.outboxDropped.count)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
@@ -74,7 +82,7 @@ struct ActionsView: View {
                 openRequested()   // a link that came while the sheet was open
             }) { spec in
                 if let server = model.selected {
-                    ActionFormView(model: model, server: server, spec: spec) { finished(spec, $0) }
+                    ActionFormView(model: model, server: server, spec: spec, prefill: formPrefill) { finished(spec, $0) }
                         .onAppear { model.formSheet(sheetToken, open: true) }
                         .onDisappear { model.formSheet(sheetToken, open: false) }
                 }
@@ -87,11 +95,11 @@ struct ActionsView: View {
             }
             .onChange(of: openable) { _, _ in openRequested() }
             .onAppear { openRequested() }
-            .animation(.snappy, value: pending.map(\.id))
+            .rowMotion(pending.map(\.id))
             .refreshable { await model.refresh() }
             .navigationTitle("Actions")
-            .proposalDialog($confirm, model: model) { ok, message in
-                outcome = ActionOutcome(ok: ok)
+            .proposalDialog($confirm, model: model) { pressed, message in
+                outcome = pressed
                 result = message
             }
             .actionFeedback(result: $result, outcome: outcome)
@@ -99,32 +107,38 @@ struct ActionsView: View {
         }
     }
 
-    /// "To approve": a title and one panel; the proposals inside are split by separators.
+    /// "To approve": a title and one panel; the proposals inside are rows (`ProposalRow`) split by separators, each
+    /// with Approve / Deny inline.
     @ViewBuilder private var approveSection: some View {
         let quiet = pending.isEmpty && (!startable.isEmpty || model.selectedStatus.error != nil)
             && model.selectedStatus.snapshot != nil
         // Without Start tiles and without an error the full-screen placeholder says it (it would cover this).
         if !pending.isEmpty || quiet {
             VStack(alignment: .leading, spacing: Space.titleToPanel) {
-                if !startable.isEmpty {
+                // The screen's title says it when there is no Start section under it.
+                if hasStart {
                     SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)")
                 }
                 if quiet {
-                    Label { Text(nothingToApprove).font(.subheadline).foregroundStyle(Palette.secondary) }
-                        icon: { Image(systemName: "checkmark.shield").foregroundStyle(Palette.tertiary) }
-                        .panel()
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Image(systemName: "checkmark.shield").font(Typo.body).foregroundStyle(Palette.tertiary)
+                            .accessibilityHidden(true)
+                        Text(nothingToApprove).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                    }
+                    .panel()
+                    .transition(.opacity)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(pending.enumerated()), id: \.element.id) { i, action in
                             if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
-                            ActionRow(action: action, running: model.proposalsSending.contains(action.id),
-                                      hasChat: model.selectedStatus.features.contains(.chat)) { verb in
+                            ProposalRow(action: action, running: model.proposalsSending.contains(action.id),
+                                        hasChat: model.selectedStatus.features.contains(.chat)) { verb in
                                 confirm = ProposalConfirmation(action: action, verb: verb)
                             }
+                            .transition(.opacity)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .rowsPanel()
                 }
             }
         }
@@ -149,8 +163,9 @@ struct ActionsView: View {
             scanning = true
             return
         }
-        guard model.tab == .actions, formFor == nil, let spec = model.takeOpenAction() else { return }
-        formFor = spec
+        guard model.tab == .actions, formFor == nil, let request = model.takeOpenActionForm() else { return }
+        formPrefill = request.prefill
+        formFor = request.spec
     }
 
     private func finished(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>) {
@@ -160,76 +175,46 @@ struct ActionsView: View {
     }
 }
 
-struct ActionRow: View {
-    let action: PendingAction
-    let running: Bool
-    let hasChat: Bool
-    let tap: (PendingAction.Verb) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(action.title).font(.headline).foregroundStyle(Palette.text)
-            if let reason = action.reason {
-                Text(markdown(reason)).font(.subheadline).foregroundStyle(Palette.secondary)
-            }
-            meta
-            Group {
-                if running {
-                    HStack(spacing: 8) { ProgressView(); Text("Running…").font(.subheadline).foregroundStyle(Palette.secondary) }
-                } else if action.buttons.isEmpty {
-                    Text(hasChat ? "The server offers no buttons for this action. Answer it in the chat."
-                                 : "The server offers no buttons for this action.")
-                        .font(.footnote).foregroundStyle(Palette.tertiary)
-                } else {
-                    ProposalButtons(action: action, tap: tap)
-                }
-            }
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-    }
-
-    /// Job, id and age as one quiet line: ids in the data font, the rest plain.
-    @ViewBuilder private var meta: some View {
-        let parts = [action.job.map { Text($0) },
-                     Text(action.id).font(Typo.data(.footnote)),
-                     action.created.map { Text(Format.age($0)) }].compactMap { $0 }
-        if !parts.isEmpty {
-            parts.dropFirst().reduce(parts[0]) { $0 + Text(" · ") + $1 }
-                .font(.footnote).foregroundStyle(Palette.tertiary)
-        }
-    }
-}
-
 /// Scans and links the outbox gave up on (the owner was told "Homelab sends it later"): what, when and why, until
-/// he clears it.
+/// he clears it. Rows like every other (docs/DESIGN.md §6): the love glyph on the first row only, then one row per
+/// item (what · why · age on the right), lined up under the first row's name.
 struct NotSentRow: View {
     let items: [Outbox.Dropped]
     let clear: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Label {
-                    Text(items.count == 1 ? "1 item not sent" : "\(items.count) items not sent")
-                        .font(.headline).foregroundStyle(Palette.text)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.love)
-                }
-                Spacer()
-                Button("Clear", action: clear).font(.subheadline.weight(.semibold)).buttonStyle(.plain)
-                    .foregroundStyle(Palette.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                glyph
+                Text(items.count == 1 ? "1 item not sent" : "\(items.count) items not sent")
+                    .font(Typo.headline).foregroundStyle(Palette.text)
+                    .numberMotion(items.count)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                Button("Clear", action: clear).buttonStyle(CapsuleButtonStyle(kind: .text))
             }
+            .padding(.horizontal, 16).padding(.vertical, 12)
             ForEach(Array(items.suffix(5).enumerated()), id: \.offset) { _, d in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(d.what).font(.subheadline).foregroundStyle(Palette.text).lineLimit(1)
-                    Text("\(Format.age(d.when)) · \(d.why)").font(.footnote).foregroundStyle(Palette.tertiary)
-                        .lineLimit(2)
+                Divider().overlay(Palette.line).padding(.leading, 16)
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    glyph.hidden()   // keeps the names on one leading edge with the first row's
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(d.what).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(1)
+                        Text(d.why).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    Text(Format.age(d.when)).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
                 }
+                // One element per item (its texts); the Clear button above stays its own element.
+                .accessibilityElement(children: .combine)
+                .padding(.horizontal, 16).padding(.vertical, 12)
             }
         }
-        .panel()
-        .accessibilityElement(children: .combine)
+        .rowsPanel()
+    }
+
+    private var glyph: some View {
+        Image(systemName: "exclamationmark.triangle.fill").font(Typo.body).foregroundStyle(Palette.love)
+            .accessibilityHidden(true)
     }
 }

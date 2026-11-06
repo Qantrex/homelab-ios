@@ -95,7 +95,6 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 - VoiceOver: what the screen shortens, it says in full: ages and countdowns in words (`Format.spoken`, "in 26
   minutes"), a value over its limit "high", a dot's colour as its word. Buttons are their own stops (44 pt), headings
   are one element. Changes that appear by themselves (an error, search results, a send) are announced (`announce`).
-- Reduce Motion: animations through `reducedMotionAnimation`, rolling digits through `reducedMotionNumericText`.
 - Test on the smallest phone (5.4") and at AX text sizes: `scripts/phone-shots`, CI shots.
 
 ## Checklist for a screen
@@ -123,3 +122,17 @@ One row, everywhere (problems, hosts, containers): status glyph or dot (the only
 sparkline 56x20 · Load, RAM, Disk in three right-aligned columns under a 13 header; a meta line under the name only
 when there is something to say. Overkill density keeps the host tiles. At accessibility sizes the values go under
 the name with their labels.
+
+Cards use it too (to-dos, parcels, deadlines, lessons, downloads): the leading glyph at 17, the reason on at most two
+lines, a progress ring 20 pt inline after the value (no number inside it; the value column has it). Proposals
+(Actions, chat) are rows with Approve (filled white capsule), Always (`raised` capsule) and Deny (text) inline.
+
+## 7. Buttons, motion and haptics
+
+- Buttons in rows and cards: `CapsuleButtonStyle` (filled = the one primary action, raised, or text), 15 semibold,
+  a hit area of at least 44 x 44 pt around the visible shape. Labels never wrap, except in a narrow poster column.
+- Motion lives in `Motion` (HomelabDesign): `motion(_:value:)` instead of `animation(_:value:)`, `rowMotion` for rows
+  that come and go (spring 0.35 / 0.85), `numberMotion` or `Motion.numeric` for numbers, `Motion.symbol` for symbol
+  swaps. With Reduce Motion all of them turn off; no view checks it by hand.
+- Haptics (`Haptics.swift`): success when an Approve or a started action ran, a selection tick for a tick-off,
+  toggle or Deny, an error buzz when it didn't run, a warning when a refresh brings a new problem (once, app-wide).

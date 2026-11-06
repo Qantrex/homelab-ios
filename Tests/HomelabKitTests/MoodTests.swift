@@ -53,9 +53,46 @@ import Testing
         #expect(m.level == .headsUp && m.headline == "Heads up." && m.detail == "disk 91%" && m.warnings == 1)
     }
 
+    @Test func liveHostFlagsAreWarningsEvenWhenTheServerSaysOk() {
+        // Live 2026-11-06: pi-media throttled now, the server's status ok, Today said "All quiet.".
+        let throttled = Host(id: "pi-media", name: "pi-media", reachable: true, flags: ["undervoltage_now", "throttled_now"])
+        let sinceBoot = Host(id: "pi-two", name: "pi-two", reachable: true, flags: ["undervoltage_since_boot"])
+        let s = HomelabState(status: .ok, hosts: [throttled, sinceBoot])
+        #expect(s.hostAlerts == ["pi-media: under-voltage now, throttled now"])
+        #expect(ProblemTally(s) == ProblemTally(problems: 0, warnings: 1))
+        let m = TodayMood(state: s)
+        #expect(m.level == .headsUp && m.headline == "Heads up." && m.detail == "pi-media: under-voltage now, throttled now")
+        // Informational flags alone stay calm; a host the server already lists is not counted twice.
+        #expect(TodayMood(state: HomelabState(status: .ok, hosts: [sinceBoot])).headline == "All quiet.")
+        let listed = HomelabState(status: .warning, problems: [Problem(text: "pi-media: throttled", host: "pi-media", severity: .warning)],
+                                  hosts: [throttled])
+        #expect(ProblemTally(listed) == ProblemTally(problems: 0, warnings: 1))
+    }
+
     @Test func demoFixture() throws {
         let s = try #require(Fixtures.decode(HomelabState.self, "state-problem.json"))
         let m = TodayMood(state: s)
         #expect(m.level == .alarm && m.headline == "1 problem." && m.warnings == 1)
+    }
+
+    @Test func newProblemWarnsOnlyForANewOneOnTheSameServer() {
+        let one = HomelabState(status: .problem, problems: [Problem(text: "x")])
+        let two = HomelabState(status: .problem, problems: [Problem(text: "x"), Problem(text: "disk 91%", severity: .warning)])
+        let w = { (server: String?, s: HomelabState?) in ProblemWatch(server: server, state: s) }
+        // A new id on a refresh: a warning tap.
+        #expect(ProblemWatch.warns(from: w("a", one), to: w("a", two)))
+        // The same list, one gone, or nothing loaded before: nothing.
+        #expect(!ProblemWatch.warns(from: w("a", one), to: w("a", one)))
+        #expect(!ProblemWatch.warns(from: w("a", two), to: w("a", one)))
+        #expect(!ProblemWatch.warns(from: w("a", nil), to: w("a", two)))
+        // Another server's problems are not new.
+        #expect(!ProblemWatch.warns(from: w("a", one), to: w("b", two)))
+        // Calm to alarm: Today's error tap says it, no second tap.
+        #expect(!ProblemWatch.warns(from: w("a", HomelabState(status: .ok)), to: w("a", one)))
+        // Warnings only, and a new warning: a tap.
+        let warn = HomelabState(status: .warning, problems: [Problem(text: "a", severity: .warning)])
+        let warn2 = HomelabState(status: .warning, problems: [Problem(text: "a", severity: .warning),
+                                                              Problem(text: "b", severity: .warning)])
+        #expect(ProblemWatch.warns(from: w("a", warn), to: w("a", warn2)))
     }
 }

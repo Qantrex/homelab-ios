@@ -37,7 +37,7 @@ struct TodayView: View {
                     // In my order, without the hidden ones (Settings → Today).
                     ForEach(density.sections(model.settings.todayLayout)) { section(for: $0) }
                 }
-                .reducedMotionAnimation(.snappy, value: shape)
+                .motion(.snappy, value: shape)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
@@ -95,7 +95,7 @@ struct TodayView: View {
                     .foregroundStyle(Palette.text)
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
-                    .reducedMotionNumericText()
+                    .contentTransition(Motion.numeric)
                     .padding(.top, 4)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityHint(model.availableTabs.contains(.lab) ? Text("Opens Lab") : Text(""))
@@ -130,8 +130,8 @@ struct TodayView: View {
             .padding(.top, 28)
             .padding(.bottom, 8)
             .contentShape(Rectangle())
-            .reducedMotionAnimation(.snappy, value: m)
-            .reducedMotionAnimation(.snappy, value: pokes)
+            .motion(.snappy, value: m)
+            .motion(.snappy, value: pokes)
         }
         .buttonStyle(.pressLight)
         .accessibilityElement(children: .contain)
@@ -382,7 +382,7 @@ struct DaySection: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(next.item.title ?? "").font(.title2.weight(.semibold)).foregroundStyle(Palette.text)
                 Text(next.item.value ?? "").font(Typo.displayData).foregroundStyle(next.item.tint?.color ?? Palette.text)
-                    .reducedMotionNumericText()
+                    .contentTransition(Motion.numeric)
             }
             let parts = [countdown.map { Format.countdown(minutes: $0) }, next.item.subtitle].compactMap { $0 }
             if !parts.isEmpty {
@@ -461,8 +461,7 @@ struct DayNumbers: View {
                             .font(Typo.data(.title, weight: .semibold))
                             .minimumScaleFactor(0.6).lineLimit(1)
                             .foregroundStyle(item.tint?.color ?? Palette.text)
-                            .reducedMotionNumericText()
-                            .reducedMotionAnimation(.snappy, value: item.value)
+                            .numberMotion(item.value)
                         Text(item.title ?? "").font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(1)
                         if let s = item.subtitle {
                             Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)

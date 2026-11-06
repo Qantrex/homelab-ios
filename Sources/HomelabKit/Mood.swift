@@ -36,8 +36,13 @@ public struct TodayMood: Equatable, Sendable {
         let up = hosts.filter { $0.reachable == true }.count
         let machines = hosts.isEmpty ? nil : "\(up) of \(hosts.count) machines up"
         let first = (state.problems.first { $0.severity != .warning } ?? state.problems.first)?.text
+            ?? state.hostAlerts.first
         let tally = ProblemTally(state)
         switch state.status {
+        case .ok where tally.warnings > 0:
+            // The server says ok, but a host reports under-voltage or throttling right now (live, 2026-11-06:
+            // pi-media throttled while Today said "All quiet.").
+            self.init(level: .headsUp, headline: "Heads up.", detail: first ?? machines, warnings: tally.warnings)
         case .ok:
             self.init(level: .calm, headline: "All quiet.", detail: machines)
         case .warning where tally.problems == 0:
@@ -64,8 +69,49 @@ public struct ProblemTally: Equatable, Sendable {
         self.warnings = warnings
     }
 
+    /// Hosts with an alarming flag now (under-voltage, throttled) and no listed problem of their own count as
+    /// warnings too, so the headline never says "All quiet." next to a yellow dot.
     public init(_ state: HomelabState) {
         let p = state.problems.filter { $0.severity != .warning }.count
-        self.init(problems: state.status == .problem ? max(p, 1) : p, warnings: state.problems.count - p)
+        self.init(problems: state.status == .problem ? max(p, 1) : p,
+                  warnings: state.problems.count - p + state.hostAlerts.count)
+    }
+}
+
+public extension HomelabState {
+    /// "pi-media: under-voltage now, throttled now" for each reachable host with an alarming flag that the server
+    /// doesn't already list as a problem.
+    var hostAlerts: [String] {
+        hosts.compactMap { host in
+            guard host.reachable == true, !problems.contains(where: { $0.host == host.id }) else { return nil }
+            let alarming = host.flags.filter(Format.isAlarming)
+            guard !alarming.isEmpty else { return nil }
+            return "\(host.name): " + alarming.map { Format.flag($0).lowercased() }.joined(separator: ", ")
+        }
+    }
+}
+
+/// What one answer said about problems, to feel a new one (research #10): a warning tap when a refresh lists a
+/// problem the last answer from the same server didn't have.
+public struct ProblemWatch: Equatable, Sendable {
+    /// The server the answer came from; another server's problems are not new.
+    public var server: String?
+    /// The listed problems' ids (warnings too); nil before the first answer.
+    public var ids: Set<String>?
+    /// The mood was alarm.
+    public var alarm: Bool
+
+    public init(server: String?, state: HomelabState?) {
+        self.server = server
+        ids = state.map { Set($0.problems.map(\.id)) }
+        alarm = state.map { TodayMood(state: $0).level == .alarm } ?? false
+    }
+
+    /// True when `new` lists a problem `old` didn't, on the same server, after a first answer. Not when the lab just
+    /// turned to alarm: Today taps an error for that, and two taps for one change feel like a bug.
+    public static func warns(from old: ProblemWatch, to new: ProblemWatch) -> Bool {
+        guard old.server == new.server, let before = old.ids, let now = new.ids else { return false }
+        if new.alarm && !old.alarm { return false }
+        return !now.isSubset(of: before)
     }
 }

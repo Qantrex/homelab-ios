@@ -104,17 +104,13 @@ struct ActionFormView: View {
             }
             .sensoryFeedback(.warning, trigger: blocked)
             .interactiveDismissDisabled(running)
-            .animation(.snappy, value: form.variant)
-            .animation(.snappy, value: showProblems)
+            .motion(.snappy, value: form.variant)
+            .motion(.snappy, value: showProblems)
         }
         .tint(Palette.accent)
     }
 
-    private var confirmMessage: String {
-        let lines = form.summary.map { $0.label.isEmpty ? $0.value : "\($0.label): \($0.value)" }
-        let what = lines.isEmpty ? "" : lines.joined(separator: "\n") + "\n\n"
-        return what + String(localized: "Runs at once on \(server.name).")
-    }
+    private var confirmMessage: String { confirmText(form, server: server.name) }
 
     private func run() async {
         running = true
@@ -245,8 +241,10 @@ struct ActionFormView: View {
     }
 }
 
-/// The "Start" tiles (docs/DESIGN.md §2): one per action the server lets the app start, and the Scan tile where the
-/// server takes documents. Every tile has the same height; the grid's edges line up with the panels around it.
+/// The "Start" tiles (docs/DESIGN.md §2, research #7): compact, two columns of 56 pt tiles (symbol and a one-line
+/// label; a long label takes a second line instead of being cut), one per action the server lets the app start, and
+/// the Search and Scan tiles where the server offers them. Tiles in a row have the same height; the grid's edges line up
+/// with the panels around it. One column at accessibility sizes.
 struct StartGrid: View {
     let actions: [ActionSpec]
     /// Waiting scans and shares in the outbox; nil = no Scan tile.
@@ -259,73 +257,105 @@ struct StartGrid: View {
     var search: (() -> Void)?
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// A tile: an action (its index in `actions`), the Search tile or the Scan tile.
+    private enum Tile: Hashable { case action(Int), search, scan }
+
+    private var tiles: [Tile] {
+        actions.indices.map(Tile.action) + (search == nil ? [] : [.search]) + (scanWaiting == nil ? [] : [.scan])
+    }
+
     var body: some View {
-        let columns = typeSize.isAccessibilitySize
-            ? [GridItem(.flexible(), alignment: .top)]
-            : [GridItem(.flexible(), spacing: 12, alignment: .top), GridItem(.flexible(), spacing: 12, alignment: .top)]
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(actions) { spec in
-                Button { open(spec) } label: {
-                    StartTile(icon: spec.icon, label: Text(verbatim: spec.label), meta: showIds ? spec.name : nil,
-                              evenRows: !typeSize.isAccessibilitySize)
-                }
-                .buttonStyle(.press)
-                .accessibilityLabel(Text(spec.label))
-                .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
+        let tiles = tiles
+        if typeSize.isAccessibilitySize {
+            VStack(spacing: Space.row) {
+                ForEach(tiles, id: \.self) { tile($0) }
             }
-            if let search {
-                Button(action: search) {
-                    StartTile(icon: "magnifyingglass", label: Text("Find a movie or show"), evenRows: !typeSize.isAccessibilitySize)
+        } else {
+            // Grid, not LazyVGrid: a row is as tall as its tallest tile, and both tiles fill it.
+            Grid(horizontalSpacing: Space.row, verticalSpacing: Space.row) {
+                ForEach(Array(stride(from: 0, to: tiles.count, by: 2)), id: \.self) { i in
+                    GridRow {
+                        tile(tiles[i])
+                        if i + 1 < tiles.count {
+                            tile(tiles[i + 1])
+                        } else {
+                            Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                        }
+                    }
                 }
-                .buttonStyle(.press)
-                .accessibilityLabel(Text("Find a movie or show"))
-                .accessibilityHint(Text("Searches the server and lets you request what is missing."))
             }
-            if let waiting = scanWaiting {
-                Button(action: scan) {
-                    StartTile(icon: "doc.viewfinder", label: Text("Scan a document"),
-                              status: waiting > 0 ? "\(waiting) waiting" : nil,
-                              evenRows: !typeSize.isAccessibilitySize)
-                }
-                .buttonStyle(.press)
-                .accessibilityLabel(Text("Scan a document"))
-                .accessibilityValue(waiting > 0 ? Text("\(waiting) waiting to be sent") : Text(""))
-                .accessibilityHint(Text("Opens the camera and sends the PDF to Paperless."))
+        }
+    }
+
+    @ViewBuilder
+    private func tile(_ tile: Tile) -> some View {
+        switch tile {
+        case .action(let i):
+            let spec = actions[i]
+            Button { open(spec) } label: {
+                StartTile(icon: spec.icon, label: Text(verbatim: spec.label), meta: showIds ? spec.name : nil)
             }
+            .buttonStyle(.press)
+            .accessibilityLabel(Text(spec.label))
+            .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
+        case .search:
+            Button { search?() } label: {
+                StartTile(icon: "magnifyingglass", label: Text("Find a movie or show"))
+            }
+            .buttonStyle(.press)
+            .accessibilityLabel(Text("Find a movie or show"))
+            .accessibilityHint(Text("Searches the server and lets you request what is missing."))
+        case .scan:
+            let waiting = scanWaiting ?? 0
+            Button(action: scan) {
+                StartTile(icon: "doc.viewfinder", label: Text("Scan a document"),
+                          status: waiting > 0 ? "\(waiting) waiting" : nil, statusValue: waiting)
+            }
+            .buttonStyle(.press)
+            .accessibilityLabel(Text("Scan a document"))
+            .accessibilityValue(waiting > 0 ? Text("\(waiting) waiting to be sent") : Text(""))
+            .accessibilityHint(Text("Opens the camera and sends the PDF to Paperless."))
         }
     }
 }
 
-/// An icon, a headline label, and at most one line of meta (an id, tertiary, data font) or status (gold, with its
-/// words). Every tile in a row is the same height: the icon row has a fixed height (some symbols, like
-/// calendar.badge.plus, are taller) and the label always takes two lines (`evenRows`: off in the one-column grid at
-/// accessibility sizes, where there is no neighbour to line up with).
+/// A Start tile: the symbol (20) and the label (15 semibold) side by side, at least 56 pt high, and at most one
+/// line of meta (an id, tertiary, data font) or status (a gold dot and its words) under the label.
 struct StartTile: View {
     let icon: String?
     let label: Text
     var meta: String?
     var status: LocalizedStringKey?
-    var evenRows = true
-    @ScaledMetric(relativeTo: .title3) private var iconRow: CGFloat = 26
+    /// The number in `status`, for its rolling digits.
+    var statusValue = 0
+    @ScaledMetric(relativeTo: .title3) private var iconWidth: CGFloat = 24
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: Symbols.safe(icon, fallback: "play.circle")).font(.title3)
-                .frame(height: iconRow, alignment: .leading)
-            VStack(alignment: .leading, spacing: 4) {
-                label.font(.headline).lineLimit(2, reservesSpace: evenRows)
+                .frame(width: iconWidth)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                label.font(Typo.secondary.weight(.semibold)).lineLimit(2)
                     .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let status {
-                    Text(status).font(.footnote.weight(.semibold)).foregroundStyle(Palette.gold).lineLimit(1)
+                    HStack(spacing: 4) {
+                        Circle().fill(Palette.gold).frame(width: 6, height: 6).accessibilityHidden(true)
+                        Text(status).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(1)
+                            .numberMotion(statusValue)
+                    }
                 } else if let meta {
                     Text(meta).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary).lineLimit(1)
                 }
             }
+            Spacer(minLength: 0)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 56, maxHeight: .infinity, alignment: .leading)
         .foregroundStyle(Palette.text)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }

@@ -42,7 +42,7 @@ public struct MoodGlow: View {
                 .frame(height: reach * 1.15)
                 .transition(.opacity)
         }
-        .reducedMotionAnimation(.easeInOut(duration: 0.8), value: level)
+        .motion(.easeInOut(duration: 0.8), value: level)
         .accessibilityHidden(true)
     }
 }
@@ -193,7 +193,7 @@ public struct DayStopLabel: View {
                 .font(valueSize.map { Font.system(size: $0, weight: .semibold, design: .monospaced) } ?? Typo.displayData)
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(valueColor)
-                .reducedMotionNumericText()
+                .contentTransition(Motion.numeric)
             Text(stop.item.title ?? "")
                 .font((compact ? Font.footnote : .subheadline).weight(stop.phase == .next ? .semibold : .regular))
                 .foregroundStyle(stop.phase == .past ? Palette.tertiary : stop.phase == .next ? Palette.text : Palette.secondary)
@@ -207,7 +207,7 @@ public struct DayStopLabel: View {
                     .accessibilityLabel(Format.spoken(DayTimeline.countdownText(minutes: countdown, coarse: coarse)))
             }
         }
-        .reducedMotionAnimation(.snappy, value: stop)
+        .motion(.snappy, value: stop)
         .accessibilityElement(children: .combine)
         .accessibilityValue(phaseWord)
     }

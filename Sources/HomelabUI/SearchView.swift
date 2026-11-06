@@ -24,7 +24,7 @@ struct PosterImage: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .reducedMotionAnimation(.easeOut(duration: 0.2), value: image == nil)
+            .motion(.easeOut(duration: 0.2), value: image == nil)
             .accessibilityIgnoresInvertColors()   // Smart Invert keeps photos as they are
             .accessibilityHidden(true)
             .task(id: (model?.selected?.id.uuidString ?? "") + "|" + (path ?? "")) { await load() }

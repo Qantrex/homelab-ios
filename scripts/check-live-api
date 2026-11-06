@@ -1,0 +1,942 @@
+#!/usr/bin/env bash
+# Usage: scripts/check-live-api [--token TOKEN] [--timeout S] [-v] [BASE_URL]
+#   BASE_URL  a Companion API v1 server; /api/v1 is added when missing. Default: $HOMELAB_URL, else the first line of
+#             ~/.config/homelab-ios/check-live-api.url (your own server's address stays out of this repo)
+#   --token   send `Authorization: Bearer TOKEN` (token servers; env HOMELAB_TOKEN keeps it out of `ps`).
+#             Without it the server must know you by identity (tailscale serve adds Tailscale-User-Login).
+#   -v        every detail line (default: at most 12 per check)
+# Read-only: only GETs (/info, /state, /actions, /services, /messages?after=0, /search?q=matrix when the server lists
+# `search`), no redirects followed. Validates each answer against server/openapi.yaml (read by a small stdlib YAML
+# reader) and the app's tolerance rules (docs/API.md, "Checking a live server"), then the invariants the app relies on:
+# unique ids, parseable times, known card styles, card/item actions that /actions lists and whose arg fits, no required
+# hidden field, arg parts the app knows, poster/image URLs on the same server, history <= 288 points with a readable
+# `end`, restartable containers the restart-container form can name, the today card's `date`, no secret-looking strings.
+# Prints a pass/fail table and the details. Exit 0: no errors (warnings allowed); 1: errors; 2: bad usage.
+# Needs bash and python3 (stdlib only).
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+
+read -r -d '' py <<'PY' || true
+import argparse, datetime as dt, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+
+# ------------------------------------------------------------------ a small YAML reader (the subset openapi.yaml uses)
+# Block mappings and sequences, flow {..} and [..] on one line, quoted and plain scalars (plain ones may continue on
+# more-indented lines), block scalars (| and >-). No anchors, tags or multi-document files.
+
+def _lines(text):
+    out = []
+    for no, raw in enumerate(text.splitlines(), 1):
+        s = raw.rstrip()
+        if s.strip() and not s.lstrip().startswith("#"):
+            out.append([len(s) - len(s.lstrip(" ")), s.strip(), no])
+    return out
+
+def _is_item(t):
+    return t == "-" or t.startswith("- ")
+
+def _key_split(t):
+    if t[:1] in "\"'":
+        j = t.find(t[0], 1)
+        if j > 0 and t[j + 1:j + 2] == ":" and (len(t) == j + 2 or t[j + 2] == " "):
+            return t[1:j], t[j + 2:].strip()
+        return None
+    m = re.search(r":(?= |$)", t)
+    if not m or t[:1] in "{[" or m.start() == 0:
+        return None
+    return t[:m.start()].strip(), t[m.end():].strip()
+
+def _atom(s, key=False):
+    s = s.strip()
+    if s[:1] == '"':
+        return json.loads(s)  # the escapes the file uses (\\, \") are JSON's
+    if s[:1] == "'":
+        return s[1:-1].replace("''", "'")
+    if key:
+        return s
+    if s in ("", "~", "null"):
+        return None
+    if s in ("true", "false"):
+        return s == "true"
+    if re.fullmatch(r"-?\d+", s):
+        return int(s)
+    if re.fullmatch(r"-?\d+\.\d+", s):
+        return float(s)
+    return s
+
+def _ws(s, j):
+    while j < len(s) and s[j] == " ":
+        j += 1
+    return j
+
+def _flow_atom(s, j, stops, key=False):
+    j = _ws(s, j)
+    if s[j] == '"':
+        k = j + 1
+        while s[k] != '"':
+            k += 2 if s[k] == "\\" else 1
+        return _atom(s[j:k + 1], key), k + 1
+    k = j
+    while k < len(s) and s[k] not in stops:
+        k += 1
+    return _atom(s[j:k], key), k
+
+def _flow(s, j):
+    j = _ws(s, j)
+    if s[j] == "{":
+        out, j = {}, j + 1
+        while True:
+            j = _ws(s, j)
+            if s[j] == "}":
+                return out, j + 1
+            k, j = _flow_atom(s, j, ":,}", key=True)
+            j = _ws(s, j)
+            if s[j] == ":":
+                v, j = _flow(s, j + 1)
+            else:
+                v = None  # YAML reads "{a: b, c d}" as {a: b, "c d": null}: a comma in a plain description
+            out[k] = v
+            j = _ws(s, j)
+            if s[j] == ",":
+                j += 1
+    if s[j] == "[":
+        out, j = [], j + 1
+        while True:
+            j = _ws(s, j)
+            if s[j] == "]":
+                return out, j + 1
+            v, j = _flow(s, j)
+            out.append(v)
+            j = _ws(s, j)
+            if s[j] == ",":
+                j += 1
+    return _flow_atom(s, j, ",]}")
+
+def _scalar(L, i, ind, rest):
+    j = i + 1
+    while j < len(L) and L[j][0] > ind:  # a plain scalar folded over more lines
+        rest += " " + L[j][1]
+        j += 1
+    rest = rest.strip()
+    if rest[:1] in "{[":
+        return _flow(rest, 0)[0], j
+    return _atom(rest), j
+
+def _node(L, i, ind):
+    return _seq(L, i, ind) if _is_item(L[i][1]) else _map(L, i, ind)
+
+def _seq(L, i, ind):
+    out = []
+    while i < len(L) and L[i][0] == ind and _is_item(L[i][1]):
+        rest = L[i][1][1:].strip()
+        if not rest:
+            if i + 1 < len(L) and L[i + 1][0] > ind:
+                v, i = _node(L, i + 1, L[i + 1][0])
+            else:
+                v, i = None, i + 1
+        elif rest[:1] not in "{[" and _key_split(rest) is not None:
+            L[i] = [ind + 2, rest, L[i][2]]  # "- key: value" opens a mapping two columns in
+            v, i = _map(L, i, ind + 2)
+        else:
+            v, i = _scalar(L, i, ind, rest)
+        out.append(v)
+    return out, i
+
+def _map(L, i, ind):
+    out = {}
+    while i < len(L) and L[i][0] == ind and not _is_item(L[i][1]):
+        ks = _key_split(L[i][1])
+        if ks is None:
+            raise ValueError("openapi.yaml line %d: can't read %r" % (L[i][2], L[i][1]))
+        k, rest = ks
+        if not rest:
+            nxt = L[i + 1] if i + 1 < len(L) else None
+            if nxt and (nxt[0] > ind or (nxt[0] == ind and _is_item(nxt[1]))):
+                v, i = _node(L, i + 1, nxt[0])
+            else:
+                v, i = None, i + 1
+        elif rest[0] in "|>":
+            j, parts = i + 1, []
+            while j < len(L) and L[j][0] > ind:
+                parts.append(L[j][1])
+                j += 1
+            v, i = ("\n" if rest[0] == "|" else " ").join(parts), j
+        else:
+            v, i = _scalar(L, i, ind, rest)
+        out[k] = v
+    return out, i
+
+def load_yaml(text):
+    L = _lines(text)
+    v, i = _node(L, 0, L[0][0])
+    if i != len(L):
+        raise ValueError("openapi.yaml line %d: unexpected indentation" % L[i][2])
+    return v
+
+# ------------------------------------------------------------------ the app's readers (Lenient.swift, StartActions.swift)
+
+TIME_RES = [re.compile(r) for r in (
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3}|\.\d{6})?(?:Z|[+-]\d{2}:\d{2})?",
+    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})?",
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})?",
+    r"\d{4}-\d{2}-\d{2}",
+)]
+DAY_RE = re.compile(r"[0-9]{4}-[0-1][0-9]-[0-3][0-9]")
+WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+NAME_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}")
+PART_KINDS = {"literal", "date", "time", "number", "word", "choice"}
+FIELD_KINDS = {"text", "multiline", "date", "datetime", "date-or-datetime", "number", "choice"}
+CARD_STYLES = {"list", "metrics", "text", "checklist", "countdown"}
+CARD_ONLY = {"todo-done", "read-later-done", "parcel-done"}  # docs/API.md: start:false actions
+MAX_ARG = 64
+
+def parse_time(v):
+    """A server time as ServerDate.parse reads it (ISO 8601 with or without zone, or epoch s/ms/us/ns), else None."""
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        s = str(v)
+    elif isinstance(v, str):
+        s = v.strip()
+    else:
+        return None
+    if s and re.fullmatch(r"[0-9.]+", s):
+        try:
+            x = float(s)
+        except ValueError:
+            return None
+        if x <= 0:
+            return None
+        for limit, div in ((1e17, 1e9), (1e14, 1e6), (1e11, 1e3), (0, 1)):
+            if x > limit:
+                try:
+                    return dt.datetime.fromtimestamp(x / div).astimezone()
+                except (OverflowError, OSError, ValueError):
+                    return None
+    if not any(r.fullmatch(s) for r in TIME_RES):
+        return None
+    try:
+        d = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return d.astimezone() if d.tzinfo is None else d
+
+def plain_day(v):
+    if not isinstance(v, str) or not DAY_RE.fullmatch(v):
+        return None
+    try:
+        return dt.date.fromisoformat(v)
+    except ValueError:
+        return None
+
+def usable_parts(variant):
+    """The variant's parts as the app reads them, or (None, why) when the app drops the variant."""
+    if not isinstance(variant, dict) or not isinstance(variant.get("parts"), list) or not variant["parts"]:
+        return None, "no parts"
+    parts = []
+    for p in variant["parts"]:
+        kind = p.get("kind") if isinstance(p, dict) else None
+        kind = kind.lower() if isinstance(kind, str) else kind
+        if kind not in PART_KINDS:
+            return None, "part kind %r the app doesn't know" % (kind,)
+        if kind == "literal" and not (isinstance(p.get("text"), str) and p["text"]):
+            return None, "literal without text"
+        if kind == "choice":
+            opts = [o.get("value") for o in p.get("options") or [] if isinstance(o, dict) and isinstance(o.get("value"), str)]
+            if not opts:
+                return None, "choice without options"
+            parts.append(("choice", opts))
+        else:
+            parts.append((kind, p.get("text")))
+    return parts, None
+
+def part_ok(kind, extra, v):
+    if kind == "date":
+        return bool(DAY_RE.fullmatch(v))
+    if kind == "time":
+        return bool(re.fullmatch(r"[0-2][0-9]:[0-5][0-9]", v))
+    if kind == "number":
+        return bool(re.fullmatch(r"[0-9]{1,12}", v))
+    if kind == "word":
+        return bool(WORD_RE.fullmatch(v))
+    if kind == "choice":
+        return v in extra
+    return True
+
+def split_arg(arg, parts):
+    """ActionForm.split: the part values when `arg` fits these parts, else None."""
+    def m(i, rest):
+        if i == len(parts):
+            return [] if rest == "" else None
+        kind, extra = parts[i]
+        if kind == "literal":
+            if not rest.startswith(extra):
+                return None
+            r = m(i + 1, rest[len(extra):])
+            return None if r is None else [""] + r
+        if kind == "choice":
+            for o in extra:
+                if o and rest.startswith(o):
+                    r = m(i + 1, rest[len(o):])
+                    if r is not None:
+                        return [o] + r
+            return None
+        for k in range(1, len(rest) + 1):
+            v = rest[:k]
+            if part_ok(kind, extra, v):
+                r = m(i + 1, rest[k:])
+                if r is not None:
+                    return [v] + r
+        return None
+    return m(0, arg)
+
+def arg_fits(spec, arg):
+    """ActionForm.prefilled: does `arg` fit one of the action's usable variants?"""
+    if not arg or len(arg) > MAX_ARG:
+        return False
+    for v in spec.get("arg") or []:
+        parts, _ = usable_parts(v)
+        if parts and split_arg(arg, parts) is not None:
+            return True
+    return False
+
+# ------------------------------------------------------------------ results
+
+CHECKS = [
+    ("info", "GET /info"), ("state", "GET /state"), ("actions", "GET /actions"), ("services", "GET /services"),
+    ("messages", "GET /messages?after=0"), ("search", "GET /search?q=matrix"),
+    ("ids", "ids unique"), ("times", "times parse"), ("cards", "card styles and items"),
+    ("refs", "card/item actions"), ("hidden", "hidden fields"), ("args", "arg templates"),
+    ("images", "poster/image URLs"), ("history", "host history"), ("containers", "containers and Restart"),
+    ("today", "today card date"), ("secrets", "no secrets"),
+]
+issues = {k: [] for k, _ in CHECKS}
+notes = {}
+skipped = {}
+
+def err(check, path, msg):
+    issues[check].append(("ERROR", path, msg))
+
+def warn(check, path, msg):
+    issues[check].append(("WARN", path, msg))
+
+def short(v, n=60):
+    s = json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else repr(v)
+    return s if len(s) <= n else s[:n - 1] + "…"
+
+def jtype(v):
+    if v is None: return "null"
+    if isinstance(v, bool): return "boolean"
+    if isinstance(v, int): return "integer"
+    if isinstance(v, float): return "number"
+    if isinstance(v, str): return "string"
+    if isinstance(v, list): return "array"
+    return "object"
+
+# ------------------------------------------------------------------ schema validation (the JSON Schema subset the file uses)
+
+class Spec:
+    def __init__(self, doc):
+        self.doc = doc
+
+    def resolve(self, s):
+        while isinstance(s, dict) and "$ref" in s:
+            node = self.doc
+            for p in s["$ref"].lstrip("#/").split("/"):
+                node = node[p]
+            s = node
+        return s or {}
+
+    def response(self, path):
+        return self.doc["paths"][path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+
+    @staticmethod
+    def is_type(v, t):
+        if t == "integer": return isinstance(v, int) and not isinstance(v, bool)
+        if t == "number": return isinstance(v, (int, float)) and not isinstance(v, bool)
+        if t == "string": return isinstance(v, str)
+        if t == "boolean": return isinstance(v, bool)
+        if t == "array": return isinstance(v, list)
+        if t == "object": return isinstance(v, dict)
+        if t == "null": return v is None
+        return True
+
+    def validate(self, check, v, s, path, required=False):
+        """Reports what doesn't fit, graded by the app's tolerance rules (docs/API.md)."""
+        s = self.resolve(s)
+        if "oneOf" in s:
+            alts = [self.resolve(a) for a in s["oneOf"]]
+            fit = [a for a in alts if a.get("type") is None or self.is_type(v, a["type"])]
+            if not fit:
+                warn(check, path, "%s fits none of the allowed shapes; the app drops it" % jtype(v))
+                return
+            return self.validate(check, v, fit[-1], path, required)
+        t = s.get("type")
+        if t is not None:
+            ts = t if isinstance(t, list) else [t]
+            if not any(self.is_type(v, x) for x in ts):
+                want = "/".join("null" if x is None else x for x in ts)
+                if required:
+                    err(check, path, "must be %s, got %s %s" % (want, jtype(v), short(v)))
+                elif isinstance(v, str) and ({"number", "integer"} & set(ts)) and re.fullmatch(r"\s*-?\d+(\.\d+)?\s*", v):
+                    warn(check, path, "number sent as a string %s (the app reads it)" % short(v))
+                elif isinstance(v, str) and "boolean" in ts and v.strip().lower() in ("yes", "no", "true", "false"):
+                    warn(check, path, "boolean sent as a string %s (the app reads it)" % short(v))
+                elif isinstance(v, float) and "integer" in ts:
+                    warn(check, path, "integer expected, got %s (the app reads it)" % short(v))
+                else:
+                    warn(check, path, "must be %s, got %s %s: the app drops it" % (want, jtype(v), short(v)))
+                return
+        if "const" in s and v != s["const"]:
+            err(check, path, "must be %s, got %s" % (short(s["const"]), short(v)))
+        if "enum" in s and v not in s["enum"] and not re.search(r"\.parts\[\d+\]\.kind$", path):  # "args" reports it
+            if isinstance(v, str) and v.lower() in s["enum"]:
+                warn(check, path, "%s: the contract says lower case (the app reads it)" % short(v))
+            else:
+                warn(check, path, "unknown value %s (the app ignores it or falls back)" % short(v))
+        if isinstance(v, str):
+            if "maxLength" in s and len(v) > s["maxLength"]:
+                err(check, path, "longer than %d characters" % s["maxLength"])
+            if "pattern" in s and not re.search(s["pattern"], v):
+                (warn if path.split(".")[-1].startswith("commands") else err)(
+                    check, path, "%s doesn't match %s" % (short(v), s["pattern"]))
+            fmt = s.get("format")
+            if fmt == "date-time" and parse_time(v) is None:
+                err("times", path, "%s isn't a time the app can read" % short(v))
+            if fmt == "uri" and urllib.parse.urlsplit(v).scheme not in ("http", "https"):
+                (err if required else warn)(check, path, "%s isn't an http(s) link; the app drops it" % short(v))
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            if ("minimum" in s and v < s["minimum"]) or ("maximum" in s and v > s["maximum"]):
+                warn(check, path, "%s outside %s-%s (the app clamps it)" % (v, s.get("minimum", ""), s.get("maximum", "")))
+        if isinstance(v, dict):
+            req = s.get("required") or []
+            props = s.get("properties") or {}
+            for k in req:
+                if k not in v or v[k] is None:
+                    err(check, path, "missing required %r" % k)
+            for k, x in v.items():
+                if k in props:
+                    self.validate(check, x, props[k], "%s.%s" % (path, k), k in req)
+                elif isinstance(s.get("additionalProperties"), dict):
+                    self.validate(check, x, s["additionalProperties"], "%s[%s]" % (path, json.dumps(k)))
+                # other unknown fields: the app ignores them
+        if isinstance(v, list):
+            if "maxItems" in s and len(v) > s["maxItems"]:
+                err("history" if ".history." in path else check, path, "%d items, at most %d" % (len(v), s["maxItems"]))
+            if "items" in s:
+                for i, x in enumerate(v):
+                    self.validate(check, x, s["items"], "%s[%d]" % (path, i))
+
+# ------------------------------------------------------------------ fetching
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None  # a 3xx comes back as an error; the token never follows a redirect
+
+def fetch(base, path, token, timeout):
+    req = urllib.request.Request(base + path, headers={"Accept": "application/json", "User-Agent": "check-live-api"})
+    if token:
+        req.add_header("Authorization", "Bearer " + token)
+    opener = urllib.request.build_opener(NoRedirect)
+    t0 = time.monotonic()
+    try:
+        with opener.open(req, timeout=timeout) as r:
+            status, body, ctype = r.status, r.read(), r.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as e:
+        status, body, ctype = e.code, e.read(), e.headers.get("Content-Type", "") if e.headers else ""
+    except (urllib.error.URLError, OSError) as e:
+        return None, "no answer: %s" % getattr(e, "reason", e)
+    took = time.monotonic() - t0
+    return {"status": status, "body": body, "ctype": ctype, "took": took}, None
+
+def get_json(check, base, path, token, timeout):
+    r, problem = fetch(base, path, token, timeout)
+    if problem:
+        err(check, path, problem)
+        notes[check] = "no answer"
+        return None
+    notes[check] = "%d, %.1f kB, %.2f s" % (r["status"], len(r["body"]) / 1000, r["took"])
+    if r["status"] != 200:
+        hint = {401: " (no identity: on the tailnet? token server: --token)", 403: " (identity or token not allowed)",
+                404: " (endpoint missing)"}.get(r["status"], "")
+        err(check, path, "HTTP %d%s" % (r["status"], hint))
+        return None
+    if "application/json" not in r["ctype"].lower():
+        warn(check, path, "Content-Type %r, not application/json" % r["ctype"])
+    try:
+        data = json.loads(r["body"].decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as e:
+        err(check, path, "not UTF-8 JSON: %s" % e)
+        return None
+    if not isinstance(data, dict):
+        err(check, path, "the answer must be a JSON object, got %s" % jtype(data))
+        return None
+    return data
+
+# ------------------------------------------------------------------ semantic checks
+
+def walk(v, path):
+    yield path, v
+    if isinstance(v, dict):
+        for k, x in v.items():
+            yield from walk(x, "%s.%s" % (path, k))
+    elif isinstance(v, list):
+        for i, x in enumerate(v):
+            yield from walk(x, "%s[%d]" % (path, i))
+
+def unique(check, items, key, path, what, level=err):
+    seen = {}
+    for i, x in enumerate(items if isinstance(items, list) else []):
+        k = x.get(key) if isinstance(x, dict) else None
+        if k is None or isinstance(k, (dict, list)):
+            continue
+        if k in seen:
+            level(check, "%s[%d]" % (path, i), "duplicate %s %s (also [%d]); the app keeps the first" % (what, short(k), seen[k]))
+        else:
+            seen[k] = i
+
+def dicts(v):
+    return [(i, x) for i, x in enumerate(v) if isinstance(x, dict)] if isinstance(v, list) else []
+
+def check_action_ref(act, path, on_item, actions, run_actions, referenced):
+    if not isinstance(act, dict) or not isinstance(act.get("name"), str):
+        return  # the schema check reported it; the app drops it
+    name = act["name"]
+    referenced.add(name)
+    spec = actions.get(name) if actions is not None else None
+    if actions is not None and spec is None:
+        err("refs", path, "action %r isn't listed in /actions: the app hides it" % name)
+    if not run_actions:
+        warn("refs", path, "no run-actions feature: the app hides this action")
+    if spec is None:
+        return
+    arg = act.get("arg", "")
+    if isinstance(arg, str) and arg and not arg_fits(spec, arg):
+        err("refs", path + ".arg", "%s fits none of %r's arg variants" % (short(arg), name))
+    payload = act.get("payload") if isinstance(act.get("payload"), dict) else {}
+    fields = {f["name"]: f for _, f in dicts(spec.get("fields")) if isinstance(f.get("name"), str)}
+    for k, x in payload.items():
+        if k not in fields:
+            warn("refs", "%s.payload.%s" % (path, k), "%r has no field %r; the app drops it" % (name, k))
+        elif not isinstance(x, str):
+            warn("refs", "%s.payload.%s" % (path, k), "not a string; the app drops it")
+    if on_item:  # one tap, no form: what the server requires must be in the payload
+        for k, f in fields.items():
+            if f.get("required") is True and not (isinstance(payload.get(k), str) and payload[k]):
+                err("refs", path, "one tap sends no %r, which %r requires" % (k, name))
+
+def check_cards(cards, path, actions, run_actions, referenced):
+    if not isinstance(cards, list):
+        return
+    unique("ids", cards, "id", path, "card id")
+    for i, c in dicts(cards):
+        p = "%s[%d]" % (path, i)
+        style = c.get("style", "list")
+        style = style.lower() if isinstance(style, str) else "list"  # the schema check reports odd values
+        items = c.get("items") if isinstance(c.get("items"), list) else []
+        if style == "text" and not isinstance(c.get("text"), str):
+            warn("cards", p, "text card without text")
+        if style not in CARD_STYLES and not items:
+            warn("cards", p + ".style", "unknown style %r and no items: the app draws an empty list" % style)
+        if "date" in c and c.get("id") != "today" and plain_day(c["date"]) is None:
+            warn("today", p + ".date", "%s isn't a plain day; the app ignores it" % short(c["date"]))
+        if "action" in c:
+            check_action_ref(c["action"], p + ".action", False, actions, run_actions, referenced)
+        for j, it in dicts(items):
+            q = "%s.items[%d]" % (p, j)
+            if "due" in it:
+                if not isinstance(it["due"], str) or parse_time(it["due"]) is None:
+                    err("times", q + ".due", "%s isn't a day or a time the app can read" % short(it["due"]))
+            elif style == "countdown":
+                warn("cards", q, "countdown item without due: it goes last and counts nothing")
+            if "action" in it:
+                check_action_ref(it["action"], q + ".action", True, actions, run_actions, referenced)
+
+def check_actions(data, actions):
+    lst = data.get("actions")
+    unique("ids", lst, "name", "actions.actions", "action name")
+    for i, a in dicts(lst):
+        p = "actions.actions[%d]" % i
+        name = a.get("name")
+        fields = dicts(a.get("fields"))
+        unique("ids", a.get("fields"), "name", p + ".fields", "field name")
+        names = {f.get("name") for _, f in fields}
+        for j, f in fields:
+            q = "%s.fields[%d]" % (p, j)
+            hidden, required = f.get("hidden") is True, f.get("required") is True
+            if hidden and required:
+                err("hidden", q, "field %r is hidden and required: a Start tile can never send it" % f.get("name"))
+            hw = f.get("hidden_when")
+            if hw is not None:
+                if not isinstance(hw, dict):
+                    warn("hidden", q + ".hidden_when", "not an object; the app ignores it")
+                else:
+                    for k, vals in hw.items():
+                        if k not in names or k == f.get("name"):
+                            warn("hidden", "%s.hidden_when.%s" % (q, k), "no such other field; the app ignores it")
+                        if not isinstance(vals, list) or not all(isinstance(x, str) for x in vals):
+                            warn("hidden", "%s.hidden_when.%s" % (q, k), "not a list of strings; the app ignores it")
+                    if required:
+                        err("hidden", q, "required field %r can be hidden by hidden_when; the form can't be sent then"
+                            % f.get("name"))
+            if isinstance(f.get("kind"), str) and f["kind"] not in FIELD_KINDS:
+                warn("args", q + ".kind", "unknown field kind %r: shown as text" % f["kind"])
+            if f.get("kind") == "choice" and not dicts(f.get("options")):
+                warn("args", q, "choice field without options")
+        if (name in CARD_ONLY or any(f.get("hidden") is True for _, f in fields)) and a.get("start") is not False:
+            warn("refs", p, "%r looks card-only (%s) but has no \"start\": false, so it gets a Start tile"
+                 % (name, "a hidden field" if name not in CARD_ONLY else "docs/API.md"))
+        variants = a.get("arg")
+        if variants is None:
+            continue
+        if not isinstance(variants, list):
+            continue  # the schema check reported it
+        usable = 0
+        for j, v in enumerate(variants):
+            parts, why = usable_parts(v)
+            if parts is None:
+                err("args", "%s.arg[%d]" % (p, j), "the app drops this variant: %s" % why)
+                continue
+            usable += 1
+            for k, (kind, extra) in enumerate(parts):
+                if kind == "choice":
+                    if len(set(extra)) != len(extra):
+                        warn("args", "%s.arg[%d].parts[%d]" % (p, j, k), "duplicate option values")
+                    if "" in extra:
+                        warn("args", "%s.arg[%d].parts[%d]" % (p, j, k), "an empty option value can't be picked")
+            kinds = [k for k, _ in parts]
+            for k in range(len(kinds) - 1):
+                if kinds[k] in ("word", "number") and kinds[k + 1] in ("word", "number"):
+                    warn("args", "%s.arg[%d]" % (p, j), "two free parts in a row (%s, %s): the app can't split a "
+                         "prefilled arg reliably" % (kinds[k], kinds[k + 1]))
+        if variants and not usable:
+            err("args", p, "%r has no variant the app can build: it isn't shown" % name)
+
+def check_history(host, p, state_time):
+    h = host.get("history")
+    if not isinstance(h, dict):
+        return
+    q = p + ".history"
+    step = h.get("step")
+    if step is not None and not (isinstance(step, int) and not isinstance(step, bool) and step >= 1):
+        warn("history", q + ".step", "%s isn't a whole number of seconds >= 1" % short(step))
+    if "end" in h:
+        end = parse_time(h["end"]) if isinstance(h["end"], str) else None  # "times" reports an unreadable one
+        if end is not None and state_time and (end - state_time).total_seconds() > (step if isinstance(step, int) else 300):
+            warn("history", q + ".end", "%s is after the answer's time %s" % (h["end"], state_time.isoformat()))
+    elif parse_time(host.get("checked")) is None:
+        err("history", q, "no end and no readable host checked: the app can't place the points")
+    for k in ("load", "mem_pct", "temp", "disk_pct"):
+        s = h.get(k)
+        if not isinstance(s, list):
+            continue
+        if len(s) > 288:
+            pass  # the schema check (maxItems) reported it
+        bad = [i for i, x in enumerate(s) if x is not None and not Spec.is_type(x, "number")]
+        if bad:
+            warn("history", "%s.%s" % (q, k), "%d values aren't numbers (gaps), first at [%d]" % (len(bad), bad[0]))
+        if s and all(x is None for x in s):
+            warn("history", "%s.%s" % (q, k), "only nulls: an empty chart")
+
+def check_containers(state, actions, run_actions):
+    spec = actions.get("restart-container") if actions else None
+    for i, h in dicts(state.get("hosts")):
+        p = "state.hosts[%d]" % i
+        cl = h.get("container_list")
+        if not isinstance(cl, list):
+            continue
+        unique("ids", cl, "name", p + ".container_list", "container name")
+        summ = h.get("containers")
+        if isinstance(summ, dict):
+            running = sum(1 for _, c in dicts(cl) if c.get("state") == "running"
+                          or (isinstance(c.get("state"), str) and c["state"].startswith("Up ")))
+            if isinstance(summ.get("total"), int) and summ["total"] != len(cl):
+                warn("containers", p + ".containers", "total %d but container_list has %d" % (summ["total"], len(cl)))
+            if isinstance(summ.get("up"), int) and summ["up"] != running:
+                warn("containers", p + ".containers", "up %d but %d of container_list are running" % (summ["up"], running))
+        hid = h.get("id")
+        restartable = [c["name"] for _, c in dicts(cl) if c.get("restartable") is True and isinstance(c.get("name"), str)]
+        if not restartable or not isinstance(hid, str):
+            continue
+        if not run_actions or spec is None:
+            warn("containers", p, "%d restartable containers, but no run-actions/restart-container: no Restart button"
+                 % len(restartable))
+            continue
+        bad = [n for n in restartable if not arg_fits(spec, "%s:%s" % (hid, n))]
+        if bad:
+            err("containers", p + ".container_list", "%d of %d restartable containers get no Restart button: "
+                "restart-container's arg can't be %s" % (len(bad), len(restartable),
+                ", ".join(repr("%s:%s" % (hid, n)) for n in bad[:3]) + (" …" if len(bad) > 3 else "")))
+    if spec is not None:
+        hosts = {h.get("id") for _, h in dicts(state.get("hosts"))}
+        for j, v in enumerate(spec.get("arg") or []):
+            parts, _ = usable_parts(v)
+            for kind, extra in parts or []:
+                if kind == "choice" and parts[0] == (kind, extra):
+                    for o in extra:
+                        if o not in hosts:
+                            warn("containers", "actions.restart-container.arg[%d]" % j, "host option %r isn't a host in /state" % o)
+
+def check_today(state):
+    cards = [c for _, c in dicts(state.get("cards")) if c.get("id") == "today"]
+    if not cards:
+        notes["today"] = "no today card (the app uses the first metrics card)"
+        return
+    c = cards[0]
+    if "date" not in c:
+        notes["today"] = "no date: normal day line"
+        return
+    d = plain_day(c["date"])
+    if d is None:
+        err("today", "state.cards[today].date", "%s isn't a plain day (YYYY-MM-DD): the app ignores it" % short(c["date"]))
+        return
+    today = dt.date.today()
+    if d == today + dt.timedelta(days=1):
+        notes["today"] = "%s = tomorrow: tomorrow mode" % d
+    elif d == today:
+        notes["today"] = "%s = today" % d
+    elif d < today:
+        warn("today", "state.cards[today].date", "%s is in the past: the app shows the normal day line" % d)
+    else:
+        warn("today", "state.cards[today].date", "%s is more than a day ahead: the app ignores it" % d)
+
+IMAGE_KEY = re.compile(r"poster|image|thumb|artwork|cover|backdrop|fanart|banner|logo", re.I)
+
+def check_images(answers, base):
+    origin = urllib.parse.urlsplit(base)
+    n = 0
+    for name, data in answers.items():
+        for path, v in walk(data, name):
+            key = path.rsplit(".", 1)[-1]
+            if not isinstance(v, str) or not IMAGE_KEY.search(key) or "[" in key:
+                continue
+            n += 1
+            u = urllib.parse.urlsplit(v)
+            if not u.scheme and not u.netloc:
+                continue  # relative: on the same server
+            if (u.scheme, u.netloc) == (origin.scheme, origin.netloc):
+                warn("images", path, "absolute URL on this server; send it relative")
+            else:
+                err("images", path, "%s isn't on this server: the app must load images only from it" % short(v))
+    notes["images"] = "%d found" % n
+
+SECRET_RES = [
+    (re.compile(r"(?<![0-9A-Za-z])(?=[0-9a-fA-F]*[a-fA-F])[0-9a-fA-F]{32,}(?![0-9A-Za-z])"), "a long hex token"),
+    (re.compile(r"\b(?:ghp|gho|ghs|github_pat)_[A-Za-z0-9_]{20,}"), "a GitHub token"),
+    (re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"), "an API key (sk-)"),
+    (re.compile(r"\btskey-[A-Za-z0-9-]{10,}"), "a Tailscale key"),
+    (re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"), "a Slack token"),
+    (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "an AWS key"),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\."), "a JWT"),
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "a private key"),
+    (re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{20,}"), "a bearer token"),
+]
+SECRET_KEY = re.compile(r"(?i)^(token|secret|password|passwd|api_?key|access_?token|auth_?token|client_secret)$")
+
+def check_secrets(answers):
+    for name, data in answers.items():
+        for path, v in walk(data, name):
+            key = path.rsplit(".", 1)[-1]
+            if ".buttons." in path:
+                continue  # signed button strings are meant for the app
+            if SECRET_KEY.match(key) and isinstance(v, str) and v:
+                err("secrets", path, "a field named %r with a value" % key)
+            if not isinstance(v, str):
+                continue
+            for rx, what in SECRET_RES:
+                m = rx.search(v)
+                if m:
+                    s = m.group(0)
+                    err("secrets", path, "looks like %s: %s…%s (%d chars)" % (what, s[:4], s[-2:], len(s)))
+                    break
+
+# ------------------------------------------------------------------ main
+
+def default_base():
+    if os.environ.get("HOMELAB_URL"):
+        return os.environ["HOMELAB_URL"].strip()
+    try:
+        with open(os.path.expanduser("~/.config/homelab-ios/check-live-api.url"), encoding="utf-8") as f:
+            return next((l.strip() for l in f if l.strip() and not l.lstrip().startswith("#")), None)
+    except OSError:
+        return None
+
+def main():
+    ap = argparse.ArgumentParser(prog="scripts/check-live-api", description="Read-only Companion API v1 contract check.")
+    ap.add_argument("openapi", help=argparse.SUPPRESS)
+    ap.add_argument("base", nargs="?", metavar="BASE_URL", default=default_base())
+    ap.add_argument("--token", default=os.environ.get("HOMELAB_TOKEN"))
+    ap.add_argument("--timeout", type=float, default=20)
+    ap.add_argument("-v", "--verbose", action="store_true")
+    a = ap.parse_args()
+
+    if not a.base:
+        ap.error("no BASE_URL: pass one, set HOMELAB_URL or write it to ~/.config/homelab-ios/check-live-api.url")
+    base = a.base.rstrip("/")
+    if not re.match(r"https?://", base):
+        ap.error("BASE_URL must start with http:// or https://")
+    if not base.endswith("/api/v1"):
+        base += "/api/v1"
+    spec = Spec(load_yaml(open(a.openapi, encoding="utf-8").read()))
+
+    answers = {}
+    info = get_json("info", base, "/info", a.token, a.timeout)
+    if info is None:  # the app's "Test connection" fails here too; the rest would only repeat it
+        for k, _ in CHECKS[1:]:
+            skipped[k] = "no /info"
+        return report(a, base)
+    answers["info"] = info
+    spec.validate("info", info, spec.response("/info"), "info")
+    features = {"status", "hosts"}  # the app's default for a missing list
+    if isinstance(info.get("features"), list):
+        features = set(x for x in info["features"] if isinstance(x, str))
+    if isinstance(info.get("commands"), list) and len(info["commands"]) > 8:
+        warn("info", "info.commands", "%d commands; the app shows the first 8" % len(info["commands"]))
+    if a.token and info.get("auth") == "identity":
+        warn("info", "info.auth", "says identity, but a token was needed/sent")
+    has = lambda f: f in features
+
+    state = get_json("state", base, "/state", a.token, a.timeout)
+    if state is not None:
+        answers["state"] = state
+        spec.validate("state", state, spec.response("/state"), "state")
+
+    actions_data, actions = None, None
+    if has("run-actions"):
+        actions_data = get_json("actions", base, "/actions", a.token, a.timeout)
+        if actions_data is not None:
+            answers["actions"] = actions_data
+            spec.validate("actions", actions_data, spec.response("/actions"), "actions")
+            actions = {x["name"]: x for _, x in dicts(actions_data.get("actions")) if isinstance(x.get("name"), str)}
+            notes["actions"] += ", %d actions" % len(actions)
+    else:
+        skipped["actions"] = "no run-actions feature"
+
+    if has("services"):
+        services = get_json("services", base, "/services", a.token, a.timeout)
+        if services is not None:
+            answers["services"] = services
+            spec.validate("services", services, spec.response("/services"), "services")
+            unique("services", services.get("services"), "name", "services.services", "service name", warn)
+            notes["services"] += ", %d services" % len(services.get("services") or [])
+    else:
+        skipped["services"] = "no services feature"
+
+    messages = None
+    if has("chat"):
+        messages = get_json("messages", base, "/messages?after=0", a.token, a.timeout)
+        if messages is not None:
+            answers["messages"] = messages
+            spec.validate("messages", messages, spec.response("/messages"), "messages")
+            ms = messages.get("messages") if isinstance(messages.get("messages"), list) else []
+            notes["messages"] += ", %d messages" % len(ms)
+            if len(ms) > 200:
+                warn("messages", "messages.messages", "%d messages; the API says the newest 200 at most" % len(ms))
+            unique("ids", ms, "id", "messages.messages", "message id")
+            ids = [m.get("id") for m in ms if isinstance(m, dict) and isinstance(m.get("id"), int)]
+            if ids != sorted(ids):
+                warn("messages", "messages.messages", "not in increasing id order")
+    else:
+        skipped["messages"] = "no chat feature"
+
+    if "search" in features:
+        search = get_json("search", base, "/search?q=matrix", a.token, a.timeout)
+        if search is not None:
+            answers["search"] = search
+            for path, v in walk(search, "search"):
+                if isinstance(v, list):
+                    unique("ids", v, "id", path, "result id")
+    else:
+        skipped["search"] = "no search feature"
+
+    # invariants the app relies on
+    run_actions = has("run-actions")
+    referenced = set()
+    if state is not None:
+        for key, what in (("hosts", "host id"), ("problems", "problem id"), ("pending", "pending id")):
+            unique("ids", state.get(key), "id", "state." + key, what)
+        host_ids = {h.get("id") for _, h in dicts(state.get("hosts"))}
+        for i, pr in enumerate(state.get("problems") or []):
+            if isinstance(pr, str):
+                warn("state", "state.problems[%d]" % i, "a plain string (legacy): the app reads it as {text}")
+            elif isinstance(pr, dict) and isinstance(pr.get("host"), str) and pr["host"] not in host_ids:
+                warn("state", "state.problems[%d].host" % i, "%r isn't a host id" % pr["host"])
+        if state.get("status") == "ok" and state.get("problems"):
+            warn("state", "state.status", "ok, but there are problems")
+        check_cards(state.get("cards"), "state.cards", actions, run_actions, referenced)
+        lm = state.get("last_message")
+        if isinstance(lm, dict):
+            check_cards(lm.get("cards"), "state.last_message.cards", actions, run_actions, referenced)
+        st = parse_time(state.get("time"))
+        for i, h in dicts(state.get("hosts")):
+            check_history(h, "state.hosts[%d]" % i, st)
+        check_containers(state, actions or {}, run_actions)
+        check_today(state)
+    else:
+        for k in ("cards", "history", "containers", "today"):
+            skipped[k] = "no /state"
+    if messages is not None:
+        pend = {p.get("id"): p for _, p in dicts((state or {}).get("pending"))}
+        for i, m in dicts(messages.get("messages")):
+            check_cards(m.get("cards"), "messages.messages[%d].cards" % i, actions, run_actions, referenced)
+            for j, p in dicts(m.get("pending")):
+                q = "messages.messages[%d].pending[%d]" % (i, j)
+                if state is not None and p.get("id") not in pend:
+                    warn("messages", q, "pending %r isn't in state.pending (answered in between?)" % p.get("id"))
+                elif state is not None and p.get("buttons") != pend[p.get("id")].get("buttons"):
+                    warn("messages", q, "buttons differ from state.pending")
+    if actions_data is not None:
+        check_actions(actions_data, actions)
+    else:
+        for k in ("hidden", "args"):
+            skipped[k] = "no /actions"
+        if not run_actions:
+            skipped["refs"] = "no run-actions feature"
+    if referenced:
+        notes["refs"] = "%d referenced: %s" % (len(referenced), ", ".join(sorted(referenced)))
+    check_images(answers, base)
+    check_secrets(answers)
+    return report(a, base)
+
+def report(a, base):
+    color = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+    paint = lambda s, c: ("\033[%sm%s\033[0m" % (c, s)) if color else s
+    LOVE, GOLD, DIM = "38;2;235;111;146", "38;2;246;193;119", "2"
+    print("Companion API check: %s%s" % (base, "  (token)" if a.token else ""))
+    print()
+    print("%-5s  %-24s %4s %5s  %s" % ("", "check", "err", "warn", "note"))
+    total_e = total_w = 0
+    for k, title in CHECKS:
+        e = sum(1 for x in issues[k] if x[0] == "ERROR")
+        w = len(issues[k]) - e
+        total_e += e
+        total_w += w
+        if k in skipped and not issues[k]:
+            status, c, note = "SKIP", DIM, skipped[k]
+        else:
+            status, c = ("FAIL", LOVE) if e else ("WARN", GOLD) if w else ("PASS", "")
+            note = notes.get(k, "")
+        line = "%-5s  %-24s %4s %5s  %s" % (status, title, e or "", w or "", note)
+        print(paint(line, c) if c else line)
+    print()
+    limit = None if a.verbose else 12
+    for k, title in CHECKS:
+        if not issues[k]:
+            continue
+        rows = sorted(issues[k], key=lambda x: x[0] != "ERROR")
+        print("%s:" % title)
+        for lvl, path, msg in rows[:limit]:
+            tag = paint("%-5s" % lvl, LOVE if lvl == "ERROR" else GOLD)
+            print("  %s %s: %s" % (tag, path, msg))
+        if limit is not None and len(rows) > limit:
+            print(paint("  … %d more (-v shows all)" % (len(rows) - limit), DIM))
+        print()
+    verdict = "FAIL: %d errors, %d warnings" % (total_e, total_w) if total_e else \
+        "PASS with %d warnings" % total_w if total_w else "PASS"
+    print(paint(verdict, LOVE if total_e else GOLD if total_w else ""))
+    return 1 if total_e else 0
+
+try:
+    sys.exit(main())
+except KeyboardInterrupt:
+    sys.exit(130)
+PY
+
+exec python3 -I -c "$py" "$root/server/openapi.yaml" "$@"

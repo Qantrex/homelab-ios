@@ -137,7 +137,7 @@ import Testing
         #expect(PollPolicy.backoff(failures: 30) == .seconds(120))
     }
 
-    @Test func dayHeadersAboveTheFirstMessageOfEachDay() throws {
+    @Test func dayStampAboveTheFirstMessageOfEachDay() throws {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = try #require(TimeZone(identifier: "Europe/Vienna"))
         func at(_ day: Int, _ hour: Int, _ minute: Int = 0) -> Date {
@@ -152,10 +152,11 @@ import Testing
             ChatMessage(id: 5, ts: at(6, 15), from: .me, text: "c"),
             ChatMessage(id: 6, ts: at(6, 15, 1), from: .agent, text: "d"),
         ]))
-        let h = t.dayHeaders(now: at(6, 15, 20), calendar: cal)
-        #expect(h == [1: "Sun", 2: "Wed", 3: "Yesterday", 5: "Today"])
-        #expect(t.dayHeaders(now: at(20, 12), calendar: cal)[1] == "01.11.")
-        #expect(ChatTimeline().dayHeaders().isEmpty)
+        let s = t.stamps(now: at(6, 15, 20), calendar: cal)
+        #expect(s.compactMapValues(\.day) == [1: "Sun", 2: "Wed", 3: "Yesterday", 5: "Today"])
+        #expect(s[5]?.time == at(6, 15) && s[6] == nil)   // a minute later: no time line
+        #expect(t.stamps(now: at(20, 12), calendar: cal)[1]?.day == "01.11.")
+        #expect(ChatTimeline().stamps().isEmpty)
     }
 }
 

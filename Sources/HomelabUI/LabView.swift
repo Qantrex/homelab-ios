@@ -108,7 +108,10 @@ struct LabView: View {
     private var headline: String {
         guard let state else { return String(localized: "Not loaded") }
         switch state.status {
-        case .ok: return String(localized: "All good")
+        case .ok where state.hostAlerts.isEmpty: return String(localized: "All good")
+        case .ok:
+            let n = state.hostAlerts.count
+            return n == 1 ? String(localized: "1 warning") : String(localized: "\(n) warnings")
         case .unknown: return String(localized: "Status unknown")
         case .warning, .problem:
             let t = ProblemTally(state)
@@ -360,8 +363,7 @@ struct HostTile: View {
                 Spacer(minLength: 8)
                 Text(value).font(Typo.data(.footnote))
                     .foregroundStyle(Meter.valueColor(level))   // the bar stays grey; the number turns gold/love at its limits
-                    .reducedMotionNumericText()
-                    .reducedMotionAnimation(.snappy, value: value)
+                    .numberMotion(value)
             }
             if let share { Meter(share, warns: true) }
         }

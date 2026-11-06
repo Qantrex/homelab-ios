@@ -129,6 +129,9 @@ public final class AppModel {
     /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
+    /// The values a link gave for `openAction` (`homelab://actions/<name>?arg=…&<field>=…`); used only while its name
+    /// is the requested one.
+    public private(set) var openActionLink: ActionLink?
     /// The Scan screen was asked for (`homelab://scan`, the Home-screen quick action). The Actions tab opens it once
     /// the server is known to take documents, and clears it.
     public private(set) var openScan = false
@@ -160,6 +163,9 @@ public final class AppModel {
     public let transport: any HTTPTransport
     /// Called whenever the data the widget shows changed (WidgetCenter in the app).
     @ObservationIgnored public var onWidgetDataChange: @MainActor () -> Void = {}
+    /// Called when the Home-screen quick actions may have changed: an action was started, or a server's Start list
+    /// changed (`ActionUsage`).
+    @ObservationIgnored public var onQuickActionsChange: @MainActor () -> Void = {}
 
     @ObservationIgnored private var demo: DemoBackend?
     /// The picture loader per server (memory and disk cache), made when a card first shows a picture.
@@ -291,6 +297,7 @@ public final class AppModel {
     func dropRequests() {
         requestedTab = nil
         openAction = nil
+        openActionLink = nil
         openHost = nil
         openScan = false
         openSearch = nil
@@ -524,8 +531,10 @@ public final class AppModel {
                 if let list = try? await api.actions() {
                     s.actions = list
                     s.actionsFetched = Date()
+                    noteOffered(list, server: server.id)
                 }
             } else if !s.features.contains(.runActions) {
+                if s.knownInfo != nil { noteOffered([], server: server.id) }
                 s.actions = []
             }
         } catch {
@@ -580,6 +589,7 @@ public final class AppModel {
         guard let arg = form.arg, form.problems.isEmpty else {
             return .failure(.badRequest(form.problems.first ?? "The form isn't complete."))
         }
+        noteStarted(form.spec.name, server: server.id)
         let result: Result<ActionResult, APIError>
         do {
             result = .success(try await companion(for: server).run(form.spec.name, arg: arg, payload: form.payload))
@@ -595,15 +605,26 @@ public final class AppModel {
     /// loaded list lacks the name, or it has no `run-actions`) is dropped too, so it doesn't pop up later after a
     /// server switch. Nil while the list isn't loaded yet, another tab shows or a sheet is open: the request waits.
     public func takeOpenAction() -> ActionSpec? {
+        takeOpenActionForm()?.spec
+    }
+
+    /// Like `takeOpenAction`, with the link's prefill for the form (nil: a plain link or launch argument). Hidden
+    /// fields and choice values that aren't options never come from a link (`ActionLink.prefill`).
+    public func takeOpenActionForm() -> (spec: ActionSpec, prefill: ItemAction?)? {
         guard let name = openAction, tab == .actions, !formSheetOpen else { return nil }
         let s = selectedStatus
         // Only actions offered as Start tiles: a card-only one (tick off, parcel delivered) needs its card's prefill
         // (the to-do's uid, the parcel id); a link can't give that, so it is dropped below like an unknown name.
         if s.features.contains(.runActions), let spec = s.actions.first(where: { $0.name == name && $0.start }) {
+            let link = openActionLink?.name == name ? openActionLink : nil
             openAction = nil
-            return spec
+            openActionLink = nil
+            return (spec, link?.prefill(for: spec))
         }
-        if s.actionsFetched != nil || (s.knownInfo != nil && !s.features.contains(.runActions)) { openAction = nil }
+        if s.actionsFetched != nil || (s.knownInfo != nil && !s.features.contains(.runActions)) {
+            openAction = nil
+            openActionLink = nil
+        }
         return nil
     }
 
@@ -679,6 +700,27 @@ public final class AppModel {
             return .failure(.notFound)
         }
         return await run(ActionForm(spec, prefill: action), on: server)
+    }
+
+    // MARK: Quick actions (ActionUsage)
+
+    /// The owner started `name` on `server`: one more use for the quick actions' ranking.
+    func noteStarted(_ name: String, server: UUID) {
+        var usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
+        usage.record(name, server: server)
+        try? storage.write(usage, ActionUsage.fileName)
+        onQuickActionsChange()
+    }
+
+    /// `server`'s Start list as the quick actions offer it; written only when it changed.
+    func noteOffered(_ specs: [ActionSpec], server: UUID) {
+        var usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
+        let before = usage
+        usage.setOffered(specs, server: server)
+        usage.keep(servers: servers.servers.map(\.id))
+        guard usage != before else { return }
+        try? storage.write(usage, ActionUsage.fileName)
+        onQuickActionsChange()
     }
 
     /// The widget reads the selected server's snapshot from shared storage.
@@ -765,8 +807,12 @@ public final class AppModel {
         request(t)
         // homelab://actions/<name>: that action's form (it waits like the tab).
         let path = url.pathComponents.filter { $0 != "/" }
+        // homelab://actions/<name>?arg=…&<field>=…: that form, filled in (ActionLink).
         if t == .actions, tab == .actions || requestedTab == .actions, url.host == "actions", path.count == 1,
-           ActionSpec.isValidName(path[0]) { openAction = path[0] }
+           ActionSpec.isValidName(path[0]) {
+            openAction = path[0]
+            openActionLink = ActionLink(url)
+        }
         // homelab://lab/<host-id>: that host's details (they wait like the tab).
         if t == .lab, tab == .lab || requestedTab == .lab, url.host == "lab", path.count == 1,
            LaunchArguments.isHostID(path[0]) { openHost = path[0] }

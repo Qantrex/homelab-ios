@@ -266,7 +266,7 @@ public struct Meter: View {
             }
         }
         .frame(height: 4)
-        .reducedMotionAnimation(.easeOut(duration: 0.6), value: value)
+        .motion(.easeOut(duration: 0.6), value: value)
         .accessibilityHidden(true)
     }
 }
@@ -304,7 +304,7 @@ public struct ProgressRing: View {
             }
         }
         .frame(width: size, height: size)
-        .reducedMotionAnimation(.easeOut(duration: 0.6), value: value)
+        .motion(.easeOut(duration: 0.6), value: value)
         .accessibilityHidden(true)
     }
 }
