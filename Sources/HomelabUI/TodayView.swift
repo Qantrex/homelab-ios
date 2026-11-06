@@ -7,7 +7,7 @@ import SwiftUI
 struct TodayView: View {
     let model: AppModel
     @Environment(\.dynamicTypeSize) private var typeSize
-    /// Taps on the mascot (each one: the next comment).
+    /// Taps on the voice line (each one: the next comment).
     @State private var pokes = 0
 
     private var status: ServerStatus { model.selectedStatus }
@@ -71,56 +71,59 @@ struct TodayView: View {
                               : TodayMood(state: state, checking: status.error == nil)
     }
 
-    /// The big "now": date, how the lab is doing in two words, the first problem. Tap opens Lab.
+    /// The big "now" (docs/DESIGN.md): the date, how the lab is doing in two words (white; the mood is the light
+    /// behind it and the status icon), what the voice thinks of it, the first problem, where the data is from.
+    /// Tap opens Lab.
     private var hero: some View {
         let m = mood
         return Button {
             if model.availableTabs.contains(.lab) { model.tab = .lab }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(dateLine).font(Typo.mono(.caption, weight: .medium)).tracking(1.5).foregroundStyle(Palette.secondary)
-                // The lab's face and what it thinks of the facts (CARROT's idea): tap it for the next comment.
-                if model.selected != nil {
-                    HStack(alignment: .top, spacing: 10) {
-                        Mascot(face: Mascot.face(for: m.level, checking: status.error == nil && state == nil,
-                                                 personality: model.settings.voice),
-                               tint: m.level == .calm || m.level == .unknown ? Palette.text : m.level.color,
-                               size: typeSize.isAccessibilitySize ? 52 : 66, pokes: pokes)
-                            .onTapGesture { pokes += 1 }
-                            .sensoryFeedback(.impact(weight: .light), trigger: pokes)
-                        if let take = take(m) {
-                            SpeechBubble(take, tint: m.level == .calm || m.level == .unknown ? Palette.secondary : m.level.color)
-                                .id(take)
-                                .transition(.asymmetric(insertion: .scale(scale: 0.9, anchor: .leading).combined(with: .opacity),
-                                                        removal: .opacity))
-                        }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    if let symbol = statusSymbol(m.level) {
+                        Image(systemName: symbol).foregroundStyle(m.level.color).font(.footnote.weight(.semibold))
                     }
-                    .padding(.top, 6)
-                    .padding(.bottom, 4)
-                    .animation(.snappy, value: pokes)
+                    Text(dateLine).font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary)
                 }
                 Text(m.headline)
-                    .font(.system(size: typeSize.isAccessibilitySize ? 40 : 54, weight: .heavy))
-                    .tracking(-1.5)
-                    .foregroundStyle(m.level.color)
+                    .font(Typo.hero)
+                    .tracking(-1)
+                    .foregroundStyle(Palette.text)
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
                     .contentTransition(.numericText())
+                    .padding(.top, 4)
                 if let detail = m.detail {
-                    Text(detail).font(.title3.weight(.medium)).foregroundStyle(Palette.text.opacity(0.85))
+                    Text(detail).font(.title3.weight(.semibold)).foregroundStyle(Palette.text)
                         .lineLimit(3).multilineTextAlignment(.leading)
+                        .padding(.top, 8)
+                }
+                // The voice: what it thinks of the facts above, in words (DESIGN.md §4). Tap the line for another.
+                if let take = take(m) {
+                    Text(take).font(.title3).foregroundStyle(Palette.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 8)
+                        .id(take)
+                        .transition(.opacity)
+                        .onTapGesture { pokes += 1 }
+                        .sensoryFeedback(.selection, trigger: pokes)
                 }
                 if m.warnings > 0 {
-                    Text(m.warnings == 1 ? "and 1 warning" : "and \(m.warnings) warnings")
-                        .font(Typo.mono(.caption, weight: .semibold)).foregroundStyle(Palette.gold)
+                    Label(m.warnings == 1 ? "and 1 warning" : "and \(m.warnings) warnings",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.gold)
+                        .padding(.top, 8)
                 }
-                Text(facts).font(Typo.mono(.caption2)).tracking(1).foregroundStyle(Palette.tertiary).padding(.top, 2)
+                Text(facts).font(.footnote).foregroundStyle(Palette.tertiary).padding(.top, 12)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 36)
-            .padding(.bottom, 6)
+            .padding(.top, 28)
+            .padding(.bottom, 8)
             .contentShape(Rectangle())
             .animation(.snappy, value: m)
+            .animation(.snappy, value: pokes)
         }
         .buttonStyle(.pressLight)
         .accessibilityElement(children: .combine)
@@ -128,7 +131,16 @@ struct TodayView: View {
         .accessibilityHint(Text("Opens Lab"))
     }
 
-    /// What the mascot says. Each tap moves to the next line.
+    private func statusSymbol(_ level: TodayMood.Level) -> String? {
+        switch level {
+        case .alarm: "exclamationmark.octagon.fill"
+        case .headsUp: "exclamationmark.triangle.fill"
+        case .calm: "checkmark.circle.fill"
+        case .unknown: nil
+        }
+    }
+
+    /// What the voice says. Each tap on it moves to the next line.
     private func take(_ m: TodayMood) -> String? {
         let all = Voice.lines(Voice.moment(m.level), model.settings.voice)
         guard !all.isEmpty else { return nil }
@@ -137,7 +149,7 @@ struct TodayView: View {
     }
 
     private var dateLine: String {
-        Date.now.formatted(.dateTime.weekday(.wide).day().month(.abbreviated)).uppercased()
+        Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide))
     }
 
     /// "DEMO HOMELAB · CHECKED 2 MIN AGO"
@@ -155,7 +167,7 @@ struct TodayView: View {
         if density == .overkill, let busy = state?.busy, !busy.isEmpty {
             parts.append(String(localized: "busy: \(busy.joined(separator: ", "))"))
         }
-        return parts.joined(separator: " · ").uppercased()
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Content

@@ -76,7 +76,7 @@ struct HomeTiles: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionTitle(text: "Home", action: home.entities.isEmpty ? nil : ("EDIT", { picking = true }))
+            SectionTitle(text: "Home", action: home.entities.isEmpty ? nil : ("Edit", { picking = true }))
             if let error = home.error {
                 ErrorBanner(error: error, snapshotAge: nil) { Task { await load() } }
             }

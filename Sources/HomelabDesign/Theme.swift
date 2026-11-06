@@ -6,8 +6,8 @@ import UIKit
 
 // Colours, icons and small building blocks shared by the app and the widget.
 //
-// The look (owner, 2026-11-05): true black, monochrome white/grey type, numbers in a mono font, thin borders instead
-// of filled cards. Colour only for status, from Rosé Pine Moon: love = problem, gold = warning, iris = links. A
+// The look (owner, 2026-11-05; rules in docs/DESIGN.md since 2026-11-06): true black, monochrome white/grey type,
+// numbers in a mono font, filled panels without borders. Colour only for status, from Rosé Pine Moon: love = problem, gold = warning, iris = links. A
 // sleeping machine is plain grey (tapping it doesn't wake it). No blue anywhere. Light mode is the same in white/black. Change colours here only.
 
 /// Every colour the app and the widget use.
@@ -42,11 +42,21 @@ public enum Palette {
     }
 }
 
-/// Fonts: system text, numbers and labels in the monospaced design.
+/// Fonts (docs/DESIGN.md §1): system text styles for words, the monospaced design only for values.
 public enum Typo {
-    public static func mono(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
+    /// Values only: numbers, times, ids, arguments. Never labels or titles.
+    public static func data(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
         .system(style, design: .monospaced).weight(weight)
     }
+
+    /// Older name of `data`; new code uses `data`.
+    public static func mono(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font { data(style, weight: weight) }
+
+    /// Today's headline: the one big thing on the first screen. Scales with Dynamic Type from 48 pt.
+    public static let hero: Font = .system(size: 48, weight: .heavy, design: .default)
+
+    /// Section titles: sentence case, bold, no tracking.
+    public static let sectionTitle: Font = .title3.bold()
 }
 
 #if canImport(UIKit)

@@ -95,25 +95,24 @@ struct Placeholder: View {
     }
 }
 
-/// Section header: small mono capitals, like a terminal dashboard. An optional action on the right.
+/// Section header (docs/DESIGN.md §1): a bold sentence-case title, an optional count in the data font, an optional
+/// action on the right.
 struct SectionTitle: View {
     let text: LocalizedStringKey
     var trailing: String?
     var action: (label: LocalizedStringKey, run: () -> Void)?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(text).textCase(.uppercase).font(Typo.mono(.caption, weight: .semibold)).tracking(1.2)
-                .foregroundStyle(Palette.secondary)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(text).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+            if let trailing { Text(trailing).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary) }
             Spacer()
-            if let trailing { Text(trailing.uppercased()).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary) }
             if let action {
-                Button(action: action.run) { Text(action.label).font(Typo.mono(.caption2, weight: .semibold)) }
+                Button(action: action.run) { Text(action.label).font(.subheadline.weight(.semibold)) }
                     .buttonStyle(.plain)
                     .foregroundStyle(Palette.secondary)
             }
         }
-        .padding(.horizontal, 2)
         .accessibilityAddTraits(.isHeader)
     }
 }
@@ -149,27 +148,28 @@ extension ButtonStyle where Self == PressStyle {
     static var pressLight: PressStyle { PressStyle(scale: 0.985) }
 }
 
-/// A panel: slightly lifted from the black background, with a hairline border.
+/// A panel (docs/DESIGN.md §2): filled, slightly lifted from the black background, no border. Status is never the
+/// panel's colour: the item inside shows its own status dot or icon.
 struct CardBackground: ViewModifier {
-    var accent: Color?
-    var padding: CGFloat = 14
+    var padding: CGFloat = 16
 
     func body(content: Content) -> some View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(accent?.opacity(0.55) ?? Palette.line, lineWidth: 1))
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
 extension View {
-    /// A panel; `accent` colours its border (a problem panel gets a love border). Less `padding` for a small one
-    /// (a card inside a chat bubble).
-    func card(accent: Color? = nil, padding: CGFloat = 14) -> some View {
-        modifier(CardBackground(accent: accent, padding: padding))
+    /// A panel. `accent` is accepted for old call sites and ignored (status belongs on the item, not the panel).
+    /// Less `padding` for a small one (a card inside a chat bubble).
+    func card(accent: Color? = nil, padding: CGFloat = 16) -> some View {
+        modifier(CardBackground(padding: padding))
     }
+
+    /// The panel of docs/DESIGN.md §2.
+    func panel(padding: CGFloat = 16) -> some View { modifier(CardBackground(padding: padding)) }
 
     /// The screen background behind scroll views and lists.
     func screenBackground() -> some View {
