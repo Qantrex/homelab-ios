@@ -251,6 +251,11 @@ struct DayView: View {
 
     private var card: Card? { entry.redacted ? nil : entry.state?.dayCard }
     private var line: DayTimeline? { card.map { DayTimeline(card: $0, now: entry.date) } }
+    /// "Fri 7": today's date, or the card's day in tomorrow mode.
+    private var dayDateLine: String {
+        guard line?.isTomorrow == true, let day = DayTimeline.plainDay(card?.date) else { return entry.dateLine }
+        return day.formatted(.dateTime.weekday(.abbreviated).day())
+    }
     /// The stop to show big: the next one, or the last one once the day is over.
     private var focus: DayTimeline.Stop? { line.flatMap { $0.next ?? $0.stops.last } }
 
@@ -270,7 +275,7 @@ struct DayView: View {
             .privacySensitive()
         case .accessoryInline:
             if let stop = focus, let line, stop.phase == .next {
-                Text("\(stop.item.title ?? "") \(stop.item.value ?? "") · \(Format.countdown(minutes: line.minutesToNext ?? 0))")
+                Text("\(stop.item.title ?? "") \(stop.item.value ?? "") · \(line.widgetCountdown ?? "")")
             } else {
                 Text(empty)
             }
@@ -310,13 +315,15 @@ struct DayView: View {
     private var medium: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(card?.title ?? String(localized: line?.isTomorrow == true ? "Tomorrow" : "Today")).font(.headline).foregroundStyle(Palette.text).lineLimit(1)
-                Meta(entry.dateLine)
+                // The mode comes from the card's date, never from its title: a cached evening card read after midnight
+                // is today's again. In tomorrow mode the date beside it is the card's own.
+                Text(line?.isTomorrow == true ? "Tomorrow" : "Today").font(.headline).foregroundStyle(Palette.text).lineLimit(1)
+                Meta(dayDateLine)
                 Spacer(minLength: 4)
                 Meta(entry.age, color: Palette.tertiary)
             }
             if let line, !line.stops.isEmpty {
-                DayLineAcross(line: line, valueSize: 26)
+                DayLineAcross(line: line, valueSize: 26, coarse: true)
                 if let note = line.notes.first {
                     Text([note.title, note.value, note.subtitle].compactMap { $0 }.joined(separator: " · "))
                         .font(.footnote).foregroundStyle(note.tint?.color ?? Palette.secondary).lineLimit(1)
@@ -333,7 +340,7 @@ struct DayView: View {
 
     /// "in 26 min · U6 07:36" for the next stop, "passed" once the day is over.
     private func detail(_ stop: DayTimeline.Stop, _ line: DayTimeline) -> String {
-        let when = stop.phase == .next ? Format.countdown(minutes: line.minutesToNext ?? 0) : String(localized: "passed")
+        let when = stop.phase == .next ? (line.widgetCountdown ?? "") : String(localized: "passed")
         return ([when] + [stop.item.subtitle].compactMap { $0 }).joined(separator: " · ")
     }
 
@@ -430,7 +437,15 @@ struct HostCell: View {
                 (Text("Load ") + Text(Format.load(host.load)).font(Typo.data(.caption2))
                     + Text(" · RAM ") + Text(Format.percent(host.memPct)).font(Typo.data(.caption2)))
                     .font(.caption2).foregroundStyle(Palette.secondary).lineLimit(1).minimumScaleFactor(0.8)
-                if let d = Format.worstDisk(host.disks) { Meter(Double(d.percent) / 100, warns: true) }
+                if let d = Format.worstDisk(host.disks) {
+                    // The bar stays grey; the number carries gold or love (docs/DESIGN.md §3), so a full disk shows.
+                    let share = Double(d.percent) / 100
+                    HStack(spacing: 6) {
+                        Meter(share)
+                        (Text("Disk ") + Text(Format.percent(d.percent)).font(Typo.data(.caption2, weight: .semibold)))
+                            .font(.caption2).foregroundStyle(Meter.valueColor(share, normal: Palette.secondary)).lineLimit(1).fixedSize()
+                    }
+                }
             } else {
                 Text(health.label).font(.caption2.weight(.semibold)).foregroundStyle(health.color)
             }

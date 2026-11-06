@@ -51,10 +51,13 @@ public struct MoodGlow: View {
 public struct DayLineAcross: View {
     let line: DayTimeline
     let valueSize: CGFloat
+    let coarse: Bool
 
-    public init(line: DayTimeline, valueSize: CGFloat = 30) {
+    /// `coarse`: whole hours in tomorrow mode, for widgets that don't redraw every minute.
+    public init(line: DayTimeline, valueSize: CGFloat = 30, coarse: Bool = false) {
         self.line = line
         self.valueSize = valueSize
+        self.coarse = coarse
     }
 
     public var body: some View {
@@ -63,7 +66,7 @@ public struct DayLineAcross: View {
                 VStack(alignment: .leading, spacing: 10) {
                     DayRail(phase: stop.phase, fill: line.fill(after: i), axis: .horizontal)
                         .frame(height: 18)
-                    DayStopLabel(stop: stop, countdown: line.minutesToNext, valueSize: valueSize)
+                    DayStopLabel(stop: stop, countdown: line.minutesToNext, valueSize: valueSize, coarse: coarse && line.isTomorrow)
                         .padding(.trailing, 8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,11 +150,13 @@ public struct DayStopLabel: View {
     let stop: DayTimeline.Stop
     let countdown: Int?
     let valueSize: CGFloat
+    let coarse: Bool
 
-    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat = 30) {
+    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat = 30, coarse: Bool = false) {
         self.stop = stop
         self.countdown = countdown
         self.valueSize = valueSize
+        self.coarse = coarse
     }
 
     private var valueColor: Color {
@@ -177,7 +182,7 @@ public struct DayStopLabel: View {
                 Text(s).font(.footnote).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
             }
             if stop.phase == .next, let countdown {
-                Text(Format.countdown(minutes: countdown))
+                Text(DayTimeline.countdownText(minutes: countdown, coarse: coarse))
                     .font(.footnote.weight(.semibold)).foregroundStyle(Palette.text).lineLimit(1)
             }
         }
