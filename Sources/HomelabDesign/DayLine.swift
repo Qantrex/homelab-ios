@@ -29,12 +29,18 @@ public struct MoodGlow: View {
     public var body: some View {
         ZStack(alignment: .top) {
             Palette.background
-            if level == .alarm || level == .headsUp {
-                RadialGradient(colors: [level.color.opacity(0.30), level.color.opacity(0.08), .clear],
-                               center: UnitPoint(x: 0.15, y: -0.05), startRadius: 10, endRadius: reach)
-                    .frame(height: reach * 1.08)
-                    .transition(.opacity)
+            // Loud when something is wrong, a faint white light when all is calm: the screen itself has a mood.
+            let strength: Double = switch level {
+            case .alarm: 0.38
+            case .headsUp: 0.30
+            case .calm: 0.07
+            case .unknown: 0.04
             }
+            let tint = level == .alarm || level == .headsUp ? level.color : Palette.text
+            RadialGradient(colors: [tint.opacity(strength), tint.opacity(strength * 0.25), .clear],
+                           center: UnitPoint(x: 0.15, y: -0.05), startRadius: 10, endRadius: reach)
+                .frame(height: reach * 1.15)
+                .transition(.opacity)
         }
         .animation(.easeInOut(duration: 0.8), value: level)
         .accessibilityHidden(true)

@@ -7,6 +7,8 @@ import SwiftUI
 struct TodayView: View {
     let model: AppModel
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Taps on the mascot (each one: the next comment).
+    @State private var pokes = 0
 
     private var status: ServerStatus { model.selectedStatus }
     private var density: Density { model.settings.todayDensity }
@@ -77,6 +79,26 @@ struct TodayView: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 Text(dateLine).font(Typo.mono(.caption, weight: .medium)).tracking(1.5).foregroundStyle(Palette.secondary)
+                // The lab's face and what it thinks of the facts (CARROT's idea): tap it for the next comment.
+                if model.selected != nil {
+                    HStack(alignment: .top, spacing: 10) {
+                        Mascot(face: Mascot.face(for: m.level, checking: status.error == nil && state == nil,
+                                                 personality: model.settings.voice),
+                               tint: m.level == .calm || m.level == .unknown ? Palette.text : m.level.color,
+                               size: typeSize.isAccessibilitySize ? 52 : 66, pokes: pokes)
+                            .onTapGesture { pokes += 1 }
+                            .sensoryFeedback(.impact(weight: .light), trigger: pokes)
+                        if let take = take(m) {
+                            SpeechBubble(take, tint: m.level == .calm || m.level == .unknown ? Palette.secondary : m.level.color)
+                                .id(take)
+                                .transition(.asymmetric(insertion: .scale(scale: 0.9, anchor: .leading).combined(with: .opacity),
+                                                        removal: .opacity))
+                        }
+                    }
+                    .padding(.top, 6)
+                    .padding(.bottom, 4)
+                    .animation(.snappy, value: pokes)
+                }
                 Text(m.headline)
                     .font(.system(size: typeSize.isAccessibilitySize ? 40 : 54, weight: .heavy))
                     .tracking(-1.5)
@@ -84,11 +106,6 @@ struct TodayView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
                     .contentTransition(.numericText())
-                if model.selected != nil, let line = Voice.line(Voice.moment(m.level), model.settings.voice) {
-                    Text(line).font(.title3).italic().foregroundStyle(Palette.secondary)
-                        .lineLimit(2).multilineTextAlignment(.leading)
-                        .transition(.opacity)
-                }
                 if let detail = m.detail {
                     Text(detail).font(.title3.weight(.medium)).foregroundStyle(Palette.text.opacity(0.85))
                         .lineLimit(3).multilineTextAlignment(.leading)
@@ -109,6 +126,14 @@ struct TodayView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint(Text("Opens Lab"))
+    }
+
+    /// What the mascot says. Each tap moves to the next line.
+    private func take(_ m: TodayMood) -> String? {
+        let all = Voice.lines(Voice.moment(m.level), model.settings.voice)
+        guard !all.isEmpty else { return nil }
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: .now) ?? 0
+        return all[(day + pokes) % all.count]
     }
 
     private var dateLine: String {
