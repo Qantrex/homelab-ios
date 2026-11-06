@@ -255,6 +255,8 @@ struct StartGrid: View {
     var showIds = false
     let open: (ActionSpec) -> Void
     var scan: () -> Void = {}
+    /// Feature `search`: a tile that opens the search screen; nil = no tile.
+    var search: (() -> Void)?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -270,6 +272,14 @@ struct StartGrid: View {
                 .buttonStyle(.press)
                 .accessibilityLabel(Text(spec.label))
                 .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
+            }
+            if let search {
+                Button(action: search) {
+                    StartTile(icon: "magnifyingglass", label: Text("Find a movie or show"), evenRows: !typeSize.isAccessibilitySize)
+                }
+                .buttonStyle(.press)
+                .accessibilityLabel(Text("Find a movie or show"))
+                .accessibilityHint(Text("Searches the server and lets you request what is missing."))
             }
             if let waiting = scanWaiting {
                 Button(action: scan) {

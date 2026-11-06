@@ -19,6 +19,10 @@ public protocol CompanionAPI: Sendable {
     func upload(pdf: Data, title: String?, id: String) async throws -> ShareReply
     /// Sends a web link (feature `share`).
     func share(url: URL, title: String?, id: String) async throws -> ShareReply
+    /// Searches the server (feature `search`): cards with the answers. `q` is 2-100 characters.
+    func search(q: String) async throws -> SearchResult
+    /// A picture of this server (`Card.Item.image`): at most 1 MB, a JPEG, PNG or WebP. Nothing from another host.
+    func image(path: String) async throws -> Data
 }
 
 public struct CompanionClient: CompanionAPI {
@@ -28,6 +32,8 @@ public struct CompanionClient: CompanionAPI {
 
     public static let maxMessageLength = 4000
     public static let maxResponseBytes = 8 * 1024 * 1024
+    /// A poster is a few dozen KB; anything past this is not a poster.
+    public static let maxImageBytes = 1024 * 1024
 
     public init(baseURL: URL, token: String?, transport: any HTTPTransport = URLSessionTransport()) {
         self.baseURL = baseURL
@@ -97,6 +103,38 @@ public struct CompanionClient: CompanionAPI {
         let checked: URL
         do { checked = try ShareRouter.check(url) } catch let e as ShareRefusal { throw e.apiError }
         return try await perform(shareRequest(url: checked, title: title, id: id), errors: APIError.fromUpload)
+    }
+
+    public func search(q: String) async throws -> SearchResult {
+        guard let clean = SearchQuery.clean(q) else { throw APIError.badRequest(SearchQuery.rule) }
+        // The server asks Seerr (and its metadata source) per search; 1-2 s is normal.
+        return try await perform(request("search", query: [URLQueryItem(name: "q", value: clean)], timeout: 25),
+                                 errors: APIError.fromSearch)
+    }
+
+    public func image(path: String) async throws -> Data {
+        guard let url = URLPolicy.imageURL(path, server: baseURL) else {
+            throw APIError.badRequest("That picture is not on this server.")
+        }
+        var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        r.httpMethod = "GET"
+        r.setValue("image/jpeg, image/png, image/webp", forHTTPHeaderField: "Accept")
+        if let token { r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
+        r.httpShouldHandleCookies = false
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await transport.send(r, maxBytes: Self.maxImageBytes)
+        } catch {
+            throw APIError.from(error, host: baseURL.host ?? "the server")
+        }
+        if let error = APIError.from(status: response.statusCode, body: Data()) { throw error }
+        if data.count > Self.maxImageBytes { throw APIError.tooLarge }
+        let type = response.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
+        guard ImageKind(sniffing: data) != nil, type.isEmpty || type.hasPrefix("image/") else {
+            throw APIError.invalidResponse
+        }
+        return data
     }
 
     /// `POST /documents`: the raw PDF, its id and title in headers (the title percent-encoded, so any text fits).

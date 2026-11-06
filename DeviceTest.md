@@ -56,6 +56,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
 | O12b | Lessons card | Cancelled lessons struck through and grey, substitutions / room changes with a gold dot and a gold time, the change in the subtitle. VoiceOver says "cancelled" / "changed" | | |
 | O12c | Weather line | Standard / Overkill: under "Checked 2 min ago" one grey line with the weather card's subtitle ("Rain from 15:00, take an umbrella"); Calm: no such line, only the card | | |
+| O12d | Lab cards | Server with `place: "lab"` cards (tailnet, ad blocking, backups; demo has them): they show in Lab between Hosts and Services, not on Today. Rows: a dot, name, reason in grey, value in mono at the right; a yellow tint gives a gold dot and value, red love. Nothing is cut at 5.4" or at the largest text size (values go under the name) | | |
+| O12e | Pause blocking | Ad blocking card → "Pause 5 min" → "Pause 5 min Blocking?" confirm → the value reads "paused · 5 min" in gold with a "Resume" button (demo) | | |
 | O13 | Services | Service buttons are grouped and open the right page in Safari | | |
 | O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
 | O15 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
@@ -97,6 +99,17 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | S12 | Token server | Server with a token: Share → "Saved, ..."; open the app: it is sent | | |
 | S13 | Big PDF | Share a PDF over 25 MB: "more than the 25 MB the server takes". A 20 MB PDF over Tailscale arrives (limit of `tailscale serve`) | | |
 | S14 | Share sheet listing | After install the Homelab icon is in the share row (More → Homelab on if missing). Works after a SideStore refresh | | |
+
+## Find and request
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| F1 | Entry | Server with `search`: Actions → Start has "Find a movie or show". A server without it: no tile | | |
+| F2 | Search | Type 1 letter: nothing is sent. 2+ letters: after a short pause posters appear (3 columns, grey placeholder first, then the picture). Typing on does not flicker. "zzzz": "Nothing found" | | |
+| F3 | Request | A poster with a "Request" button → "Request <title>?" confirm → alert with the server's text, the poster says "requested" and loses the button. Cancel does nothing | | |
+| F4 | Pictures | Posters come from the server only (check the server log: no other host). Airplane mode after one search: the same posters still show (cache); the search itself shows the offline banner | | |
+| F5 | `homelab://search?q=dune` | Opens Actions and the search with "dune" typed and results. On a server without `search` nothing opens | | |
+| F6 | Large text | At an accessibility size the grid has 2 columns and nothing is cut; VoiceOver reads title, subtitle, value, then the Request button | | |
 
 ## Chat
 

@@ -178,6 +178,9 @@ struct LabView: View {
             }
         }
 
+        // Cards the server wants here (tailnet, ad blocking, backups), as rows, between the hosts and the services.
+        ForEach(state.cards.filter { $0.place == .lab }) { CardView(card: $0, lab: true, model: model) }
+
         if !status.services.isEmpty {
             ServicesSection(services: status.services)
         }

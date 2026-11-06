@@ -21,6 +21,8 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     private var page: MessagePage
     private var entities: [HAEntity]
     private let delay: Duration
+    /// Titles requested in this session ("movie:9102"), so a new search shows them as requested.
+    private var requested: Set<String> = []
 
     public init(stateFixture: String = "state-problem.json", delay: Duration = .milliseconds(250), now: Date = Date()) {
         var state = Fixtures.decode(HomelabState.self, stateFixture) ?? HomelabState()
@@ -43,6 +45,13 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             return m
         }
         state.cards = state.cards.map { $0.id == "today" ? Self.demoDay($0, now: now) : card($0) }
+        // Lab shows the tailnet, ad blocking and backups cards of a server that has them.
+        let labCards = Fixtures.decode(HomelabState.self, "state-lab-cards.json")?.cards.filter { $0.place == .lab } ?? []
+        state.cards += labCards.filter { lab in !state.cards.contains { $0.id == lab.id } }.map { lab in
+            var lab = lab
+            lab.updated = ServerDate.string(now.addingTimeInterval(-120))
+            return lab
+        }
         state.lastMessage = page.messages.last
         state.busy = []
         page.busy = []
@@ -171,6 +180,8 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         if action == "parcel-done" { delivered(arg) }
         let text = "Done: \(spec.label). Demo mode, so nothing ran."
         if action == "restart-container" { restarted(arg) }
+        if action == "seerr-request" { requested.insert(arg) }
+        if action == "dns-pause" { pausedBlocking(arg) }
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .agent, job: "action", status: "OK", text: text))
         current.lastMessage = page.messages.last
         return ActionResult(ok: true, text: text)
@@ -192,6 +203,56 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         let wh = ShareRouter.willhabenAdID(url) != nil
         return ShareReply(id: id, route: wh ? "willhaben" : "read-later",
                           text: "Demo mode, so \(wh ? "no price check ran" : "nothing was saved").")
+    }
+
+    public func search(q: String) async throws -> SearchResult {
+        try await Task.sleep(for: delay * 2)
+        guard let clean = SearchQuery.clean(q) else { throw APIError.badRequest(SearchQuery.rule) }
+        guard var all = Fixtures.decode(SearchResult.self, "search.json") else { return SearchResult(query: clean) }
+        let needle = clean.lowercased()
+        all.cards = all.cards.map { card in
+            var card = card
+            card.items = card.items.filter { ($0.title ?? "").lowercased().contains(needle) }.map { item in
+                var item = item
+                if let a = item.action, requested.contains(a.arg) {
+                    item.action = nil
+                    item.value = "requested"
+                }
+                return item
+            }
+            return card
+        }
+        return SearchResult(query: clean, cards: all.shown)
+    }
+
+    public func image(path: String) async throws -> Data {
+        try await Task.sleep(for: delay)
+        guard let ref = URLPolicy.cleanImageReference(path), ref.hasPrefix("/api/v1/poster/") else {
+            throw APIError.notFound
+        }
+        let name = ref.split(separator: "/").last.map(String.init) ?? ""
+        return PlaceholderPoster.png(seed: String(name.prefix { $0 != "." }))
+    }
+
+    /// Demo "Pause ad blocking": the Blocking value shows the pause (a yellow tint, Resume) or is back on.
+    private func pausedBlocking(_ arg: String) {
+        current.cards = current.cards.map { card in
+            guard card.id == "dns" else { return card }
+            var c = card
+            c.items = c.items.map { item in
+                guard item.title == "Blocking" else { return item }
+                var i = item
+                if arg == "on" {
+                    i.value = "on"; i.tint = nil
+                    i.action = ItemAction(name: "dns-pause", label: "Pause 5 min", arg: "5")
+                } else {
+                    i.value = "paused · \(arg) min"; i.tint = .yellow
+                    i.action = ItemAction(name: "dns-pause", label: "Resume", arg: "on")
+                }
+                return i
+            }
+            return c
+        }
     }
 
     /// A ticked-off to-do shows as done (a real server would drop it from the open items).

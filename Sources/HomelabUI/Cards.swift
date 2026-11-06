@@ -10,6 +10,8 @@ struct CardView: View {
     let card: Card
     var hero = false
     var compact = false
+    /// Lab: list and metrics cards as rows (docs/DESIGN.md §6): status dot, name, reason, value in the data font.
+    var lab = false
     var model: AppModel?
 
     /// A chat bubble shows this many rows at most.
@@ -31,6 +33,8 @@ struct CardView: View {
     @State private var ticked = TickedItems()
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
+    /// Requested from a poster here (the confirm ran ok): drawn "requested" without its button.
+    @State private var requested: Set<ItemAction> = []
 
     /// The item whose circle was tapped, waiting for its confirm.
     struct TickOff: Identifiable {
@@ -90,10 +94,13 @@ struct CardView: View {
                 if let subtitle = card.subtitle {
                     Text(subtitle).font(.subheadline).foregroundStyle(Palette.secondary).padding(.top, -8)
                 }
-                content.panel()
+                if usesRows { content.rowsPanel() } else { content.panel() }
             }
         }
     }
+
+    /// Lab rows bring their own padding and separators.
+    private var usesRows: Bool { lab && !compact && (card.style == .list || card.style == .metrics) && !card.items.isEmpty }
 
     // MARK: Header
 
@@ -146,6 +153,10 @@ struct CardView: View {
         case .text:
             Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n")))
                 .font(compact ? .footnote : .body)
+        case .metrics where usesRows, .list where usesRows:
+            labRows
+        case .posterGrid:
+            posterGrid
         case .metrics:
             metrics
         case .list:
@@ -240,8 +251,14 @@ struct CardView: View {
                 row
             }
         }
+        withAction(item, main: main)
+    }
+
+    /// The row with its action's button at the end (a parcel's "Delivered", Lab's "Pause 5 min"): it asks first, like a
+    /// checklist tick. Without a startable action, the row alone.
+    @ViewBuilder
+    private func withAction<Main: View>(_ item: Card.Item, main: Main) -> some View {
         if let action = item.action, let spec = model?.startable(action) {
-            // A row with its own action (a parcel's "Delivered"): the button at the end asks first, like a checklist tick.
             let tick = TickOff(item: item, action: action, spec: spec)
             let busy = running.contains(action)
             // At accessibility sizes the button goes under the row, so the title keeps the full width.
@@ -249,24 +266,122 @@ struct CardView: View {
                                  : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
             layout {
                 main
-                Button { ask = tick } label: {
-                    Group {
-                        if busy { ProgressView().controlSize(.small) } else { Text(tick.verb).lineLimit(1) }
-                    }
-                    .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
-                    .foregroundStyle(Palette.text)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Palette.raised, in: Capsule())
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.press)
-                .fixedSize()
-                .disabled(busy)
-                .accessibilityLabel(Text("\(tick.verb) \(item.title ?? "")"))
+                actionButton(tick, busy: busy)
             }
         } else {
             main
         }
+    }
+
+    private func actionButton(_ tick: TickOff, busy: Bool) -> some View {
+        Button { ask = tick } label: {
+            Group {
+                if busy { ProgressView().controlSize(.small) } else { Text(tick.verb).lineLimit(1) }
+            }
+            .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
+            .foregroundStyle(Palette.text)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Palette.raised, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.press)
+        .fixedSize()
+        .disabled(busy)
+        .accessibilityLabel(Text("\(tick.verb) \(tick.item.title ?? "")"))
+    }
+
+    // MARK: Lab rows
+
+    /// The status colour of a row's dot and value: gold for warm tints, love for red, else normal text.
+    static func statusColor(_ tint: Tint?) -> Color {
+        switch tint {
+        case .orange, .yellow: Palette.gold
+        case .red: Palette.love
+        default: Palette.text
+        }
+    }
+
+    private var labRows: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(card.items.enumerated()), id: \.offset) { i, item in
+                if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
+                labRow(item)
+            }
+        }
+    }
+
+    /// Row grammar (docs/DESIGN.md §6): status dot (the only colour) · name 17 semibold · reason 15 secondary · the
+    /// value 15 mono medium at the right (under the name at accessibility sizes). A progress shows as a thin grey bar.
+    private func labRow(_ item: Card.Item) -> some View {
+        let status = Self.statusColor(item.tint)
+        let warm = item.tint == .orange || item.tint == .yellow, red = item.tint == .red
+        let value = item.value.flatMap { $0.isEmpty ? nil : $0 }
+        let row = HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Circle().fill(item.tint == nil || item.tint == .gray ? Palette.text : status).frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title ?? "").font(Typo.headline).foregroundStyle(Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let s = item.subtitle {
+                    Text(s).font(Typo.secondary).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                if let p = item.progress { Meter(p).padding(.top, 2) }
+                if stacked, let value { Text(value).font(Typo.rowValue).foregroundStyle(warm || red ? status : Palette.secondary) }
+            }
+            Spacer(minLength: 8)
+            if !stacked, let value {
+                Text(value).font(Typo.rowValue).foregroundStyle(warm || red ? status : Palette.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(red ? Text("problem") : warm ? Text("warning") : Text(""))
+        let main = Group {
+            if let url = item.url { Button { openURL(url) } label: { row }.buttonStyle(.plain) } else { row }
+        }
+        return withAction(item, main: main)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Poster grid
+
+    /// Posters 2:3 in 3 columns (2 at accessibility sizes), then title, subtitle and value; a request button when the
+    /// server lets the app start the item's action (it asks first: "Request <title>?").
+    private var posterGrid: some View {
+        let items = compact ? Array(card.items.prefix(Self.compactRows)) : card.items
+        let count = stacked ? 2 : 3
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: count)
+        return Group {
+            if items.isEmpty, let text = card.text {
+                Text(markdown(text)).font(compact ? .footnote : .body).foregroundStyle(Palette.secondary)
+            } else {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in poster(item) }
+                }
+            }
+        }
+    }
+
+    private func poster(_ item: Card.Item) -> some View {
+        let done = item.action.map { requested.contains($0) } ?? false
+        let value = done ? String(localized: "requested") : item.value.flatMap { $0.isEmpty ? nil : $0 }
+        let action = done ? nil : item.action
+        let spec = model?.startable(action)
+        return VStack(alignment: .leading, spacing: 4) {
+            PosterImage(model: model, path: item.image, icon: card.icon)
+            Text(item.title ?? "").font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
+                .lineLimit(2, reservesSpace: false).fixedSize(horizontal: false, vertical: true)
+            if let s = item.subtitle { Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(2) }
+            if let value { Text(value).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(2) }
+            if let action, let spec {
+                actionButton(TickOff(item: item, action: action, spec: spec), busy: running.contains(action))
+                    .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: Checklist rows
@@ -343,6 +458,7 @@ struct CardView: View {
         if ok {
             // The server may list the item as open for a moment longer: draw it done until its list catches up.
             ticked.add(t.action)
+            if card.style == .posterGrid { requested.insert(t.action) }
         } else if formFor != nil {
             afterSheet = message   // an alert can't show over the card's open form
         } else {

@@ -42,6 +42,50 @@ public enum URLPolicy {
         return url
     }
 
+    /// An `image` reference from a server as the model keeps it: trimmed, either a path starting with one "/" or an
+    /// http(s) URL, short, without control characters or backslashes. Anything else is nil. Whether it may be loaded
+    /// is `imageURL`'s decision, once the server is known.
+    public static func cleanImageReference(_ text: String) -> String? {
+        let s = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty, s.count <= 512, !s.contains("\\"),
+              s.unicodeScalars.allSatisfy({ $0.value >= 0x20 && $0.value != 0x7F }) else { return nil }
+        if s.hasPrefix("/") { return s.hasPrefix("//") ? nil : s }
+        let lower = s.lowercased()
+        return lower.hasPrefix("http://") || lower.hasPrefix("https://") ? s : nil
+    }
+
+    /// The URL an `image` reference means on `server`, or nil. A path is resolved against the server (its own path
+    /// prefix, if it has one, is kept). An absolute URL must have the server's scheme, host and port and no user
+    /// name or password. Dot segments, encoded slashes and backslashes are refused, and fragments are dropped, so
+    /// nothing but this server's own host is ever asked.
+    public static func imageURL(_ text: String, server base: URL) -> URL? {
+        guard let s = cleanImageReference(text),
+              var out = URLComponents(url: base, resolvingAgainstBaseURL: false),
+              let scheme = out.scheme?.lowercased(), let host = out.host?.lowercased(),
+              let given = URLComponents(string: s) else { return nil }
+        var prefix = out.percentEncodedPath
+        while prefix.hasSuffix("/") { prefix.removeLast() }
+        var path = given.percentEncodedPath
+        if s.hasPrefix("/") {
+            guard given.scheme == nil, given.host == nil else { return nil }
+            if !prefix.isEmpty, !path.hasPrefix(prefix + "/") { path = prefix + path }
+        } else {
+            guard given.scheme?.lowercased() == scheme, given.host?.lowercased() == host, given.port == out.port,
+                  given.user == nil, given.password == nil else { return nil }
+        }
+        let lower = path.lowercased()
+        let dotSegment = path.split(separator: "/", omittingEmptySubsequences: false).contains { seg in
+            let d = seg.lowercased().replacingOccurrences(of: "%2e", with: ".")
+            return d == "." || d == ".."
+        }
+        guard path.hasPrefix("/"), !lower.contains("%2f"), !lower.contains("%5c"), !lower.contains("%00"),
+              !dotSegment else { return nil }
+        out.percentEncodedPath = path
+        out.percentEncodedQuery = given.percentEncodedQuery
+        out.fragment = nil
+        return out.url
+    }
+
     /// Where the app may use plain http: what iOS ATS allows with NSAllowsLocalNetworking (single-label names,
     /// `.local`) plus private and tailnet IP addresses. Not `.lan`/`.home.arpa`: ATS blocks those over http.
     public static func allowsPlainHTTP(host rawHost: String) -> Bool {

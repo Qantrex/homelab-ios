@@ -649,6 +649,29 @@ class FixtureModeTest(unittest.TestCase):
         self.assertEqual(page["messages"], fixture("messages.json")["messages"])
         self.assertEqual(page["busy"], [])
 
+    def test_search_filters_the_catalogue(self):
+        code, _, obj = call(self.port, "GET", "/api/v1/search?q=%20%20QUIET%20")
+        self.assertEqual(code, 200)
+        self.assertEqual(obj["query"], "QUIET")
+        self.assertEqual([i["title"] for c in obj["cards"] for i in c["items"]], ["The Long Quiet", "The Quiet Garden"])
+        self.assertEqual(obj["cards"][0]["style"], "poster-grid")
+        self.assertEqual(call(self.port, "GET", "/api/v1/search?q=zzzz")[2], {"query": "zzzz", "cards": []})
+        for bad in ("", "?q=", "?q=a", "?q=" + "x" * 101, "?q=a%00b"):
+            self.assertEqual(call(self.port, "GET", "/api/v1/search" + bad)[0], 400, bad)
+        self.assertEqual(call(self.port, "POST", "/api/v1/search", {})[0], 405)
+        self.assertIn("search", call(self.port, "GET", "/api/v1/info")[2]["features"])
+
+    def test_posters_are_pngs_for_named_files_only(self):
+        item = fixture("search.json")["cards"][0]["items"][0]
+        code, resp, body = call(self.port, "GET", item["image"])
+        self.assertEqual(code, 200)
+        self.assertEqual(resp.getheader("Content-Type"), "image/png")
+        self.assertTrue(body.startswith(b"\x89PNG\r\n\x1a\n") and len(body) < 20000)
+        self.assertEqual(call(self.port, "GET", item["image"].replace("w342", "w154"))[0], 200)
+        for bad in ("/api/v1/poster/w342/unknownfile1.png", "/api/v1/poster/w999/demoposter01.png",
+                    "/api/v1/poster/w342/../demoposter01.png", "/api/v1/poster/w342/demoposter01.gif"):
+            self.assertEqual(call(self.port, "GET", bad)[0], 404, bad)
+
     def test_control_switches_state(self):
         for name in ("state-ok.json", "state-empty.json", "state-legacy.json"):
             code, _, obj = call(self.port, "GET", "/__control?state=" + name)

@@ -1,0 +1,81 @@
+{
+ "query": "",
+ "cards": [
+  {
+   "id": "search-media",
+   "title": "Movies and shows",
+   "icon": "film",
+   "style": "poster-grid",
+   "items": [
+    {
+     "title": "The Long Quiet",
+     "subtitle": "Movie · 2024",
+     "image": "/api/v1/poster/w342/demoposter01.png",
+     "value": "in Plex"
+    },
+    {
+     "title": "Harbour Lights",
+     "subtitle": "Show · 2019",
+     "image": "/api/v1/poster/w342/demoposter02.png",
+     "value": "",
+     "action": {
+      "name": "seerr-request",
+      "label": "Request",
+      "arg": "tv:9102"
+     }
+    },
+    {
+     "title": "A Map of Small Hours",
+     "subtitle": "Movie · 2022",
+     "image": "/api/v1/poster/w342/demoposter03.png",
+     "value": "",
+     "action": {
+      "name": "seerr-request",
+      "label": "Request",
+      "arg": "movie:9103"
+     }
+    },
+    {
+     "title": "Dust and Copper",
+     "subtitle": "Movie · 2017",
+     "image": "/api/v1/poster/w342/demoposter04.png",
+     "value": "requested"
+    },
+    {
+     "title": "Nine Floors Up",
+     "subtitle": "Show · 2023",
+     "image": "/api/v1/poster/w342/demoposter05.png",
+     "value": "in Plex"
+    },
+    {
+     "title": "The Quiet Garden",
+     "subtitle": "Movie · 1998",
+     "image": "/api/v1/poster/w342/demoposter06.png",
+     "value": "",
+     "action": {
+      "name": "seerr-request",
+      "label": "Request",
+      "arg": "movie:9106"
+     }
+    },
+    {
+     "title": "Salt Road",
+     "subtitle": "Show · 2011",
+     "image": "/api/v1/poster/w342/demoposter07.png",
+     "value": "",
+     "action": {
+      "name": "seerr-request",
+      "label": "Request",
+      "arg": "tv:9107"
+     }
+    },
+    {
+     "title": "Long Way to Nowhere",
+     "subtitle": "Movie · 2015",
+     "image": "/api/v1/poster/w342/demoposter08.png",
+     "value": "in Plex"
+    }
+   ]
+  }
+ ]
+}
