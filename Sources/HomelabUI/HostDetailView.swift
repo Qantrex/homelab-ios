@@ -61,6 +61,7 @@ struct HostDetailView: View {
                                         Text(mount).font(Typo.data(.body))
                                         Spacer()
                                         Text("\(pct)%").font(Typo.data(.body))
+                                            .foregroundStyle(Meter.valueColor(Double(pct) / 100))
                                     }
                                     Meter(Double(pct) / 100, warns: true)
                                 }
@@ -191,7 +192,7 @@ struct ContainerRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Circle().fill(color).frame(width: 8, height: 8).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(container.name).font(.headline).foregroundStyle(Palette.text)
+                    Text(container.name).font(Typo.headline).foregroundStyle(Palette.text)
                         .lineLimit(2).truncationMode(.middle)
                     Text(detail).font(.footnote).foregroundStyle(Palette.secondary)
                     if let restartedAt {
@@ -275,22 +276,22 @@ struct HistorySection: View {
             ?? String(localized: "no current value")
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(title(series)).font(.subheadline).foregroundStyle(Palette.secondary)
+                Text(title(series)).font(Typo.secondary).foregroundStyle(Palette.secondary)
                 Spacer()
                 if now == nil, let last {
-                    Text("until \(last.date.formatted(date: .omitted, time: .shortened))").font(.footnote)
+                    Text("until \(last.date.formatted(date: .omitted, time: .shortened))").font(Typo.meta)
                         .foregroundStyle(Palette.tertiary)
                 }
-                Text(series.format(shown)).font(Typo.data(.headline)).foregroundStyle(nowColor)
+                Text(series.format(shown)).font(Typo.displayData).foregroundStyle(nowColor)
             }
             Sparkline(history, series, cores: cores, label: title(series), now: date)
                 .frame(height: 44)
             HStack(spacing: 4) {
                 Text("Min").foregroundStyle(Palette.tertiary)
-                Text(series.format(lo)).font(Typo.data(.footnote)).foregroundStyle(Palette.secondary)
+                Text(series.format(lo)).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
                 Spacer()
                 Text("Max").foregroundStyle(Palette.tertiary)
-                Text(series.format(hi)).font(Typo.data(.footnote)).foregroundStyle(Palette.secondary)
+                Text(series.format(hi)).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
             }
             .font(.footnote)
         }

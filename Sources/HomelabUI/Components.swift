@@ -95,7 +95,8 @@ struct Placeholder: View {
 }
 
 /// Section header (docs/DESIGN.md §1): a bold sentence-case title, an optional count in the data font, an optional
-/// action on the right.
+/// action on the right. Put it in a `VStack(spacing: Space.titleToPanel)` with its panel (8 pt), and sections in a
+/// stack with `Space.section` (32 pt) between them (§2).
 struct SectionTitle: View {
     let text: LocalizedStringKey
     var trailing: String?
@@ -169,6 +170,12 @@ extension View {
 
     /// The panel of docs/DESIGN.md §2.
     func panel(padding: CGFloat = 16) -> some View { modifier(CardBackground(padding: padding)) }
+
+    /// A panel whose rows bring their own padding and are split by separators (inset 16).
+    func rowsPanel() -> some View {
+        frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
 
     /// The screen background behind scroll views and lists.
     func screenBackground() -> some View {
