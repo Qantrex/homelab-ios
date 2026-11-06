@@ -9,6 +9,9 @@ struct TodayView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     /// Taps on the voice line (each one: the next comment).
     @State private var pokes = 0
+    /// A pull to refresh runs or just ended: the hero says where the data is from (`showsFacts`).
+    @State private var pulled = false
+    @State private var pulls = 0
 
     private var status: ServerStatus { model.selectedStatus }
     private var density: Density { model.settings.todayDensity }
@@ -44,7 +47,7 @@ struct TodayView: View {
             }
             .scrollContentBackground(.hidden)
             .background { MoodGlow(level: mood.level).ignoresSafeArea() }
-            .refreshable { await model.refresh() }
+            .refreshable { await pullToRefresh() }
             .toolbar(.hidden, for: .navigationBar)
             .pollingState(model)
             // A tap you can feel when the lab turns bad while you're looking.
@@ -72,12 +75,43 @@ struct TodayView: View {
     }
 
     /// The big "now" (docs/DESIGN.md): the date, how the lab is doing in two words (white; the mood is the light
-    /// behind it and the status icon), what the voice thinks of it, the first problem, where the data is from.
-    /// Tap opens Lab. VoiceOver reads it line by line: only the headline is a heading (and opens Lab), the voice line
-    /// has a "Next comment" action.
+    /// behind it and the status icon), the first problem, what the voice thinks of it (tap opens Lab). Under it, plain
+    /// text: the weather sentence, and where the data is from only when that is worth saying (`FreshnessLine`).
+    /// VoiceOver reads it line by line: only the headline is a heading (and opens Lab), the voice line has a "Next
+    /// comment" action.
     private var hero: some View {
         let m = mood
-        return Button {
+        return VStack(alignment: .leading, spacing: 0) {
+            heroButton(m)
+            // Not part of the button: they are facts to read, not something to tap.
+            if let weather {
+                weatherLine(weather).padding(.top, 12)
+            }
+            if showsFacts {
+                Text(facts).font(Typo.meta).foregroundStyle(Palette.tertiary)
+                    .padding(.top, weather == nil ? 12 : 6)
+                    .accessibilityLabel(Format.spoken(facts))
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 28)
+        .padding(.bottom, 8)
+        .motion(.snappy, value: showsFacts)
+    }
+
+    /// "☁ Partly cloudy, 7 °C now": one sentence in the secondary style with the weather card's own symbol.
+    private func weatherLine(_ text: String) -> some View {
+        let symbol = Symbols.safe(weatherCard?.icon, fallback: "cloud.sun")
+        return (Text(Image(systemName: symbol)).foregroundColor(Palette.secondary) + Text("\u{00A0}\u{00A0}" + text))
+            .font(Typo.secondary).foregroundStyle(Palette.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("Weather: \(text)"))
+    }
+
+    private func heroButton(_ m: TodayMood) -> some View {
+        Button {
             openLab()
         } label: {
             VStack(alignment: .leading, spacing: 0) {
@@ -119,16 +153,8 @@ struct TodayView: View {
                         .sensoryFeedback(.selection, trigger: pokes)
                         .accessibilityAction(named: Text("Next comment")) { pokes += 1 }
                 }
-                Text(facts).font(Typo.meta).foregroundStyle(Palette.tertiary).padding(.top, 12)
-                    .accessibilityLabel(Format.spoken(facts))
-                // The weather card's one line ("Rain from 15:00, take an umbrella"), in every density.
-                if let weather {
-                    Text(weather).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(1).padding(.top, 2)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 28)
-            .padding(.bottom, 8)
             .contentShape(Rectangle())
             .motion(.snappy, value: m)
             .motion(.snappy, value: pokes)
@@ -179,12 +205,33 @@ struct TodayView: View {
         Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide))
     }
 
-    /// The `weather` card's subtitle, when there is one.
-    private var weather: String? {
-        state?.cards.first { $0.id == "weather" }?.subtitle.flatMap { $0.isEmpty ? nil : $0 }
+    private var weatherCard: Card? { state?.cards.first { $0.id == "weather" } }
+
+    /// The weather sentence: the card's subtitle, with the temperature now when it doesn't say one (`WeatherLine`).
+    private var weather: String? { WeatherLine.text(weatherCard) }
+
+    /// Where the data is from, only while a pull to refresh runs (and a moment after), after a failed fetch, or when
+    /// the data is older than 10 min. Overkill shows it always (it also lists what the server is busy with).
+    private var showsFacts: Bool {
+        guard model.selected != nil else { return false }
+        if density == .overkill { return true }
+        return FreshnessLine.shows(pulled: pulled, failed: status.error != nil, fetched: status.snapshot?.fetched,
+                                   checked: state?.checked)
     }
 
-    /// "DEMO HOMELAB · CHECKED 2 MIN AGO"
+    /// A pull to refresh: the line shows while it runs and 3 s after, so "checked just now" can be read.
+    private func pullToRefresh() async {
+        pulls += 1
+        let pull = pulls
+        pulled = true
+        await model.refresh()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            if pulls == pull { pulled = false }
+        }
+    }
+
+    /// "homelab · checked 2 min ago"
     private var facts: String {
         var parts: [String] = []
         if let name = status.snapshot?.serverName ?? model.selected?.name { parts.append(name) }
@@ -495,7 +542,7 @@ struct MachineList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(text: "Machines", trailing: "\(hosts.filter { $0.reachable == true }.count)/\(hosts.count) up")
+            SectionTitle(text: "Machines", trailing: String(localized: "\(hosts.filter { $0.reachable == true }.count) of \(hosts.count) up"))
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(hosts.enumerated()), id: \.element.id) { i, host in
                     if i > 0 { TodaySeparator() }

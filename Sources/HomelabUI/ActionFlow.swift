@@ -153,9 +153,16 @@ struct ProposalRow: View {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(action.title).font(Typo.headline).foregroundStyle(Palette.text)
                             Spacer(minLength: 8)
+                            // How long ago, and under it the clock time ("21:03", "Thu 21:03").
                             if !stacked, let created = action.created {
-                                Text(Format.age(created)).font(Typo.meta).foregroundStyle(Palette.tertiary)
-                                    .lineLimit(1)
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(Format.age(created))
+                                    Text(Format.clock(created)).monospacedDigit()
+                                }
+                                .font(Typo.meta).foregroundStyle(Palette.tertiary)
+                                .lineLimit(1)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(Text("\(Format.spokenAge(created)), at \(Format.clock(created))"))
                             }
                         }
                         // The whole reason: this is where the owner decides, so nothing is cut off.
@@ -194,11 +201,11 @@ struct ProposalRow: View {
         }
     }
 
-    /// Job and id as one quiet line (the id in the data font); the age too when it can't sit on the right.
+    /// Job and id as one quiet line in the text font; the age and clock time too when they can't sit on the right.
     @ViewBuilder private var meta: some View {
         let parts = [action.job.map { Text($0) },
-                     Text(action.id).font(Typo.data(.footnote)),
-                     stacked ? action.created.map { Text(Format.age($0)) } : nil].compactMap { $0 }
+                     Text(action.id),
+                     stacked ? action.created.map { Text(Format.age($0) + " · " + Format.clock($0)) } : nil].compactMap { $0 }
         if !parts.isEmpty {
             parts.dropFirst().reduce(parts[0]) { $0 + Text(" · ") + $1 }
                 .font(Typo.meta).foregroundStyle(Palette.tertiary)

@@ -154,7 +154,7 @@ struct LabView: View {
 
         if !state.hosts.isEmpty {
             VStack(alignment: .leading, spacing: Space.titleToPanel) {
-                SectionTitle(text: "Hosts", trailing: "\(state.hosts.filter { $0.reachable == true }.count)/\(state.hosts.count) up")
+                SectionTitle(text: "Hosts", trailing: String(localized: "\(state.hosts.filter { $0.reachable == true }.count) of \(state.hosts.count) up"))
                 if overkill {
                     // Overkill keeps the tiles; large text: one per row.
                     LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]

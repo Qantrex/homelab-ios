@@ -98,13 +98,16 @@ when the picture does).
 A card may carry `"place": "lab"`: it shows in Lab, between Hosts and Services, and not on Today. Missing or unknown
 means `today` (older apps ignore the field and show it on Today). A `metrics` card with `place: "lab"` is never taken
 as the day card. Lab draws `list` and `metrics` cards as rows (DESIGN.md §6): a status dot, the item `title`, the
-`subtitle` as its reason, the `value` in the data font at the right (under the name at accessibility sizes), a thin
-bar for `progress`, and an item `action` as a button at the end (the usual confirm). `tint` is the status: `yellow` or
-`orange` is a warning (gold), `red` a problem (love), anything else normal. The first three users:
+`subtitle` as its reason, the `value` at the right (under the name at accessibility sizes), a thin bar only for an
+item with `progress`, and an item `action` as a button at the end (the usual confirm). `tint` is the status: `yellow`
+or `orange` is a warning (gold), `red` a problem (love), `gray` inactive (a grey dot, "not set up"), anything else
+normal; a warning or problem row has a warning glyph instead of its dot. A `list` card with more than 3 items shows 3
+and a "Show N more" row. The card's `subtitle` (or, when it has items, its `text`) is the line under its title. Use
+one grammar per card: `title` what, `subtitle` the details, `value` when or how much. The first three users:
 
 | Card id | What | Rows |
 |---|---|---|
-| `tailnet` | The tailnet's nodes | name, "linux · direct", "online" or "seen 3 h ago"; a key that expires soon `yellow`, expired or an offline server `red` |
+| `tailnet` | The tailnet's nodes | name, "linux · direct", no value when online ("online" is also shown as nothing), "offline" or "seen 3 h ago" when not (a warning glyph with the word); a key that expires soon `yellow`, expired or an offline server `red` |
 | `dns` and `dns-top` | Ad blocking | Queries, Blocked, Blocking with a "Pause 5 min" button (`dns-pause`); the blocked domains |
 | `backups` | Backup runs | what, size or snapshots, "today 04:52", `progress` for space used |
 
@@ -270,7 +273,7 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 | `date` on a card (`"2026-11-07"`) | The day the card is about. On the `today` card: when it is the day after the phone's today, the card is **tomorrow's**: the header says "Tomorrow" (the card's `title`), no stop is past, nothing is filled, and the first stop counts down ("in 10 h 20 min"). Same for the Day widget. Missing, not a plain day, today or an old day: the normal day line |
 | `cancelled: true` on an item | Struck through and grey (title, subtitle, value). A lesson that falls out |
 | A `list` card with `id: "lessons"` | A row with a `tint` (`orange`) and not cancelled gets a gold dot in front: a substitution or room change (put the change in the subtitle). The time range goes in `value` |
-| A card with `id: "weather"` | Drawn like any card (use `metrics`). Its `subtitle` (one plain line, "Rain from 15:00, take an umbrella") also shows under the headline's facts line in every density, Calm too (one secondary line). No location in it |
+| A card with `id: "weather"` | Drawn like any card (use `metrics`). Its `subtitle` is also the weather sentence under the headline in every density, Calm too: one secondary line with the card's `icon` ("Clear, 7 °C now, 4–10 °C today"). A subtitle without a temperature gets the `Now` item's value added ("Clear" → "Clear, 3°C now"). No location in it |
 | Cards `briefing` (`text`), `grades` (`list`), `deadlines` | Conventions of the reference server, drawn by their style. A `text` card is Markdown |
 | `progress` (0–1) on a `list` item | A ring with the percent in front of the row (a check mark at 1) |
 | `tint` on an item | Warm tints (`orange`, `yellow`) are gold, `red` is love, `purple`/`pink` iris, the rest grey. Use it for status, not decoration |
