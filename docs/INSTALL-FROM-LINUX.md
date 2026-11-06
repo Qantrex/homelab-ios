@@ -70,6 +70,7 @@ git clone -b testing https://github.com/Qantrex/homelab-ios ~/Projects/homelab-i
 |---|---|
 | The app stops opening after 7 days | Free Apple ID certificates last 7 days. Run the install again (A or B), or use SideStore, which refreshes by itself |
 | `xtool devices` is empty | Unlock the phone, re-plug, tap Trust. Check `systemctl status usbmuxd` (udev starts it when the phone is plugged in) |
-| `Error: … maximum number of apps` | A free Apple ID allows 3 sideloaded apps and 10 new App IDs per week. Remove an old test app |
+| `Error: … maximum number of apps` | A free Apple ID allows 3 sideloaded apps and 10 new App IDs per week. Each install registers **3** App IDs (app, widget, share extension), so about three fresh installs a week. Remove an old test app |
+| "Homelab" is missing in the share sheet | Share sheet → scroll the app row to the end → More → switch Homelab on. Open the app once first |
 | The widget shows "Open the app" | Open the app once; it writes the data the widget shows |
 | Something else | Settings → Diagnostics → Copy report, and paste it into `DeviceTest.md` or an issue |

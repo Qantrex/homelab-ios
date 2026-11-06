@@ -228,6 +228,8 @@ python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port
 | `POST /api/v1/messages` | Stores the message; about 1 s later adds the reply `echo: <text>` |
 | `POST /api/v1/button` | Only button strings in the current state file → `{"text": "approved ab12 (fixture)"}`, else 403 |
 | `GET /api/v1/actions`, `POST /api/v1/actions/<name>` | `actions.json`; a run checks the shape (arg only if the action has one, known and required fields, all text), runs nothing, answers `Done: <name> <arg> (fixture)` and adds both lines to the messages |
+| `POST /api/v1/documents` | Raw `application/pdf` (415 otherwise, 411 without Content-Length, 413 over 25 MB, 400 unless it starts with `%PDF-` or the `X-Homelab-Id` UUID is bad, 429 after 20 an hour). Keeps title and size in memory, files nothing, answers 202; the same id gets the first answer |
+| `POST /api/v1/share` | JSON `{id, kind: "url", url, title}`: a willhaben ad id → route `willhaben`, other http(s) links → `read-later`; other schemes, user:password, over 2048 characters → 400; 30 an hour. Nothing is fetched or stored beyond memory |
 | `GET /__control?state=state-ok.json` | Switches the state file. `&reset=1` resets the messages. No auth |
 
 It binds `127.0.0.1` only. Without `--token` there is no auth.

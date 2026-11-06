@@ -17,12 +17,41 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `GET /services` | – | `{services: [{name, url, group, icon, description}]}` | The service launcher |
 | `GET /actions` | – | `{actions: [{name, label, icon, hint, destructive, arg, fields}]}` | Feature `run-actions`: the "Start" list on the Actions tab and its forms |
 | `POST /actions/<name>` | `{arg, payload}` | `{ok, text, running}` | Starting one of them, after the app's confirm step |
+| `POST /documents` | the raw PDF (`Content-Type: application/pdf`, headers `X-Homelab-Id`, `X-Homelab-Title`) | `202 {ok, id, text}` | Feature `documents`: the Scan tile and the share extension send PDFs to your document inbox (Paperless) |
+| `POST /share` | `{id, kind: "url", url, title}` | `{ok, id, route, text}` | Feature `share`: the share extension sends a web link; the server routes it (a willhaben ad, or a read-later list) |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429
 (too many runs), 5xx. A forged or expired button gets 403; the app says "No longer valid" and refreshes the list.
 A 5xx on `POST /actions/<name>` with `{"error": "..."}` shows that text as the reason it failed (say there whether
 anything ran); a 5xx without it, or a broken connection, shows "Not sure it ran" (with "Check the chat" when the
 server has `chat`).
+
+## Documents and shares (`documents`, `share`)
+
+Both are sent by the Scan tile and by the share extension (the iOS share sheet). Both carry a client-made `id` (a
+lower-case UUID): a repeat of the same id must get the first answer and do nothing twice, because the app retries
+(the outbox, a lost answer).
+
+`POST /documents`: the body is the PDF itself, `Content-Type: application/pdf` and nothing else (415 otherwise).
+Headers: `X-Homelab-Id` (required), `X-Homelab-Title` (optional, percent-encoded UTF-8, at most 128 characters
+after decoding, control characters dropped). Send `Content-Length` (411 without), at most 25 MB (413 above), and the
+body must start with `%PDF-` (400). Answer `202` with `{ok, id, text}`: the filing (Paperless OCR) happens in the
+background and its result goes to the chat. 409 means the same id is still running, 429 means too many uploads
+(20 an hour). The file is never given to a language model.
+
+`POST /share`: JSON, `{id, kind: "url", url, title}` (`title` optional, at most 200 characters). The server decides
+what the link is for: a willhaben ad (`willhaben.at/iad/...-<6-12 digits>` or `?adId=`) starts a price check
+(`route: "willhaben"`), any other http(s) link goes to a read-later list (`route: "read-later"`). It never fetches the
+link. It refuses other schemes, links with a user name or password, and links over 2048 characters with 400; text
+that isn't a link is not accepted, because shared text is not owner-written and must never become a chat request.
+Answer `200 {ok, id, route, text}`; 30 shares an hour.
+
+A server that offers neither leaves `documents` and `share` out of `features`: the app then has no Scan tile and the
+share extension says that the server doesn't take shares. Statuses the app treats as final (the item leaves its
+outbox): 2xx, and 400, 413, 415, 422. Everything else (offline, 401, 403, 404, 409, 429, 5xx) keeps the item and is
+retried: when the app comes to the foreground and in the background refresh, for up to 7 days.
+
+The reference server (`--fixtures` mode) implements both endpoints in memory with a fake result, so you can try them.
 
 ## Auth
 
@@ -113,7 +142,7 @@ is the "everything odd at once" example.
 
 | Field | Effect |
 |---|---|
-| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher. Missing list = `status` + `hosts` only |
+| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `share` → the share extension sends links. Missing list = `status` + `hosts` only |
 | `commands` | Quick buttons above the chat input. Only `/word` entries, at most 24 chars, no spaces, the first 8. Empty = no buttons |
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |

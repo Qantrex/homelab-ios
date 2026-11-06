@@ -74,6 +74,25 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | A11 | Start: refused | Restart a container with a name not on the host's list → alert "Restart a container failed" with the helper's output; error haptic | | |
 | A12 | Start: link | `homelab://actions/wake-set` (Safari or Shortcuts) opens the app on Actions with the Wake-up form. Right after a reset (before the server's info), open the link and tap another tab at once: the form doesn't pop up later | | |
 
+## Scan and share
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| S1 | Scan tile | Real server with `documents`: Actions → "Scan a document" tile under Start. A server without `documents`: no tile. Demo: tile, camera "needs a camera" only on the simulator | | |
+| S2 | Camera | Tap the tile: the first time iOS asks for the camera; the document camera opens by itself. Scan 3 pages (it finds the edges), Save | | |
+| S3 | Preview and send | "Making the PDF…", then 3 PAGES and a size in mono (about 1 MB or less), title "Scan <date> <time>". Edit the title, Send → alert with the server's text, sheet closes. The PDF is in Paperless with that title (OCR'd) | | |
+| S4 | Quick action | Long-press the app icon → "Scan document": opens Actions with the camera. Also from a cold start (app closed) and with Face ID lock on (unlock first) | | |
+| S5 | `homelab://scan` | The link opens Actions and the Scan screen (Safari or Shortcuts). On a server without `documents` nothing opens | | |
+| S6 | Share a link | Safari → Share → Homelab: "Read later", the host, "To <server>". Send → "Sent". The link is on the server's list | | |
+| S7 | Share a willhaben ad | willhaben app or site → Share → Homelab: "Price check on willhaben" with the AD number. Send → "Sent"; the answer comes in the chat | | |
+| S8 | Share a PDF | Files or Mail → a PDF → Share → Homelab: "To Paperless", size, editable title. Send → in Paperless | | |
+| S9 | Share photos | Photos → select 3 → Share → Homelab: "3 photos as one PDF", about 1-2 MB. Send → one PDF in Paperless; no crash with 10 photos (memory) | | |
+| S10 | Refused | Share a note with only text, a contact, a `file:` link: "Can't send this" with a reason, nothing sent | | |
+| S11 | Offline: outbox | Tailscale off. Share a link and a scan: "Saved, Homelab sends it when it can." The Scan tile shows "N WAITING" in gold. Tailscale on, open Homelab: the tile's count goes away, the items arrive once (no doubles) | | |
+| S12 | Token server | Server with a token: Share → "Saved, ..."; open the app: it is sent | | |
+| S13 | Big PDF | Share a PDF over 25 MB: "more than the 25 MB the server takes". A 20 MB PDF over Tailscale arrives (limit of `tailscale serve`) | | |
+| S14 | Share sheet listing | After install the Homelab icon is in the share row (More → Homelab on if missing). Works after a SideStore refresh | | |
+
 ## Chat
 
 | # | Test | Pass when | Result | Note |
