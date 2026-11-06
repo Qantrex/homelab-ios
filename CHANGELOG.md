@@ -14,6 +14,13 @@ App:
 - Lab (was Overview): overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
   host details, a service launcher (opens Safari). Pull to refresh, refresh every 30 s while open, last data with its
   age when offline.
+- Lab history and containers (servers that send `history` and `container_list` on hosts): a 24 h load sparkline on
+  each host tile; host details with 24 h sparklines for load, memory, temperature and the fullest disk (min, max and
+  now in mono, gold or love only when the newest value is over a limit, gaps where the host was down) and the
+  host's containers, problems first (exited, dead, unhealthy in love, restarting in gold) with state, health and
+  restarts. Containers on the host's restart list get a Restart button: a red confirm, then the server's
+  `restart-container` action, its answer and a haptic. Overkill on Today shows each machine's load sparkline.
+  `homelab://lab/<host-id>` and `-HomelabHost` open a host's details.
 - Look: true black (white in light mode), monochrome, thin borders, mono numbers; colour only for problems (Rosé
   Pine love) and warnings (gold). No blue.
 - Actions: proposed actions with reason and age. Approve, Always and Deny with a confirm step; shows the server's

@@ -30,7 +30,8 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         func s(_ d: Date?) -> Date? { d?.addingTimeInterval(shift) }
         state.time = s(state.time); state.checked = s(state.checked)
         state.problems = state.problems.map { var p = $0; p.since = s(p.since); return p }
-        state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); return h }
+        // The 24 h history ends now, so its last point is the current value.
+        state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); h.history?.end = now; return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
         page.messages = page.messages.map { var m = $0; m.ts = s(m.ts); return m }
         state.cards = state.cards.map { $0.id == "today" ? Self.demoDay($0, now: now) : $0 }
@@ -133,9 +134,24 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         let shown = ([arg] + spec.fields.compactMap { payload[$0.name] }).filter { !$0.isEmpty }.joined(separator: " · ")
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .me, text: shown.isEmpty ? spec.label : "\(spec.label): \(shown)"))
         let text = "Done: \(spec.label). Demo mode, so nothing ran."
+        if action == "restart-container" { restarted(arg) }
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .agent, job: "action", status: "OK", text: text))
         current.lastMessage = page.messages.last
         return ActionResult(ok: true, text: text)
+    }
+
+    /// A restarted container ("media:sonarr") comes back running and healthy, one restart more.
+    private func restarted(_ arg: String) {
+        let parts = arg.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let h = current.hosts.firstIndex(where: { $0.id == parts[0] }),
+              let i = current.hosts[h].containerList.firstIndex(where: { $0.name == parts[1] }) else { return }
+        var c = current.hosts[h].containerList[i]
+        let wasDown = c.state != .running
+        c.state = .running
+        if c.health != nil { c.health = .healthy }
+        c.restarts = (c.restarts ?? 0) + 1
+        current.hosts[h].containerList[i] = c
+        if wasDown, let up = current.hosts[h].containersUp { current.hosts[h].containersUp = up + 1 }
     }
 
     // MARK: Home Assistant

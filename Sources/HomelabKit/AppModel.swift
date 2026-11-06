@@ -112,6 +112,9 @@ public final class AppModel {
     /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
+    /// A host's detail to open in Lab (deep link `homelab://lab/<host-id>`, launch argument `-HomelabHost`). Lab opens
+    /// it once the state has that host, and clears it.
+    public var openHost: String?
     public var locked = false
 
     public let storage: Storage
@@ -460,6 +463,10 @@ public final class AppModel {
             openAction = a
             if availableTabs.contains(.actions) { tab = .actions }
         }
+        if let h = args.host {
+            openHost = h
+            if availableTabs.contains(.lab) { tab = .lab }
+        }
         if let d = args.density { settings.todayDensity = d }
         if let p = args.personality { settings.voice = p }
     }
@@ -470,11 +477,13 @@ public final class AppModel {
         // homelab://actions/<name>: that action's form.
         let path = url.pathComponents.filter { $0 != "/" }
         if tab == .actions, url.host == "actions", path.count == 1, ActionSpec.isValidName(path[0]) { openAction = path[0] }
+        // homelab://lab/<host-id>: that host's details.
+        if tab == .lab, url.host == "lab", path.count == 1, LaunchArguments.isHostID(path[0]) { openHost = path[0] }
     }
 }
 
 /// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES -HomelabDensity overkill
-/// -HomelabPersonality snarky -HomelabAction wake-set`
+/// -HomelabPersonality snarky -HomelabAction wake-set -HomelabHost media`
 struct LaunchArguments {
     var demo = false
     var reset = false
@@ -483,6 +492,12 @@ struct LaunchArguments {
     var density: Density?
     var personality: Personality?
     var action: String?
+    var host: String?
+
+    /// A host id as servers send them: letters, digits, `.`, `_`, `-`, at most 64.
+    static func isHostID(_ s: String) -> Bool {
+        s.wholeMatch(of: /[A-Za-z0-9._-]{1,64}/) != nil
+    }
 
     init(_ args: [String]) {
         func value(_ key: String) -> String? {
@@ -497,5 +512,6 @@ struct LaunchArguments {
         density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
         personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
         action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }
+        host = value("HomelabHost").flatMap { Self.isHostID($0) ? $0 : nil }
     }
 }

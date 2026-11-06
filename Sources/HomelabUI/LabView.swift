@@ -5,6 +5,7 @@ import SwiftUI
 /// Lab: the machines. Problems, every host (tap for details), and the service launcher.
 struct LabView: View {
     let model: AppModel
+    @State private var path: [Host] = []
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -12,7 +13,7 @@ struct LabView: View {
     private var state: HomelabState? { status.snapshot?.state }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     header
@@ -34,9 +35,23 @@ struct LabView: View {
             .refreshable { await model.refresh() }
             .navigationTitle("Lab")
             .toolbar { serverMenu }
-            .navigationDestination(for: Host.self) { HostDetailView(host: $0) }
+            .navigationDestination(for: Host.self) { HostDetailView(model: model, host: $0) }
             .pollingState(model)
+            .onChange(of: hostToOpen) { _, _ in openRequestedHost() }
+            .onChange(of: model.selected?.id) { _, _ in path = [] }   // another server's hosts
+            .onAppear { openRequestedHost() }
         }
+    }
+
+    /// A requested host (deep link, launch argument) opens once the state has it.
+    private var hostToOpen: Host? {
+        model.openHost.flatMap { id in state?.hosts.first { $0.id == id } }
+    }
+
+    private func openRequestedHost() {
+        guard let host = hostToOpen else { return }
+        model.openHost = nil
+        path = [host]
     }
 
     private func refresh() {
@@ -208,7 +223,7 @@ struct StatePolling: ViewModifier {
     }
 }
 
-// MARK: - Host tile and detail
+// MARK: - Host tile (the details are in HostDetailView.swift)
 
 struct HostTile: View {
     let host: Host
@@ -225,6 +240,11 @@ struct HostTile: View {
                     Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color).lineLimit(1)
                 }
                 Circle().fill(health.color).frame(width: 7, height: 7)
+            }
+            if let history = host.history, history.last(.load) != nil {
+                // 24 h of load; also for a host that is down now (its last hours are a gap).
+                Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"), lineWidth: 1.2)
+                    .frame(height: 22)
             }
             if host.reachable == true {
                 metric("Load", Format.load(host.load), Format.loadShare(host.load, cores: host.cpuCount))
@@ -283,70 +303,6 @@ struct HostTile: View {
             }
             if let share { Meter(share, warns: true) }
         }
-    }
-}
-
-struct HostDetailView: View {
-    let host: Host
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        let health = HostHealth(host)
-        List {
-            Section {
-                LabeledContent("Status") { Text(health.label).foregroundStyle(health.color) }
-                if let checked = host.checked { LabeledContent("Checked", value: Format.age(checked)) }
-                if let kind = host.kind { LabeledContent("Kind", value: kind) }
-            }
-            if host.reachable == true {
-                Section("System") {
-                    LabeledContent("Load (1 min)", value: Format.load(host.load) + (host.cpuCount.map { " / \($0) cores" } ?? ""))
-                    LabeledContent("Memory", value: Format.percent(host.memPct))
-                    if host.temp != nil { LabeledContent("Temperature", value: Format.temperature(host.temp)) }
-                    if host.containersTotal != nil || host.containersUp != nil {
-                        LabeledContent("Containers up", value: Format.containers(up: host.containersUp, total: host.containersTotal))
-                    }
-                }
-                if !host.disks.isEmpty {
-                    Section("Disks") {
-                        ForEach(host.disks.sorted { $0.key < $1.key }, id: \.key) { mount, pct in
-                            VStack(alignment: .leading, spacing: 4) {
-                                LabeledContent(mount, value: "\(pct)%")
-                                Meter(Double(pct) / 100, warns: true)
-                            }
-                            .accessibilityElement(children: .combine)
-                        }
-                    }
-                }
-                if host.upgradable != nil || host.rebootRequired != nil || host.backupResult != nil {
-                    Section("Maintenance") {
-                        if let u = host.upgradable { LabeledContent("Updates waiting", value: "\(u)") }
-                        if host.rebootRequired == true { LabeledContent("Reboot", value: String(localized: "required")) }
-                        if let b = Format.backup(last: host.backupLast, result: host.backupResult) {
-                            LabeledContent("Backup") {
-                                Text(b).foregroundStyle(Format.backupFailed(host.backupResult) ? Palette.love : Palette.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            if !host.flags.isEmpty {
-                Section("Flags") {
-                    ForEach(host.flags, id: \.self) { f in
-                        Label(Format.flag(f), systemImage: Format.isAlarming(flag: f) ? "bolt.trianglebadge.exclamationmark" : "info.circle")
-                            .foregroundStyle(Format.isAlarming(flag: f) ? Palette.love : Palette.text)
-                    }
-                }
-            }
-            if let url = host.url {
-                Section {
-                    Button { openURL(url) } label: { Label("Open web interface", systemImage: "safari") }
-                }
-            }
-        }
-        .screenBackground()
-        .navigationTitle(host.name)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -117,9 +117,11 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabServer <url>` | Adds a Homelab API server with this address (login: Tailscale / proxy) and shows it. The URL rules below apply |
 | `-HomelabTab <tab>` | Opens a tab: `overview`, `actions`, `chat`, `home` or `settings` |
 | `-HomelabResetState YES` | Deletes all servers, tokens, cached data and settings before the start |
+| `-HomelabHost <host-id>` | Opens Lab with that host's details (once the state has the host) |
 
 `YES`, `true` and `1` all count as yes. The links `homelab://overview`, `homelab://actions`, `homelab://chat`,
-`homelab://home` and `homelab://settings` open a tab too (the widgets use them).
+`homelab://home` and `homelab://settings` open a tab too (the widgets use them); `homelab://lab/<host-id>` opens a
+host's details.
 
 URL rules (`Sources/HomelabKit/URLPolicy.swift`): `https://` always works. Plain `http://` only works for addresses
 that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`, `192.168.x`), `127.x`, `169.254.x`,
