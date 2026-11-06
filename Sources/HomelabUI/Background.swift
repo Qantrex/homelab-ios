@@ -46,7 +46,7 @@ public enum BackgroundRefresh {
                                         options: .init(problems: settings.notifyProblems, pending: settings.notifyPending))
             try? storage.write(tracker, AlertTracker.fileName)
             if settings.notificationsOn {
-                for a in alerts { await Notifier.post(a, private: settings.faceIDLock) }
+                for a in alerts { await Notifier.post(a, private: settings.faceIDLock, voice: settings.voice) }
             }
             result = "ok, \(state.problems.count) problems, \(state.pending.count) pending, \(alerts.count) alerts"
         } catch {
@@ -62,9 +62,11 @@ public enum BackgroundRefresh {
 
 enum Notifier {
     /// `private`: the app lock is on, so the lock screen only says that something happened.
-    static func post(_ alert: AlertTracker.Alert, private hidden: Bool) async {
+    /// `voice`: the personality's line as the subtitle (not when private).
+    static func post(_ alert: AlertTracker.Alert, private hidden: Bool, voice: Personality = .off) async {
         let content = UNMutableNotificationContent()
         content.title = hidden ? "Homelab" : alert.title
+        if !hidden, let m = alert.moment, let line = Voice.line(m, voice) { content.subtitle = line }
         content.body = hidden
             ? (alert.kind == .pending ? String(localized: "An action is waiting for you.") : String(localized: "Something needs a look."))
             : alert.body

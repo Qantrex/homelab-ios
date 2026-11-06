@@ -90,7 +90,7 @@ struct HomeTiles: View {
                             .foregroundStyle(Palette.secondary)
                             .card()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.press)
                     .disabled(home.entities.isEmpty)
                 }
             } else {
@@ -161,8 +161,9 @@ struct HomeTile: View {
             .background(on ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? Color.clear : Palette.line, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 14))
+            .animation(.snappy, value: on)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .sensoryFeedback(.impact(weight: .medium), trigger: taps)
         .disabled(busy || !entity.isAvailable || entity.control == .none)
         .accessibilityElement(children: .ignore)

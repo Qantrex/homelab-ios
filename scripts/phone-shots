@@ -82,5 +82,7 @@ for tab in actions chat lab settings; do
 done
 shot demo-today-overkill -HomelabDemo YES -HomelabTab today -HomelabDensity overkill
 shot demo-today-calm     -HomelabDemo YES -HomelabTab today -HomelabDensity calm
-shot demo-today-standard -HomelabDemo YES -HomelabTab today -HomelabDensity standard   # leave the phone as it was
+shot demo-today-snarky   -HomelabDemo YES -HomelabTab today -HomelabPersonality snarky
+# Leave the phone as it was.
+shot demo-today-standard -HomelabDemo YES -HomelabTab today -HomelabDensity standard -HomelabPersonality off
 echo "== done: $OUT/"

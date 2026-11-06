@@ -213,6 +213,7 @@ public struct Meter: View {
             }
         }
         .frame(height: 4)
+        .animation(.easeOut(duration: 0.6), value: value)
         .accessibilityHidden(true)
     }
 }

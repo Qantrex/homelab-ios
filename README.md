@@ -15,7 +15,7 @@ developer account. You install it with [SideStore](https://sidestore.io) and a f
 | Actions | Actions your homelab proposes, with reason and age. Approve, Always or Deny, each with a confirm step. Shows the server's answer |
 | Chat | Chat with your homelab agent. "Working…" while it runs, report tags (`morning`, `watchdog`, …), long-press to copy, quick buttons for the commands the server lists |
 | Lab | Problems, a tile per host (load, RAM, worst disk, temperature, containers, flags), tap a host for details. A launcher for your web UIs (opens Safari) |
-| Settings | Several servers, test connection, notifications, Face ID lock, demo mode, Diagnostics |
+| Settings | Several servers, test connection, Today's sections and detail, a personality (Off, Dry or Snarky: one line of commentary under the headline, on empty screens and in notifications; off by default), notifications, Face ID lock, demo mode, Diagnostics |
 
 Tabs appear only when they make sense: Actions and Chat only if the server offers them. Home Assistant tiles appear on
 Today when you add a Home Assistant server.

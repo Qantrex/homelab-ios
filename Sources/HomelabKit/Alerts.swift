@@ -25,6 +25,8 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         public var kind: Kind
         public var title: String
         public var body: String
+        /// For the personality line in the notification's subtitle (none for the summary).
+        public var moment: Voice.Moment?
     }
 
     public struct Options: Sendable, Equatable {
@@ -52,13 +54,13 @@ public struct AlertTracker: Codable, Sendable, Equatable {
             for p in state.problems where !seenProblems.contains(p.id) {
                 alerts.append(Alert(id: "problem-\(p.id)", kind: .problem,
                                     title: p.severity == .warning ? "\(server): warning" : "\(server): problem",
-                                    body: p.text))
+                                    body: p.text, moment: p.severity == .warning ? .headsUp : .alarm))
             }
         }
         if options.pending {
             for a in state.pending where !seenPending.contains(a.id) {
                 alerts.append(Alert(id: "pending-\(a.id)", kind: .pending, title: "\(server): approve \(a.title)?",
-                                    body: a.reason ?? "Proposed by \(a.job ?? "the agent")."))
+                                    body: a.reason ?? "Proposed by \(a.job ?? "the agent").", moment: .waiting))
             }
         }
         if alerts.count > Self.maxPerRun {

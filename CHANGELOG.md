@@ -23,7 +23,12 @@ App:
 - Home Assistant with a long-lived token: pin a few lights, switches, fans, toggles, automations, scripts, scenes,
   buttons or sensors as tiles on Today; tap to toggle or run them. No separate Home tab.
 - Settings: several servers (Homelab API or Home Assistant), Tailscale identity or token login, test connection,
-  shown server, notifications, Face ID lock, demo mode, Diagnostics with a copyable report, reset everything.
+  shown server, Today's sections and detail, personality, notifications, Face ID lock, demo mode, Diagnostics with
+  a copyable report, reset everything.
+- Personality: Off (default), Dry or Snarky. One line of commentary under Today's headline, on empty screens and as
+  a notification's subtitle; it changes once a day, and the facts never change with it.
+- Motion: tiles and panels give way under the finger (only dim with Reduce Motion), numbers roll when they change,
+  panels slide in and out, rings and meters fill smoothly. Haptics on toggles, approve/deny results and sending.
 - Tabs show only what the server offers (`features` in `/api/v1/info`).
 - Demo mode with built-in data, no network.
 - Widgets: status (small and lock screen: circular, rectangular, inline) and hosts (medium, large). Read-only, tap

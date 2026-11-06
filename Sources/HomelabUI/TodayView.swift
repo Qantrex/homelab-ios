@@ -39,6 +39,7 @@ struct TodayView: View {
                     // In my order, without the hidden ones (Settings → Today).
                     ForEach(density.sections(model.settings.todayLayout)) { section(for: $0) }
                 }
+                .animation(.snappy, value: shape)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
@@ -53,6 +54,15 @@ struct TodayView: View {
                 new == .alarm && old != .alarm ? .error : nil
             }
         }
+    }
+
+    /// What decides which panels show: when it changes (an action approved elsewhere, a download done, a section
+    /// turned off), panels slide instead of jumping.
+    private var shape: [String] {
+        density.sections(model.settings.todayLayout).map(\.rawValue)
+            + (state?.pending.map { "p:" + $0.id } ?? [])
+            + (state?.cards.map { "c:\($0.id):\($0.items.count)" } ?? [])
+            + [state == nil ? "empty" : "loaded"]
     }
 
     // MARK: Hero
@@ -75,6 +85,12 @@ struct TodayView: View {
                     .foregroundStyle(m.level.color)
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
+                    .contentTransition(.numericText())
+                if model.selected != nil, let line = Voice.line(Voice.moment(m.level), model.settings.voice) {
+                    Text(line).font(.title3).italic().foregroundStyle(Palette.secondary)
+                        .lineLimit(2).multilineTextAlignment(.leading)
+                        .transition(.opacity)
+                }
                 if let detail = m.detail {
                     Text(detail).font(.title3.weight(.medium)).foregroundStyle(Palette.text.opacity(0.85))
                         .lineLimit(3).multilineTextAlignment(.leading)
@@ -89,8 +105,9 @@ struct TodayView: View {
             .padding(.top, 36)
             .padding(.bottom, 6)
             .contentShape(Rectangle())
+            .animation(.snappy, value: m)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressLight)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint(Text("Opens Lab"))
@@ -173,7 +190,7 @@ struct TodayView: View {
                 }
                 .card(accent: Palette.gold)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
             .accessibilityHint(Text("Opens Actions"))
         }
     }
@@ -197,7 +214,7 @@ struct TodayView: View {
                     }
                     .card()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.press)
                 .disabled(!model.availableTabs.contains(.chat))
             }
         }
@@ -401,6 +418,7 @@ private struct StopLabel: View {
                 .font(.system(size: 30, weight: .semibold, design: .monospaced))
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(valueColor)
+                .contentTransition(.numericText())
             Text(stop.item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .medium))
                 .tracking(1).foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.secondary)
                 .lineLimit(1).minimumScaleFactor(0.8)
@@ -412,6 +430,7 @@ private struct StopLabel: View {
                     .font(Typo.mono(.caption2, weight: .bold)).foregroundStyle(Palette.text).lineLimit(1)
             }
         }
+        .animation(.snappy, value: stop)
         .accessibilityElement(children: .combine)
         .accessibilityValue(stop.phase == .past ? Text("passed") : Text(""))
     }
@@ -433,6 +452,8 @@ struct DayNumbers: View {
                             .font(.system(size: 30, weight: .semibold, design: .monospaced))
                             .minimumScaleFactor(0.6).lineLimit(1)
                             .foregroundStyle(item.tint?.color ?? Palette.text)
+                            .contentTransition(.numericText())
+                            .animation(.snappy, value: item.value)
                         Text(item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .medium))
                             .tracking(1).foregroundStyle(Palette.secondary).lineLimit(1)
                         if let s = item.subtitle {

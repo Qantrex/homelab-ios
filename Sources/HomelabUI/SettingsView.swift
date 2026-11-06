@@ -45,6 +45,10 @@ struct SettingsView: View {
                         ForEach(Density.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    Picker("Personality", selection: Binding(get: { model.settings.voice },
+                                                             set: { model.settings.voice = $0 })) {
+                        ForEach(Personality.allCases) { Text($0.title).tag($0) }
+                    }
                     NavigationLink {
                         TodayLayoutEditor(model: model)
                     } label: {
@@ -53,7 +57,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Today")
                 } footer: {
-                    Text("Calm: the headline, the day's numbers and Home. Standard: the sections you choose. Overkill: everything at once, every machine's numbers and exact times.")
+                    Text("Calm: the headline, the day's numbers and Home. Standard: the sections you choose. Overkill: everything at once, every machine's numbers and exact times. Personality: a line of commentary under the headline, on empty screens and in notifications; the facts stay the same.")
                 }
 
                 Section {

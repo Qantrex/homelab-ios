@@ -70,8 +70,16 @@ struct ChatView: View {
     let model: AppModel
     @State private var chat = ChatModel()
     @State private var draft = ""
+    /// Bumped on every send, for a light tap.
+    @State private var sent = 0
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focused: Bool
+
+    private var emptyMessage: LocalizedStringKey {
+        let hint = quick.contains("/help") ? String(localized: "Ask your homelab anything, or try /help.")
+                                           : String(localized: "Ask your homelab anything.")
+        return LocalizedStringKey(Voice.line(.emptyChat, model.settings.voice).map { $0 + " " + hint } ?? hint)
+    }
 
     /// Quick buttons: the commands the server says its chat understands (none = no button row).
     private var quick: [String] { model.selectedStatus.info?.commands ?? model.selectedStatus.snapshot?.info?.commands ?? [] }
@@ -90,6 +98,7 @@ struct ChatView: View {
             .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
+            .sensoryFeedback(.impact(weight: .light), trigger: sent)
             // Restarts on server change and when the app comes back; stops while it's in the background.
             .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active, kick: chat.kick)) {
                 chat.reset(for: model.selected)
@@ -112,8 +121,7 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     if chat.loadedOnce && chat.timeline.messages.isEmpty && chat.timeline.outgoing.isEmpty {
-                        Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right",
-                                    message: quick.contains("/help") ? "Ask your homelab anything, or try /help." : "Ask your homelab anything.")
+                        Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right", message: emptyMessage)
                             .padding(.top, 40)
                     }
                     ForEach(chat.timeline.messages) { m in
@@ -199,6 +207,7 @@ struct ChatView: View {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, t.count <= CompanionClient.maxMessageLength, let server = model.selected else { return }
         if text == draft { draft = "" }
+        sent += 1
         Task { await chat.send(t, api: model.companion(for: server), host: server.host) }
     }
 }

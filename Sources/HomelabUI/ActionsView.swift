@@ -8,6 +8,13 @@ struct ActionsView: View {
     @State private var confirm: Confirmation?
     @State private var running: Set<String> = []
     @State private var result: ResultMessage?
+    /// The last button's outcome, for the haptic: success when it ran, an error buzz when it didn't.
+    @State private var outcome: Outcome?
+
+    struct Outcome: Equatable {
+        let id = UUID()
+        let ok: Bool
+    }
 
     struct Confirmation: Identifiable {
         let action: PendingAction
@@ -45,9 +52,13 @@ struct ActionsView: View {
                     ProgressView("Loading…")
                 } else if pending.isEmpty && model.selectedStatus.snapshot != nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield",
-                                message: "When your homelab proposes an action, it shows up here.")
+                                message: Voice.line(.nothingToApprove, model.settings.voice)
+                                    .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
+                                    ?? "When your homelab proposes an action, it shows up here.")
                 }
             }
+            .animation(.snappy, value: pending.map(\.id))
+            .sensoryFeedback(trigger: outcome) { _, new in new.map { $0.ok ? .success : .error } }
             .refreshable { await model.refresh() }
             .navigationTitle("Actions")
             .confirmationDialog(confirmTitle, isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
@@ -93,6 +104,7 @@ struct ActionsView: View {
         running.insert(c.action.id)
         let r = await model.press(button, on: server)
         running.remove(c.action.id)
+        outcome = Outcome(ok: (try? r.get()) != nil)
         switch r {
         case .success(let text): result = ResultMessage(title: c.action.title, text: text)
         case .failure(let e):

@@ -92,6 +92,37 @@ struct SectionTitle: View {
     }
 }
 
+/// A plain button that gives way under the finger: it shrinks a little, dims, and springs back. With Reduce Motion
+/// it only dims.
+struct PressStyle: ButtonStyle {
+    var scale: CGFloat = 0.97
+
+    func makeBody(configuration: Configuration) -> some View {
+        Pressable(label: configuration.label, pressed: configuration.isPressed, scale: scale)
+    }
+
+    private struct Pressable: View {
+        let label: Configuration.Label
+        let pressed: Bool
+        let scale: CGFloat
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+        var body: some View {
+            label
+                .scaleEffect(pressed && !reduceMotion ? scale : 1)
+                .opacity(pressed ? 0.75 : 1)
+                .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6), value: pressed)
+        }
+    }
+}
+
+extension ButtonStyle where Self == PressStyle {
+    /// Tiles and panels you tap.
+    static var press: PressStyle { PressStyle() }
+    /// Big things (Today's headline), which should barely move.
+    static var pressLight: PressStyle { PressStyle(scale: 0.985) }
+}
+
 /// A panel: slightly lifted from the black background, with a hairline border.
 struct CardBackground: ViewModifier {
     var accent: Color?

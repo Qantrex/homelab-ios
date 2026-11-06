@@ -46,6 +46,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var today: TodayLayout?
     /// Calm, Standard or Overkill; nil = Standard.
     public var density: Density?
+    /// Off, Dry or Snarky; nil = Off.
+    public var personality: Personality?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -53,6 +55,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var todayDensity: Density {
         get { density ?? .standard }
         set { density = newValue == .standard ? nil : newValue }
+    }
+
+    public var voice: Personality {
+        get { personality ?? .off }
+        set { personality = newValue == .off ? nil : newValue }
     }
 
     public var todayLayout: TodayLayout {
@@ -420,6 +427,7 @@ public final class AppModel {
         }
         if let tab = args.tab, availableTabs.contains(tab) { self.tab = tab }
         if let d = args.density { settings.todayDensity = d }
+        if let p = args.personality { settings.voice = p }
     }
 
     public func open(_ url: URL) {
@@ -428,13 +436,15 @@ public final class AppModel {
     }
 }
 
-/// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES -HomelabDensity overkill`
+/// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES -HomelabDensity overkill
+/// -HomelabPersonality snarky`
 struct LaunchArguments {
     var demo = false
     var reset = false
     var server: URL?
     var tab: AppTab?
     var density: Density?
+    var personality: Personality?
 
     init(_ args: [String]) {
         func value(_ key: String) -> String? {
@@ -447,5 +457,6 @@ struct LaunchArguments {
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }
         density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
+        personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
     }
 }

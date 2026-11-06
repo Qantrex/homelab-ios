@@ -153,7 +153,7 @@ struct LabView: View {
                 }
                 .card()
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
         }
 
         if !state.hosts.isEmpty {
@@ -164,7 +164,7 @@ struct LabView: View {
                                                                 : [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
                     ForEach(state.hosts) { host in
                         NavigationLink(value: host) { HostTile(host: host) }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.press)
                     }
                 }
             }
@@ -278,6 +278,8 @@ struct HostTile: View {
                 Text(label).textCase(.uppercase).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
                 Spacer()
                 Text(value).font(Typo.mono(.caption))
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: value)
             }
             if let share { Meter(share, warns: true) }
         }
