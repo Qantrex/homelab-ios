@@ -27,16 +27,18 @@ struct SettingsView: View {
                     } header: {
                         Text("Servers")
                     } footer: {
-                        Text("Tap a server to edit it. Today and Lab show the one with the checkmark; swipe to delete.")
+                        SettingsFooter("Tap a server to edit it. Today and Lab show the one with the checkmark; swipe to delete.")
                     }
 
                     if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
-                        Section("Shown server") {
+                        Section {
                             Picker("Today, Lab, actions and chat", selection: Binding(
                                 get: { model.selected?.id ?? UUID() },
                                 set: { model.select($0) })) {
                                 ForEach(model.servers.servers.filter(\.speaksCompanionAPI)) { Text($0.name).tag($0.id) }
                             }
+                        } header: {
+                            Text("Shown server")
                         }
                     }
 
@@ -53,7 +55,10 @@ struct SettingsView: View {
                         NavigationLink {
                             TodayLayoutEditor(model: model)
                         } label: {
-                            LabeledContent("Sections", value: "\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
+                            LabeledContent("Sections") {
+                                Text("\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
+                                    .font(Typo.data(.body)).foregroundStyle(Palette.secondary)
+                            }
                         }
                     } header: {
                         Text("Today")
@@ -67,7 +72,7 @@ struct SettingsView: View {
                     } header: {
                         Text("Notifications")
                     } footer: {
-                        Text(notificationNote ?? "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off.")
+                        SettingsFooter(verbatim: notificationNote ?? String(localized: "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off."))
                     }
 
                     Section {
@@ -76,13 +81,13 @@ struct SettingsView: View {
                             set: { on in Task { await setLock(on) } }))
                             .disabled(!Biometrics.available)
                     } footer: {
-                        Text("Asks for Face ID or the passcode when the app opens. Tokens are always in the Keychain.")
+                        SettingsFooter("Asks for Face ID or the passcode when the app opens. Tokens are always in the Keychain.")
                     }
 
                     Section {
                         Toggle("Demo servers", isOn: Binding(get: { model.isDemo }, set: { model.setDemo($0) }))
                     } footer: {
-                        Text("Example data to look around. Your own servers stay.")
+                        SettingsFooter("Example data to look around. Your own servers stay.")
                     }
 
                     Section {
@@ -93,10 +98,11 @@ struct SettingsView: View {
                     Section {
                         Button("Reset everything", role: .destructive) { confirmReset = true }
                     } footer: {
-                        Text("Deletes all servers, tokens, cached data and settings from this phone.")
+                        SettingsFooter("Deletes all servers, tokens, cached data and settings from this phone.")
                     }
                 }
                 .surfaceRows()
+                .headerProminence(.increased)
             }
             .screenBackground()
             .navigationTitle("Settings")
@@ -147,15 +153,15 @@ struct ServerRow: View {
 
     var body: some View {
         HStack {
-            Image(systemName: icon).foregroundStyle(.tint).frame(width: 26)
+            Image(systemName: icon).foregroundStyle(Palette.text).frame(width: 26)
             VStack(alignment: .leading, spacing: 2) {
                 Text(server.name)
                 Text(server.kind == .demo ? String(localized: "Demo") : server.host)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(Palette.secondary)
             }
             Spacer()
-            if selected { Image(systemName: "checkmark").foregroundStyle(.tint).accessibilityLabel(Text("Shown")) }
+            if selected { Image(systemName: "checkmark").foregroundStyle(Palette.text).accessibilityLabel(Text("Shown")) }
         }
     }
 
@@ -224,12 +230,12 @@ struct ServerEditor: View {
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                             if case .failure(let p) = urlResult, !address.isEmpty {
-                                Text(URLPolicy.message(p)).font(.caption).foregroundStyle(Palette.love)
+                                Label(URLPolicy.message(p), systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(Palette.love)
                             } else if case .success(let url) = urlResult, url.scheme == "http" {
-                                Text("Plain http: only use this inside your home network or tailnet.").font(.caption).foregroundStyle(Palette.gold)
+                                Label("Plain http: only use this inside your home network or tailnet.", systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Palette.gold)
                             }
                         } footer: {
-                            Text(kind == .homeAssistant
+                            SettingsFooter(kind == .homeAssistant
                                  ? "Your Home Assistant address, as you open it in a browser."
                                  : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine plus the port you gave `tailscale serve` (for example :7443).")
                         }
@@ -249,13 +255,13 @@ struct ServerEditor: View {
                             }
                         } footer: {
                             if tokenStored && !storedTokenUsable && needsToken {
-                                Text("The address or type changed, so the saved token is not used for it. Enter the token for this server.")
+                                SettingsFooter("The address or type changed, so the saved token is not used for it. Enter the token for this server.")
                             } else if kind == .homeAssistant {
-                                Text("In Home Assistant: your profile → Security → Long-lived access tokens → Create token.")
+                                SettingsFooter("In Home Assistant: your profile → Security → Long-lived access tokens → Create token.")
                             } else if auth == .identity {
-                                Text("For servers behind tailscale serve: Tailscale on this phone proves who you are. No token needed.")
+                                SettingsFooter("For servers behind tailscale serve: Tailscale on this phone proves who you are. No token needed.")
                             } else {
-                                Text("Stored in the iOS Keychain on this phone only.")
+                                SettingsFooter("Stored in the iOS Keychain on this phone only.")
                             }
                         }
 
@@ -295,6 +301,7 @@ struct ServerEditor: View {
                     }
                 }
                 .surfaceRows()
+                .headerProminence(.increased)
             }
             .screenBackground()
             .navigationTitle(original == nil ? "Add server" : "Edit server")
@@ -380,15 +387,16 @@ struct DiagnosticsView: View {
         List {
             Group {
                 Section("App") {
-                    LabeledContent("Version", value: "\(AppVersion.short) (\(AppVersion.build))")
-                    LabeledContent("Bundle ID", value: Bundle.main.bundleIdentifier ?? "?")
-                    LabeledContent("iOS", value: UIDeviceInfo.version)
+                    DataRow("Version", "\(AppVersion.short) (\(AppVersion.build))")
+                    DataRow("Bundle ID", Bundle.main.bundleIdentifier ?? "?")
+                    DataRow("iOS", UIDeviceInfo.version)
                 }
                 Section("Shared storage") {
-                    LabeledContent("App Group", value: AppGroup.current ?? String(localized: "none (widget can't see data)"))
+                    if let group = AppGroup.current { DataRow("App Group", group) } else {
+                        LabeledContent("App Group", value: String(localized: "none (widget can't see data)"))
+                    }
                     ForEach(probes, id: \.group) { p in
-                        LabeledContent(p.group, value: p.writable ? "ok" : p.containerFound ? "read-only" : "–")
-                            .font(.caption)
+                        DataRow(verbatim: p.group, value: p.writable ? "ok" : p.containerFound ? "read-only" : "–")
                     }
                 }
                 Section("Background") {
@@ -398,14 +406,16 @@ struct DiagnosticsView: View {
                 Section("Servers") {
                     ForEach(model.servers.servers) { s in
                         let st = model.status[s.id]
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(s.name).font(.subheadline.weight(.medium))
-                            Text("\(s.kind.rawValue), \(s.auth.rawValue), \(s.host)").font(.caption).foregroundStyle(.secondary)
-                            if let snap = st?.snapshot { Text("data \(Format.age(snap.fetched))").font(.caption) }
-                            if let e = st?.error { Text(e.message).font(.caption).foregroundStyle(Palette.love) }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(s.name).font(.headline)
+                            Text("\(s.kind.rawValue), \(s.auth.rawValue), \(s.host)").font(.subheadline).foregroundStyle(Palette.secondary)
+                            if let snap = st?.snapshot { Text("Data from \(Format.age(snap.fetched))").font(.footnote).foregroundStyle(Palette.secondary) }
+                            if let e = st?.error {
+                                Label(e.message, systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(Palette.love)
+                            }
                             if let info = st?.info {
                                 Text("\(info.server ?? "?") \(info.version ?? ""), API \(info.api), \(info.features.map(\.rawValue).sorted().joined(separator: ", "))")
-                                    .font(.caption2).foregroundStyle(.secondary)
+                                    .font(.footnote).foregroundStyle(Palette.tertiary)
                             }
                         }
                     }
@@ -416,10 +426,11 @@ struct DiagnosticsView: View {
                         copied = true
                     }
                 } footer: {
-                    Text("The report has no tokens. It helps when something doesn't work.")
+                    SettingsFooter("The report has no tokens. It helps when something doesn't work.")
                 }
             }
             .surfaceRows()
+                .headerProminence(.increased)
         }
         .screenBackground()
         .navigationTitle("Diagnostics")
@@ -445,6 +456,7 @@ struct AboutView: View {
             Group {
                 Section {
                     Text("Homelab is an open-source companion app for self-hosted homelabs. It talks only to the servers you add. No accounts, no analytics, no third-party services.")
+                        .font(.body)
                 }
                 Section("Source") {
                     Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios")!)
@@ -452,10 +464,11 @@ struct AboutView: View {
                     LabeledContent("Third-party code", value: String(localized: "none"))
                 }
                 Section("Built with") {
-                    Text("SwiftUI and WidgetKit, built with xtool (MIT) and installed with SideStore.").font(.footnote)
+                    Text("SwiftUI and WidgetKit, built with xtool (MIT) and installed with SideStore.").font(.subheadline).foregroundStyle(Palette.secondary)
                 }
             }
             .surfaceRows()
+                .headerProminence(.increased)
         }
         .screenBackground()
         .navigationTitle("About")
@@ -477,7 +490,7 @@ struct TodayLayoutEditor: View {
                     }
                     .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
                 } footer: {
-                    Text("The headline with your lab's status always stays on top. Drag the handles to change the order.")
+                    SettingsFooter("The headline with your lab's status always stays on top. Drag the handles to change the order.")
                 }
                 Section {
                     Button("Standard layout") { model.settings.todayLayout = .standard }
@@ -485,10 +498,41 @@ struct TodayLayoutEditor: View {
                 }
             }
             .surfaceRows()
+                .headerProminence(.increased)
         }
         .screenBackground()
         .environment(\.editMode, .constant(.active))
         .navigationTitle("Today")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Footer under a settings section (DESIGN.md §1): footnote, secondary.
+struct SettingsFooter: View {
+    private let text: Text
+
+    init(_ key: LocalizedStringKey) { text = Text(key) }
+    init(verbatim: String) { text = Text(verbatim) }
+
+    var body: some View { text.font(.footnote).foregroundStyle(Palette.secondary) }
+}
+
+/// A label with a value in the data font (versions, ids, paths).
+struct DataRow: View {
+    private let label: Text
+    let value: String
+
+    init(_ label: LocalizedStringKey, _ value: String) {
+        self.label = Text(label)
+        self.value = value
+    }
+
+    init(verbatim label: String, value: String) {
+        self.label = Text(label)
+        self.value = value
+    }
+
+    var body: some View {
+        LabeledContent { Text(value).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary) } label: { label }
     }
 }
