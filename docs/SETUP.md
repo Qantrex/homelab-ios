@@ -124,8 +124,9 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 
 `YES`, `true` and `1` all count as yes. The links `homelab://today`, `homelab://actions`, `homelab://chat`,
 `homelab://lab` and `homelab://settings` open a tab too (the widgets use them; the older `overview` and `home` open Today).
-`homelab://actions/<name>` opens that action's form, `homelab://lab/<host-id>` a host's details. A form or host waits
-with its tab until the data is there; picking another tab by hand drops the request, and a newer link replaces it.
+`homelab://actions/<name>` opens that action's form (`?arg=…&<field>=…` fills it in, see [SHORTCUTS.md](SHORTCUTS.md)),
+`homelab://lab/<host-id>` a host's details. A form or host waits with its tab until the data is there; picking another
+tab by hand drops the request, and a newer link replaces it.
 
 URL rules (`Sources/HomelabKit/URLPolicy.swift`): `https://` always works. Plain `http://` only works for addresses
 that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`, `192.168.x`), `127.x`, `169.254.x`,

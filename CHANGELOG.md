@@ -6,6 +6,10 @@ First release.
 
 App:
 
+- Platform: Approve / Deny right on a "waiting for you" notification (phone unlocked first, a short result
+  notification after; no buttons while the app lock is on). Home-screen quick actions: Scan plus the three Start
+  actions you use most. Links fill in forms: `homelab://actions/<name>?arg=…&<field>=…` for Shortcuts "Open URL"
+  (never hidden fields; you always confirm). See docs/SHORTCUTS.md.
 - Your whole day: in the evening the "today" card can be tomorrow's (`date`): header "Tomorrow", countdown to the
   first stop, also in the Day widget. Cancelled lessons (`cancelled`) are struck through, substitutions get a gold dot,
   the weather card's line sits under the headline's facts.

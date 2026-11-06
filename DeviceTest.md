@@ -78,6 +78,9 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | A13 | Hidden uid and card-only actions | Start grid has no "Tick off a to-do", "Parcel delivered" or read-later-done tile. Tick off a to-do that has a twin with the same text: only the ticked one is done (needs the server's hidden `uid`) | | |
 | A14 | Wake-up: Normal | Wake-up form → "Normal" → a day: arg `2026-11-07:clear`; after Run the one-off for that day is gone (HA helpers off) | | |
 | A12 | Start: link | `homelab://actions/wake-set` (Safari or Shortcuts) opens the app on Actions with the Wake-up form. Right after a reset (before the server's info), open the link and tap another tab at once: the form doesn't pop up later | | |
+| A15 | Link fills the form | Shortcuts → Open URLs `homelab://actions/todo-add?summary=Milk%20%2B%20eggs&list=shopping`: the Add a to-do form with "Milk + eggs" and List Shopping (Due hidden). Run → confirm → it is on the HA shopping list. `homelab://actions/wake-set?arg=<tomorrow>T06:45`: "Wake me" with that day and 06:45. Also from a cold start and with the app lock on (Face ID first) | | |
+| A16 | Link can't do more | `homelab://actions/todo-done?item=Milk&uid=x` opens nothing (card-only). `homelab://actions/todo-add?list=fridge&uid=x`: List stays "–", nothing sent before Run; the server log shows no `uid`. Nothing ever runs without the confirm | | |
+| A17 | Shortcuts recipe | The "To-do" recipe in docs/SHORTCUTS.md (Dictate → URL Encode → Open URLs) via "Hey Siri, To-do": the form opens with the dictated text | | |
 
 ## Scan and share
 
@@ -87,6 +90,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | S2 | Camera | Tap the tile: the first time iOS asks for the camera; the document camera opens by itself. Scan 3 pages (it finds the edges), Save | | |
 | S3 | Preview and send | "Making the PDF…", then 3 PAGES and a size in mono (about 1 MB or less), title "Scan <date> <time>". Edit the title, Send → alert with the server's text, sheet closes. The PDF is in Paperless with that title (OCR'd) | | |
 | S4 | Quick action | Long-press the app icon → "Scan document": opens Actions with the camera. Also from a cold start (app closed) and with Face ID lock on (unlock first) | | |
+| S4b | Action quick actions | After the app loaded a server with Start actions: long-press the icon → Scan document plus three actions (before any start: the server's first three). Start "Living room" twice from Actions, leave the app: it is first now. Tap it (also from a cold start): the Living room form. Switch the shown server: the list follows it. Demo off / no server: only Scan | | |
 | S5 | `homelab://scan` | The link opens Actions and the Scan screen (Safari or Shortcuts). On a server without `documents` nothing opens | | |
 | S6 | Share a link | Safari → Share → Homelab: "Read later", the host, "To <server>". Send → "Sent". The link is on the server's list | | |
 | S7 | Share a willhaben ad | willhaben app or site → Share → Homelab: "Price check on willhaben" with the AD number. Send → "Sent"; the answer comes in the chat | | |
@@ -148,6 +152,11 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | B4 | One notification per new problem | Make a problem (stop a checked service): one notification "`<server>`: problem" within the next runs | | |
 | B5 | No repeats | The same problem never notifies again while it lasts | | |
 | B6 | New action | A new pending action gives "`<server>`: approve …?". Tapping it opens Actions | | |
+| B7 | Approve on the notification | Lock the phone, wait for a new proposal notification. Long-press it: Approve and Deny (red), no Always. Approve asks for Face ID / the passcode first, then (without opening the app) a second notification "`<server>`: approved …" with the server's answer. The action ran (chat / server log); Actions no longer lists it, the badge and widget follow at the next refresh | | |
+| B8 | Deny on the notification | Same with Deny: "`<server>`: denied …", nothing ran. A proposal with only an approve button shows only Approve; one without buttons none | | |
+| B9 | Already answered | Approve the proposal in the app or chat first, then press Approve on its old notification: "`<server>`: no longer valid" | | |
+| B10 | App lock and buttons | Lock on: a new proposal notification says only "An action is waiting for you." and has no buttons. Press Approve on a notification from before the lock was on: "The app lock is on: open Homelab to answer.", nothing ran | | |
+| B11 | Press with the app killed | Swipe the app away, then Approve on a notification: the result notification still comes (iOS starts the app in the background) | | |
 
 ## Face ID lock
 

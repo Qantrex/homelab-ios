@@ -175,13 +175,16 @@ carry `action: {"name": "parcel-done", "label": "Delivered", "arg": "<parcel id>
 `url` (its tracking page, https, opened on tap). `wake-set` may offer a third variant `{Day}:clear` ("Normal").
 
 Links from pushes and notifications: `homelab://today`, `homelab://actions`, `homelab://chat`, `homelab://lab` open that
-tab (`overview` and `home` still open Today).
+tab (`overview` and `home` still open Today). `homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form
+filled in (never a hidden field, never a `start: false` action; the owner still confirms): see [SHORTCUTS.md](SHORTCUTS.md).
 
 The result shows as an alert: `ok` false is an error, `running` says the result will come in the chat. A variant
 with a part kind the app doesn't know is dropped; an action left with no usable variant is not shown.
 
 A pending action only shows the buttons the server sends: a missing `always` means no Always button; no buttons at
-all means the action is shown for information only.
+all means the action is shown for information only. The app's "waiting for you" notification offers `approve` and
+`deny` as notification buttons (not `always`) and sends the same `POST /button`; it looks the signed string up again
+in its last `/state` (or a fresh one) when pressed, so a button that is spent by then gets the usual 403.
 
 ## Host history and containers (Lab)
 
