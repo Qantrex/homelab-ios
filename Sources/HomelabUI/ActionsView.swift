@@ -33,14 +33,14 @@ struct ActionsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: Space.section) {
                     if let error = model.selectedStatus.error {
                         ErrorBanner(error: error, snapshotAge: model.selectedStatus.snapshot?.fetched) {
                             Task { await model.refresh() }
                         }
                     }
                     if !startable.isEmpty || canScan {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: Space.titleToPanel) {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
@@ -98,7 +98,7 @@ struct ActionsView: View {
             && model.selectedStatus.snapshot != nil
         // Without Start tiles and without an error the full-screen placeholder says it (it would cover this).
         if !pending.isEmpty || quiet {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.titleToPanel) {
                 if !startable.isEmpty {
                     SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)")
                 }

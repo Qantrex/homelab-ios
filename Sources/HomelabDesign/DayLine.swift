@@ -50,9 +50,9 @@ public struct MoodGlow: View {
 /// The day's stops side by side: equal columns, each with its piece of the line on top and its time under it.
 public struct DayLineAcross: View {
     let line: DayTimeline
-    let valueSize: CGFloat
+    let valueSize: CGFloat?
 
-    public init(line: DayTimeline, valueSize: CGFloat = 30) {
+    public init(line: DayTimeline, valueSize: CGFloat? = nil) {
         self.line = line
         self.valueSize = valueSize
     }
@@ -146,9 +146,9 @@ public struct DayRail: View {
 public struct DayStopLabel: View {
     let stop: DayTimeline.Stop
     let countdown: Int?
-    let valueSize: CGFloat
+    let valueSize: CGFloat?
 
-    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat = 30) {
+    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat? = nil) {
         self.stop = stop
         self.countdown = countdown
         self.valueSize = valueSize
@@ -165,7 +165,7 @@ public struct DayStopLabel: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(stop.item.value ?? "")
-                .font(.system(size: valueSize, weight: .semibold, design: .monospaced))
+                .font(valueSize.map { Font.system(size: $0, weight: .semibold, design: .monospaced) } ?? Typo.displayData)
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(valueColor)
                 .contentTransition(.numericText())
@@ -174,7 +174,7 @@ public struct DayStopLabel: View {
                 .foregroundStyle(stop.phase == .past ? Palette.tertiary : stop.phase == .next ? Palette.text : Palette.secondary)
                 .lineLimit(1).minimumScaleFactor(0.8)
             if let s = stop.item.subtitle {
-                Text(s).font(.footnote).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
+                Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
             }
             if stop.phase == .next, let countdown {
                 Text(Format.countdown(minutes: countdown))

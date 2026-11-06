@@ -35,7 +35,7 @@ struct ScanView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: Space.section) {
                     switch phase {
                     case .idle: idle
                     case .making: progress("Making the PDF…")

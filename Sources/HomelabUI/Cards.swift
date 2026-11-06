@@ -80,15 +80,15 @@ struct CardView: View {
         if compact {
             VStack(alignment: .leading, spacing: 8) {
                 header
-                if let subtitle = card.subtitle { Text(subtitle).font(.footnote).foregroundStyle(Palette.secondary) }
+                if let subtitle = card.subtitle { Text(subtitle).font(Typo.meta).foregroundStyle(Palette.secondary) }
                 content
             }
             .card(padding: 10)
         } else {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.titleToPanel) {
                 header
                 if let subtitle = card.subtitle {
-                    Text(subtitle).font(.subheadline).foregroundStyle(Palette.secondary).padding(.top, -8)
+                    Text(subtitle).font(Typo.secondary).foregroundStyle(Palette.secondary).padding(.top, -8)
                 }
                 content.panel()
             }
@@ -109,7 +109,7 @@ struct CardView: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 6)
             if !compact, let updated = card.updated {
-                Text(ServerDate.parse(updated).map { Format.age($0) } ?? updated).font(.footnote).foregroundStyle(Palette.tertiary)
+                Text(ServerDate.parse(updated).map { Format.age($0) } ?? updated).font(Typo.meta).foregroundStyle(Palette.tertiary)
             }
             if let action = card.action, let spec = model?.startable(action) {
                 addButton(action, spec)
@@ -145,7 +145,7 @@ struct CardView: View {
         switch card.style {
         case .text:
             Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n")))
-                .font(compact ? .footnote : .body)
+                .font(compact ? Typo.meta : Typo.body)
         case .metrics:
             metrics
         case .list:
@@ -168,7 +168,7 @@ struct CardView: View {
     @ViewBuilder
     private func rows<Row: View>(_ items: [Card.Item], @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
         if items.isEmpty, let text = card.text {
-            Text(markdown(text)).font(compact ? .footnote : .body).foregroundStyle(Palette.secondary)
+            Text(markdown(text)).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)
         } else {
             let shown = compact ? Array(items.prefix(Self.compactRows)) : items
             VStack(alignment: .leading, spacing: compact ? 8 : 12) {
@@ -177,7 +177,7 @@ struct CardView: View {
                     row(item)
                 }
                 if shown.count < items.count {
-                    Text("and \(items.count - shown.count) more").font(.footnote).foregroundStyle(Palette.tertiary)
+                    Text("and \(items.count - shown.count) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
                 }
             }
         }
@@ -189,11 +189,11 @@ struct CardView: View {
                   alignment: .leading, spacing: compact ? 8 : 12) {
             ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title ?? "").font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(1)
+                    Text(item.title ?? "").font(compact ? .caption : Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(1)
                     Text(item.value ?? "–").font(Typo.data(hero ? .title : compact ? .headline : .title3, weight: .semibold))
                         .minimumScaleFactor(0.6).lineLimit(1)
                         .foregroundStyle(item.tint?.color ?? Palette.text)
-                    if let s = item.subtitle { Text(s).font(.footnote).foregroundStyle(Palette.tertiary) }
+                    if let s = item.subtitle { Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary) }
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -215,14 +215,15 @@ struct CardView: View {
                 ProgressRing(p, tint: item.tint?.color ?? Palette.text, size: compact ? ringSize * 0.8 : ringSize)
             } else if let icon = item.icon {
                 Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? Palette.secondary)
-            } else if changed {
-                Circle().fill(Palette.gold).frame(width: 8, height: 8).accessibilityHidden(true)
+            } else if card.id == "lessons" {
+                // Every lesson row reserves the dot's space, so the changed ones don't sit 18 pt further right.
+                Circle().fill(changed ? Palette.gold : Color.clear).frame(width: 8, height: 8).accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.title ?? "").font(compact ? .footnote : .body).lineLimit(2)
+                Text(item.title ?? "").font(compact ? Typo.meta : Typo.body).lineLimit(2)
                     .strikethrough(cancelled).foregroundStyle(cancelled ? Palette.tertiary : Palette.text)
                 if let s = item.subtitle {
-                    Text(s).font(compact ? .caption : .subheadline).foregroundStyle(cancelled ? Palette.tertiary : Palette.secondary)
+                    Text(s).font(compact ? .caption : Typo.secondary).foregroundStyle(cancelled ? Palette.tertiary : Palette.secondary)
                         .strikethrough(cancelled).lineLimit(stacked ? nil : 1)
                 }
                 if stacked, let v = item.value { Text(v).font(Typo.data(.subheadline)).foregroundStyle(valueColor).strikethrough(cancelled) }
@@ -288,10 +289,10 @@ struct CardView: View {
             circle(done: done, busy: busy, tick: tick)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title ?? "")
-                    .font(compact ? .footnote : .body)
+                    .font(compact ? Typo.meta : Typo.body)
                     .strikethrough(done, color: Palette.tertiary)
                     .foregroundStyle(done ? Palette.tertiary : Palette.text)
-                if let s = item.subtitle { Text(s).font(compact ? .caption : .subheadline).foregroundStyle(Palette.tertiary) }
+                if let s = item.subtitle { Text(s).font(compact ? .caption : Typo.secondary).foregroundStyle(Palette.tertiary) }
                 if stacked, let due { Text(due.text).font(Typo.data(.subheadline)).foregroundStyle(dueColor) }
             }
             Spacer(minLength: 8)
@@ -359,8 +360,8 @@ struct CardView: View {
                              : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
         return layout {
             VStack(alignment: .leading, spacing: 1) {
-                Text(item.title ?? "").font(compact ? .footnote : .body).lineLimit(stacked ? nil : 2)
-                if let s = item.subtitle { Text(s).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary) }
+                Text(item.title ?? "").font(compact ? Typo.meta : Typo.body).lineLimit(stacked ? nil : 2)
+                if let s = item.subtitle { Text(s).font(compact ? .caption : Typo.secondary).foregroundStyle(Palette.secondary) }
             }
             if !stacked { Spacer(minLength: 8) }
             Text(c?.text ?? "–")

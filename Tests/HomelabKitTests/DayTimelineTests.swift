@@ -203,6 +203,57 @@ import Testing
         #expect(d == [Self.at(20, 0), Self.at(20, 15), Self.at(20, 30), Self.at(20, 45)])
     }
 
+    static let vienna: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Vienna")!
+        return cal
+    }()
+
+    @Test func tomorrowCountsRealTimeAcrossDST() {
+        func vie(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int) -> Date {
+            Self.vienna.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi))!
+        }
+        var c = tomorrowCard
+        // Spring forward 2027-03-28 02:00 -> 03:00: 20:00 on the 27th is 9 h 20 min before a 06:20 wake-up.
+        c.date = "2027-03-28"
+        let spring = DayTimeline(card: c, now: vie(2027, 3, 27, 20, 0), calendar: Self.vienna)
+        #expect(spring.isTomorrow && spring.minutesToNext == 9 * 60 + 20)
+        // Fall back 2027-10-31 03:00 -> 02:00: 11 h 20 min.
+        c.date = "2027-10-31"
+        let fall = DayTimeline(card: c, now: vie(2027, 10, 30, 20, 0), calendar: Self.vienna)
+        #expect(fall.isTomorrow && fall.minutesToNext == 11 * 60 + 20)
+        // An ordinary night in Vienna: 10 h 20 min, like UTC.
+        c.date = "2026-11-07"
+        let plain = DayTimeline(card: c, now: vie(2026, 11, 6, 20, 0), calendar: Self.vienna)
+        #expect(plain.minutesToNext == 10 * 60 + 20 && plain.now == -240)
+    }
+
+    @Test func staleCardAfterMidnight() {
+        // Yesterday's card (2026-11-05) on the 6th at 00:30: nothing is next, nothing counts down.
+        var c = card; c.date = "2026-11-05"
+        let t = line(0, 30, c)
+        #expect(t.isStale && t.staleDays == 1 && !t.isTomorrow)
+        #expect(t.stops.allSatisfy { $0.phase == .past } && t.next == nil && t.minutesToNext == nil)
+        #expect((0..<3).map(t.fill(after:)) == [1, 1, 1])
+        #expect(line(7, 0, c).minutesToNext == nil)
+        #expect(DayTimeline(card: c, now: Self.at(12, 0).addingTimeInterval(2 * 86400), calendar: Self.utc).staleDays == 3)
+        // Today's, tomorrow's, undated and garbage cards are not stale.
+        for d in ["2026-11-06", "2026-11-07", nil, "soon"] as [String?] {
+            var x = card; x.date = d
+            #expect(!line(0, 30, x).isStale, "\(d ?? "nil")")
+        }
+        // A stale card makes the widget redraw only every 15 minutes.
+        #expect(DayTimeline.redrawDates(card: c, now: Self.at(0, 30), calendar: Self.utc).count == 4)
+    }
+
+    @Test func dayCardIgnoresTheWeatherCard() {
+        let weather = Card(id: "weather", style: .metrics, items: [.init(title: "Now", value: "8°")])
+        let other = Card(id: "load", style: .metrics, items: [.init(title: "Load", value: "1")])
+        #expect(HomelabState(status: .ok, cards: [weather]).dayCard == nil)
+        #expect(HomelabState(status: .ok, cards: [weather, other]).dayCard?.id == "load")
+        #expect(HomelabState(status: .ok, cards: [weather, other, card]).dayCard?.id == "today")
+    }
+
     @Test func cancelledAndDateDecode() throws {
         let json = #"""
         {"id": "lessons", "style": "list", "date": "2026-11-07", "items": [
