@@ -57,13 +57,10 @@ public enum BackgroundRefresh {
         let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
         guard let server = list.selectedServer else { return }
         let result: String
+        let api: any CompanionAPI = server.kind == .demo
+            ? DemoBackend(delay: .zero) : CompanionClient(config: server, tokens: tokens, transport: transport)
         do {
-            let state: HomelabState
-            if server.kind == .demo {
-                state = try await DemoBackend(delay: .zero).state()
-            } else {
-                state = try await CompanionClient(config: server, tokens: tokens, transport: transport).state()
-            }
+            let state = try await api.state()
             let old = storage.read(Snapshot.self, Snapshot.fileName(server.id))
             let snap = Snapshot(serverID: server.id, serverName: old?.serverName ?? server.name, state: state, info: old?.info)
             try? storage.write(snap, Snapshot.fileName(server.id))
@@ -75,7 +72,15 @@ public enum BackgroundRefresh {
                                         options: .init(problems: settings.notifyProblems, pending: settings.notifyPending))
             try? storage.write(tracker, AlertTracker.fileName)
             if settings.notificationsOn {
-                for a in alerts { await Notifier.post(a, private: settings.faceIDLock, voice: settings.voice) }
+                for a in alerts {
+                    await Notifier.post(a, server: server.id, private: settings.faceIDLock, voice: settings.voice)
+                }
+            }
+            // The Start list for the Home-screen quick actions (the app writes it too; the action list itself
+            // isn't cached): only from a server known to offer it.
+            if old?.info?.features.contains(.runActions) == true, let list = try? await api.actions() {
+                var usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
+                if usage.setOffered(list, server: server.id) { try? storage.write(usage, ActionUsage.fileName) }
             }
             result = "ok, \(state.problems.count) problems, \(state.pending.count) pending, \(alerts.count) alerts"
         } catch {
@@ -92,7 +97,8 @@ public enum BackgroundRefresh {
 enum Notifier {
     /// `private`: the app lock is on, so the lock screen only says that something happened.
     /// `voice`: the personality's line as the subtitle (not when private).
-    static func post(_ alert: AlertTracker.Alert, private hidden: Bool, voice: Personality = .off) async {
+    /// A proposal gets Approve / Deny buttons for the ones the server sent (`ProposalNotice`), never while private.
+    static func post(_ alert: AlertTracker.Alert, server: UUID, private hidden: Bool, voice: Personality = .off) async {
         let content = UNMutableNotificationContent()
         content.title = hidden ? "Homelab" : alert.title
         if !hidden, let m = alert.moment, let line = Voice.line(m, voice) { content.subtitle = line }
@@ -102,14 +108,81 @@ enum Notifier {
         content.sound = alert.kind == .problem ? .default : nil
         content.threadIdentifier = alert.kind.rawValue
         // Same links as the agent's pushes: proposals open Actions, problems open Lab.
-        content.userInfo = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://lab"]
+        var info: [String: String] = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://lab"]
+        if let proposal = alert.proposal, let category = ProposalNotice.category(for: proposal, hidden: hidden) {
+            content.categoryIdentifier = category.rawValue
+            info.merge(ProposalNotice.userInfo(server: server, proposal: proposal.id)) { old, _ in old }
+        }
+        content.userInfo = info
         let request = UNNotificationRequest(identifier: alert.id, content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
+    }
+
+    /// The short answer after Approve / Deny on a notification. Tapping it opens Actions.
+    static func postResult(_ message: (title: String, body: String), id: String) async {
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.threadIdentifier = AlertTracker.Alert.Kind.pending.rawValue
+        content.userInfo = ["link": "homelab://actions"]
+        let request = UNNotificationRequest(identifier: "result-\(id)", content: content, trigger: nil)
+        try? await UNUserNotificationCenter.current().add(request)
+    }
+
+    /// The Approve / Deny buttons, one category per set of buttons a proposal can have. Both need the phone unlocked
+    /// (`authenticationRequired`); Deny is red. Neither opens the app: the press runs in the background.
+    static func registerCategories() {
+        let approve = UNNotificationAction(identifier: ProposalNotice.approveAction, title: String(localized: "Approve"),
+                                           options: [.authenticationRequired],
+                                           icon: UNNotificationActionIcon(systemImageName: "checkmark"))
+        let deny = UNNotificationAction(identifier: ProposalNotice.denyAction, title: String(localized: "Deny"),
+                                        options: [.authenticationRequired, .destructive],
+                                        icon: UNNotificationActionIcon(systemImageName: "xmark"))
+        let categories = ProposalNotice.Category.allCases.map { c in
+            UNNotificationCategory(identifier: c.rawValue, actions: c.verbs.map { $0 == .deny ? deny : approve },
+                                   intentIdentifiers: [], options: [])
+        }
+        UNUserNotificationCenter.current().setNotificationCategories(Set(categories))
+    }
+}
+
+/// Approve / Deny pressed on a proposal notification: finds the signed button again, presses it through the API,
+/// posts the result and refreshes. Runs while the app is in the background (or not running: iOS launches it).
+enum ProposalPress {
+    static func run(_ request: ProposalNotice.Request, storage: Storage = .shared(),
+                    tokens: any TokenStore = KeychainTokenStore(),
+                    transport: any HTTPTransport = URLSessionTransport()) async {
+        let settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
+        let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
+        let id = "\(request.proposal)-\(request.verb.rawValue)"
+        // The lock was turned on after the notification came: the owner wants Face ID before anything runs.
+        if settings.faceIDLock {
+            await Notifier.postResult(ProposalNotice.lockedMessage, id: id)
+            return
+        }
+        guard let server = list.servers.first(where: { $0.id == request.server && $0.speaksCompanionAPI }) else {
+            await Notifier.postResult(("Homelab", String(localized: "That server is no longer in Homelab.")), id: id)
+            return
+        }
+        let api: any CompanionAPI = server.kind == .demo
+            ? DemoBackend(delay: .zero) : CompanionClient(config: server, tokens: tokens, transport: transport)
+        let snap = storage.read(Snapshot.self, Snapshot.fileName(server.id))
+        let outcome = await ProposalNotice.press(request, api: api, cached: snap?.state, host: server.host)
+        let hasChat = snap?.info?.features.contains(.chat) ?? false
+        await Notifier.postResult(ProposalNotice.message(outcome, verb: request.verb, server: snap?.serverName ?? server.name,
+                                                         hidden: settings.faceIDLock, hasChat: hasChat), id: id)
+        // Fresh data for the badge, the widget and the open app: through the app's model when it runs, else like a
+        // background refresh (that one only fetches the shown server).
+        if let refresh = await NotificationRouter.shared.refresh {
+            await refresh(server.id)
+        } else if list.selectedServer?.id == server.id {
+            await BackgroundRefresh.refresh(storage: storage, tokens: tokens, transport: transport)
+        }
     }
 }
 
 /// Taps on notifications open the right tab. A tap that arrives before the UI is ready (cold start) is kept and
-/// delivered once `open` is set.
+/// delivered once `open` is set. Approve / Deny on a proposal notification runs `ProposalPress` instead.
 @MainActor
 public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     public static let shared = NotificationRouter()
@@ -124,6 +197,12 @@ public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegat
         }
     }
 
+    /// Refreshes a server in the running app (its model) after a notification's button press.
+    public var refresh: (@MainActor (UUID) async -> Void)?
+
+    /// Call once at launch, before the first notification can be answered.
+    public static func registerCategories() { Notifier.registerCategories() }
+
     public func route(_ url: URL) {
         guard url.scheme == "homelab" else { return }
         if let open { open(url) } else { pending = url }
@@ -131,8 +210,16 @@ public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegat
 
     public nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                                    didReceive response: UNNotificationResponse) async {
-        guard let link = response.notification.request.content.userInfo["link"] as? String,
-              let url = URL(string: link) else { return }
+        let info = response.notification.request.content.userInfo
+        if let request = ProposalNotice.Request(actionID: response.actionIdentifier, userInfo: info) {
+            // Keep running if the owner leaves the notification at once; iOS ends the task when time is up.
+            let task = await UIApplication.shared.beginBackgroundTask(withName: "proposal-press", expirationHandler: nil)
+            await ProposalPress.run(request)
+            if task != .invalid { await UIApplication.shared.endBackgroundTask(task) }
+            return
+        }
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              let link = info["link"] as? String, let url = URL(string: link) else { return }
         await route(url)
     }
 

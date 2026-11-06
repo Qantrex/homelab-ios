@@ -8,6 +8,8 @@ struct ActionsView: View {
     let model: AppModel
     @State private var confirm: ProposalConfirmation?
     @State private var formFor: ActionSpec?
+    /// What a link filled in for `formFor` (`homelab://actions/<name>?…`); nil for a Start tile.
+    @State private var formPrefill: ItemAction?
     /// A started action's result, shown once its form sheet is gone (an alert can't show over the sheet).
     @State private var afterSheet: ResultMessage?
     /// This view's form sheet, for `AppModel.formSheetOpen`.
@@ -51,7 +53,7 @@ struct ActionsView: View {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
-                                      open: { formFor = $0 }, scan: { scanning = true },
+                                      open: { formPrefill = nil; formFor = $0 }, scan: { scanning = true },
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil)
                             if !model.outboxDropped.isEmpty {
                                 NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
@@ -80,7 +82,7 @@ struct ActionsView: View {
                 openRequested()   // a link that came while the sheet was open
             }) { spec in
                 if let server = model.selected {
-                    ActionFormView(model: model, server: server, spec: spec) { finished(spec, $0) }
+                    ActionFormView(model: model, server: server, spec: spec, prefill: formPrefill) { finished(spec, $0) }
                         .onAppear { model.formSheet(sheetToken, open: true) }
                         .onDisappear { model.formSheet(sheetToken, open: false) }
                 }
@@ -161,8 +163,9 @@ struct ActionsView: View {
             scanning = true
             return
         }
-        guard model.tab == .actions, formFor == nil, let spec = model.takeOpenAction() else { return }
-        formFor = spec
+        guard model.tab == .actions, formFor == nil, let request = model.takeOpenActionForm() else { return }
+        formPrefill = request.prefill
+        formFor = request.spec
     }
 
     private func finished(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>) {
