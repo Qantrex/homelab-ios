@@ -151,6 +151,8 @@ class RealModeTest(unittest.TestCase):
             "allowed_logins": ["alice@example.com"],
             "interval": 1,
             "this_host": {"id": "box", "kind": "server", "disks": ["/"], "docker": False},
+            # The real machine's temperature and disk fill must not decide any test's problem list.
+            "thresholds": {"temp_warning": 1000, "disk_warning": 1000, "disk_problem": 1001},
             "hosts": [
                 {"id": "nas", "name": "nas", "kind": "nas", "check": "tcp://127.0.0.1:%d" % cls.closed},
                 {"id": "gpu", "name": "gaming-pc", "kind": "desktop", "sleeps": True,
@@ -181,6 +183,7 @@ class RealModeTest(unittest.TestCase):
         wait_for(lambda: cls.app.collector.runs >= 1)
 
         minimal = {"tokens": [TOKEN], "this_host": {"id": "mini"}, "interval": 60,
+                   "thresholds": {"temp_warning": 1000, "disk_warning": 1000, "disk_problem": 1001},
                    "checks": [{"name": "warn-only", "url": "http://127.0.0.1:%d/bad" % tport,
                                "severity": "warning"}]}
         cls.mini_app = rs.RealApp(rs.Config(minimal, env={}))
@@ -368,7 +371,9 @@ class RealModeTest(unittest.TestCase):
         self.assertEqual(s["cards"], [])
 
     def test_status_unknown_and_ok(self):
-        app = rs.RealApp(rs.Config({"tokens": [TOKEN], "this_host": {"disks": []}}, env={}))
+        # The reading of this machine (temperature, disks) must not matter: thresholds no real value can reach.
+        app = rs.RealApp(rs.Config({"tokens": [TOKEN], "this_host": {"disks": []},
+                                    "thresholds": {"temp_warning": 1000}}, env={}))
         self.assertEqual(app.state({}, {})[1]["status"], "unknown")
         app.collector.run_once()
         self.assertEqual(app.state({}, {})[1]["status"], "ok")
@@ -378,7 +383,7 @@ class RealModeTest(unittest.TestCase):
         for _ in range(5):
             start = time.time()
             self.state()
-            self.assertLess(time.time() - start, 0.5)
+            self.assertLess(time.time() - start, 1.2)   # a blocked answer would take 1.5 s+
             time.sleep(0.2)
 
     # --- cards / services ---------------------------------------------------------------------

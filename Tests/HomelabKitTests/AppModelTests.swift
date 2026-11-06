@@ -16,12 +16,37 @@ final class FakeServer: @unchecked Sendable {
     private var _authHeaders: [String?] = []
     private var _hosts: [String] = []
     private var _info: Data?
+    private let gate = NSCondition()
+    private var _open = true
+    private var _releaseOn: String?
 
     var state: String { get { lock.withLock { _state } } set { lock.withLock { _state = newValue } } }
     var infoStatus: Int { get { lock.withLock { _infoStatus } } set { lock.withLock { _infoStatus = newValue } } }
-    var delay: TimeInterval { get { lock.withLock { _delay } } set { lock.withLock { _delay = newValue } } }
+    /// A delay is a hold: requests wait up to this long (a safety cap, tests use seconds) or until `release()`, so a
+    /// test never depends on how fast the machine is. Setting a delay closes the gate again.
+    var delay: TimeInterval { get { lock.withLock { _delay } } set { close(); lock.withLock { _delay = newValue } } }
     /// Extra delay for /state only (the answer is read when the request arrives, like a real server).
-    var stateDelay: TimeInterval { get { lock.withLock { _stateDelay } } set { lock.withLock { _stateDelay = newValue } } }
+    var stateDelay: TimeInterval { get { lock.withLock { _stateDelay } } set { close(); lock.withLock { _stateDelay = newValue } } }
+    /// Opens the gate when a request to this path arrives (after it was counted and its answer chosen).
+    var releaseOn: String? { get { lock.withLock { _releaseOn } } set { lock.withLock { _releaseOn = newValue } } }
+    private func close() { gate.lock(); _open = false; gate.unlock() }
+    /// Lets every held request, and every later one, through.
+    func release() { gate.lock(); _open = true; gate.broadcast(); gate.unlock() }
+    private func hold(_ seconds: TimeInterval) {
+        gate.lock()
+        let deadline = Date(timeIntervalSinceNow: seconds)
+        while !_open && gate.wait(until: deadline) {}
+        gate.unlock()
+    }
+    /// Waits (polling) until `path` has been asked `count` times: the request is in flight, no guessing by sleeping.
+    func waitForCalls(_ path: String, _ count: Int = 1) async throws {
+        let deadline = Date(timeIntervalSinceNow: 20)
+        while calls(path) < count {
+            guard Date() < deadline else { throw WaitTimeout(path: path, count: count) }
+            try await Task.sleep(for: .milliseconds(2))
+        }
+    }
+    struct WaitTimeout: Error { let path: String; let count: Int }
     func calls(_ path: String) -> Int { lock.withLock { _calls[path] ?? 0 } }
     var authHeaders: [String?] { lock.withLock { _authHeaders } }
     var hosts: [String] { lock.withLock { _hosts } }
@@ -33,13 +58,14 @@ final class FakeServer: @unchecked Sendable {
 
     func answer(_ r: URLRequest) -> FakeTransport.Reply {
         let path = r.url?.path ?? ""
-        let (delay, state, infoStatus, info): (TimeInterval, String, Int, Data?) = lock.withLock {
+        let (delay, state, infoStatus, info, releasePath): (TimeInterval, String, Int, Data?, String?) = lock.withLock {
             _calls[path, default: 0] += 1
             _authHeaders.append(r.value(forHTTPHeaderField: "Authorization"))
             _hosts.append(r.url?.host ?? "")
-            return (_delay + (path == "/api/v1/state" ? _stateDelay : 0), _state, _infoStatus, _info)
+            return (_delay + (path == "/api/v1/state" ? _stateDelay : 0), _state, _infoStatus, _info, _releaseOn)
         }
-        if delay > 0 { Thread.sleep(forTimeInterval: delay) }
+        if path == releasePath { release() }
+        if delay > 0 { hold(delay) }
         switch path {
         case "/api/v1/info":
             return infoStatus == 200 ? .init(body: info ?? Fixtures.data("info.json") ?? Data()) : .init(status: infoStatus)
@@ -142,9 +168,10 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         try m.save(lab, token: nil)
         await m.refresh()
         // A poll has already asked /state (old answer: 2 pending) when the user taps; /button is fast.
-        server.stateDelay = 0.3
+        server.stateDelay = 20
+        server.releaseOn = "/api/v1/button"                            // the poll's (old) answer comes after the press
         let poll = Task { await m.refresh() }
-        try await Task.sleep(for: .milliseconds(60))
+        try await server.waitForCalls("/api/v1/state", 2)              // /state is in flight now
         let button = try #require(m.selectedStatus.snapshot?.state.pending.first?.buttons[.approve])
         let result = await m.press(button, on: lab)
         #expect((try? result.get()) == "done")
@@ -194,11 +221,11 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let (m, server, _, _) = makeModel()
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
-        server.delay = 0.1
-        async let a: Void = m.refresh()
-        async let b: Void = m.refresh()
-        async let c: Void = m.refresh()
-        _ = await (a, b, c)
+        // Three tasks queued on the main actor before it runs any: b and c join a before its /state request.
+        let a = Task { await m.refresh() }
+        let b = Task { await m.refresh() }
+        let c = Task { await m.refresh() }
+        _ = await (a.value, b.value, c.value)
         #expect(server.calls("/api/v1/state") == 1)                    // b and c joined before /state was asked
     }
 
@@ -207,12 +234,13 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
         await m.refresh()
-        server.stateDelay = 0.2
+        server.stateDelay = 20
         let first = Task { await m.refresh() }
-        try await Task.sleep(for: .milliseconds(60))                   // /state is in flight now
-        async let b: Void = m.refresh()
-        async let c: Void = m.refresh()
-        _ = await (b, c)
+        try await server.waitForCalls("/api/v1/state", 2)              // /state is in flight now
+        let b = Task { await m.refresh() }
+        let c = Task { await m.refresh() }
+        server.release()                                               // queued behind b and c on the main actor
+        _ = await (b.value, c.value)
         await first.value
         #expect(server.calls("/api/v1/state") == 3)                    // 1 initial + the running one + one queued
     }
@@ -221,12 +249,14 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let (m, server, storage, _) = makeModel()
         var lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
-        server.delay = 0.15
+        server.delay = 20
         let old = Task { await m.refresh() }
-        try await Task.sleep(for: .milliseconds(30))
+        try await server.waitForCalls("/api/v1/info")                  // the old fetch is in flight
         lab.baseURL = URL(string: "https://new.example.ts.net")!
         try m.save(lab, token: nil)
-        await m.refresh()                                              // queued behind the old fetch
+        let again = Task { await m.refresh() }                         // queued behind the old fetch
+        server.release()
+        await again.value
         await old.value
         #expect(server.hosts.last == "new.example.ts.net")
         let snap = try #require(storage.read(Snapshot.self, Snapshot.fileName(lab.id)))
@@ -238,10 +268,11 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let (m, server, storage, _) = makeModel()
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
-        server.delay = 0.15
+        server.delay = 20
         let t = Task { await m.refresh() }
-        try await Task.sleep(for: .milliseconds(30))
+        try await server.waitForCalls("/api/v1/info")                  // the fetch is in flight
         m.remove(lab.id)
+        server.release()
         await t.value
         #expect(m.status[lab.id] == nil)
         #expect(storage.read(Snapshot.self, Snapshot.fileName(lab.id)) == nil)
@@ -516,16 +547,17 @@ let labURL = URL(string: "https://lab.example.ts.net")!
 
     @Test func aProposalIsPressedOnceAtATime() async throws {
         let server = FakeServer()
-        server.delay = 0.2
+        server.delay = 20
         let (m, _, _, _) = makeModel(server)
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
-        async let first = m.press("HOMELAB_APPROVE_ab12_x", proposal: "ab12", on: lab)
-        try await Task.sleep(for: .milliseconds(50))
+        let first = Task { await m.press("HOMELAB_APPROVE_ab12_x", proposal: "ab12", on: lab) }
+        try await server.waitForCalls("/api/v1/button")                // the press is in flight
         #expect(m.proposalsSending == ["ab12"])
         let second = await m.press("HOMELAB_DENY_ab12_y", proposal: "ab12", on: lab)   // from the chat meanwhile
         #expect(second == nil)
-        #expect(await first == Result<String, APIError>.success("done"))
+        server.release()
+        #expect(await first.value == Result<String, APIError>.success("done"))
         #expect(m.proposalsSending.isEmpty && server.calls("/api/v1/button") == 1)
     }
 }
