@@ -69,7 +69,7 @@ struct HostDetailView: View {
                     Section("Flags") {
                         ForEach(host.flags, id: \.self) { f in
                             Label(Format.flag(f), systemImage: Format.isAlarming(flag: f) ? "bolt.trianglebadge.exclamationmark" : "info.circle")
-                                .foregroundStyle(Format.isAlarming(flag: f) ? Palette.love : Palette.text)
+                                .foregroundStyle(Format.isAlarming(flag: f) ? (health == .problem ? Palette.love : Palette.gold) : Palette.text)
                         }
                     }
                 }

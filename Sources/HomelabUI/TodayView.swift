@@ -358,7 +358,7 @@ struct MachineList: View {
                         }
                         if !host.flags.isEmpty {
                             Text(host.flags.map(Format.flag).joined(separator: " · ")).font(Typo.mono(.caption2))
-                                .foregroundStyle(host.flags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)
+                                .foregroundStyle(health == .problem ? Palette.love : Palette.gold)
                         }
                     }
                     .accessibilityElement(children: .combine)

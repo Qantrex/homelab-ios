@@ -291,7 +291,7 @@ struct HostTile: View {
             if !shownFlags.isEmpty {
                 Text(shownFlags.map(Format.flag).joined(separator: ", "))
                     .font(.caption2)
-                    .foregroundStyle(shownFlags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)
+                    .foregroundStyle(health == .problem ? Palette.love : Palette.gold)   // flags alone are a warning; the server decides problems
                     .lineLimit(2)
             }
         }
