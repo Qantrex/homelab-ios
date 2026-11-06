@@ -15,6 +15,9 @@ sudo pacman -S --needed git usbmuxd libimobiledevice fuse2
 mkdir -p ~/.local/bin && curl -fL "https://github.com/xtool-org/xtool/releases/latest/download/xtool-$(uname -m).AppImage" -o ~/.local/bin/xtool && chmod +x ~/.local/bin/xtool
 ```
 
+`xtool --version` must be newer than 1.24.0: older versions drop the App Group for a free Apple ID, and the widgets
+then never show data ([SETUP.md](SETUP.md), "Known xtool bug: no App Group").
+
 ```bash
 xtool auth
 ```

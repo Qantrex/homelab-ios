@@ -27,6 +27,11 @@ idevice_id -l | grep -q . || { echo "no iPhone found: plug it in, unlock it, and
 
 if [ "$install" = 1 ]; then
   echo "== build + install (xtool dev)"
+  # xtool up to 1.24.0 drops the App Group for a free Apple ID: the widgets never see the app's data (docs/SETUP.md).
+  v=$(xtool --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+  if [ -n "$v" ] && [ "$(printf '%s\n' "$v" 1.24.0 | sort -V | tail -1)" = 1.24.0 ]; then
+    echo "WARN: xtool $v drops the App Group for a free Apple ID: the widgets will say 'No App Group'. See docs/SETUP.md"
+  fi
   # `xtool dev run` keeps running after the install (it waits on the launched app), and `xtool install` hung at
   # "Packaging" (2026-11-05). So: run it in its own process group, stop it once the install reached 100%.
   log=$(mktemp)

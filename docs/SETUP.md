@@ -72,6 +72,30 @@ phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
 - The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
 - On Linux, usbmuxd must be running.
 
+### Known xtool bug: no App Group with a free Apple ID (xtool 1.24.0 and older)
+
+xtool 1.24.0 and older remove the App Group entitlement when they sign for a free Apple ID (free teams had App
+Groups marked as "not free" in xtool). The install works and the app works, but the provisioning profiles of the
+app and the widget have no `com.apple.security.application-groups`, so each one falls back to its own folder. The
+widgets never see the app's data:
+
+- Every widget says "No App Group: see Diagnostics" (before 2026-11-06: "Open the app" / "Open Homelab to load …").
+- Settings → Diagnostics → App Group says "none".
+- `pymobiledevice3 provision list` shows the `XTL profile` entries with only `application-identifier`,
+  `keychain-access-groups`, `get-task-allow` and the team ID.
+
+xtool fixed it on `main` in [#284](https://github.com/xtool-org/xtool/pull/284) (merged 2026-10-30, one App Group
+per app on a free team, which is what Homelab uses). Use the first release after 1.24.0, or build xtool from `main`
+(its `Dockerfile`, target `build-xtool`, makes the AppImage in `Linux/packages/`) and put it in `~/.local/bin/xtool`.
+`scripts/install-dev` and `scripts/phone-shots` warn when `xtool --version` is 1.24.0 or older. SideStore installs
+are not affected: SideStore registers the group itself ([SIDESTORE.md](SIDESTORE.md)).
+
+After the first install with a fixed xtool, the group is `group.XTL-<ID>.com.qantrex.homelab` (xtool's prefix, read
+from the profile, see `AppGroup.swift`). The app copies the server list, settings and cache from its own folder into
+the group on its first start (`Storage.adoptFiles`), so nothing has to be set up again; the Keychain tokens stay where
+they are. Open the app once so it writes the widgets' snapshot. Widgets already on the Home Screen pick it up with
+their next reload; remove and add them again if one still shows the old text after a minute.
+
 ### Known xtool bug: recorded SDK version on Linux builds
 
 Linux builds record the deployment target (iOS 18) as the SDK version in the binary

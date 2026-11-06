@@ -60,14 +60,16 @@ profile, the declared group with the team ID added, then the declared group. The
 is writable.
 
 **Settings → Diagnostics → Shared storage** shows the group in use and each candidate (`ok`, `read-only` or `–`).
-If it says "none (widget can't see data)", the app still works, but the widget shows "Open the app". Copy the report
-(Diagnostics → Copy report) and open an issue.
+If it says "none (widget can't see data)", the app still works, but the widgets say "No App Group: see Diagnostics".
+Installed with xtool 1.24.0 or older from Linux, that is an xtool bug (SETUP.md, "Known xtool bug: no App Group");
+after SideStore, copy the report (Diagnostics → Copy report) and open an issue.
 
 ## Troubleshooting
 
 | You see | Likely cause | Fix |
 |---|---|---|
-| Widget shows "Open the app" or "Open Homelab to load your hosts." | The app has no data yet, or no App Group was found | Open the app and pull down on Overview. Then check Settings → Diagnostics → App Group. If it is "none", reinstall through SideStore and send the report |
+| Widget shows "Open the app" or "Open Homelab to load your machines." | The app has no data yet | Open the app and pull down on Today |
+| Widget shows "No App Group: see Diagnostics" | No App Group was granted: Settings → Diagnostics → App Group is "none" | Installed with xtool 1.24.0 or older: update xtool and install again (SETUP.md, "Known xtool bug: no App Group"). After SideStore: reinstall through SideStore and send the report |
 | Widget is dimmed and says "Data from … open the app" | The last data is more than 2 hours old. Widgets never fetch by themselves | Open the app. Background refresh also updates it when iOS allows |
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Tailscale is off (often after a SideStore refresh), the server is down, or `tailscale serve` doesn't serve that port | Turn Tailscale on. On the server: `tailscale serve status` and `curl https://<machine>.<tailnet>.ts.net:<port>/api/v1/info` from another tailnet device |
 | "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off | Check the name in the Tailscale app, and that MagicDNS is on (Tailscale app → Settings, and the admin console → DNS). The `100.x` address won't work with `tailscale serve`: its certificate is for the `.ts.net` name |
