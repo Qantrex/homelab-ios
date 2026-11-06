@@ -168,6 +168,8 @@ public final class AppModel {
     @ObservationIgnored public var onQuickActionsChange: @MainActor () -> Void = {}
 
     @ObservationIgnored private var demo: DemoBackend?
+    /// What the demo homelab shows (`-HomelabDemoScene problem` for screenshots); calm by default.
+    @ObservationIgnored var demoScene: DemoBackend.Scene = .calm
     /// The picture loader per server (memory and disk cache), made when a card first shows a picture.
     @ObservationIgnored private var loaders: [UUID: ImageLoader] = [:]
     /// The running refresh per server, so callers can wait for fresh data instead of starting a second fetch.
@@ -430,7 +432,7 @@ public final class AppModel {
 
     func demoBackend() -> DemoBackend {
         if let demo { return demo }
-        let d = DemoBackend()
+        let d = DemoBackend(scene: demoScene)
         demo = d
         return d
     }
@@ -787,6 +789,10 @@ public final class AppModel {
     // MARK: Launch arguments (tests, screenshots, the owner's first run)
 
     func apply(_ args: LaunchArguments) {
+        if let scene = args.demoScene {
+            demoScene = scene
+            demo = nil
+        }
         if args.demo {
             setDemo(true)
             // -HomelabDemo means "show the demo", also when another server was selected before (CI screenshots run
@@ -849,9 +855,11 @@ public final class AppModel {
 }
 
 /// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES -HomelabDensity overkill
-/// -HomelabPersonality snarky -HomelabAction wake-set -HomelabHost media`
+/// -HomelabPersonality snarky -HomelabAction wake-set -HomelabHost media -HomelabDemoScene problem`
 struct LaunchArguments {
     var demo = false
+    /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state.
+    var demoScene: DemoBackend.Scene?
     var reset = false
     var server: URL?
     var tab: AppTab?
@@ -872,6 +880,7 @@ struct LaunchArguments {
         }
         func yes(_ key: String) -> Bool { ["yes", "true", "1"].contains(value(key)?.lowercased() ?? "") }
         demo = yes("HomelabDemo")
+        demoScene = value("HomelabDemoScene").flatMap { DemoBackend.Scene(rawValue: $0.lowercased()) }
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }

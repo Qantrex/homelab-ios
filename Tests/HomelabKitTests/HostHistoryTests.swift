@@ -269,7 +269,7 @@ import Testing
 
     @Test func demoHistoryEndsNowAndRestartsWork() async throws {
         let now = Date()
-        let demo = DemoBackend(delay: .zero, now: now)
+        let demo = DemoBackend(scene: .problem, delay: .zero, now: now)
         let before = try await demo.state()
         let media = try #require(before.hosts.first { $0.id == "media" })
         #expect(media.history?.end == now)

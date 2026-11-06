@@ -1,0 +1,73 @@
+{
+ "messages": [
+  {
+   "id": 1762288000000000000,
+   "ts": "2026-11-04T06:00:00",
+   "from": "agent",
+   "job": "digest",
+   "status": "OK",
+   "text": "**Morning.** All hosts fine. Backups ran at 04:45.\n\n- 12 updates on server, 3 security\n- Off-site backup: 274 MB of 8 GB used"
+  },
+  {
+   "id": 1762285200000000000,
+   "ts": "2026-11-04T19:40:00",
+   "from": "agent",
+   "job": "updates",
+   "status": "OK",
+   "text": "12 package updates on server, 3 of them security. Proposed: `apt-upgrade server` (cd34).",
+   "pending": [
+    {
+     "id": "cd34",
+     "job": "updates",
+     "action": "apt-upgrade",
+     "arg": "server",
+     "reason": "12 package updates, 3 of them security.",
+     "created": "2026-11-04T19:40:00",
+     "buttons": {
+      "approve": "HOMELAB_APPROVE_cd34_3123456789abcdef",
+      "deny": "HOMELAB_DENY_cd34_4123456789abcdef"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1762290000000000000,
+   "ts": "2026-11-04T21:00:00",
+   "from": "me",
+   "job": "",
+   "status": "",
+   "text": "is the media server ok?"
+  },
+  {
+   "id": 1762290060000000000,
+   "ts": "2026-11-04T21:01:00",
+   "from": "agent",
+   "job": "chat",
+   "status": "OK",
+   "text": "Yes. The media server is up, 1 stream (direct play), CPU at 12%.",
+   "cards": [
+    {
+     "id": "media-now",
+     "title": "media",
+     "icon": "server.rack",
+     "style": "metrics",
+     "items": [
+      {
+       "title": "Streams",
+       "value": "1"
+      },
+      {
+       "title": "CPU",
+       "value": "12%"
+      },
+      {
+       "title": "Disk",
+       "value": "71%"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "busy": []
+}

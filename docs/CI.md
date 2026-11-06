@@ -42,15 +42,15 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 
 | # | Shots |
 |---|---|
-| 01–05 | Demo mode, every tab (today, actions, chat, lab, settings), light. **Core**: sim-smoke fails without them |
+| 01–05 | Demo mode (its calm day, `state-demo.json`), every tab (today, actions, chat, lab, settings), light. **Core**: sim-smoke fails without them |
 | 06–10 | The same, dark |
 | 11–15 | The same, accessibility extra-large text (`-xxl`) |
 | 16–21 | Live mode against the fixture server: `state-problem.json` today and chat (a proposal with its buttons and a card inside the bubbles), `state-pending.json` actions, `state-huge.json` lab, `state-ok.json` today (and `state-tomorrow.json` today with its dates moved to tomorrow, as 17) |
 | 22 | Offline: the fixture server is stopped and the app relaunched; it should show the cached data with its age and the error bar |
 | 23–24 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini; never a two-screen model like "iPhone Duo"): demo today and actions |
 | 25–26 | Forms of actions the app starts (`-HomelabAction`): Wake-up in dark, Add an event with accessibility extra-large text |
-| 27 | A host's details (`-HomelabHost media`), dark: 24 h sparklines, containers with problems first and Restart buttons |
-| 28 | Demo Today in Overkill with the Snarky personality (last: both settings stay set) |
+| 27 | A host's details (`-HomelabHost media`, the demo's problem scene `-HomelabDemoScene problem`), dark: 24 h sparklines, containers with problems first and Restart buttons |
+| 28 | Demo Today (problem scene) in Overkill with the Snarky personality (last: both settings stay set) |
 
 The demo shots from 25 on start from a reset (`-HomelabResetState YES -HomelabDemo YES`): a clean demo, without the
 fixture server and its cache from 16–22.

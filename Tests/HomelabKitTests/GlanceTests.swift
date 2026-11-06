@@ -262,7 +262,7 @@ import Testing
 
     @Test func demoMovesDeparturesAndCommuteToNow() async throws {
         let now = Self.at(15, 0)
-        let demo = DemoBackend(delay: .zero, now: now)
+        let demo = DemoBackend(scene: .problem, delay: .zero, now: now)
         let s = try await demo.state()
         let card = try #require(s.departuresCard)
         let first = try #require(card.items.first?.due)

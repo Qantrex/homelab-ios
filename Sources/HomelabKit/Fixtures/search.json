@@ -9,15 +9,13 @@
    "items": [
     {
      "title": "The Long Quiet",
-     "subtitle": "Movie · 2024",
-     "image": "/api/v1/poster/w342/demoposter01.png",
-     "value": "in Plex"
+     "subtitle": "2024 · Movie · in Plex",
+     "image": "/api/v1/poster/w342/demoposter01.png"
     },
     {
      "title": "Harbour Lights",
-     "subtitle": "Show · 2019",
+     "subtitle": "2019 · TV · not requested",
      "image": "/api/v1/poster/w342/demoposter02.png",
-     "value": "",
      "action": {
       "name": "seerr-request",
       "label": "Request",
@@ -26,9 +24,8 @@
     },
     {
      "title": "A Map of Small Hours",
-     "subtitle": "Movie · 2022",
+     "subtitle": "2022 · Movie · not requested",
      "image": "/api/v1/poster/w342/demoposter03.png",
-     "value": "",
      "action": {
       "name": "seerr-request",
       "label": "Request",
@@ -37,21 +34,18 @@
     },
     {
      "title": "Dust and Copper",
-     "subtitle": "Movie · 2017",
-     "image": "/api/v1/poster/w342/demoposter04.png",
-     "value": "requested"
+     "subtitle": "2017 · Movie · requested",
+     "image": "/api/v1/poster/w342/demoposter04.png"
     },
     {
      "title": "Nine Floors Up",
-     "subtitle": "Show · 2023",
-     "image": "/api/v1/poster/w342/demoposter05.png",
-     "value": "in Plex"
+     "subtitle": "2023 · TV · in Plex",
+     "image": "/api/v1/poster/w342/demoposter05.png"
     },
     {
      "title": "The Quiet Garden",
-     "subtitle": "Movie · 1998",
+     "subtitle": "1998 · Movie · not requested",
      "image": "/api/v1/poster/w342/demoposter06.png",
-     "value": "",
      "action": {
       "name": "seerr-request",
       "label": "Request",
@@ -60,9 +54,8 @@
     },
     {
      "title": "Salt Road",
-     "subtitle": "Show · 2011",
+     "subtitle": "2011 · TV · not requested",
      "image": "/api/v1/poster/w342/demoposter07.png",
-     "value": "",
      "action": {
       "name": "seerr-request",
       "label": "Request",
@@ -71,9 +64,8 @@
     },
     {
      "title": "Long Way to Nowhere",
-     "subtitle": "Movie · 2015",
-     "image": "/api/v1/poster/w342/demoposter08.png",
-     "value": "in Plex"
+     "subtitle": "2015 · Movie · in Plex",
+     "image": "/api/v1/poster/w342/demoposter08.png"
     }
    ]
   }

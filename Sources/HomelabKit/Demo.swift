@@ -17,6 +17,17 @@ public enum Fixtures {
 /// Demo mode: everything from fixtures, with a little life (chat echoes, buttons answer, toggles flip).
 /// Times are shifted so the demo always looks current.
 public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
+    /// What the demo shows. `calm` (the default, what the owner sees with Settings → Demo): an ordinary current day
+    /// like a real server's, all quiet, one proposal, the day card of today (before school) or of tomorrow. `problem`:
+    /// the stress scene for screenshots and tests (an unhealthy and an exited container, a warning, U6 delays), its
+    /// day line moved around the clock. `-HomelabDemoScene problem` picks it at launch.
+    public enum Scene: String, Sendable, CaseIterable {
+        case calm, problem
+
+        public var stateFixture: String { self == .calm ? "state-demo.json" : "state-problem.json" }
+        public var messagesFixture: String { self == .calm ? "messages-demo.json" : "messages.json" }
+    }
+
     private var current: HomelabState
     private var page: MessagePage
     private var entities: [HAEntity]
@@ -24,9 +35,9 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     /// Titles requested in this session ("movie:9102"), so a new search shows them as requested.
     private var requested: Set<String> = []
 
-    public init(stateFixture: String = "state-problem.json", delay: Duration = .milliseconds(250), now: Date = Date()) {
-        var state = Fixtures.decode(HomelabState.self, stateFixture) ?? HomelabState()
-        var page = Fixtures.decode(MessagePage.self, "messages.json") ?? MessagePage()
+    public init(scene: Scene = .calm, delay: Duration = .milliseconds(250), now: Date = Date()) {
+        var state = Fixtures.decode(HomelabState.self, scene.stateFixture) ?? HomelabState()
+        var page = Fixtures.decode(MessagePage.self, scene.messagesFixture) ?? MessagePage()
         // Shift every fixture time so "checked" is 2 minutes ago.
         let shift = state.checked.map { now.addingTimeInterval(-120).timeIntervalSince($0) } ?? 0
         let days = Self.dayShift(from: state.checked, to: now.addingTimeInterval(-120))
@@ -36,7 +47,12 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         // The 24 h history ends now, so its last point is the current value.
         state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); h.history?.end = now; return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
-        func card(_ c: Card) -> Card { Self.clockDepartures(Self.shiftDue(c, by: shift, days: days)) }
+        let fixtureChecked = state.checked
+        func card(_ c: Card) -> Card {
+            var c = Self.clockDepartures(Self.shiftDue(c, by: shift, days: days))
+            c.updated = c.updated.map { Self.shiftUpdated($0, by: shift, checked: fixtureChecked) }
+            return c
+        }
         page.messages = page.messages.map { m in
             var m = m
             m.ts = s(m.ts)
@@ -44,12 +60,24 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             m.cards = m.cards.map(card)
             return m
         }
-        // The demo day is always today (the fixture card is dated), so it never counts as a stale or tomorrow card.
         state.cards = state.cards.map { c in
             guard c.id == "today" else { return card(c) }
-            var day = Self.demoDay(c, now: now); day.date = nil; return day
+            switch scene {
+            case .calm:
+                return Self.schoolDay(c, now: now)
+            case .problem:
+                // Always today (the fixture card is dated), so it never counts as a stale or tomorrow card.
+                var day = Self.demoDay(c, now: now); day.date = nil; return day
+            }
         }
-        state.commute = state.commute.map { Self.shiftCommute($0, by: shift) }
+        switch scene {
+        case .calm:
+            // The way to school belongs to the day card: today's before school, else none (like the real server).
+            let day = state.cards.first { $0.id == "today" }
+            state.commute = state.commute.map { Self.schoolCommute($0, day: day, now: now) }
+        case .problem:
+            state.commute = state.commute.map { Self.shiftCommute($0, by: shift) }
+        }
         // Lab shows the tailnet, ad blocking and backups cards of a server that has them.
         let labCards = Fixtures.decode(HomelabState.self, "state-lab-cards.json")?.cards.filter { $0.place == .lab } ?? []
         state.cards += labCards.filter { lab in !state.cards.contains { $0.id == lab.id } }.map { lab in
@@ -84,6 +112,40 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         return p
     }
 
+    /// A card's "updated" moves with the other times: a full time by `interval` ("2 min ago" in the header); a clock
+    /// text ("21:28") too, when it is at most 6 h before the fixture's check (so a card checked with the lab says the
+    /// real clock time). Older clock texts stay: the morning briefing is "06:30" every day.
+    static func shiftUpdated(_ text: String, by interval: TimeInterval, checked: Date?, calendar: Calendar = .current) -> String {
+        if let d = ServerDate.parse(text) { return ServerDate.string(d.addingTimeInterval(interval)) }
+        guard let checked, let m = DayTimeline.minute(text) else { return text }
+        let c = calendar.dateComponents([.hour, .minute], from: checked)
+        let before = (c.hour ?? 0) * 60 + (c.minute ?? 0) - m
+        guard (0...360).contains(before) else { return text }
+        let t = checked.addingTimeInterval(interval - Double(before * 60))
+        let n = calendar.dateComponents([.hour, .minute], from: t)
+        return String(format: "%02d:%02d", n.hour ?? 0, n.minute ?? 0)
+    }
+
+    /// The calm demo's commute: on a school morning (the day card is today's) the plan of the card's times, today;
+    /// otherwise "no commute today", as the real server says once the first lesson has started.
+    static func schoolCommute(_ plan: CommutePlan, day: Card?, now: Date, calendar: Calendar = .current) -> CommutePlan {
+        let today = CommutePlan.dayString(now, calendar: calendar)
+        guard let day, day.date == today else {
+            return CommutePlan(date: today, active: false, why: "first lesson has started")
+        }
+        func at(_ title: String) -> Date? {
+            guard let m = DayTimeline.minute(day.items.first { $0.title == title }?.value) else { return nil }
+            return calendar.date(byAdding: .minute, value: m, to: calendar.startOfDay(for: now))
+        }
+        var p = plan
+        p.date = today
+        p.firstLesson = at("First lesson"); p.leaveBy = at("Leave by")
+        p.train = p.leaveBy?.addingTimeInterval(5 * 60); p.next = p.train?.addingTimeInterval(5 * 60)
+        p.nextTooLate = false; p.disruptions = []
+        p.updated = now.addingTimeInterval(-120)
+        return p
+    }
+
     /// Whole calendar days between two times (for moving day-only dues, which must stay on midnight).
     static func dayShift(from: Date?, to: Date, calendar: Calendar = .current) -> Int {
         guard let from else { return 0 }
@@ -105,9 +167,36 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         return card
     }
 
-    /// The day's clock times follow the real clock too: the first stop was 45 min ago, so the day line always has a
-    /// "now" between its stops. Times inside subtitles ("U6 07:36") move along. Late at night, when the day wouldn't
-    /// fit before midnight, the fixture's times stay.
+    /// The calm demo's day card, as a real server sends it, with school Monday to Friday. Until the last of its times
+    /// (the first lesson) it is today's card with the fixture's times. After that, and on weekends, it is tomorrow's
+    /// (dated tomorrow, so the app says "Tomorrow" and counts down to the wake-up), or "No school" when tomorrow is a
+    /// Saturday or Sunday.
+    public static func schoolDay(_ card: Card, now: Date, calendar: Calendar = .current) -> Card {
+        let minutes = card.items.compactMap { DayTimeline.minute($0.value) }
+        guard let last = minutes.max() else { return card }
+        let c = calendar.dateComponents([.hour, .minute, .weekday], from: now)
+        let schoolDays = 2...6   // Monday to Friday (in Calendar, 1 is Sunday)
+        var card = card
+        if schoolDays.contains(c.weekday ?? 1), (c.hour ?? 0) * 60 + (c.minute ?? 0) < last {
+            card.title = "Today"
+            card.date = CommutePlan.dayString(now, calendar: calendar)
+            return card
+        }
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        card.title = "Tomorrow"
+        card.date = CommutePlan.dayString(tomorrow, calendar: calendar)
+        if !schoolDays.contains(calendar.component(.weekday, from: tomorrow)) {
+            card.style = .text
+            card.icon = "moon.zzz"
+            card.items = []
+            card.text = "No school"
+        }
+        return card
+    }
+
+    /// The problem scene's day: its clock times follow the real clock, the first stop was 45 min ago, so the day line
+    /// always has a "now" between its stops. Times inside subtitles ("U6 07:36") move along. Late at night, when the
+    /// day wouldn't fit before midnight, the fixture's times stay.
     public static func demoDay(_ card: Card, now: Date, calendar: Calendar = .current) -> Card {
         let minutes = card.items.compactMap { DayTimeline.minute($0.value) }
         guard let first = minutes.min(), let last = minutes.max() else { return card }
@@ -239,6 +328,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
                 var item = item
                 if let a = item.action, requested.contains(a.arg) {
                     item.action = nil
+                    item.subtitle = item.subtitle.map(PosterText.withoutRequestState)
                     item.value = "requested"
                 }
                 return item

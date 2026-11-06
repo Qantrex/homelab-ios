@@ -219,7 +219,7 @@ import Testing
         let s = try await demo.state()
         let checked = try #require(s.checked)
         #expect(abs(now.timeIntervalSince(checked) - 120) < 1)
-        #expect(s.pending.count == 2 && s.busy.isEmpty)
+        #expect(s.pending.count == 1 && s.busy.isEmpty)
     }
 
     @Test func chatEchoes() async throws {
@@ -234,7 +234,7 @@ import Testing
     }
 
     @Test func buttons() async throws {
-        let demo = DemoBackend(delay: .zero)
+        let demo = DemoBackend(scene: .problem, delay: .zero)
         await #expect(throws: APIError.forbidden) { try await demo.press("HOMELAB_APPROVE_ab12_forged") }
         let text = try await demo.press("HOMELAB_APPROVE_ab12_0123456789abcdef")
         #expect(text.contains("restart media sonarr"))

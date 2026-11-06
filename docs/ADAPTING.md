@@ -39,7 +39,9 @@ gets no tab or section for it. `AppModel.availableTabs` (`Sources/HomelabKit/App
 | Background check, notifications | `status`, `actions` | `Alerts.swift` | `HomelabUI/Background.swift`, `Sources/Homelab/HomelabApp.swift` | Settings, off by default |
 
 Today's sections are `TodaySection` in `Sources/HomelabKit/TodayLayout.swift`; the views for them are the `switch` in
-`TodayView.section(for:)`. Demo mode reads `Sources/HomelabKit/Fixtures/` (`info.json` lists the demo's features).
+`TodayView.section(for:)`. Demo mode reads `Sources/HomelabKit/Fixtures/` (`info.json` lists the demo's features;
+`state-demo.json` and `messages-demo.json` are its calm day, `state-problem.json` and `messages.json` its problem
+scene for screenshots, `-HomelabDemoScene problem`).
 
 ## Turn a module off
 
