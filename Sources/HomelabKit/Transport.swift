@@ -10,35 +10,47 @@ public protocol HTTPTransport: Sendable {
 
 public struct URLSessionTransport: HTTPTransport {
     let session: URLSession
+    /// For PDF uploads (`POST /documents`): the same rules, but up to 15 minutes in total like the server's upload
+    /// deadline. With the default session's 150 s a 25 MB scan over a slow relayed tailnet link never finished.
+    let uploadSession: URLSession
     /// Stop reading past this many bytes (the clients check their own, smaller limits too).
     let maxBytes: Int
 
-    public init(session: URLSession = URLSessionTransport.defaultSession, maxBytes: Int = 32 * 1024 * 1024) {
+    public init(session: URLSession = URLSessionTransport.defaultSession,
+                uploadSession: URLSession = URLSessionTransport.uploadSession, maxBytes: Int = 32 * 1024 * 1024) {
         self.session = session
+        self.uploadSession = uploadSession
         self.maxBytes = maxBytes
+    }
+
+    static func isUpload(_ request: URLRequest) -> Bool {
+        request.httpMethod == "POST" && request.value(forHTTPHeaderField: "Content-Type") == "application/pdf"
     }
 
     /// No cookies, no cache, no credential storage: every request carries its own auth. Redirects are not followed,
     /// so a bearer token can never be carried to another host by a 3xx answer.
-    public static let defaultSession: URLSession = {
+    public static let defaultSession: URLSession = makeSession(resourceTimeout: 150)
+    public static let uploadSession: URLSession = makeSession(resourceTimeout: 900)
+
+    static func makeSession(resourceTimeout: TimeInterval) -> URLSession {
         let c = URLSessionConfiguration.ephemeral
         c.httpCookieAcceptPolicy = .never
         c.httpShouldSetCookies = false
         c.urlCache = nil
         c.requestCachePolicy = .reloadIgnoringLocalCacheData
         c.timeoutIntervalForRequest = 20
-        c.timeoutIntervalForResource = 150
+        c.timeoutIntervalForResource = resourceTimeout
         #if canImport(Darwin)
         c.waitsForConnectivity = false   // fail fast: the UI shows "is Tailscale on?"
         #endif
         c.httpAdditionalHeaders = ["User-Agent": "HomelabiOS/\(AppVersion.short)"]
         return URLSession(configuration: c, delegate: NoRedirects(), delegateQueue: nil)
-    }()
+    }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         #if canImport(Darwin)
         // Streamed, so a hostile server can't make the app buffer more than `maxBytes`.
-        let (bytes, response) = try await session.bytes(for: request)
+        let (bytes, response) = try await (Self.isUpload(request) ? uploadSession : session).bytes(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         if http.expectedContentLength > Int64(maxBytes) { throw APIError.tooLarge }
         var data = Data()
@@ -49,7 +61,7 @@ public struct URLSessionTransport: HTTPTransport {
         }
         return (data, http)
         #else
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await (Self.isUpload(request) ? uploadSession : session).data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         if data.count > maxBytes { throw APIError.tooLarge }
         return (data, http)

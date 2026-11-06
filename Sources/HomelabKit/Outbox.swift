@@ -121,7 +121,9 @@ public struct Outbox: Sendable {
     /// 415, 422), when its server is gone, its file is gone, or it is older than seven days. Any other error keeps
     /// it, and stops that server's items for this run (it is probably not reachable).
     @discardableResult
-    public func drain(servers: ServerList, now: Date = Date(),
+    /// `maxPDFBytes`: leave bigger PDFs for later (the background refresh has ~30 s; the app in the foreground sends
+    /// everything).
+    public func drain(servers: ServerList, now: Date = Date(), maxPDFBytes: Int? = nil,
                       api: @Sendable (ServerConfig) -> any CompanionAPI) async -> Report {
         var report = Report()
         let key = directory.path
@@ -129,12 +131,17 @@ public struct Outbox: Sendable {
         defer { Self.gate.leave(key) }
         var stopped = Set<UUID>()
         for entry in entries() {
-            guard let server = servers.servers.first(where: { $0.id == entry.server && $0.speaksCompanionAPI }),
-                  now.timeIntervalSince(entry.created) <= ShareLimits.outboxMaxAge,
-                  let item = item(for: entry) else {
-                remove(entry.id); report.dropped += 1; continue
+            guard let server = servers.servers.first(where: { $0.id == entry.server && $0.speaksCompanionAPI }) else {
+                drop(entry, why: "its server was removed", now: now); report.dropped += 1; continue
+            }
+            guard now.timeIntervalSince(entry.created) <= ShareLimits.outboxMaxAge else {
+                drop(entry, why: "not sent within 7 days", now: now); report.dropped += 1; continue
+            }
+            guard let item = item(for: entry) else {
+                drop(entry, why: "its file was gone", now: now); report.dropped += 1; continue
             }
             if stopped.contains(server.id) { report.waiting += 1; continue }
+            if let maxPDFBytes, entry.kind == .pdf, entry.bytes > maxPDFBytes { report.waiting += 1; continue }
             do {
                 switch item {
                 case .pdf(let data, let title): _ = try await api(server).upload(pdf: data, title: title, id: entry.id)
@@ -142,7 +149,7 @@ public struct Outbox: Sendable {
                 }
                 remove(entry.id); report.sent += 1
             } catch let e as APIError where e.isPermanentRejection {
-                remove(entry.id); report.dropped += 1
+                drop(entry, why: e.message, now: now); report.dropped += 1
             } catch {
                 bumpAttempts(entry)
                 stopped.insert(server.id)
@@ -151,6 +158,36 @@ public struct Outbox: Sendable {
         }
         return report
     }
+}
+
+extension Outbox {
+    /// Something the outbox gave up on: shown once in the app, so a "Saved, Homelab sends it later" never just
+    /// disappears.
+    public struct Dropped: Codable, Sendable, Equatable {
+        public var when: Date
+        public var what: String
+        public var why: String
+    }
+
+    /// Not `.json`, so `entries()` never reads it as an item.
+    var droppedFile: URL { directory.appendingPathComponent("dropped.log") }
+
+    func drop(_ entry: Entry, why: String, now: Date) {
+        remove(entry.id)
+        let what = entry.title.flatMap { $0.isEmpty ? nil : $0 } ?? (entry.kind == .pdf ? "A scan" : (entry.url ?? "A link"))
+        let list = (dropped() + [Dropped(when: now, what: String(what.prefix(120)), why: String(why.prefix(300)))]).suffix(20)
+        if let data = try? Storage.encoder.encode(Array(list)) {
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try? data.write(to: droppedFile, options: .atomic)
+        }
+    }
+
+    /// What was given up on, oldest first (at most 20).
+    public func dropped() -> [Dropped] {
+        (try? Data(contentsOf: droppedFile)).flatMap { try? Storage.decoder.decode([Dropped].self, from: $0) } ?? []
+    }
+
+    public func clearDropped() { try? FileManager.default.removeItem(at: droppedFile) }
 }
 
 final class DrainGate: @unchecked Sendable {

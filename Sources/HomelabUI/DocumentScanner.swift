@@ -4,10 +4,12 @@ import SwiftUI
 import VisionKit
 #endif
 
-/// The scanned pages, handed from the camera to the code that makes the PDF. The images are never changed after
-/// the scanner made them, so crossing to another task is safe.
-struct ScannedPages: @unchecked Sendable {
-    var images: [CGImage]
+/// The scanned pages, handed from the camera to the code that makes the PDF. Pages are rendered and turned into a
+/// small JPEG one at a time (`jpeg(at:)`, on the main actor like the scan object), so a long scan never holds every
+/// full-size bitmap at once (~35 MB each).
+struct ScannedPages {
+    var count: Int
+    var jpeg: @MainActor (Int) -> Data?
 }
 
 #if os(iOS)
@@ -37,11 +39,9 @@ struct DocumentScanner: UIViewControllerRepresentable {
 
         func documentCameraViewController(_ controller: VNDocumentCameraViewController,
                                           didFinishWith scan: VNDocumentCameraScan) {
-            var images: [CGImage] = []
-            for i in 0..<scan.pageCount {
-                if let cg = Self.upright(scan.imageOfPage(at: i)) { images.append(cg) }
-            }
-            parent.onPages(ScannedPages(images: images))
+            parent.onPages(ScannedPages(count: scan.pageCount) { i in
+                autoreleasepool { Self.upright(scan.imageOfPage(at: i)).flatMap { PageEncoder.jpeg(from: $0) } }
+            })
         }
 
         func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {

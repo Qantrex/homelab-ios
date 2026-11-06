@@ -24,12 +24,17 @@ public enum BackgroundRefresh {
     public static func run(storage: Storage = .shared(), tokens: any TokenStore = KeychainTokenStore(),
                            transport: any HTTPTransport = URLSessionTransport()) async {
         schedule()
-        // Shares and scans the app couldn't send earlier (the extension stores them in the App Group).
+        await refresh(storage: storage, tokens: tokens, transport: transport)
+        // Then shares and scans the app couldn't send earlier (the extension stores them in the App Group): after the
+        // refresh, so a slow upload can't eat the ~30 s and cancel it, and only small PDFs (the app sends big ones).
         let list0 = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
-        await Outbox(directory: storage.url("outbox")).drain(servers: list0) { (server: ServerConfig) -> any CompanionAPI in
+        await Outbox(directory: storage.url("outbox")).drain(servers: list0, maxPDFBytes: 2 * 1024 * 1024) { (server: ServerConfig) -> any CompanionAPI in
             if server.kind == .demo { return DemoBackend(delay: .zero) }
             return CompanionClient(config: server, tokens: tokens, transport: transport)
         }
+    }
+
+    static func refresh(storage: Storage, tokens: any TokenStore, transport: any HTTPTransport) async {
         let settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
         let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
         guard let server = list.selectedServer else { return }

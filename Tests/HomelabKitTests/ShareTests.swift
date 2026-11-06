@@ -9,6 +9,8 @@ import Testing
     @Test func firstURLInText() {
         #expect(ShareRouter.firstURL(in: "Look: https://example.org/a?b=1, nice")?.absoluteString == "https://example.org/a?b=1")
         #expect(ShareRouter.firstURL(in: "(see http://example.org/x.)")?.absoluteString == "http://example.org/x")
+        #expect(ShareRouter.firstURL(in: "https://en.wikipedia.org/wiki/Foo_(bar)")?.absoluteString == "https://en.wikipedia.org/wiki/Foo_(bar)")
+        #expect(ShareRouter.firstURL(in: "(https://en.wikipedia.org/wiki/Foo_(bar))")?.absoluteString == "https://en.wikipedia.org/wiki/Foo_(bar)")
         #expect(ShareRouter.firstURL(in: "HTTPS://Example.org/p")?.host?.lowercased() == "example.org")
         #expect(ShareRouter.firstURL(in: "ftp://x.org mailto:a@b.c no link") == nil)
         #expect(ShareRouter.firstURL(in: "https:// ") == nil)
@@ -208,6 +210,36 @@ import Testing
         #expect(report.dropped == 3 && report.sent == 0)
         #expect(b.count == 0)
         #expect(t.requests.count == 1)   // only the third reached the server
+        // Each one is recorded with its reason, so the app can say what wasn't sent; Clear empties the record.
+        #expect(b.dropped().map(\.why).sorted() == ["its server was removed", "not sent within 7 days", "only PDF"].sorted())
+        #expect(b.dropped().allSatisfy { $0.what == "A scan" || !$0.what.isEmpty })
+        #expect(b.entries().isEmpty)   // the record is never read as an item
+        b.clearDropped()
+        #expect(b.dropped().isEmpty)
+    }
+
+    @Test func backgroundDrainLeavesBigPDFs() async throws {
+        let b = box()
+        let small = uuid(), big = uuid()
+        try b.add(pdf(), id: small, server: server.id)
+        try b.add(.pdf(Data("%PDF-".utf8) + Data(count: 3 * 1_048_576), title: "Big"), id: big, server: server.id)
+        let t = FakeTransport(json: #"{"ok": true, "text": "ok"}"#)
+        let report = await b.drain(servers: list, maxPDFBytes: 2 * 1_048_576) {
+            CompanionClient(config: $0, tokens: MemoryTokenStore(), transport: t)
+        }
+        #expect(report == Outbox.Report(sent: 1, dropped: 0, waiting: 1))
+        #expect(b.entries().map(\.id) == [big])
+    }
+
+    @Test func uploadsUseTheLongSession() {
+        var r = URLRequest(url: base)
+        r.httpMethod = "POST"
+        r.setValue("application/pdf", forHTTPHeaderField: "Content-Type")
+        #expect(URLSessionTransport.isUpload(r))
+        r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        #expect(!URLSessionTransport.isUpload(r))
+        #expect(URLSessionTransport.uploadSession.configuration.timeoutIntervalForResource == 900)
+        #expect(URLSessionTransport.defaultSession.configuration.timeoutIntervalForResource == 150)
     }
 }
 

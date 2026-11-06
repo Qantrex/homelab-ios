@@ -126,6 +126,8 @@ public final class AppModel {
     public private(set) var openScan = false
     /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
     public private(set) var outboxCount = 0
+    /// Scans and links the outbox gave up on (server removed, 7 days, refused): shown until cleared.
+    public private(set) var outboxDropped: [Outbox.Dropped] = []
     /// The action form sheets that are open (the Actions tab's, a card's "Add"), one token per sheet. A requested
     /// form waits until none is: a second sheet can't show over the first, and the request would be lost.
     public private(set) var openForms: Set<UUID> = []
@@ -171,6 +173,7 @@ public final class AppModel {
         apply(args)
         locked = settings.faceIDLock
         outboxCount = Outbox(directory: storage.url("outbox")).count
+        outboxDropped = Outbox(directory: storage.url("outbox")).dropped()
     }
 
     // MARK: Servers
@@ -232,10 +235,20 @@ public final class AppModel {
             await box.drain(servers: servers) { [self] server in self.companionForDrain(server) }
         }
         outboxCount = box.count
+        outboxDropped = box.dropped()
     }
 
     /// Refreshes `outboxCount` (a scan was queued).
-    public func outboxChanged() { outboxCount = outbox.count }
+    public func outboxChanged() {
+        outboxCount = outbox.count
+        outboxDropped = outbox.dropped()
+    }
+
+    /// The owner has seen what wasn't sent.
+    public func clearOutboxDropped() {
+        outbox.clearDropped()
+        outboxDropped = []
+    }
 
     nonisolated func companionForDrain(_ server: ServerConfig) -> any CompanionAPI {
         server.kind == .demo ? DemoBackend(delay: .zero) : CompanionClient(config: server, tokens: tokens, transport: transport)

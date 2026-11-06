@@ -15,6 +15,8 @@ final class ShareModel {
 
     var phase = Phase.loading
     var title = ""
+    /// One id per shared item: a retry (or the outbox later) is the same item for the server, never a second one.
+    private let itemID = UUID().uuidString.lowercased()
     private(set) var server: ServerConfig?
     private var features: Set<ServerInfo.Feature>?
     private let storage = Storage.shared()
@@ -57,7 +59,7 @@ final class ShareModel {
         case (_, .identity): CompanionClient(baseURL: server.baseURL, token: nil)
         default: nil
         }
-        let outcome = await ShareSender.send(share.item, server: server, api: api, features: features,
+        let outcome = await ShareSender.send(share.item, id: itemID, server: server, api: api, features: features,
                                              outbox: Outbox(directory: storage.url("outbox")))
         phase = .done(outcome)
     }

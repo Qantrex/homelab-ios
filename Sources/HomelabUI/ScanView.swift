@@ -60,7 +60,8 @@ struct ScanView: View {
     private enum Phase {
         case idle
         case making
-        case ready(pdf: Data, pages: Int)
+        /// `id` is made with the PDF, so a second tap or a resend of the same scan can't file it twice.
+        case ready(pdf: Data, pages: Int, id: String)
         case sending(Int)
     }
 
@@ -86,7 +87,7 @@ struct ScanView: View {
                     switch phase {
                     case .idle: idle
                     case .making: progress("Making the PDF…")
-                    case .ready(let pdf, let pages): ready(pdf: pdf, pages: pages)
+                    case .ready(let pdf, let pages, let id): ready(pdf: pdf, pages: pages, id: id)
                     case .sending(let bytes): progress("Sending \(Self.size(bytes))…")
                     }
                 }
@@ -149,7 +150,7 @@ struct ScanView: View {
         }
         if !DocumentScanner.isSupported || server.kind == .demo {
             Button {
-                if let pdf = PageEncoder.samplePDF() { phase = .ready(pdf: pdf, pages: 1) }
+                if let pdf = PageEncoder.samplePDF() { phase = .ready(pdf: pdf, pages: 1, id: UUID().uuidString.lowercased()) }
             } label: {
                 Text("Use a sample page").frame(maxWidth: .infinity)
             }
@@ -158,7 +159,7 @@ struct ScanView: View {
         }
     }
 
-    private func ready(pdf: Data, pages: Int) -> some View {
+    private func ready(pdf: Data, pages: Int, id: String) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 24) {
                 stat(String(pages), pages == 1 ? "PAGE" : "PAGES")
@@ -171,7 +172,11 @@ struct ScanView: View {
             TextField("Title", text: $title)
                 .textFieldStyle(.roundedBorder)
             Text("To \(server.name), into Paperless.").font(.footnote).foregroundStyle(Palette.secondary)
-            Button { Task { await send(pdf, pages: pages) } } label: {
+            Button {
+                guard !isSending else { return }
+                phase = .sending(pdf.count)   // at once: a second tap in the same frame finds it sending
+                Task { await send(pdf, pages: pages, id: id) }
+            } label: {
                 Text("Send").frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
             }
             .buttonStyle(.borderedProminent)
@@ -200,16 +205,22 @@ struct ScanView: View {
     /// The camera is done: every page becomes a small JPEG (off the main thread), the JPEGs one PDF.
     private func make(_ pages: ScannedPages) {
         camera = false
-        guard !pages.images.isEmpty else { return }
+        guard pages.count > 0 else { return }
         phase = .making
         Task {
+            // One page at a time, yielding between pages so the UI keeps drawing the progress.
+            var jpegs: [Data] = []
+            for i in 0..<pages.count {
+                if let j = pages.jpeg(i) { jpegs.append(j) }
+                await Task.yield()
+            }
+            let pageJPEGs = jpegs
             let made = await Task.detached(priority: .userInitiated) { () -> (Data, Int)? in
-                let jpegs = pages.images.compactMap { PageEncoder.jpeg(from: $0) }
-                guard let pdf = PDFWriter.pdf(jpegs: jpegs) else { return nil }
-                return (pdf, jpegs.count)
+                guard let pdf = PDFWriter.pdf(jpegs: pageJPEGs) else { return nil }
+                return (pdf, pageJPEGs.count)
             }.value
             if let made {
-                phase = .ready(pdf: made.0, pages: made.1)
+                phase = .ready(pdf: made.0, pages: made.1, id: UUID().uuidString.lowercased())
             } else {
                 phase = .idle
                 message = Message(title: "No PDF", text: "The pages couldn't be turned into a PDF. Scan again.", finishes: false)
@@ -217,18 +228,19 @@ struct ScanView: View {
         }
     }
 
-    private func send(_ pdf: Data, pages: Int) async {
+    private func send(_ pdf: Data, pages: Int, id: String) async {
         let item: ShareItem
         do {
             item = try ShareRouter.item(pdf: pdf, title: title)
         } catch let refusal as ShareRefusal {
+            phase = .ready(pdf: pdf, pages: pages, id: id)
             message = Message(title: "Can't send this", text: refusal.message, finishes: false)
             return
         } catch {
+            phase = .ready(pdf: pdf, pages: pages, id: id)
             return
         }
-        phase = .sending(pdf.count)
-        let result = await ShareSender.send(item, server: server, api: model.companion(for: server),
+        let result = await ShareSender.send(item, id: id, server: server, api: model.companion(for: server),
                                             features: model.selectedStatus.knownInfo?.features, outbox: model.outbox)
         model.outboxChanged()
         outcome = result
@@ -236,7 +248,7 @@ struct ScanView: View {
         case .sent(let text): message = Message(title: "Sent", text: text, finishes: true)
         case .queued: message = Message(title: "Saved", text: ShareOutcome.queuedText, finishes: true)
         case .failed(let text):
-            phase = .ready(pdf: pdf, pages: pages)
+            phase = .ready(pdf: pdf, pages: pages, id: id)
             message = Message(title: "Not sent", text: text, finishes: false)
         }
     }

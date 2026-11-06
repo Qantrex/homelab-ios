@@ -26,6 +26,13 @@ enum ShareLoader {
         if let pdf = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.pdf.identifier) }) {
             return await loadPDF(pdf)
         }
+        // A web link wins over images: some apps (shops, willhaben) attach a preview picture next to the link, and that
+        // must become a price check or read-later, not a photo PDF in Paperless. Photos never carry a web link (a file
+        // URL doesn't count), so photo shares still end up below.
+        if let link = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.url.identifier) }),
+           let url = await loadURL(link), ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+            return build { try ShareRouter.item(url: url, title: pageTitle) }
+        }
         let images = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.image.identifier) }
         if !images.isEmpty { return await loadImages(images) }
 

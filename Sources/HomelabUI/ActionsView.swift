@@ -49,6 +49,10 @@ struct ActionsView: View {
                             ScanStartRow(waiting: model.outboxCount) { scanning = true }
                                 .cardRow(top: startable.isEmpty ? 4 : 0)
                         }
+                        if !model.outboxDropped.isEmpty {
+                            NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
+                                .cardRow()
+                        }
                     } header: {
                         SectionTitle(text: "Start").textCase(nil).sectionHeaderInsets()
                     }
@@ -187,5 +191,34 @@ private extension View {
     /// A section title over card rows: aligned with the cards' edge, like Lab's titles.
     func sectionHeaderInsets() -> some View {
         listRowInsets(EdgeInsets(top: 8, leading: 2, bottom: 4, trailing: 2))
+    }
+}
+
+/// Scans and links the outbox gave up on (the owner was told "Homelab sends it later"): what, when and why, until
+/// he clears it.
+struct NotSentRow: View {
+    let items: [Outbox.Dropped]
+    let clear: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(items.count == 1 ? "1 item not sent" : "\(items.count) items not sent",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.love)
+                Spacer()
+                Button("Clear", action: clear).font(Typo.mono(.caption, weight: .semibold)).buttonStyle(.plain)
+                    .foregroundStyle(Palette.secondary)
+            }
+            ForEach(Array(items.suffix(5).enumerated()), id: \.offset) { _, d in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(d.what).font(.subheadline).lineLimit(1)
+                    Text("\(Format.age(d.when)) · \(d.why)").font(Typo.mono(.caption2)).foregroundStyle(Palette.secondary)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .card(accent: Palette.love)
+        .accessibilityElement(children: .combine)
     }
 }

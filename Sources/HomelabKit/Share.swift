@@ -86,7 +86,16 @@ public enum ShareRouter {
             guard let r = lower.range(of: "https://") ?? lower.range(of: "http://") else { continue }
             let start = token.index(token.startIndex, offsetBy: lower.distance(from: lower.startIndex, to: r.lowerBound))
             var s = String(token[start...])
-            while let last = s.last, ".,;:!?)]}'’”".contains(last) { s.removeLast() }
+            // Trailing punctuation isn't part of the link; a closing bracket only when it has no partner in the link
+            // ("(see https://x.org/a)" loses it, "https://en.wikipedia.org/wiki/Foo_(bar)" keeps it).
+            while let last = s.last {
+                if ".,;:!?'’”".contains(last) { s.removeLast(); continue }
+                if let open = ["(": ")", "[": "]", "{": "}"].first(where: { $0.value == String(last) })?.key,
+                   s.filter({ String($0) == open }).count < s.filter({ $0 == last }).count {
+                    s.removeLast(); continue
+                }
+                break
+            }
             if let url = URL(string: s), url.host?.isEmpty == false { return url }
         }
         return nil
