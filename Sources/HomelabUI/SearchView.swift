@@ -90,7 +90,9 @@ struct SearchView: View {
         } else if let found {
             if found.shown.isEmpty {
                 if !loading {
-                    Placeholder(title: "Nothing found", symbol: "film", message: "Try another spelling or a shorter title.")
+                    Placeholder(title: "Nothing found", symbol: "film", message: LocalizedStringKey(
+                        (Voice.line(for: .empty(.search), personality: model.settings.voice).map { $0 + " " } ?? "")
+                        + String(localized: "Try another spelling or a shorter title.")))
                         .padding(.top, 40)
                 }
             } else {
