@@ -37,7 +37,7 @@ struct TodayView: View {
                     // In my order, without the hidden ones (Settings → Today).
                     ForEach(density.sections(model.settings.todayLayout)) { section(for: $0) }
                 }
-                .animation(.snappy, value: shape)
+                .motion(.snappy, value: shape)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
@@ -73,27 +73,33 @@ struct TodayView: View {
 
     /// The big "now" (docs/DESIGN.md): the date, how the lab is doing in two words (white; the mood is the light
     /// behind it and the status icon), what the voice thinks of it, the first problem, where the data is from.
-    /// Tap opens Lab.
+    /// Tap opens Lab. VoiceOver reads it line by line: only the headline is a heading (and opens Lab), the voice line
+    /// has a "Next comment" action.
     private var hero: some View {
         let m = mood
         return Button {
-            if model.availableTabs.contains(.lab) { model.tab = .lab }
+            openLab()
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
                     if let symbol = statusSymbol(m.level) {
                         Image(systemName: symbol).foregroundStyle(m.level.color).font(.footnote.weight(.semibold))
+                            .accessibilityHidden(true)
                     }
                     Text(dateLine).font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary)
                 }
+                .accessibilityElement(children: .combine)
                 Text(m.headline)
-                    .font(Typo.hero)
+                    .heroFont()
                     .tracking(-1)
                     .foregroundStyle(Palette.text)
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
-                    .contentTransition(.numericText())
+                    .contentTransition(Motion.numeric)
                     .padding(.top, 4)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityHint(model.availableTabs.contains(.lab) ? Text("Opens Lab") : Text(""))
+                    .accessibilityAction { openLab() }
                 // The fact line: the first problem, and the warnings inline (gold glyph, white words; research #8).
                 if m.detail != nil || m.warnings > 0 {
                     factLine(m)
@@ -111,8 +117,10 @@ struct TodayView: View {
                         .transition(.opacity)
                         .onTapGesture { pokes += 1 }
                         .sensoryFeedback(.selection, trigger: pokes)
+                        .accessibilityAction(named: Text("Next comment")) { pokes += 1 }
                 }
                 Text(facts).font(Typo.meta).foregroundStyle(Palette.tertiary).padding(.top, 12)
+                    .accessibilityLabel(Format.spoken(facts))
                 // The weather card's one line ("Rain from 15:00, take an umbrella"), in every density.
                 if let weather {
                     Text(weather).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(1).padding(.top, 2)
@@ -122,13 +130,15 @@ struct TodayView: View {
             .padding(.top, 28)
             .padding(.bottom, 8)
             .contentShape(Rectangle())
-            .animation(.snappy, value: m)
-            .animation(.snappy, value: pokes)
+            .motion(.snappy, value: m)
+            .motion(.snappy, value: pokes)
         }
         .buttonStyle(.pressLight)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-        .accessibilityHint(Text("Opens Lab"))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func openLab() {
+        if model.availableTabs.contains(.lab) { model.tab = .lab }
     }
 
     /// "sonarr on media is unhealthy · ⚠ 1 warning": only the glyph is gold.
@@ -213,7 +223,9 @@ struct TodayView: View {
     }
 
     /// Actions the agent proposed, so they are seen first thing. Tap opens Actions (with the confirm step there).
+    /// At accessibility sizes the age goes under the title, so the title keeps the row's width.
     private func waiting(_ pending: [PendingAction]) -> some View {
+        let ageBelow = density.exactTimes || typeSize.isAccessibilitySize
         let shown = Array(pending.prefix(density == .overkill ? pending.count : 3))
         return VStack(alignment: .leading, spacing: Space.titleToPanel) {
             SectionTitle(text: "Waiting for you", trailing: "\(pending.count)")
@@ -225,6 +237,7 @@ struct TodayView: View {
                         if i > 0 { TodaySeparator() }
                         HStack(alignment: .firstTextBaseline, spacing: 12) {
                             Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).font(Typo.secondary)
+                                .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text([p.action, p.arg].compactMap { $0 }.joined(separator: " "))
                                     .font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
@@ -232,14 +245,19 @@ struct TodayView: View {
                                     Text(reason).font(Typo.secondary).foregroundStyle(Palette.secondary)
                                         .lineLimit(density == .overkill ? nil : 2)
                                 }
-                                // Overkill's exact times are long: their own line, so the title keeps its room.
-                                if density.exactTimes, let created = p.created {
-                                    Text(when(created)).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
+                                // Overkill's exact times are long, and at AX sizes every line is: their own line,
+                                // so the title keeps its room.
+                                if ageBelow, let created = p.created {
+                                    Text(when(created))
+                                        .font(density.exactTimes ? Typo.data(.footnote) : Typo.meta)
+                                        .foregroundStyle(Palette.tertiary)
+                                        .accessibilityLabel(Format.spoken(when(created)))
                                 }
                             }
                             Spacer(minLength: 8)
-                            if !density.exactTimes, let created = p.created {
+                            if !ageBelow, let created = p.created {
                                 Text(when(created)).font(Typo.meta).foregroundStyle(Palette.tertiary)
+                                    .accessibilityLabel(Format.spoken(when(created)))
                             }
                         }
                         .multilineTextAlignment(.leading)
@@ -275,9 +293,12 @@ struct TodayView: View {
                                 Circle().fill(statusColor(m.status)).frame(width: 8, height: 8).accessibilityHidden(true)
                                 Text(job).font(Typo.headline).foregroundStyle(Palette.text)
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityValue(statusWord(m.status).map { Text($0) } ?? Text(""))
                         }
                         Text(markdown(m.text)).font(Typo.secondary).foregroundStyle(Palette.secondary)
                             .lineLimit(10).multilineTextAlignment(.leading)
+                            .tint(Palette.iris)
                     }
                     .panel()
                 }
@@ -302,37 +323,50 @@ struct DaySection: View {
         // Redrawn every minute, so the line and the countdown move while the screen is open.
         TimelineView(.everyMinute) { context in
             let line = DayTimeline(card: card, now: context.date)
-            VStack(alignment: .leading, spacing: 16) {
-                if line.isTomorrow {
-                    // From the phone's own clock, not the server's title: a cached evening card is "Today" after midnight.
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("Tomorrow").font(Typo.headline).foregroundStyle(Palette.text)
-                        if let day = DayTimeline.day(card.date) {
-                            Text(day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                                .font(Typo.secondary).foregroundStyle(Palette.secondary)
-                        }
-                    }
-                } else if line.isStale {
-                    Text(Self.staleText(line.staleDays, card.date)).font(Typo.meta).foregroundStyle(Palette.tertiary)
+            ZStack(alignment: .topLeading) {
+                // VoiceOver's heading for the section (the rotor jumps here): the visible "Tomorrow" / "From yesterday"
+                // line, or an invisible "Today" (the panel has no title on screen).
+                if !line.isTomorrow && !line.isStale {
+                    Color.clear.frame(width: 1, height: 1)
+                        .accessibilityElement()
+                        .accessibilityLabel(Text("Today"))
+                        .accessibilityAddTraits(.isHeader)
                 }
-                if line.stops.isEmpty {
-                    if let text = line.text {
-                        Text(markdown(text)).font(Typo.body).foregroundStyle(Palette.text)
-                    } else {
-                        DayNumbers(items: line.notes)
+                VStack(alignment: .leading, spacing: 16) {
+                    if line.isTomorrow {
+                        // From the phone's own clock, not the server's title: a cached evening card is "Today" after midnight.
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("Tomorrow").font(Typo.headline).foregroundStyle(Palette.text)
+                            if let day = DayTimeline.day(card.date) {
+                                Text(day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                                    .font(Typo.secondary).foregroundStyle(Palette.secondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isHeader)
+                    } else if line.isStale {
+                        Text(Self.staleText(line.staleDays, card.date)).font(Typo.meta).foregroundStyle(Palette.tertiary)
+                            .accessibilityAddTraits(.isHeader)
                     }
-                } else {
-                    if line.across(accessibilityText: typeSize.isAccessibilitySize) {
-                        // One clear statement first ("Leave by 21:27 · in 26 min"), the line under it as a quiet track
-                        // (design research #2: the three big times competed with the hero).
-                        if let next = line.next { statement(next, countdown: line.minutesToNext) }
-                        DayLineAcross(line: line, compact: line.next != nil)
+                    if line.stops.isEmpty {
+                        if let text = line.text {
+                            Text(markdown(text)).font(Typo.body).foregroundStyle(Palette.text).tint(Palette.iris)
+                        } else {
+                            DayNumbers(items: line.notes)
+                        }
                     } else {
-                        down(line)
-                    }
-                    if !line.notes.isEmpty {
-                        TodaySeparator()
-                        notes(line.notes)
+                        if line.across(accessibilityText: typeSize.isAccessibilitySize) {
+                            // One clear statement first ("Leave by 21:27 · in 26 min"), the line under it as a quiet track
+                            // (design research #2: the three big times competed with the hero).
+                            if let next = line.next { statement(next, countdown: line.minutesToNext) }
+                            DayLineAcross(line: line, compact: line.next != nil)
+                        } else {
+                            down(line)
+                        }
+                        if !line.notes.isEmpty {
+                            TodaySeparator()
+                            notes(line.notes)
+                        }
                     }
                 }
             }
@@ -348,11 +382,12 @@ struct DaySection: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(next.item.title ?? "").font(.title2.weight(.semibold)).foregroundStyle(Palette.text)
                 Text(next.item.value ?? "").font(Typo.displayData).foregroundStyle(next.item.tint?.color ?? Palette.text)
-                    .contentTransition(.numericText())
+                    .contentTransition(Motion.numeric)
             }
             let parts = [countdown.map { Format.countdown(minutes: $0) }, next.item.subtitle].compactMap { $0 }
             if !parts.isEmpty {
                 Text(parts.joined(separator: " · ")).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                    .accessibilityLabel(Format.spoken(parts.joined(separator: ", ")))
             }
         }
         .accessibilityElement(children: .combine)
@@ -426,16 +461,25 @@ struct DayNumbers: View {
                             .font(Typo.data(.title, weight: .semibold))
                             .minimumScaleFactor(0.6).lineLimit(1)
                             .foregroundStyle(item.tint?.color ?? Palette.text)
-                            .contentTransition(.numericText())
-                            .animation(.snappy, value: item.value)
+                            .numberMotion(item.value)
                         Text(item.title ?? "").font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(1)
                         if let s = item.subtitle {
                             Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
                         }
                     }
                     .accessibilityElement(children: .combine)
+                    .accessibilityValue(Self.isHigh(item.tint) ? Text("high") : Text(""))
                 }
             }
+        }
+    }
+
+    /// A gold or love number (orange, yellow or red from the server) is over its limit: VoiceOver says "high", as
+    /// the colour alone doesn't (docs/DESIGN.md §3).
+    static func isHigh(_ tint: Tint?) -> Bool {
+        switch tint {
+        case .orange, .yellow, .red: true
+        default: false
         }
     }
 }
@@ -447,6 +491,7 @@ struct MachineList: View {
     /// The state the hosts come from, for each host's level (`HomelabState.health(of:)`).
     let state: HomelabState
     let exact: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -460,13 +505,16 @@ struct MachineList: View {
                             Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
                             Text(host.name).font(Typo.headline)
                             if health != .ok { Text(health.label).font(Typo.secondary).foregroundStyle(Palette.secondary) }
-                            Spacer(minLength: 4)
-                            if let checked = host.checked {
-                                Text(Format.when(checked, exact: exact)).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
+                            if !typeSize.isAccessibilitySize {
+                                Spacer(minLength: 4)
+                                checkedText(host)
                             }
                         }
+                        // At accessibility sizes the age gets its own line, so the name isn't squeezed.
+                        if typeSize.isAccessibilitySize { checkedText(host) }
                         numbers(host)
                             .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel(spokenNumbers(host))
                         if let history = host.history, history.last(.load) != nil {
                             Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "\(host.name) load, last 24 hours"),
                                       lineWidth: 1.2, fill: false)
@@ -491,10 +539,24 @@ struct MachineList: View {
         }
     }
 
-    /// "Load 1.85/4 · RAM 71% · / 81% · 63 °C · Containers 14/14 · Updates 3 · Reboot needed · Backup ok": the words
-    /// in the text style, only the values in the data font.
-    private func numbers(_ h: Host) -> Text {
-        guard h.reachable == true else { return Text(HostHealth(h).label).font(Typo.secondary).foregroundStyle(Palette.secondary) }
+    @ViewBuilder
+    private func checkedText(_ host: Host) -> some View {
+        if let checked = host.checked {
+            Text(Format.when(checked, exact: exact)).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
+                .accessibilityLabel(Format.spoken(Format.when(checked, exact: exact)))
+        }
+    }
+
+    /// `numbers` for VoiceOver: the same parts, a value over its limit followed by "high".
+    private func spokenNumbers(_ h: Host) -> String {
+        guard h.reachable == true else { return HostHealth(h).label }
+        return parts(h).map { part in
+            let value = part.level == .normal || part.value.isEmpty ? part.value : part.value + " " + String(localized: "high")
+            return [part.label, Format.spoken(value)].filter { !$0.isEmpty }.joined(separator: " ")
+        }.joined(separator: ", ")
+    }
+
+    private func parts(_ h: Host) -> [(label: String, value: String, level: ValueLevel)] {
         var p: [(label: String, value: String, level: ValueLevel)] = []
         if h.load != nil { p.append((String(localized: "Load"), Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? ""), h.loadLevel)) }
         if h.memPct != nil { p.append((String(localized: "RAM"), Format.percent(h.memPct), h.ramLevel)) }
@@ -504,6 +566,14 @@ struct MachineList: View {
         if let u = h.upgradable, u > 0 { p.append((String(localized: "Updates"), "\(u)", .normal)) }
         if h.rebootRequired == true { p.append((String(localized: "Reboot needed"), "", .normal)) }
         if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append((String(localized: "Backup"), b, .normal)) }
+        return p
+    }
+
+    /// "Load 1.85/4 · RAM 71% · / 81% · 63 °C · Containers 14/14 · Updates 3 · Reboot needed · Backup ok": the words
+    /// in the text style, only the values in the data font.
+    private func numbers(_ h: Host) -> Text {
+        guard h.reachable == true else { return Text(HostHealth(h).label).font(Typo.secondary).foregroundStyle(Palette.secondary) }
+        let p = parts(h)
         var out = Text("")
         for (i, part) in p.enumerated() {
             if i > 0 { out = out + Text("  ·  ").font(Typo.secondary).foregroundStyle(Palette.tertiary) }

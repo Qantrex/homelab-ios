@@ -92,9 +92,12 @@ struct LabView: View {
             }
             // Large text: one fact per line instead of a wrapped "a · b · c".
             if typeSize.isAccessibilitySize {
-                ForEach(sublines, id: \.self) { Text($0).font(Typo.meta).foregroundStyle(Palette.tertiary) }
+                ForEach(sublines, id: \.self) {
+                    Text($0).font(Typo.meta).foregroundStyle(Palette.tertiary).accessibilityLabel(Format.spoken($0))
+                }
             } else {
                 Text(sublines.joined(separator: " · ")).font(Typo.meta).foregroundStyle(Palette.tertiary)
+                    .accessibilityLabel(Format.spoken(sublines.joined(separator: ", ")))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -167,7 +170,7 @@ struct LabView: View {
                 } else {
                     // Standard: one panel, a row per host, the numbers in three right-hand columns.
                     VStack(spacing: 0) {
-                        if !typeSize.isAccessibilitySize {
+                        if !HostRow.stacked(typeSize) {
                             HostColumnHeader().padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 2)
                         }
                         ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
@@ -222,8 +225,9 @@ fileprivate struct ProblemRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 // The age shares the status line, so the problem's text keeps the row's full width (a right-hand
                 // "since 20 min ago" column squeezed it to three lines on a 5.4" phone).
-                Text(word).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                    + Text(age.map { " · \($0)" } ?? "").font(Typo.secondary).foregroundStyle(Palette.tertiary)
+                (Text(word).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                    + Text(age.map { " · \($0)" } ?? "").font(Typo.secondary).foregroundStyle(Palette.tertiary))
+                    .accessibilityLabel(Format.spoken(([word] + (age.map { [$0] } ?? [])).joined(separator: ", ")))
             }
             Spacer(minLength: 0)
         }
@@ -243,6 +247,15 @@ func statusColor(_ status: String?) -> Color {
     case "WARN", "WARNING": Palette.gold
     case "ALERT", "ERROR", "PROBLEM": Palette.love
     default: Palette.secondary
+    }
+}
+
+/// What `statusColor` says in words, for VoiceOver ("Warning", "Problem"); nil when the dot is grey.
+func statusWord(_ status: String?) -> String? {
+    switch status?.uppercased() {
+    case "WARN", "WARNING": String(localized: "Warning")
+    case "ALERT", "ERROR", "PROBLEM": String(localized: "Problem")
+    default: nil
     }
 }
 
@@ -318,6 +331,7 @@ struct HostTile: View {
                 }
             } else if let checked = host.checked {
                 Text("last seen \(Format.age(checked))").font(.footnote).foregroundStyle(Palette.tertiary)
+                    .accessibilityLabel(Text("last seen \(Format.spokenAge(checked))"))
             }
             if !shownFlags.isEmpty {
                 Label {
@@ -349,8 +363,7 @@ struct HostTile: View {
                 Spacer(minLength: 8)
                 Text(value).font(Typo.data(.footnote))
                     .foregroundStyle(Meter.valueColor(level))   // the bar stays grey; the number turns gold/love at its limits
-                    .contentTransition(.numericText())
-                    .animation(.snappy, value: value)
+                    .numberMotion(value)
             }
             if let share { Meter(share, warns: true) }
         }
@@ -390,7 +403,8 @@ fileprivate struct HostColumnHeader: View {
 /// sparkline (dropped first when the row is too narrow) · Load, RAM and Disk as three right-aligned mono values in
 /// fixed columns. Only a value over its limit turns gold or love (`Host.loadLevel` and friends: the sparkline's
 /// limits). Under the name, in meta: the state when it isn't OK, flags, a hot temperature or missing containers. At
-/// accessibility sizes the values go under the name, one "Load 0.42" per line (docs/DESIGN.md §6).
+/// accessibility sizes (and from xxLarge, where the columns left the name one word per line) the values go under the
+/// name, one "Load 0.42" per line (docs/DESIGN.md §6).
 struct HostRow: View {
     let host: Host
     let health: HostHealth
@@ -401,9 +415,12 @@ struct HostRow: View {
     private var diskPercent: Int? { Format.worstDisk(host.disks)?.percent }
     private var up: Bool { host.reachable == true }
 
+    /// The stacked layout: from xxLarge on, three value columns next to a long name cut it ("pi-me…" at xxxLarge).
+    static func stacked(_ size: DynamicTypeSize) -> Bool { size >= .xxLarge }
+
     var body: some View {
         Group {
-            if typeSize.isAccessibilitySize {
+            if Self.stacked(typeSize) {
                 VStack(alignment: .leading, spacing: 8) {
                     nameBlock(withMeta: true)
                     if up {
@@ -515,7 +532,7 @@ struct HostRow: View {
 /// What VoiceOver reads after a host's name: the numbers the tile or row shows. A number over its limit says "high".
 fileprivate func hostSpokenMetrics(_ host: Host, flags shownFlags: [String]) -> String {
     guard host.reachable == true else {
-        let seen = host.checked.map { [String(localized: "last seen \(Format.age($0))")] } ?? []
+        let seen = host.checked.map { [String(localized: "last seen \(Format.spokenAge($0))")] } ?? []
         return (seen + shownFlags.map(Format.flag)).joined(separator: ", ")
     }
     func high(_ text: String, _ level: ValueLevel) -> String { level.isHigh ? text + " " + String(localized: "high") : text }

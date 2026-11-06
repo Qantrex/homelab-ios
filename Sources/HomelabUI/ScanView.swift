@@ -115,11 +115,14 @@ struct ScanView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 24) {
                 stat(String(pages), pages == 1 ? "Page" : "Pages")
+                    .accessibilityLabel(pages == 1 ? Text("1 page") : Text("\(pages) pages"))
                 stat(Self.size(pdf.count), "Size")
+                    .accessibilityLabel(Text("Size \(Self.size(pdf.count))"))
             }
             .panel()
             VStack(alignment: .leading, spacing: 8) {
-                Text("Title").font(.subheadline.weight(.semibold))
+                // The field's own label: VoiceOver reads it with the field.
+                Text("Title").font(.subheadline.weight(.semibold)).accessibilityHidden(true)
                 TextField("Title", text: $title)
                     .padding(12)
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -142,11 +145,13 @@ struct ScanView: View {
         }
     }
 
+    /// One number and its word; one VoiceOver element ("1 page"), the label is set by the caller.
     private func stat(_ value: String, _ label: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value).font(Typo.data(.title2, weight: .semibold))
             Text(label).font(.footnote).foregroundStyle(Palette.tertiary)
         }
+        .accessibilityElement(children: .ignore)
     }
 
     private func progress(_ text: String) -> some View {

@@ -10,34 +10,42 @@ import UIKit
 // numbers in a mono font, filled panels without borders. Colour only for status, from Rosé Pine Moon: love = problem, gold = warning, iris = links. A
 // sleeping machine is plain grey (tapping it doesn't wake it). No blue anywhere. Light mode is the same in white/black. Change colours here only.
 
-/// Every colour the app and the widget use.
+/// Every colour the app and the widget use. With Increase Contrast (Settings > Accessibility) every colour has a
+/// stronger twin: lighter panels and lines on black, darker type and status colours on white, tertiary = secondary.
 public enum Palette {
     /// Screen background: #000000 in dark mode, white in light mode.
     public static let background = dynamic(dark: 0x000000, light: 0xFFFFFF)
     /// Panels on the background: #141414 on black (contrast about 1.2:1, visible on OLED in daylight; research D7).
-    public static let surface = dynamic(dark: 0x141414, light: 0xF2F2F2)
+    public static let surface = dynamic(dark: 0x141414, light: 0xF2F2F2, darkHigh: 0x262626, lightHigh: 0xE8E8E8)
     /// Raised things inside a panel (buttons, tiles that are on).
-    public static let raised = dynamic(dark: 0x1F1F1F, light: 0xE6E6E6)
+    public static let raised = dynamic(dark: 0x1F1F1F, light: 0xE6E6E6, darkHigh: 0x333333, lightHigh: 0xD9D9D9)
     /// Hairlines and meter tracks.
-    public static let line = dynamic(dark: 0x2A2A2A, light: 0xD8D8D8)
+    public static let line = dynamic(dark: 0x2A2A2A, light: 0xD8D8D8, darkHigh: 0x5A5A5A, lightHigh: 0x8C8C8C)
     /// Main text and the accent (buttons, selected tab): white on black, black on white.
-    public static let text = dynamic(dark: 0xF2F2F2, light: 0x0A0A0A)
-    public static let secondary = dynamic(dark: 0x9A9A9A, light: 0x5C5C5C)
-    /// Meta text (ages, footers, column headers): 4.5:1 or more on the panel in both modes.
-    public static let tertiary = dynamic(dark: 0x808080, light: 0x6E6E6E)
+    public static let text = dynamic(dark: 0xF2F2F2, light: 0x0A0A0A, darkHigh: 0xFFFFFF, lightHigh: 0x000000)
+    public static let secondary = dynamic(dark: 0x9A9A9A, light: 0x5C5C5C, darkHigh: 0xB3B3B3, lightHigh: 0x3D3D3D)
+    /// Meta text (ages, footers, column headers): 4.5:1 or more on the panel in both modes. The same as secondary
+    /// with Increase Contrast.
+    public static let tertiary = dynamic(dark: 0x808080, light: 0x6E6E6E, darkHigh: 0xB3B3B3, lightHigh: 0x3D3D3D)
     /// Text on an accent-coloured button.
     public static let onAccent = dynamic(dark: 0x000000, light: 0xFFFFFF)
     public static let accent = text
 
-    /// Rosé Pine Moon (dark) and Rosé Pine Dawn (light, readable on white).
-    public static let love = dynamic(dark: 0xEB6F92, light: 0xB4637A)
+    /// Rosé Pine Moon (dark); light mode darker than Rosé Pine Dawn, so it is 4.5:1 or more on raised (#E6E6E6).
+    public static let love = dynamic(dark: 0xEB6F92, light: 0x9E4A63, darkHigh: 0xF28BA8, lightHigh: 0x8A3A52)
     /// Light gold is dark enough for text: about 4.5:1 on #F2F2F2.
-    public static let gold = dynamic(dark: 0xF6C177, light: 0x9A6100)
-    public static let iris = dynamic(dark: 0xC4A7E7, light: 0x907AA9)
+    public static let gold = dynamic(dark: 0xF6C177, light: 0x9A6100, lightHigh: 0x7A4D00)
+    public static let iris = dynamic(dark: 0xC4A7E7, light: 0x735C8C, lightHigh: 0x5E4A75)
 
-    static func dynamic(dark: UInt32, light: UInt32) -> Color {
+    /// `darkHigh` / `lightHigh`: the colour with Increase Contrast (`accessibilityContrast == .high`); the normal
+    /// one when nil.
+    static func dynamic(dark: UInt32, light: UInt32, darkHigh: UInt32? = nil, lightHigh: UInt32? = nil) -> Color {
         #if canImport(UIKit)
-        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+        Color(uiColor: UIColor { traits in
+            let high = traits.accessibilityContrast == .high
+            return traits.userInterfaceStyle == .dark ? UIColor(hex: high ? darkHigh ?? dark : dark)
+                                                      : UIColor(hex: high ? lightHigh ?? light : light)
+        })
         #else
         Color(hex: dark)
         #endif
@@ -56,8 +64,12 @@ public enum Typo {
 
     // The type scale (docs/DESIGN.md §1): 48 / 28 / 20 / 17 / 15 / 13, each step at least 1.13x. Max five per screen.
 
-    /// 48 heavy. Today's headline: the one big thing on the first screen. Scales with Dynamic Type.
-    public static let hero: Font = .system(size: 48, weight: .heavy, design: .default)
+    /// 48 heavy at the default text size. Today's headline: the one big thing on the first screen. Scales with
+    /// Dynamic Type like `.largeTitle` (so it stays bigger than the fact line at AX sizes): use it through
+    /// `.heroFont()`, which reads the environment's text size; this fixed 48 is for places without one.
+    public static let hero: Font = hero(size: 48)
+    /// The hero at a given (already scaled) size.
+    public static func hero(size: CGFloat) -> Font { .system(size: size, weight: .heavy, design: .default) }
     /// 28 semibold. The one big number in a card (current value in a chart, next stop of the day line).
     public static let display: Font = .title.weight(.semibold)
     /// `display` for values: SF Mono with fixed-width digits.
@@ -254,7 +266,7 @@ public struct Meter: View {
             }
         }
         .frame(height: 4)
-        .animation(.easeOut(duration: 0.6), value: value)
+        .motion(.easeOut(duration: 0.6), value: value)
         .accessibilityHidden(true)
     }
 }
@@ -292,7 +304,7 @@ public struct ProgressRing: View {
             }
         }
         .frame(width: size, height: size)
-        .animation(.easeOut(duration: 0.6), value: value)
+        .motion(.easeOut(duration: 0.6), value: value)
         .accessibilityHidden(true)
     }
 }

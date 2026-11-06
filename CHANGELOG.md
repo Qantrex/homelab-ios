@@ -89,6 +89,16 @@ App:
   a notification's subtitle; it changes once a day, and the facts never change with it.
 - Motion: tiles and panels give way under the finger (only dim with Reduce Motion), numbers roll when they change,
   panels slide in and out, rings and meters fill smoothly. Haptics on toggles, approve/deny results and sending.
+- Accessibility (audit 2026-11-06): light love and iris are darker (4.5:1 on raised panels); Increase Contrast gives
+  lighter panels and lines on black, darker type on white and makes meta text as strong as secondary; the hero grows
+  with Dynamic Type (it stays bigger than the fact line). VoiceOver: ages and countdowns are read in words ("in 26
+  minutes", "3 days ago", "3 minutes late"), values over their limit say "high", the hero reads line by line (the
+  headline is the heading, "Next comment" on the voice line), Today's day panel has a heading, section titles are one
+  heading with their count, Retry and Close are their own buttons, the error banner, search results and the share
+  result are announced, Home tiles are toggles with a hint. Lab rows stack from xxLarge, Today's waiting rows, the
+  Overkill machine list and the 24 h charts at accessibility sizes. Links in server text are iris and underlined.
+  Reduce Motion also stops the rolling numbers, the glow and meter animations. Widgets no longer dim old data (the
+  age with a clock says it), speak the host's state and the departure's delay, and tint their status glyphs.
 - Tabs show only what the server offers (`features` in `/api/v1/info`).
 - Demo mode with built-in data, no network.
 - Widgets in the app's look: status (small and lock screen: circular, rectangular, inline) with the mood headline and

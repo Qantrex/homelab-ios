@@ -25,6 +25,7 @@ struct LeaveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     Text(LeaveLockScreen.trainLine(context.state)).font(.footnote).foregroundStyle(Palette.secondary)
+                        .accessibilityLabel(Format.spoken(LeaveLockScreen.trainLine(context.state)))
                 }
             } compactLeading: {
                 Image(systemName: context.state.bike ? "bicycle" : "tram.fill")
@@ -69,11 +70,13 @@ struct LeaveLockScreen: View {
             HStack(spacing: 6) {
                 Image(systemName: state.bike ? "bicycle" : "tram.fill").foregroundStyle(Palette.secondary)
                 Text(Self.trainLine(state)).foregroundStyle(Palette.secondary).lineLimit(1)
+                    .accessibilityLabel(Format.spoken(Self.trainLine(state)))
             }
             .font(.subheadline)
             if let d = state.disruption {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold)
+                        .accessibilityLabel(Text("Disruption"))
                     Text(state.moreDisruptions > 0 ? "\(d) +\(state.moreDisruptions)" : d).foregroundStyle(Palette.text).lineLimit(1)
                 }
                 .font(.footnote)

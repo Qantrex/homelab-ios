@@ -55,16 +55,22 @@ struct DeparturesView: View {
                 Text("\(line) \(group.towards)").font(.headline).lineLimit(1)
                 Text(group.departures.prefix(3).map(clock).joined(separator: " · ")).font(Typo.data(.caption)).lineLimit(1)
                 if disrupted {
-                    Label("Disruption", systemImage: "exclamationmark.triangle.fill").font(.caption2).lineLimit(1)
+                    Label { Text("Disruption") } icon: { Image(systemName: "exclamationmark.triangle.fill").widgetAccentable() }
+                        .font(.caption2).lineLimit(1)
                 } else if let delay {
-                    Label("Delay +\(delay) min", systemImage: "clock.badge.exclamationmark").font(.caption2).lineLimit(1)
+                    Label { Text("Delay +\(delay) min") } icon: { Image(systemName: "clock.badge.exclamationmark").widgetAccentable() }
+                        .font(.caption2).lineLimit(1)
+                        .accessibilityLabel(Text("Delay, \(Format.spokenDelay(minutes: delay))"))
                 } else {
                     Text(group.stop ?? "").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             } else {
                 Text(line).font(.headline)
                 Text(empty).font(.caption).lineLimit(2)
-                if disrupted { Label("Disruption", systemImage: "exclamationmark.triangle.fill").font(.caption2) }
+                if disrupted {
+                    Label { Text("Disruption") } icon: { Image(systemName: "exclamationmark.triangle.fill").widgetAccentable() }
+                        .font(.caption2)
+                }
             }
         }
     }
@@ -92,7 +98,7 @@ struct DeparturesView: View {
                     EmptyView()
                 } currentValueLabel: {
                     VStack(spacing: 0) {
-                        if disrupted { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9)) }
+                        if disrupted { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9)).widgetAccentable() }
                         Text(timerInterval: entry.date...next.due, countsDown: true, showsHours: false)
                             .font(Typo.data(.caption2, weight: .semibold)).multilineTextAlignment(.center)
                     }
@@ -100,12 +106,21 @@ struct DeparturesView: View {
                 .progressViewStyle(.circular)
             } else {
                 VStack(spacing: 0) {
-                    Image(systemName: disrupted ? "exclamationmark.triangle.fill" : "tram.fill").font(.title3)
+                    Image(systemName: disrupted ? "exclamationmark.triangle.fill" : "tram.fill").font(.title3).widgetAccentable()
                     Text(line).font(.caption2.weight(.bold))
                 }
             }
         }
-        .accessibilityLabel(Text(group?.departures.first.map { "\(line) \(clock($0))" } ?? "\(line) \(empty)"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(circularLabel))
+    }
+
+    /// "U6 07:31, 3 minutes late, disruption": the ring shows the disruption as a glyph only.
+    private var circularLabel: String {
+        var parts = [group?.departures.first.map { "\(line) \(clock($0))" } ?? "\(line) \(empty)"]
+        if let next = group?.departures.first, next.late { parts.append(Format.spokenDelay(minutes: next.delay)) }
+        if disrupted { parts.append(String(localized: "disruption")) }
+        return parts.joined(separator: ", ")
     }
 
     // MARK: Home screen, StandBy
@@ -114,9 +129,10 @@ struct DeparturesView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: "tram.fill").font(.footnote.weight(.semibold)).foregroundStyle(Palette.secondary)
+                    .widgetAccentable().accessibilityHidden(true)
                 Text(line).font(.footnote.weight(.semibold)).foregroundStyle(Palette.text)
                 Spacer(minLength: 4)
-                Text(entry.stale ? entry.age : "").font(.caption2).foregroundStyle(Palette.tertiary)
+                if entry.stale && entry.snapshot != nil { StaleAge(entry: entry) }
             }
             if let group {
                 Text("\(group.towards)").font(.footnote.weight(.medium)).foregroundStyle(Palette.text).lineLimit(1)
@@ -128,8 +144,10 @@ struct DeparturesView: View {
                         if d.late {
                             Text(d.delay.map { "+\($0)" } ?? String(localized: "late"))
                                 .font(Typo.data(.caption, weight: .semibold)).foregroundStyle(Palette.gold)
+                                .accessibilityLabel(Format.spokenDelay(minutes: d.delay))
                         }
                     }
+                    .accessibilityElement(children: .combine)
                 }
             } else {
                 Spacer(minLength: 0)
@@ -138,12 +156,14 @@ struct DeparturesView: View {
             Spacer(minLength: 0)
             if let text = board?.disruption {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold)
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold).widgetAccentable()
+                        .accessibilityLabel(Text("Disruption"))
                     Text(text).foregroundStyle(Palette.text).lineLimit(2)
                 }
                 .font(.caption2)
+                .accessibilityElement(children: .combine)
             }
         }
-        .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
+        // Stale data isn't dimmed (that took the words under 4.5:1): StaleAge in the corner says how old it is.
     }
 }

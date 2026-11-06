@@ -112,6 +112,23 @@ private struct Meta: View {
 
     var body: some View {
         Text(text).font(.footnote).foregroundStyle(color).lineLimit(1)
+            .accessibilityLabel(Format.spoken(text))
+    }
+}
+
+/// How old stale data is, in the corner of a widget: a clock and "3 h ago" in tertiary (5.3:1 on black). Old data is
+/// never dimmed, which took the words under 4.5:1; this line says it instead. VoiceOver: "Data from 3 hours ago".
+struct StaleAge: View {
+    let entry: Entry
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "clock").widgetAccentable()
+            Text(entry.age)
+        }
+        .font(.caption2).foregroundStyle(Palette.tertiary).lineLimit(1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Data from \(Format.spoken(entry.age))"))
     }
 }
 
@@ -131,6 +148,7 @@ private struct StatusIcon: View {
     var body: some View {
         if let symbol = statusSymbol(level) {
             Image(systemName: symbol).font(.footnote.weight(.semibold)).foregroundStyle(level.color).accessibilityHidden(true)
+                .widgetAccentable()
         }
     }
 }
@@ -161,7 +179,7 @@ struct StatusView: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
-                    Image(systemName: status.symbol).font(.title3)
+                    Image(systemName: status.symbol).font(.title3).widgetAccentable()
                     if entry.pending > 0 { Text("\(entry.pending)").font(Typo.data(.caption2, weight: .bold)) }
                 }
             }
@@ -170,8 +188,8 @@ struct StatusView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.mood.headline).font(.headline.weight(.heavy)).lineLimit(1)
-                Text(line).font(.caption).lineLimit(1).privacySensitive()
-                Text(footer).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                Text(line).font(.caption).lineLimit(1).privacySensitive().accessibilityLabel(Format.spoken(line))
+                Text(footer).font(.caption2).foregroundStyle(.secondary).lineLimit(1).accessibilityLabel(Format.spoken(footer))
             }
             .widgetURL(URL(string: "homelab://today"))
         case .accessoryInline:
@@ -191,7 +209,7 @@ struct StatusView: View {
                 Spacer(minLength: 4)
                 if entry.pending > 0 {
                     HStack(spacing: 4) {
-                        Image(systemName: "checkmark.shield.fill").font(.footnote.weight(.semibold))
+                        Image(systemName: "checkmark.shield.fill").font(.footnote.weight(.semibold)).widgetAccentable()
                         Text("\(entry.pending)").font(Typo.data(.footnote, weight: .semibold))
                     }
                     .foregroundStyle(Palette.gold)
@@ -206,10 +224,12 @@ struct StatusView: View {
                 .foregroundStyle(Palette.text)
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
+            // Stale data isn't dimmed (that took the words under 4.5:1): the line says "Data from 3 h ago" instead.
             Text(line).font(.footnote).foregroundStyle(Palette.secondary).lineLimit(2).privacySensitive()
+                .accessibilityLabel(Format.spoken(line))
             Text(footer).font(.caption2).foregroundStyle(Palette.tertiary).lineLimit(1).padding(.top, 4)
+                .accessibilityLabel(Format.spoken(footer))
         }
-        .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
         .widgetURL(URL(string: entry.pending > 0 ? "homelab://actions" : "homelab://today"))
     }
 
@@ -265,7 +285,7 @@ struct DayView: View {
             VStack(alignment: .leading, spacing: 1) {
                 if let stop = focus, let line {
                     Text("\(stop.item.title ?? "") \(stop.item.value ?? "")").font(.headline).lineLimit(1)
-                    Text(detail(stop, line)).font(.caption).lineLimit(1)
+                    Text(detail(stop, line)).font(.caption).lineLimit(1).accessibilityLabel(Format.spoken(detail(stop, line)))
                     Text(rest(line)).font(Typo.data(.caption2)).foregroundStyle(.secondary).lineLimit(1)
                 } else {
                     Text(line?.isTomorrow == true ? "Tomorrow" : "Today").font(.headline)
@@ -276,6 +296,7 @@ struct DayView: View {
         case .accessoryInline:
             if let stop = focus, let line, stop.phase == .next {
                 Text("\(stop.item.title ?? "") \(stop.item.value ?? "") · \(line.widgetCountdown ?? "")")
+                    .accessibilityLabel(Format.spoken("\(stop.item.title ?? "") \(stop.item.value ?? ""), \(line.widgetCountdown ?? "")"))
             } else {
                 Text(empty)
             }
@@ -298,6 +319,7 @@ struct DayView: View {
                     .foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.text)
                 Text(detail(stop, line)).font(.footnote.weight(stop.phase == .next ? .semibold : .regular))
                     .foregroundStyle(stop.phase == .next ? Palette.text : Palette.tertiary).lineLimit(1)
+                    .accessibilityLabel(Format.spoken(detail(stop, line)))
                 // The whole day as dots, filled up to now.
                 HStack(spacing: 0) {
                     ForEach(Array(line.stops.enumerated()), id: \.offset) { i, s in
@@ -320,7 +342,7 @@ struct DayView: View {
                 Text(line?.isTomorrow == true ? "Tomorrow" : "Today").font(.headline).foregroundStyle(Palette.text).lineLimit(1)
                 Meta(dayDateLine)
                 Spacer(minLength: 4)
-                Meta(entry.age, color: Palette.tertiary)
+                if entry.stale && entry.snapshot != nil { StaleAge(entry: entry) } else { Meta(entry.age, color: Palette.tertiary) }
             }
             if let line, !line.stops.isEmpty {
                 DayLineAcross(line: line, valueSize: 26, coarse: true)
@@ -334,7 +356,6 @@ struct DayView: View {
             }
             Spacer(minLength: 0)
         }
-        .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
         .privacySensitive()
     }
 
@@ -386,7 +407,9 @@ struct HostsView: View {
                 Text(mood.headline).font(.system(size: 20, weight: .heavy)).tracking(-0.5)
                     .foregroundStyle(Palette.text).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 6)
-                Meta([entry.snapshot?.serverName ?? "Homelab", entry.age].filter { !$0.isEmpty }.joined(separator: " · "),
+                Meta([entry.snapshot?.serverName ?? "Homelab",
+                      entry.stale && !entry.age.isEmpty ? String(localized: "data from \(entry.age)") : entry.age]
+                        .filter { !$0.isEmpty }.joined(separator: " · "),
                      color: Palette.tertiary)
             }
             if entry.redacted, let hosts = state?.hosts, !hosts.isEmpty {
@@ -401,15 +424,18 @@ struct HostsView: View {
                           alignment: .leading, spacing: 8) {
                     ForEach(hosts.prefix(limit)) { HostCell(host: $0, health: state?.health(of: $0) ?? HostHealth($0)) }
                 }
-                .opacity(entry.stale ? 0.55 : 1)   // only the data dims; the age above stays readable
+                // Stale data isn't dimmed (the names went under 4.5:1): the header says "data from 3 h ago".
                 if family == .systemLarge, let problems = state?.problems, !problems.isEmpty {
                     Rectangle().fill(Palette.line).frame(height: 1)
                     ForEach(problems.prefix(4)) { p in
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Image(systemName: p.severity.symbol).font(.caption).foregroundStyle(p.severity.color)
+                                .widgetAccentable()
+                                .accessibilityLabel(p.severity == .warning ? Text("Warning") : Text("Problem"))
                             Text(p.text).font(.footnote).foregroundStyle(Palette.text).lineLimit(1)
                         }
                         .privacySensitive()
+                        .accessibilityElement(children: .combine)
                     }
                 }
             } else {
@@ -430,7 +456,7 @@ struct HostCell: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Circle().fill(health.color).frame(width: 6, height: 6)
+                Circle().fill(health.color).frame(width: 6, height: 6).widgetAccentable()
                 Text(host.name).font(.footnote.weight(.semibold)).foregroundStyle(Palette.text).lineLimit(1)
             }
             if host.reachable == true {
@@ -450,6 +476,20 @@ struct HostCell: View {
                 Text(health.label).font(.caption2.weight(.semibold)).foregroundStyle(health.color)
             }
         }
-        .accessibilityElement(children: .combine)
+        // The dot's colour in words (never colour alone), the numbers with "high" over their limits.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(host.name), \(health.label)"))
+        .accessibilityValue(Text(spokenValues))
+    }
+
+    private var spokenValues: String {
+        guard host.reachable == true else { return "" }
+        func high(_ text: String, _ level: ValueLevel) -> String { level.isHigh ? text + " " + String(localized: "high") : text }
+        var parts = [high(String(localized: "load \(Format.load(host.load))"), host.loadLevel),
+                     high(String(localized: "memory \(Format.percent(host.memPct))"), host.ramLevel)]
+        if let d = Format.worstDisk(host.disks) {
+            parts.append(high(String(localized: "disk \(d.percent) percent"), host.diskLevel))
+        }
+        return parts.joined(separator: ", ")
     }
 }

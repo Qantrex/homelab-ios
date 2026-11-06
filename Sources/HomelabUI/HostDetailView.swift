@@ -30,7 +30,12 @@ struct HostDetailView: View {
                         }
                         .accessibilityElement(children: .combine)
                     }
-                    if let checked = host.checked { LabeledContent("Checked") { Text(Format.age(checked)).foregroundStyle(Palette.secondary) } }
+                    if let checked = host.checked {
+                        LabeledContent("Checked") {
+                            Text(Format.age(checked)).foregroundStyle(Palette.secondary)
+                                .accessibilityLabel(Format.spokenAge(checked))
+                        }
+                    }
                     if let kind = host.kind { LabeledContent("Kind") { Text(kind).foregroundStyle(Palette.secondary) } }
                 }
                 if let history = host.history {
@@ -44,11 +49,12 @@ struct HostDetailView: View {
                         LabeledContent("Load (1 min)") {
                             HStack(spacing: 6) {
                                 Text(Format.load(host.load)).font(Typo.data(.body))
+                                    .accessibilityLabel(spokenHigh(Format.load(host.load), host.loadLevel))
                                 if let cores = host.cpuCount { Text("of \(cores) cores").foregroundStyle(Palette.secondary) }
                             }
                         }
-                        value("Memory", Format.percent(host.memPct))
-                        if host.temp != nil { value("Temperature", Format.temperature(host.temp)) }
+                        value("Memory", Format.percent(host.memPct), level: host.ramLevel)
+                        if host.temp != nil { value("Temperature", Format.temperature(host.temp), level: host.tempLevel) }
                         if host.containersTotal != nil || host.containersUp != nil {
                             value("Containers up", Format.containers(up: host.containersUp, total: host.containersTotal))
                         }
@@ -56,17 +62,20 @@ struct HostDetailView: View {
                     if !host.disks.isEmpty {
                         Section {
                             ForEach(host.disks.sorted { $0.key < $1.key }, id: \.key) { mount, pct in
+                                let level = HostHistory.Series.diskPct.level(of: Double(pct), cores: nil)
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Text(mount).font(Typo.data(.body))
                                         Spacer()
                                         Text("\(pct)%").font(Typo.data(.body))
-                                            .foregroundStyle(Meter.valueColor(HostHistory.Series.diskPct.level(of: Double(pct), cores: nil)))
+                                            .foregroundStyle(Meter.valueColor(level))
                                     }
                                     Meter(Double(pct) / 100, warns: true)
                                 }
                                 .padding(.vertical, 2)
-                                .accessibilityElement(children: .combine)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(Text(mount))
+                                .accessibilityValue(Text(spokenHigh("\(pct)%", level)))
                             }
                         } header: { sectionHeader("Disks") }
                     }
@@ -126,9 +135,9 @@ struct HostDetailView: View {
         .actionFeedback(result: $result, outcome: outcome)
     }
 
-    /// A row with its value in the data font (a number or an id).
-    private func value(_ label: LocalizedStringKey, _ text: String) -> some View {
-        LabeledContent(label) { Text(text).font(Typo.data(.body)) }
+    /// A row with its value in the data font (a number or an id). A value over its limit (`level`) says "high".
+    private func value(_ label: LocalizedStringKey, _ text: String, level: ValueLevel = .normal) -> some View {
+        LabeledContent(label) { Text(text).font(Typo.data(.body)).accessibilityLabel(spokenHigh(text, level)) }
     }
 
     // MARK: Containers
@@ -235,6 +244,11 @@ fileprivate extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
+/// A value for VoiceOver, with "high" after it when it is over its limit (docs/DESIGN.md §3: never colour alone).
+fileprivate func spokenHigh(_ text: String, _ level: ValueLevel) -> String {
+    level.isHigh ? text + " " + String(localized: "high") : text
+}
+
 /// A section title in the app's title role (sentence case), for grouped lists.
 fileprivate func sectionHeader(_ text: LocalizedStringKey) -> some View {
     Text(text).font(Typo.sectionTitle).foregroundStyle(Palette.text).textCase(nil)
@@ -244,6 +258,7 @@ fileprivate func sectionHeader(_ text: LocalizedStringKey) -> some View {
 struct HistorySection: View {
     let history: HostHistory
     let cores: Int?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var shown: [HostHistory.Series] {
         HostHistory.Series.allCases.filter { history.last($0) != nil }
@@ -256,7 +271,7 @@ struct HistorySection: View {
             } header: {
                 sectionHeader("Last 24 h")
             } footer: {
-                Text(footer).font(.footnote)
+                Text(footer).font(.footnote).accessibilityLabel(Format.spoken(footer))
             }
         }
     }
@@ -269,13 +284,17 @@ struct HistorySection: View {
         let shown = now ?? history.last(series) ?? 0
         let lo = history.min(series) ?? shown, hi = history.max(series) ?? shown
         let nowColor = now.map { Meter.valueColor(series.level(of: $0, cores: cores)) } ?? Palette.tertiary
-        let spokenNow = now.map { String(localized: "now \(series.format($0))") }
+        let spokenNow = now.map { spokenHigh(String(localized: "now \(series.format($0))"), series.level(of: $0, cores: cores)) }
             ?? last.map { String(localized: "until \($0.date.formatted(date: .omitted, time: .shortened)): \(series.format($0.value))") }
             ?? String(localized: "no current value")
+        // From AX3 the title, the time and the big value don't fit side by side: one under the other.
+        let stacked = typeSize >= .accessibility3
+        let header = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                             : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
         return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
+            header {
                 Text(title(series)).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                Spacer()
+                if !stacked { Spacer() }
                 if now == nil, let last {
                     Text("until \(last.date.formatted(date: .omitted, time: .shortened))").font(Typo.meta)
                         .foregroundStyle(Palette.tertiary)

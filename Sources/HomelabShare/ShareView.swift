@@ -137,9 +137,13 @@ struct ShareView: View {
             }
             if share.editableTitle {
                 separator
-                TextField("Title", text: $model.title)
-                    .font(.body)
-                    .padding(16)
+                // The label stays above the field: a placeholder alone is gone once something is typed.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Title").font(.footnote).foregroundStyle(Palette.secondary).accessibilityHidden(true)
+                    TextField("Title", text: $model.title)
+                        .font(.body)
+                }
+                .padding(16)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,11 +172,14 @@ struct ShareView: View {
     }
 
     @ViewBuilder private func finished(_ outcome: ShareOutcome) -> some View {
-        switch outcome {
-        case .sent(let text): result(symbol: "checkmark.circle.fill", color: Palette.text, title: "Sent", text: text)
-        case .queued: result(symbol: "tray.and.arrow.up.fill", color: Palette.gold, title: "Saved", text: ShareOutcome.queuedText)
-        case .failed(let text): result(symbol: "xmark.circle.fill", color: Palette.love, title: "Not sent", text: text)
+        Group {
+            switch outcome {
+            case .sent(let text): result(symbol: "checkmark.circle.fill", color: Palette.text, title: "Sent", text: text)
+            case .queued: result(symbol: "tray.and.arrow.up.fill", color: Palette.gold, title: "Saved", text: ShareOutcome.queuedText)
+            case .failed(let text): result(symbol: "xmark.circle.fill", color: Palette.love, title: "Not sent", text: text)
+            }
         }
+        .onAppear { announce(Self.announcement(outcome)) }
         Button(action: done) {
             Text("Done").font(.headline).frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
         }
@@ -180,17 +187,29 @@ struct ShareView: View {
         .controlSize(.large)
     }
 
-    /// Status icon, a title (white) and the reason in words.
+    /// What VoiceOver says when the send is over: "Sent", "Saved", "Not sent", with the reason.
+    static func announcement(_ outcome: ShareOutcome) -> String {
+        switch outcome {
+        case .sent(let text): String(localized: "Sent") + ". " + text
+        case .queued: String(localized: "Saved") + ". " + ShareOutcome.queuedText
+        case .failed(let text): String(localized: "Not sent") + ". " + text
+        }
+    }
+
+    /// Status icon, a title (white) and the reason in words. Close (when refused) is its own VoiceOver stop.
     private func result(symbol: String, color: Color, title: LocalizedStringKey, text: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: symbol).font(.largeTitle).foregroundStyle(color).accessibilityHidden(true)
-            Text(title).font(Typo.sectionTitle).foregroundStyle(Palette.text)
-            Text(text).font(.body).foregroundStyle(Palette.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: symbol).font(.largeTitle).foregroundStyle(color).accessibilityHidden(true)
+                Text(title).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+                Text(text).font(.body).foregroundStyle(Palette.secondary)
+            }
+            .accessibilityElement(children: .combine)
             if case .refused = model.phase {
                 Button("Close", action: cancel).buttonStyle(.bordered).padding(.top, 8)
+                    .onAppear { announce(String(localized: "Can't send this") + ". " + text) }
             }
         }
-        .accessibilityElement(children: .combine)
     }
 
     private func symbol(_ d: ShareDestination) -> String {
