@@ -494,20 +494,20 @@ struct MachineList: View {
     /// in the text style, only the values in the data font.
     private func numbers(_ h: Host) -> Text {
         guard h.reachable == true else { return Text(HostHealth(h).label).font(Typo.secondary).foregroundStyle(Palette.secondary) }
-        var p: [(label: String, value: String)] = []
-        if h.load != nil { p.append((String(localized: "Load"), Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? ""))) }
-        if h.memPct != nil { p.append((String(localized: "RAM"), Format.percent(h.memPct))) }
-        for (mount, pct) in h.disks.sorted(by: { $0.key < $1.key }) { p.append((mount, "\(pct)%")) }
-        if h.temp != nil { p.append(("", Format.temperature(h.temp))) }
-        if h.containersTotal != nil { p.append((String(localized: "Containers"), Format.containers(up: h.containersUp, total: h.containersTotal))) }
-        if let u = h.upgradable, u > 0 { p.append((String(localized: "Updates"), "\(u)")) }
-        if h.rebootRequired == true { p.append((String(localized: "Reboot needed"), "")) }
-        if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append((String(localized: "Backup"), b)) }
+        var p: [(label: String, value: String, level: ValueLevel)] = []
+        if h.load != nil { p.append((String(localized: "Load"), Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? ""), h.loadLevel)) }
+        if h.memPct != nil { p.append((String(localized: "RAM"), Format.percent(h.memPct), h.ramLevel)) }
+        for (mount, pct) in h.disks.sorted(by: { $0.key < $1.key }) { p.append((mount, "\(pct)%", HostHistory.Series.diskPct.level(of: Double(pct), cores: nil))) }
+        if h.temp != nil { p.append(("", Format.temperature(h.temp), h.tempLevel)) }
+        if h.containersTotal != nil { p.append((String(localized: "Containers"), Format.containers(up: h.containersUp, total: h.containersTotal), .normal)) }
+        if let u = h.upgradable, u > 0 { p.append((String(localized: "Updates"), "\(u)", .normal)) }
+        if h.rebootRequired == true { p.append((String(localized: "Reboot needed"), "", .normal)) }
+        if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append((String(localized: "Backup"), b, .normal)) }
         var out = Text("")
         for (i, part) in p.enumerated() {
             if i > 0 { out = out + Text("  ·  ").font(Typo.secondary).foregroundStyle(Palette.tertiary) }
             if !part.label.isEmpty { out = out + Text(part.label + (part.value.isEmpty ? "" : " ")).font(Typo.secondary).foregroundStyle(Palette.secondary) }
-            if !part.value.isEmpty { out = out + Text(part.value).font(Typo.data(.subheadline)).foregroundStyle(Palette.text) }
+            if !part.value.isEmpty { out = out + Text(part.value).font(Typo.data(.subheadline)).foregroundStyle(Meter.valueColor(part.level)) }
         }
         return out
     }
