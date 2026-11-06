@@ -1,3 +1,3 @@
 {"api": 1, "name": "Demo homelab", "server": "homelab-demo", "version": "1.0.0",
- "features": ["status", "hosts", "actions", "run-actions", "chat", "cards", "services"], "auth": "identity",
+ "features": ["status", "hosts", "actions", "run-actions", "chat", "cards", "services", "documents", "share"], "auth": "identity",
  "commands": ["/pending", "/last", "/memory", "/usage", "/help"], "standing_approvals": true}

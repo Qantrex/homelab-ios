@@ -33,6 +33,7 @@ if !kitOnly {
         // xtool: the app is the library product named in xtool.yml; the widget extension is another one.
         .library(name: "Homelab", targets: ["Homelab"]),
         .library(name: "HomelabWidget", targets: ["HomelabWidget"]),
+        .library(name: "HomelabShare", targets: ["HomelabShare"]),
     ]
     targets += [
         .target(name: "HomelabDesign", dependencies: ["HomelabKit"], swiftSettings: swiftSettings),
@@ -46,6 +47,15 @@ if !kitOnly {
             // `main` and -dead_strip drops the whole widget. The empty binary then fails xtool's signing ("Can't find
             // free space of LoadCommands for CodeSignature"). Keep `main` and everything it uses.
             linkerSettings: [.unsafeFlags(["-Xlinker", "-u", "-Xlinker", "_main"])]
+        ),
+        .target(
+            name: "HomelabShare",
+            dependencies: ["HomelabKit", "HomelabDesign"],
+            swiftSettings: swiftSettings,
+            // Same dead-strip problem as the widget: only the runtime looks the principal class up (by name,
+            // NSExtensionPrincipalClass), so -dead_strip drops it and signing fails ("Can't find free space of
+            // LoadCommands for CodeSignature"). Keep the class (and with it everything it uses).
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-u", "-Xlinker", "_OBJC_CLASS_$_ShareViewController"])]
         ),
     ]
 }

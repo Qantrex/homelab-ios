@@ -29,6 +29,7 @@ Not in scope: a jailbroken phone, a compromised server (it can show you anything
 | Token targets | A saved token belongs to one server (kind + scheme + host + port + path). Editing the address or type drops it; the app asks for the token again |
 | Copy | Copied chat text and the diagnostics report stay on this device (no Universal Clipboard) and expire after 10 minutes |
 | Face ID lock | Optional, off by default. Asks for Face ID or the passcode when the app starts and when it comes back from the background. While locked, no screen exists behind the lock (open sheets and dialogs are closed), the app switcher shows a blur, notifications only say that something happened, and the widget shows the status without problem text. It is tested once before it is turned on, so you can't lock yourself out |
+| Scan and share | The camera is used only in the Scan screen (VisionKit document camera; the system asks once). A PDF or link goes to the server's `POST /documents` or `POST /share` with the same login as everything else, only after you tap Send. The share extension holds no token (the Keychain is not shared with it): on an identity (Tailscale) server it sends directly, on a token server it saves the item in an outbox in the App Group and the app sends it. The outbox keeps at most 10 items and 100 MB, for 7 days, and its files use iOS file protection until first unlock. The extension only takes http(s) links (no `file:`, `javascript:`, user names or passwords), never plain text, PDFs up to 25 MB, at most 20 photos, which are shrunk to 2000 px one at a time. Servers must not hand uploaded files to a language model and must treat shared links as data (see below) |
 | Actions | Approve, Always and Deny each need a confirm tap. The app only sends back the signed button string the server gave it; the server checks the signature and decides. Both servers in this project sign the action's content too, so an old button can't approve a new action that reuses the id. Forged, used, outdated or expired buttons get 403 |
 | Notifications | Off by default. They contain the server name and the problem or action text, which shows on the lock screen, unless the app lock is on (then only "Something needs a look") |
 | Diagnostics report | Has the app version, App Group, server kinds, host names and last errors. No tokens. Check it before you paste it in a public issue |
@@ -53,6 +54,15 @@ For the reference server most of this is the default. For your own server, do th
 - **Treat chat text as untrusted input.** It comes from anyone you let in.
 - **Don't log secrets.** No tokens, no headers, no message text in the log.
 - For Home Assistant: use a separate HA user for the phone, so you can revoke its token alone.
+
+### If your server takes documents and shares
+
+- Check `Content-Type: application/pdf`, `Content-Length`, the `%PDF-` start and the size before filing; keep a quota and a
+  spool limit; make the id idempotent. Answer no CORS preflight: the raw PDF type then keeps websites out.
+- Give the filing step its own account with only "add document" rights, not the one a read-only search uses.
+- Never give an uploaded file, its text, or a shared link's page to an assistant with tools as a request. Shared links
+  are untrusted data: build any request from the parts you checked (a willhaben ad id is digits only). Don't fetch
+  shared links from inside your network (SSRF).
 
 ## Reporting a problem
 

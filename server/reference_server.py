@@ -48,6 +48,14 @@ MAX_CARDS = 50
 MAX_PENDING = 100
 KEEP_MESSAGES = 1000
 PAGE_MESSAGES = 200
+MAX_UPLOAD = 25 * 1024 * 1024
+MAX_PDF_TITLE = 128
+MAX_SHARE_TITLE = 200
+MAX_SHARE_URL = 2048
+UPLOADS_PER_HOUR = 20
+SHARES_PER_HOUR = 30
+SHARE_ID_RE = re.compile(r"^[0-9a-f-]{36}$")
+WILLHABEN_PATH_RE = re.compile(r"-(\d{6,12})/?$")
 
 BUTTON_RE = re.compile(r"^HOMELAB_(APPROVE|ALWAYS|DENY)_([A-Za-z0-9-]{1,32})_([0-9a-f]{16})$")
 PENDING_ID_RE = re.compile(r"^[A-Za-z0-9-]{1,32}$")
@@ -1061,6 +1069,14 @@ class FixtureApp:
             self.routes["messages"] = {"GET": self.get_messages, "POST": self.post_message}
         if self.services_doc is not None:
             self.routes["services"] = {"GET": lambda q, b: (200, self.services_doc)}
+        # Documents (feature "documents") and shares (feature "share"): kept in memory, nothing is filed anywhere.
+        self.documents = []     # {"id", "title", "bytes", "time"} per accepted PDF, newest last
+        self.shares = []        # {"id", "route", "url", "title", "time", "ad_id"?}
+        self._results = {}      # id -> (code, reply): a repeated id gets the first answer
+        self._recent = {"documents": [], "share": []}
+        self.raw_routes = {"documents"}
+        self.routes["documents"] = {"POST": self.post_document}
+        self.routes["share"] = {"POST": self.post_share}
         # Actions the app may start (feature run-actions): actions.json, one POST route per listed name.
         self.actions_doc = self._load("actions.json", optional=True)
         if isinstance(self.actions_doc, dict):
@@ -1095,6 +1111,8 @@ class FixtureApp:
         if "reset" in query:
             with self.lock:
                 self.messages = list(self.messages_doc.get("messages", [])) if self.messages_doc else []
+                self.documents, self.shares, self._results = [], [], {}
+                self._recent = {"documents": [], "share": []}
         if "state" in query:
             self.set_state(query["state"][0])
         return 200, {"ok": True, "state": self.state_name}
@@ -1146,6 +1164,82 @@ class FixtureApp:
             self.messages.append({"id": self._next_id(), "ts": now_iso(), "from": "agent", "job": "action",
                                   "status": "OK", "text": text})
         return 200, {"ok": True, "text": text}
+
+    def _quota(self, kind, limit):
+        """True (and counted) while fewer than `limit` requests of this kind came in the last hour."""
+        now = time.time()
+        recent = [t for t in self._recent[kind] if now - t < 3600]
+        self._recent[kind] = recent
+        if len(recent) >= limit:
+            return False
+        recent.append(now)
+        return True
+
+    def post_document(self, query, body):
+        """POST /documents: the raw PDF (Content-Length checked by the handler, the bytes are in body["bytes"])."""
+        headers, data = body["headers"], body["bytes"]
+        doc_id = (headers.get("X-Homelab-Id") or "").strip()
+        if not SHARE_ID_RE.fullmatch(doc_id):
+            raise BadRequest("X-Homelab-Id must be a UUID")
+        if not data.startswith(b"%PDF-"):
+            raise BadRequest("not a PDF")
+        title = urllib.parse.unquote(headers.get("X-Homelab-Title") or "", errors="replace")
+        title = " ".join("".join(" " if ord(c) < 32 or ord(c) == 127 else c for c in title).split())[:MAX_PDF_TITLE]
+        with self.lock:
+            if doc_id in self._results:
+                return self._results[doc_id]
+            if not self._quota("documents", UPLOADS_PER_HOUR):
+                return 429, {"error": "too many uploads, try again later"}
+            self.documents.append({"id": doc_id, "title": title, "bytes": len(data), "time": now_iso()})
+            reply = (202, {"ok": True, "id": doc_id,
+                           "text": "Sent to Paperless (fixture, nothing was filed). The result will be in the chat."})
+            self._results[doc_id] = reply
+            return reply
+
+    def post_share(self, query, body):
+        """POST /share: {id, kind: "url", url, title?}. The server decides the route; it never fetches the link."""
+        share_id = body.get("id")
+        if not isinstance(share_id, str) or not SHARE_ID_RE.fullmatch(share_id):
+            raise BadRequest("id must be a UUID")
+        if body.get("kind") != "url":
+            raise BadRequest("kind must be url")
+        url = body.get("url")
+        if not isinstance(url, str) or len(url) > MAX_SHARE_URL:
+            raise BadRequest("url must be text of at most %d characters" % MAX_SHARE_URL)
+        title = body.get("title")
+        if title is not None and not isinstance(title, str):
+            raise BadRequest("title must be text")
+        title = " ".join("".join(" " if ord(c) < 32 or ord(c) == 127 else c for c in (title or "")).split())[:MAX_SHARE_TITLE]
+        parts = urllib.parse.urlsplit(url)
+        host = (parts.hostname or "").lower()
+        if parts.scheme not in ("http", "https") or not host:
+            raise BadRequest("only http and https links are taken")
+        if parts.username or parts.password:
+            raise BadRequest("links with a user name or password are refused")
+        route, ad_id = "read-later", None
+        if host in ("willhaben.at", "www.willhaben.at") and parts.path.startswith("/iad/"):
+            m = WILLHABEN_PATH_RE.search(parts.path)
+            ids = urllib.parse.parse_qs(parts.query).get("adId", [])
+            if m:
+                ad_id = m.group(1)
+            elif ids and re.fullmatch(r"\d{6,12}", ids[0]):
+                ad_id = ids[0]
+            if ad_id:
+                route = "willhaben"
+        with self.lock:
+            if share_id in self._results:
+                return self._results[share_id]
+            if not self._quota("share", SHARES_PER_HOUR):
+                return 429, {"error": "too many shares, try again later"}
+            entry = {"id": share_id, "route": route, "url": url, "title": title, "time": now_iso()}
+            if ad_id:
+                entry["ad_id"] = ad_id
+            self.shares.append(entry)
+            text = ("Price check for willhaben ad %s started (fixture, nothing ran)." % ad_id if ad_id
+                    else "Saved to your read-later list (fixture).")
+            reply = (200, {"ok": True, "id": share_id, "route": route, "text": text})
+            self._results[share_id] = reply
+            return reply
 
     def _next_id(self):
         last = max([m.get("id", 0) for m in self.messages if isinstance(m.get("id"), int)] or [0])
@@ -1255,6 +1349,8 @@ class Handler(BaseHTTPRequestHandler):
             # Chunked bodies aren't supported; reading them as empty would let the rest be parsed as a request.
             self.close_connection = True
             return 411, {"error": "send a Content-Length, not Transfer-Encoding"}
+        if method == "POST" and path[len(API_PREFIX):].rstrip("/") in getattr(app, "raw_routes", ()):
+            return self._raw_upload(fn)
         if method == "POST":
             self._body_read = False
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
@@ -1275,6 +1371,34 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 return 400, {"error": "body must be a JSON object"}
         return fn(query, body)
+
+
+    def _raw_upload(self, fn):
+        """A raw application/pdf body (POST /documents): type and Content-Length are checked before any byte is read."""
+        self._body_read = False
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/pdf":
+            return 415, {"error": "send application/pdf"}
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is None:
+            return 411, {"error": "send a Content-Length"}
+        try:
+            length = int(raw_length)
+        except ValueError:
+            return 400, {"error": "bad Content-Length"}
+        if length < 0:
+            return 400, {"error": "bad Content-Length"}
+        if length > MAX_UPLOAD:
+            return 413, {"error": "file larger than %d MB" % (MAX_UPLOAD // (1024 * 1024))}
+        data = bytearray()
+        while len(data) < length:
+            chunk = self.rfile.read(min(65536, length - len(data)))
+            if not chunk:
+                self.close_connection = True
+                return 400, {"error": "body shorter than Content-Length"}
+            data += chunk
+        self._body_read = True
+        return fn({}, {"bytes": bytes(data), "headers": self.headers})
 
 
 class Server(ThreadingHTTPServer):

@@ -716,6 +716,115 @@ class FixtureModeTest(unittest.TestCase):
         self.assertEqual(call(self.port, "POST", "/api/v1/actions/nope", {})[0], 404)
         self.assertEqual(call(self.port, "GET", "/api/v1/actions/todo-add")[0], 405)
 
+    # ---- documents and shares (fixture mode keeps them in memory)
+
+    def pdf_call(self, body=b"%PDF-1.4 fixture", headers=None, ctype="application/pdf", port=None):
+        h = {"X-Homelab-Id": "0b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c11"}
+        h.update(headers or {})
+        return call(port or self.port, "POST", "/api/v1/documents", raw=body, headers=h, ctype=ctype)
+
+    def test_info_lists_documents_and_share(self):
+        features = call(self.port, "GET", "/api/v1/info")[2]["features"]
+        self.assertIn("documents", features)
+        self.assertIn("share", features)
+
+    def test_document_upload(self):
+        code, _, obj = self.pdf_call(headers={"X-Homelab-Title": "Rechnung%20M%C3%A4rz%0A%00x"})
+        self.assertEqual(code, 202)
+        self.assertEqual(obj["ok"], True)
+        self.assertEqual(obj["id"], "0b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c11")
+        self.assertIn("Paperless", obj["text"])
+        doc = self.app.documents[-1]
+        self.assertEqual((doc["title"], doc["bytes"]), ("Rechnung März x", len(b"%PDF-1.4 fixture")))
+        # the same id again: the first answer, nothing stored twice
+        before = len(self.app.documents)
+        self.assertEqual(self.pdf_call(body=b"%PDF-1.4 other")[2], obj)
+        self.assertEqual(len(self.app.documents), before)
+
+    def test_document_rejections(self):
+        self.assertEqual(self.pdf_call(ctype="application/json")[0], 415)
+        self.assertEqual(self.pdf_call(ctype="text/plain")[0], 415)
+        self.assertEqual(self.pdf_call(body=b"GIF89a....")[0], 400)
+        self.assertEqual(self.pdf_call(headers={"X-Homelab-Id": "not-a-uuid"})[0], 400)
+        self.assertEqual(self.pdf_call(headers={"X-Homelab-Id": "X" * 36})[0], 400)
+        self.assertEqual(call(self.port, "POST", "/api/v1/documents", raw=b"%PDF-1", ctype="application/pdf")[0], 400)
+        self.assertEqual(call(self.port, "GET", "/api/v1/documents")[0], 405)
+        self.assertEqual(self.pdf_call(headers={"Origin": "https://evil.example"})[0], 403)
+
+    def raw_post(self, headers):
+        """Sends only headers (no body), for sizes we don't want to transfer."""
+        sock = socket.create_connection(("127.0.0.1", self.port), timeout=10)
+        try:
+            lines = ["POST /api/v1/documents HTTP/1.1", "Host: 127.0.0.1"] + headers + ["", ""]
+            sock.sendall("\r\n".join(lines).encode())
+            return int(sock.recv(4096).split(b" ", 2)[1])
+        finally:
+            sock.close()
+
+    def test_document_size_and_length_rules(self):
+        base = ["Content-Type: application/pdf", "X-Homelab-Id: 0b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c12"]
+        self.assertEqual(self.raw_post(base + ["Content-Length: %d" % (25 * 1024 * 1024 + 1)]), 413)
+        self.assertEqual(self.raw_post(base), 411)
+        self.assertEqual(self.raw_post(base + ["Content-Length: abc"]), 400)
+
+    def test_document_quota(self):
+        for i in range(rs.UPLOADS_PER_HOUR):
+            code = self.pdf_call(headers={"X-Homelab-Id": "%036x" % (i + 1)})[0]
+            self.assertEqual(code, 202, i)
+        self.assertEqual(self.pdf_call(headers={"X-Homelab-Id": "%036x" % 999})[0], 429)
+
+    def test_document_token(self):
+        app = rs.FixtureApp(FIXTURES, token="fixture-token")
+        httpd = start_app(app)
+        try:
+            port = httpd.server_address[1]
+            self.assertEqual(self.pdf_call(port=port)[0], 401)
+            self.assertEqual(self.pdf_call(port=port, headers={"Authorization": "Bearer fixture-token"})[0], 202)
+        finally:
+            stop_app(httpd)
+
+    def share(self, **body):
+        body.setdefault("id", "1b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c11")
+        body.setdefault("kind", "url")
+        return call(self.port, "POST", "/api/v1/share", body)
+
+    def test_share_routes(self):
+        code, _, obj = self.share(url="https://www.willhaben.at/iad/kaufen-und-verkaufen/d/phone-1234567890/", title="Ad")
+        self.assertEqual((code, obj["route"], obj["ok"]), (200, "willhaben", True))
+        self.assertEqual(self.app.shares[-1]["ad_id"], "1234567890")
+        code, _, obj = self.share(id="2b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c11",
+                                  url="https://www.willhaben.at/iad/object?adId=998877665")
+        self.assertEqual((code, obj["route"]), (200, "willhaben"))
+        self.assertEqual(self.app.shares[-1]["ad_id"], "998877665")
+        code, _, obj = self.share(id="3b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c11", url="https://example.org/post?a=1",
+                                  title="A\nB")
+        self.assertEqual((code, obj["route"]), (200, "read-later"))
+        self.assertEqual(self.app.shares[-1]["title"], "A B")
+        code, _, obj = self.share(id="4b9c2f3e-3b1a-4d6f-8e0a-2f6f1f6a9c11",
+                                  url="https://www.willhaben.at.evil.example/iad/x-1234567890/")
+        self.assertEqual(obj["route"], "read-later")
+
+    def test_share_is_idempotent(self):
+        first = self.share(url="https://example.org/a")[2]
+        again = self.share(url="https://example.org/DIFFERENT")[2]
+        self.assertEqual(first, again)
+        self.assertEqual(len(self.app.shares), 1)
+
+    def test_share_refusals(self):
+        bad = [dict(url="file:///etc/passwd"), dict(url="javascript:alert(1)"), dict(url="ftp://x.org/f"),
+               dict(url="https://user:pw@example.org/"), dict(url="https://example.org/" + "a" * 2100),
+               dict(url="no link here"), dict(url=5), dict(url="https://example.org", kind="text"),
+               dict(url="https://example.org", id="nope"), dict(url="https://example.org", title=5)]
+        for body in bad:
+            self.assertEqual(self.share(**body)[0], 400, body)
+        self.assertEqual(self.app.shares, [])
+        self.assertEqual(call(self.port, "POST", "/api/v1/share", None, raw=b"x", ctype="text/plain")[0], 415)
+
+    def test_share_quota(self):
+        for i in range(rs.SHARES_PER_HOUR):
+            self.assertEqual(self.share(id="%036x" % (i + 1), url="https://example.org/%d" % i)[0], 200, i)
+        self.assertEqual(self.share(id="%036x" % 999, url="https://example.org/x")[0], 429)
+
     def test_validation(self):
         self.assertEqual(call(self.port, "POST", "/api/v1/messages", {"text": ""})[0], 400)
         self.assertEqual(call(self.port, "POST", "/api/v1/messages", None, raw=b"hi", ctype="text/plain")[0], 415)

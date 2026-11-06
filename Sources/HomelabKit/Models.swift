@@ -19,6 +19,10 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         case status, hosts, actions, chat, cards, services
         /// The app may start actions itself (GET /actions, POST /actions/<name>).
         case runActions = "run-actions"
+        /// POST /documents: a PDF goes to Paperless (the Scan screen, the share extension).
+        case documents
+        /// POST /share: a link goes to a price check or the read-later list.
+        case share
     }
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,

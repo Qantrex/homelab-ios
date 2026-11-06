@@ -25,9 +25,10 @@ The release IPA has a `.sha256` file next to it if you want to check the downloa
 from the owner's own build ([RELEASE.md](RELEASE.md)); each one carries `source.json`, which is why the source URL
 above always points at the newest release.
 
-Slots: a free Apple ID allows 3 active sideloaded apps, and SideStore is one of them. The Homelab widget doesn't take
-a slot, so SideStore + Homelab = 2 of 3. Each install also uses 2 of the 10 App IDs a free account may create per
-week (app + widget).
+Slots: a free Apple ID allows 3 active sideloaded apps, and SideStore is one of them. The Homelab widget and the
+share extension don't take a slot, so SideStore + Homelab = 2 of 3. Each install also uses **3** of the 10 App IDs a
+free account may create per week (app + widget + share extension). Installing from Linux with `xtool dev` and
+installing with SideStore each register their own set, so switching between the two in one week costs 3 more.
 
 ## 3. The 7-day refresh
 
@@ -40,7 +41,7 @@ To be safe, open SideStore every few days, or tap My Apps → Refresh All.
 - If the app expired anyway, it doesn't open. Refresh it in SideStore; the data is still there.
 - Deleting the app, or installing it with a different Apple ID, starts from zero.
 
-## App Group: why the widget works after SideStore
+## App Group: why the widget and the share extension work after SideStore
 
 App and widget share data through an App Group. The app declares `group.com.qantrex.homelab`. SideStore signs with
 your Apple ID's team, so it changes the IDs:
@@ -49,6 +50,7 @@ your Apple ID's team, so it changes the IDs:
 |---|---|---|
 | App bundle ID | `com.qantrex.homelab` | `com.qantrex.homelab.ABCDE12345` |
 | Widget bundle ID | `com.qantrex.homelab.HomelabWidget` | `com.qantrex.homelab.ABCDE12345.HomelabWidget` |
+| Share extension bundle ID | `com.qantrex.homelab.HomelabShare` | `com.qantrex.homelab.ABCDE12345.HomelabShare` |
 | App Group | `group.com.qantrex.homelab` | a renamed group, for example `group.com.qantrex.homelab.ABCDE12345` |
 
 So the app never hard-codes the group. At start, app and widget each try, in order: the groups in their provisioning

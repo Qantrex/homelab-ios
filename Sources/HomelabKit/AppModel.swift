@@ -121,6 +121,11 @@ public final class AppModel {
     /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
+    /// The Scan screen was asked for (`homelab://scan`, the Home-screen quick action). The Actions tab opens it once
+    /// the server is known to take documents, and clears it.
+    public private(set) var openScan = false
+    /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
+    public private(set) var outboxCount = 0
     /// The action form sheets that are open (the Actions tab's, a card's "Add"), one token per sheet. A requested
     /// form waits until none is: a second sheet can't show over the first, and the request would be lost.
     public private(set) var openForms: Set<UUID> = []
@@ -165,6 +170,7 @@ public final class AppModel {
         }
         apply(args)
         locked = settings.faceIDLock
+        outboxCount = Outbox(directory: storage.url("outbox")).count
     }
 
     // MARK: Servers
@@ -182,7 +188,7 @@ public final class AppModel {
         if selected != nil {
             let f = selectedStatus.features
             t.insert(.lab)
-            if f.contains(.actions) || f.contains(.runActions) { t.insert(.actions) }
+            if f.contains(.actions) || f.contains(.runActions) || f.contains(.documents) { t.insert(.actions) }
             if f.contains(.chat) { t.insert(.chat) }
         }
         return t
@@ -203,6 +209,38 @@ public final class AppModel {
         }
     }
 
+    /// The Actions tab asks whether to open Scan now. True once, when the tab shows, no form is open and the server
+    /// takes documents. Without that feature (known) the request is dropped.
+    public func takeOpenScan() -> Bool {
+        guard openScan else { return false }
+        if selectedStatus.features.contains(.documents) {
+            guard tab == .actions, !formSheetOpen else { return false }
+            openScan = false
+            return true
+        }
+        if selectedStatus.knownInfo != nil || selected == nil { openScan = false }
+        return false
+    }
+
+    /// Where unsent shares and scans wait (App Group, so the share extension fills it too).
+    public var outbox: Outbox { Outbox(directory: storage.url("outbox")) }
+
+    /// Sends what waits in the outbox. Called when the app comes to the foreground and after a scan was saved.
+    public func drainOutbox() async {
+        let box = outbox
+        if box.count > 0 {
+            await box.drain(servers: servers) { [self] server in self.companionForDrain(server) }
+        }
+        outboxCount = box.count
+    }
+
+    /// Refreshes `outboxCount` (a scan was queued).
+    public func outboxChanged() { outboxCount = outbox.count }
+
+    nonisolated func companionForDrain(_ server: ServerConfig) -> any CompanionAPI {
+        server.kind == .demo ? DemoBackend(delay: .zero) : CompanionClient(config: server, tokens: tokens, transport: transport)
+    }
+
     /// The user picked a tab by hand (the tab bar). A link or launch argument's request (its tab, action form and
     /// host) is one request: picking another tab ends all of it, so nothing opens later on its own.
     public func pick(_ t: AppTab) {
@@ -215,6 +253,7 @@ public final class AppModel {
         requestedTab = nil
         openAction = nil
         openHost = nil
+        openScan = false
     }
 
     /// The app locks (Face ID, in the background): the system closes every sheet, so no form counts as open.
@@ -643,6 +682,13 @@ public final class AppModel {
     }
 
     public func open(_ url: URL) {
+        // homelab://scan: the Actions tab with the Scan screen on top (it waits for the server's features).
+        if url.scheme == "homelab", url.host?.lowercased() == "scan" {
+            dropRequests()
+            request(.actions)
+            openScan = true
+            return
+        }
         guard let t = AppTab(url: url) else { return }
         dropRequests()   // a new link replaces a request that still waits (its tab, form and host)
         if !availableTabs.contains(t) { tab = .today }

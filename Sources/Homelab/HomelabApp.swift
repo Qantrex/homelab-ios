@@ -1,10 +1,12 @@
 import HomelabKit
 import HomelabUI
 import SwiftUI
+import UIKit
 import UserNotifications
 
 @main
 struct HomelabApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel.live()
     @Environment(\.scenePhase) private var scenePhase
 

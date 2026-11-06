@@ -15,6 +15,10 @@ public protocol CompanionAPI: Sendable {
     func actions() async throws -> [ActionSpec]
     /// Starts one now. The server checks the argument and payload again.
     func run(_ action: String, arg: String, payload: [String: String]) async throws -> ActionResult
+    /// Sends a PDF to the server's document inbox (feature `documents`). `id` makes a retry harmless.
+    func upload(pdf: Data, title: String?, id: String) async throws -> ShareReply
+    /// Sends a web link (feature `share`).
+    func share(url: URL, title: String?, id: String) async throws -> ShareReply
 }
 
 public struct CompanionClient: CompanionAPI {
@@ -82,6 +86,42 @@ public struct CompanionClient: CompanionAPI {
         let data = try JSONSerialization.data(withJSONObject: ["arg": arg, "payload": payload] as [String: Any])
         return try await perform(request("actions/\(action)", method: "POST", body: data, timeout: 130),
                                  errors: APIError.fromAction)
+    }
+
+    public func upload(pdf: Data, title: String?, id: String) async throws -> ShareReply {
+        guard pdf.count <= ShareLimits.maxPDFBytes else { throw ShareRefusal.tooLarge(bytes: pdf.count).apiError }
+        return try await perform(uploadRequest(pdf: pdf, title: title, id: id), errors: APIError.fromUpload)
+    }
+
+    public func share(url: URL, title: String?, id: String) async throws -> ShareReply {
+        let checked: URL
+        do { checked = try ShareRouter.check(url) } catch let e as ShareRefusal { throw e.apiError }
+        return try await perform(shareRequest(url: checked, title: title, id: id), errors: APIError.fromUpload)
+    }
+
+    /// `POST /documents`: the raw PDF, its id and title in headers (the title percent-encoded, so any text fits).
+    func uploadRequest(pdf: Data, title: String?, id: String) -> URLRequest {
+        var r = request("documents", method: "POST", body: pdf, timeout: 120)
+        r.setValue("application/pdf", forHTTPHeaderField: "Content-Type")
+        r.setValue(id, forHTTPHeaderField: "X-Homelab-Id")
+        if let title = ShareRouter.cleanTitle(title, max: ShareLimits.maxPDFTitle) {
+            r.setValue(Self.encodeHeader(title), forHTTPHeaderField: "X-Homelab-Title")
+        }
+        return r
+    }
+
+    /// `POST /share`: `{id, kind, url, title}`.
+    func shareRequest(url: URL, title: String?, id: String) -> URLRequest {
+        var body: [String: String] = ["id": id, "kind": "url", "url": url.absoluteString]
+        if let title = ShareRouter.cleanTitle(title, max: ShareLimits.maxShareTitle) { body["title"] = title }
+        let data = (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])) ?? Data()
+        return request("share", method: "POST", body: data, timeout: 30)
+    }
+
+    /// Percent-encodes everything but letters, digits and `-._~` (UTF-8 bytes), as the server decodes it.
+    static func encodeHeader(_ text: String) -> String {
+        text.addingPercentEncoding(withAllowedCharacters: CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")) ?? ""
     }
 
     // MARK: - HTTP

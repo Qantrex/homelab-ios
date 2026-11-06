@@ -8,3 +8,6 @@ extensions:
   - product: HomelabWidget
     infoPath: Widget-Info.plist
     entitlementsPath: Widget.entitlements
+  - product: HomelabShare
+    infoPath: Share-Info.plist
+    entitlementsPath: Share.entitlements

@@ -19,7 +19,7 @@ ipa=$(find xtool -name '*.ipa' -print0 | xargs -0 ls -t 2>/dev/null | head -1)
 [ -n "$ipa" ] || { echo "no IPA found under xtool/"; exit 1; }
 
 echo
-scripts/verify-ipa "$ipa"   # widget inside, App Group in app and widget; stops here if not
+scripts/verify-ipa "$ipa"   # widget and share extension inside, App Group in all three; stops here if not
 
 echo
 echo "IPA:  $PWD/$ipa"

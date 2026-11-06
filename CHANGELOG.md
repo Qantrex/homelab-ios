@@ -69,12 +69,23 @@ App:
 - `homelab://` links for each tab.
 - Security: tokens in the Keychain only (this device, after first unlock), inline Markdown and http(s) links only,
   plain http only for local and tailnet addresses, no cookies, no third-party code, no analytics.
+- Scan and share (servers with `documents` / `share`): a Scan tile on the Actions tab opens the document camera (VisionKit),
+  shows pages and size, takes a title ("Scan 2026-11-06 14:05" by default) and sends the PDF to the server's document
+  inbox (Paperless). Also from a Home-screen quick action and `homelab://scan`. Without a camera (simulator) the screen
+  says "Scan needs a camera" and offers a sample page. The share extension "Homelab" takes a link, a PDF, photos (one
+  downsampled PDF, at most 20) or text with a link, shows what it got and where it goes ("Price check on willhaben",
+  "Read later", "To Paperless"), sends it and shows the result. On an identity (Tailscale) server it sends directly;
+  on a token server, offline, or on a server error it saves the item in an outbox in the App Group ("Saved, Homelab
+  sends it when it can"): at most 10 items and 100 MB, sent again when the app opens and in the background refresh,
+  dropped after a final answer (2xx or a refusal) or 7 days. A free Apple ID now uses 3 App IDs per install.
 - Finds its App Group at runtime, so the widget works after SideStore renames it.
 - Dark mode, Dynamic Type, VoiceOver labels.
 
 Server and tooling:
 
 - Homelab Companion API v1 (`server/openapi.yaml`).
+- `POST /documents` (raw PDF) and `POST /share` (link) in the Companion API; the reference server's fixture mode
+  implements both in memory with a fake result.
 - Reference server (`server/reference_server.py`): one stdlib Python file for any homelab. Host and web checks, cards,
   services, opt-in actions and chat, and a fixture mode for tests.
 - CI on Linux and macOS (free runners): tests, lint, simulator build, screenshots and simulator tests. The IPA is

@@ -177,6 +177,72 @@ paths:
         "404": { description: Not an action the app may start. }
         "429": { description: Too many actions from the app in the last hour. }
         "5XX": { description: "The server failed. Its `error` text, if any, is shown as the reason, so say there whether anything ran. Without it the app says it is not sure the action ran." }
+  /documents:
+    post:
+      summary: Send a PDF to the document inbox, for example Paperless (feature `documents`).
+      description: |
+        The raw PDF is the body (`Content-Type: application/pdf`, nothing else; a JSON or form body gets 415, which also
+        keeps browsers out: a cross-site request with that type needs a preflight the server never answers). The id makes
+        a retry harmless: a repeat of the same `X-Homelab-Id` gets the first answer and files nothing twice.
+        The server streams the body to a spool folder, answers 202 and files the PDF in the background. It never gives
+        the file or its text to a language model.
+      parameters:
+        - name: X-Homelab-Id
+          in: header
+          required: true
+          schema: { type: string, pattern: "^[0-9a-f-]{36}$" }
+          description: A UUID the client makes for this item (lower case).
+        - name: X-Homelab-Title
+          in: header
+          required: false
+          schema: { type: string }
+          description: Percent-encoded UTF-8, at most 128 characters after decoding; control characters are dropped.
+      requestBody:
+        required: true
+        content:
+          application/pdf:
+            schema: { type: string, format: binary }
+      responses:
+        "202":
+          description: Accepted. The result of filing it comes later (the chat).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShareReply" }
+        "400": { description: "Not a PDF (the body must start with `%PDF-`), or a bad id." }
+        "409": { description: The same id is still being handled. Try again later. }
+        "411": { description: No `Content-Length`. }
+        "413": { description: "Larger than the server's limit (25 MB)." }
+        "415": { description: Not `application/pdf`. }
+        "429": { description: More than 20 uploads in the last hour, or the spool is full. }
+  /share:
+    post:
+      summary: Send a web link (feature `share`).
+      description: |
+        The server decides what to do with the link; it never trusts the client's guess and never fetches the link.
+        A willhaben ad (`willhaben.at/iad/...-<digits>` or `adId=`) starts a price check (route `willhaben`); any
+        other http(s) link is stored on a read-later list (route `read-later`). Anything else (other schemes, a user
+        name or password in the link, over 2048 characters) is refused with 400. A repeat of the same `id` gets the
+        first answer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, kind, url]
+              properties:
+                id: { type: string, pattern: "^[0-9a-f-]{36}$" }
+                kind: { type: string, enum: [url] }
+                url: { type: string, maxLength: 2048 }
+                title: { type: string, maxLength: 200, description: The page title from the share sheet. }
+      responses:
+        "200":
+          description: Taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShareReply" }
+        "400": { description: "Refused; `error` says why." }
+        "429": { description: More than 30 shares in the last hour. }
 components:
   securitySchemes:
     identityHeader:
@@ -203,10 +269,11 @@ components:
           type: array
           items:
             type: string
-            enum: [status, hosts, actions, run-actions, chat, cards, services]
+            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share]
           description: |
             `actions`: proposed actions to approve (`pending`, `/button`). `run-actions`: the app may start actions
-            itself (`/actions`). The other values switch the matching tabs and sections.
+            itself (`/actions`). `documents`: `POST /documents` takes a PDF (the Scan tile, the share extension).
+            `share`: `POST /share` takes a link. The other values switch the matching tabs and sections.
         auth: { type: string, enum: [identity, token, none] }
         commands:
           type: array
@@ -407,6 +474,14 @@ components:
                 description: One tap runs this action after a confirm (`label` is the confirm text), then the app
                   refreshes. On a checklist the item's circle does it (tick off). Hidden unless `GET /actions` lists
                   the action.
+    ShareReply:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        id: { type: string, description: The client's id, echoed. }
+        route: { type: string, enum: [willhaben, read-later], description: "`/share` only." }
+        text: { type: string, example: Sent to Paperless. The result will be in the chat. }
     ItemAction:
       type: object
       required: [name]

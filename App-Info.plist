@@ -29,6 +29,19 @@
             </array>
         </dict>
     </array>
+    <key>NSCameraUsageDescription</key>
+    <string>Homelab uses the camera to scan documents for Paperless.</string>
+    <key>UIApplicationShortcutItems</key>
+    <array>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>com.qantrex.homelab.scan</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Scan document</string>
+            <key>UIApplicationShortcutItemIconSymbolName</key>
+            <string>doc.viewfinder</string>
+        </dict>
+    </array>
     <key>NSFaceIDUsageDescription</key>
     <string>Homelab can lock itself with Face ID, so only you can approve actions.</string>
     <key>NSLocalNetworkUsageDescription</key>
