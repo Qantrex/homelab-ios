@@ -117,6 +117,10 @@ public final class AppModel {
     /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
+    /// How many action form sheets are open (the Actions tab's, a card's "Add"). A requested form waits until none
+    /// is: a second sheet can't show over the first, and the request would be lost.
+    public private(set) var openForms = 0
+    public var formSheetOpen: Bool { openForms > 0 }
     /// A host's detail to open in Lab (deep link `homelab://lab/<host-id>`, launch argument `-HomelabHost`). Lab opens
     /// it once the state has that host (`takeOpenHost`), and clears it.
     public var openHost: String? { didSet { openHostSince = openHost == nil ? nil : Date() } }
@@ -430,8 +434,8 @@ public final class AppModel {
         return result
     }
 
-    /// Start an action from its form; returns the server's answer. Returns after the state is fresh again (a to-do
-    /// or wake-up shows on Today right away).
+    /// Start an action from its form; returns the server's answer, after one refresh of the state. A server that
+    /// applies the change at once shows it then; one that updates its lists later shows it with a later refresh.
     public func run(_ form: ActionForm, on server: ServerConfig) async -> Result<ActionResult, APIError> {
         guard let arg = form.arg, form.problems.isEmpty else {
             return .failure(.badRequest(form.problems.first ?? "The form isn't complete."))
@@ -446,11 +450,12 @@ public final class AppModel {
         return result
     }
 
-    /// The form a link asked for (`openAction`), once the selected server lists it; the request is cleared then. A
-    /// request the server can't serve (its loaded list lacks the name, or it has no `run-actions`) is dropped too,
-    /// so it doesn't pop up later after a server switch. Nil while the list isn't loaded yet: the request waits.
+    /// The form a link asked for (`openAction`), once the selected server lists it and no other form sheet is open
+    /// (`formSheetOpen`); the request is cleared then. A request the server can't serve (its loaded list lacks the
+    /// name, or it has no `run-actions`) is dropped too, so it doesn't pop up later after a server switch. Nil while
+    /// the list isn't loaded yet or a sheet is open: the request waits.
     public func takeOpenAction() -> ActionSpec? {
-        guard let name = openAction else { return nil }
+        guard let name = openAction, !formSheetOpen else { return nil }
         let s = selectedStatus
         if s.features.contains(.runActions), let spec = s.actions.first(where: { $0.name == name }) {
             openAction = nil
@@ -458,6 +463,11 @@ public final class AppModel {
         }
         if s.actionsFetched != nil || (s.knownInfo != nil && !s.features.contains(.runActions)) { openAction = nil }
         return nil
+    }
+
+    /// A form sheet appeared or went away (`formSheetOpen`).
+    public func formSheet(open: Bool) {
+        openForms = max(openForms + (open ? 1 : -1), 0)
     }
 
     /// The host a link asked for (`openHost`), once the selected snapshot has it; the request is cleared then. A

@@ -14,6 +14,9 @@ public struct ChatTimeline: Sendable, Equatable {
     public private(set) var messages: [ChatMessage] = []
     public private(set) var outgoing: [Outgoing] = []
     public private(set) var busy: [String] = []
+    /// When (phone time) each message last came in a page: a state fetched after that is newer than what the
+    /// message says. The server's `ts` has no time zone and another clock, so it can't be compared with `fetched`.
+    public private(set) var received: [Int64: Date] = [:]
 
     public static let keep = 500
 
@@ -35,10 +38,16 @@ public struct ChatTimeline: Sendable, Equatable {
         }
     }
 
-    public mutating func merge(_ page: MessagePage) {
+    /// Adds a page of server messages, received at `now`.
+    public mutating func merge(_ page: MessagePage, now: Date = Date()) {
         var byID = Dictionary(messages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
-        for m in page.messages { byID[m.id] = m }
+        for m in page.messages {
+            byID[m.id] = m
+            received[m.id] = now
+        }
         messages = byID.values.sorted { $0.id < $1.id }.suffix(Self.keep).map { $0 }
+        let kept = Set(messages.map(\.id))
+        received = received.filter { kept.contains($0.key) }
         busy = page.busy
         // A sent message is confirmed once the server lists its id, or a later "me" message with the same text.
         outgoing.removeAll { o in
@@ -80,6 +89,18 @@ public struct ChatTimeline: Sendable, Equatable {
         messages = []
         outgoing = []
         busy = []
+        received = [:]
+    }
+
+    /// The proposals `message` still offers buttons for. The chat only loads messages newer than the last one, so
+    /// an older message keeps proposals answered since (here, in the Actions tab or elsewhere). A state fetched after
+    /// the message's page came in is newer: it decides which are still open.
+    public func openPending(_ message: ChatMessage, in snapshot: Snapshot?) -> [PendingAction] {
+        guard !message.pending.isEmpty, let snapshot, let got = received[message.id], snapshot.fetched >= got else {
+            return message.pending
+        }
+        let open = Set(snapshot.state.pending.map(\.id))
+        return message.pending.filter { open.contains($0.id) }
     }
 }
 
@@ -98,16 +119,5 @@ public enum PollPolicy {
     public static func backoff(failures: Int) -> Duration {
         let s = min(5 * Int(pow(2, Double(max(failures - 1, 0)))), 120)
         return .seconds(s)
-    }
-}
-
-public extension ChatMessage {
-    /// The proposals the bubble still offers buttons for. The chat only loads messages newer than the last one, so
-    /// an older message keeps proposals answered since (here, in the Actions tab or elsewhere). A state fetched after
-    /// the message is newer: it decides which are still open.
-    func openPending(in snapshot: Snapshot?) -> [PendingAction] {
-        guard !pending.isEmpty, let snapshot, let ts, snapshot.fetched >= ts else { return pending }
-        let open = Set(snapshot.state.pending.map(\.id))
-        return pending.filter { open.contains($0.id) }
     }
 }

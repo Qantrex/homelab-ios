@@ -241,6 +241,9 @@ public struct ActionForm: Sendable, Equatable {
     public var values: [[String]]
     /// Payload values by field name. Empty = not sent.
     public var fieldValues: [String: String]
+    /// Values a card or item action prefilled. While a field still holds exactly that, it is sent untouched (the
+    /// server matches e.g. a to-do's text exactly, spaces included); typed values are trimmed.
+    public private(set) var prefilled: [String: String] = [:]
 
     /// Starts with sensible picks: tomorrow for a day, 07:00 for a time, the first option of a choice.
     public init(_ spec: ActionSpec, now: Date = Date(), calendar: Calendar = .current) {
@@ -271,7 +274,7 @@ public struct ActionForm: Sendable, Equatable {
         self.init(spec, now: now, calendar: calendar)
         guard let prefill else { return }
         for field in spec.fields {
-            if let v = prefill.payload[field.name] { fieldValues[field.name] = v }
+            if let v = prefill.payload[field.name] { fieldValues[field.name] = v; prefilled[field.name] = v }
         }
         let arg = prefill.arg.trimmingCharacters(in: .whitespaces)
         guard !arg.isEmpty else { return }
@@ -360,12 +363,14 @@ public struct ActionForm: Sendable, Equatable {
     /// Length as the server counts it: code points (Python's `len`), so "👨‍👩‍👧" is 5, not 1.
     public static func length(_ text: String) -> Int { text.unicodeScalars.count }
 
-    /// The payload to send: trimmed, without empty fields.
+    /// The payload to send: without empty fields; trimmed, except an unchanged prefilled value (`prefilled`).
     public var payload: [String: String] {
         var out: [String: String] = [:]
         for field in spec.fields {
-            let v = (fieldValues[field.name] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !v.isEmpty { out[field.name] = v }
+            let raw = fieldValues[field.name] ?? ""
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            out[field.name] = prefilled[field.name] == raw ? raw : trimmed
         }
         return out
     }
@@ -473,5 +478,48 @@ public struct ActionForm: Sendable, Equatable {
         default: return nil
         }
         return calendar.date(from: c)
+    }
+}
+
+/// Checklist items ticked off here that the server may still list as open for a moment (its list updates a little
+/// later). They are drawn done and can't be tapped again until the card no longer offers that action on an open
+/// item, or for `timeout` at most.
+public struct TickedItems: Sendable, Equatable {
+    public static let timeout: TimeInterval = 180
+
+    private var since: [ItemAction: Date] = [:]
+
+    public init() {}
+
+    public var isEmpty: Bool { since.isEmpty }
+
+    public mutating func add(_ action: ItemAction, at date: Date = Date()) {
+        since[action] = date
+    }
+
+    /// The item was ticked off here and the server hasn't caught up yet.
+    public func covers(_ item: Card.Item, now: Date = Date()) -> Bool {
+        guard item.done != true, let a = item.action, let t = since[a] else { return false }
+        return now.timeIntervalSince(t) < Self.timeout
+    }
+
+    /// The card as it should look: ticked items done and without their action.
+    public func applied(to card: Card, now: Date = Date()) -> Card {
+        guard !since.isEmpty else { return card }
+        var card = card
+        card.items = card.items.map { item in
+            guard covers(item, now: now) else { return item }
+            var item = item
+            item.done = true
+            item.action = nil
+            return item
+        }
+        return card
+    }
+
+    /// Forgets ticks the server caught up with (no open item of `card` offers that action any more) and old ones.
+    public mutating func prune(_ card: Card, now: Date = Date()) {
+        let open = Set(card.items.filter { $0.done != true }.compactMap(\.action))
+        since = since.filter { open.contains($0.key) && now.timeIntervalSince($0.value) < Self.timeout }
     }
 }

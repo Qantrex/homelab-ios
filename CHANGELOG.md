@@ -12,9 +12,12 @@ App:
   Standard or Overkill density (Overkill adds every machine's numbers, exact times and busy jobs).
 - Progress in cards (downloads, now playing) as rings with the percent inside.
 - Checklist cards (to-dos): a circle per item, done ones struck through, the due day gold today and love when
-  overdue; tap the circle to tick an item off (one confirm, then it runs at once). Countdown cards (deadlines): big
-  mono "2 d", "5 h", "today", "3 d ago", soonest first. A card's header button ("+ Add") opens its action's form
-  prefilled. All only when the server lets the app start that action.
+  overdue; tap the circle to tick an item off (one confirm, then it runs at once; the item stays ticked until the
+  server's list catches up, and its text is sent exactly as the server gave it). Countdown cards (deadlines): big
+  mono "2 d", "5 h", "today", "3 d ago", soonest first. A due sent as a plain day counts in whole days and keeps its
+  day after a time-zone change; a time at 00:00 stays a time. A card's header button ("+ Add") opens its action's
+  form prefilled; a link to another form waits until that sheet is closed. All only when the server lets the app
+  start that action.
 - Lab (was Overview): overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
   host details, a service launcher (opens Safari). Pull to refresh, refresh every 30 s while open, last data with its
   age when offline.

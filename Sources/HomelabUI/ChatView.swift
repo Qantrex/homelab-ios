@@ -135,7 +135,7 @@ struct ChatView: View {
                             .padding(.top, 40)
                     }
                     ForEach(chat.timeline.messages) { m in
-                        Bubble(message: m, pending: m.openPending(in: model.selectedStatus.snapshot), running: running,
+                        Bubble(message: m, pending: chat.timeline.openPending(m, in: model.selectedStatus.snapshot), running: running,
                                model: model) { p, verb in
                             confirm = ProposalConfirmation(action: p, verb: verb)
                         }
@@ -228,7 +228,7 @@ struct ChatView: View {
 
 struct Bubble: View {
     let message: ChatMessage
-    /// The message's proposals that are still open (`ChatMessage.openPending`).
+    /// The message's proposals that are still open (`ChatTimeline.openPending`).
     var pending: [PendingAction] = []
     var running: Set<String> = []
     /// For the cards' actions; nil = cards only show.

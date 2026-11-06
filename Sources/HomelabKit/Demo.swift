@@ -64,7 +64,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         card.items = card.items.map { item in
             var item = item
             if let due = item.due {
-                item.due = Format.isDayOnly(due, calendar: calendar)
+                item.due = item.dueIsDay
                     ? calendar.date(byAdding: .day, value: days, to: due)
                     : due.addingTimeInterval(interval)
             }

@@ -25,6 +25,8 @@ struct CardView: View {
     @State private var afterSheet: ResultMessage?
     @State private var ask: TickOff?
     @State private var running: Set<ItemAction> = []
+    /// Ticked off here; drawn done until the server's list catches up (`TickedItems`).
+    @State private var ticked = TickedItems()
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
 
@@ -48,6 +50,7 @@ struct CardView: View {
         }
         .card(padding: compact ? 10 : 14)
         .animation(reduceMotion ? nil : .snappy, value: card.items)
+        .onChange(of: card) { _, new in ticked.prune(new) }
         .sheet(item: $formFor, onDismiss: {
             if let r = afterSheet { result = r; afterSheet = nil }
         }) { spec in
@@ -57,6 +60,9 @@ struct CardView: View {
                     outcome = ActionOutcome(ok: ok)
                     afterSheet = message
                 }
+                // A link to another form waits until this sheet is gone (AppModel.formSheetOpen).
+                .onAppear { model.formSheet(open: true) }
+                .onDisappear { model.formSheet(open: false) }
             }
         }
         .confirmationDialog(ask.map { String(localized: "\($0.verb) \($0.item.title ?? "")?") } ?? "",
@@ -126,7 +132,7 @@ struct CardView: View {
         case .checklist:
             // Redrawn every minute, so "today 18:00" turns love when it passes.
             TimelineView(.everyMinute) { context in
-                rows(card.items) { checkRow($0, now: context.date) }
+                rows(ticked.applied(to: card, now: context.date).items) { checkRow($0, now: context.date) }
             }
         case .countdown:
             TimelineView(.everyMinute) { context in
@@ -205,7 +211,11 @@ struct CardView: View {
         let done = item.done == true
         let spec = done ? nil : model?.startable(item.action)
         let busy = item.action.map { running.contains($0) } ?? false
-        let due = item.due.map { (text: Format.due($0, now: now), level: Format.countdown($0, now: now).level) }
+        let countdown = item.countdown(now: now)
+        // Shown short ("Mon 18:00"), spoken like the countdown ("in 2 days", "3 days ago").
+        let due = item.dueText(now: now).flatMap { text in
+            countdown.map { (text: text, level: $0.level, spoken: Self.spoken(countdown: $0.text)) }
+        }
         let dueColor = done ? Palette.tertiary : due.map { Self.color($0.level, later: Palette.secondary) } ?? Palette.secondary
         let tick: TickOff? = spec.flatMap { s in item.action.map { TickOff(item: item, action: $0, spec: s) } }
         return HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -224,7 +234,11 @@ struct CardView: View {
         .contentShape(Rectangle())
         .onTapGesture { if let url = item.url { openURL(url) } }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(Self.spoken(item, due: due, busy: busy)))
+        .accessibilityLabel(Text(Self.spoken(item, due: due.map { ($0.spoken, $0.level) }, busy: busy)))
+        // VoiceOver's double tap ticks the item off (after the confirm), or opens its link.
+        .accessibilityAction {
+            if let tick, !busy { ask = tick } else if let url = item.url { openURL(url) }
+        }
         .accessibilityActions {
             if let tick, !busy {
                 Button(tick.verb) { ask = tick }
@@ -260,15 +274,21 @@ struct CardView: View {
         running.remove(t.action)
         let (ok, message) = ResultMessage.started(t.spec, r)
         outcome = ActionOutcome(ok: ok)
-        // Done is seen in the row (ticked or gone); only a failure needs words.
-        if !ok { result = message }
+        if ok {
+            // The server may list the item as open for a moment longer: draw it done until its list catches up.
+            ticked.add(t.action)
+        } else if formFor != nil {
+            afterSheet = message   // an alert can't show over the card's open form
+        } else {
+            result = message
+        }
     }
 
     // MARK: Countdown rows
 
     /// Title and subtitle on the left, the time left big on the right (below them with very large text).
     private func countdownRow(_ item: Card.Item, now: Date) -> some View {
-        let c = item.due.map { Format.countdown($0, now: now) }
+        let c = item.countdown(now: now)
         let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
                              : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
         return layout {
@@ -300,12 +320,12 @@ struct CardView: View {
         }
     }
 
-    /// "Milk, Shopping, due today, not done".
+    /// "Milk, Shopping, today, not done"; "Bills, overdue, 3 days ago, not done". `due` is already spoken
+    /// (`spoken(countdown:)`).
     static func spoken(_ item: Card.Item, due: (text: String, level: Format.Level)?, busy: Bool) -> String {
         var parts = [item.title, item.subtitle].compactMap { $0 }
         if let due {
-            parts.append(due.level == .past && item.done != true ? String(localized: "overdue, due \(due.text)")
-                                                                 : String(localized: "due \(due.text)"))
+            parts.append(due.level == .past && item.done != true ? String(localized: "overdue, \(due.text)") : due.text)
         }
         parts.append(busy ? String(localized: "ticking off") : item.done == true ? String(localized: "done") : String(localized: "not done"))
         return parts.joined(separator: ", ")

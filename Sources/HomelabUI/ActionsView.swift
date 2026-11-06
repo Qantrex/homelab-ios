@@ -86,6 +86,8 @@ struct ActionsView: View {
             }) { spec in
                 if let server = model.selected {
                     ActionFormView(model: model, server: server, spec: spec) { finished(spec, $0) }
+                        .onAppear { model.formSheet(open: true) }
+                        .onDisappear { model.formSheet(open: false) }
                 }
             }
             .onChange(of: openable) { _, _ in openRequested() }
@@ -106,10 +108,12 @@ struct ActionsView: View {
     private var openable: String {
         let s = model.selectedStatus
         return [model.openAction ?? "", startable.map(\.name).joined(separator: ","),
-                "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)"].joined(separator: "|")
+                "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)", "\(model.formSheetOpen)"]
+            .joined(separator: "|")
     }
 
-    /// Opens a requested form once the list knows the action. While another form is open the request waits.
+    /// Opens a requested form once the list knows the action. While a form is open (here or a card's) the request
+    /// waits (`AppModel.takeOpenAction`).
     private func openRequested() {
         guard formFor == nil, let spec = model.takeOpenAction() else { return }
         formFor = spec

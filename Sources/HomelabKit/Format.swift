@@ -37,19 +37,26 @@ public enum Format {
         case past, soon, later
     }
 
-    /// A due date sent as a day without a time: it reads as local midnight.
-    public static func isDayOnly(_ date: Date, calendar: Calendar = .current) -> Bool {
-        let c = calendar.dateComponents([.hour, .minute, .second], from: date)
-        return c.hour == 0 && c.minute == 0 && c.second == 0
+    /// The start of the calendar day a day-only due names. It was local midnight when it was read; the nearest
+    /// midnight keeps it on that day after a time-zone change of up to 12 h (the cache stores the day itself).
+    public static func dueDay(_ due: Date, calendar: Calendar = .current) -> Date {
+        calendar.startOfDay(for: due.addingTimeInterval(12 * 3600))
+    }
+
+    /// A day-only due as the server writes it: "2026-11-09".
+    public static func dayString(_ due: Date, calendar: Calendar = .current) -> String {
+        let d = calendar.dateComponents([.year, .month, .day], from: dueDay(due, calendar: calendar))
+        return String(format: "%04d-%02d-%02d", d.year ?? 0, d.month ?? 0, d.day ?? 0)
     }
 
     /// A countdown card's big value: "40 min", "5 h", "2 d", "today" (a day-only due on today), "3 h ago",
     /// "3 d ago". Whole days count calendar days; hours and minutes are rounded down, but a due still ahead never
-    /// shows "0 min".
-    public static func countdown(_ due: Date, now: Date = Date(), calendar: Calendar = .current) -> (text: String, level: Level) {
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
-                                           to: calendar.startOfDay(for: due)).day ?? 0
-        if isDayOnly(due, calendar: calendar) {
+    /// shows "0 min". `dayOnly`: `due` names a day (`Card.Item.dueIsDay`), not a time.
+    public static func countdown(_ due: Date, dayOnly: Bool, now: Date = Date(),
+                                 calendar: Calendar = .current) -> (text: String, level: Level) {
+        let start = dayOnly ? dueDay(due, calendar: calendar) : calendar.startOfDay(for: due)
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: start).day ?? 0
+        if dayOnly {
             if days == 0 { return ("today", .soon) }
             return days > 0 ? ("\(days) d", .later) : ("\(-days) d ago", .past)
         }
@@ -67,11 +74,13 @@ public enum Format {
 
     /// A checklist item's due, short: "today", "today 18:00", "tomorrow 09:00", "Mon", "Mon 18:00" within a week,
     /// "12.11." or "12.11. 18:00" further out, "yesterday" / "3 d ago" when it's past (with the time on the same day).
-    public static func due(_ due: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+    /// `dayOnly`: `due` names a day, shown without a clock.
+    public static func due(_ due: Date, dayOnly: Bool, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let day0 = dayOnly ? dueDay(due, calendar: calendar) : due
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
-                                           to: calendar.startOfDay(for: due)).day ?? 0
+                                           to: calendar.startOfDay(for: day0)).day ?? 0
         let t = calendar.dateComponents([.hour, .minute], from: due)
-        let clock = isDayOnly(due, calendar: calendar) ? nil : String(format: "%02d:%02d", t.hour ?? 0, t.minute ?? 0)
+        let clock = dayOnly ? nil : String(format: "%02d:%02d", t.hour ?? 0, t.minute ?? 0)
         let day: String
         switch days {
         case 0: day = "today"
@@ -79,10 +88,10 @@ public enum Format {
         case -1: day = "yesterday"
         case 2...6:
             let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-            day = weekdays[(calendar.component(.weekday, from: due) - 1 + 7) % 7]
+            day = weekdays[(calendar.component(.weekday, from: day0) - 1 + 7) % 7]
         case ..<(-1): return "\(-days) d ago"
         default:
-            let d = calendar.dateComponents([.day, .month], from: due)
+            let d = calendar.dateComponents([.day, .month], from: day0)
             day = String(format: "%02d.%02d.", d.day ?? 0, d.month ?? 0)
         }
         return clock.map { "\(day) \($0)" } ?? day

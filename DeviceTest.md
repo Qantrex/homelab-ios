@@ -50,7 +50,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O7 | Restart a container | Restart only on containers from the host's restart list (none when the server has no `restart-container`). Tap → "Restart `<name>`?" with a red Restart → spinner in the row → alert "Restarted `<name>`" with the agent's output, success haptic; after the refresh its state is running. A refused restart: "Restart of `<name>` failed" or "Didn't run", error haptic | | |
 | O8 | Overkill machines | Settings → Detail → Overkill: under each machine's numbers on Today a thin 24 h load line | | |
 | O9 | Cards | Server cards show (title, icon, items or text). A card item with a link opens Safari | | |
-| O10 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked or gone (HA too). Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
+| O10 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked at once and stays ticked (not tappable) until the server's list drops it (HA too, up to 3 min). A to-do with double spaces in its text ticks off too. Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
 | O11 | Card button | To-dos "+ ADD" → the Add a to-do form with the list already chosen → Run → sheet closes, alert with the agent's answer | | |
 | O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
 | O13 | Services | Service buttons are grouped and open the right page in Safari | | |
@@ -149,7 +149,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
 | X1 | Dynamic Type XXL | iOS Larger Text at the biggest non-accessibility size and one accessibility size: no clipped text, action buttons stack instead of wrapping | | |
-| X2 | VoiceOver | Host tiles read "`<name>`, `<status>`", the send button reads "Send", chat bubbles read "You: …" / "Agent: …". A to-do reads "Milk, Shopping, due today, not done" with the action "Tick off"; a deadline "Tax return, Paperwork, today" | | |
+| X2 | VoiceOver | Host tiles read "`<name>`, `<status>`", the send button reads "Send", chat bubbles read "You: …" / "Agent: …". A to-do reads "Milk, Shopping, today, not done" (an overdue one "…, overdue, 3 days ago, …"); double tap asks to tick it off, and the action "Tick off" does too; a deadline "Tax return, Paperwork, today" | | |
 | X3 | Dark mode | Every tab and the widgets are readable in dark mode | | |
 
 ## SideStore refresh

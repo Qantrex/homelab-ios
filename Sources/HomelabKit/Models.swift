@@ -381,17 +381,35 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         public var tint: Tint?
         /// Checklist items: ticked off or not. Nil = not sent (open).
         public var done: Bool?
-        /// When it's due. A day without a time is local midnight (`Format.isDayOnly`).
+        /// When it's due. A day without a time (`dueIsDay`) is local midnight of that day.
         public var due: Date?
+        /// `due` was sent as a plain day ("2026-11-09"), not a time: it counts in whole days ("today", "2 d") and
+        /// shows without a clock. A time at 00:00 is still a time.
+        public var dueIsDay: Bool
         /// One tap runs this action after a confirm (a checklist circle ticks the item off).
         public var action: ItemAction?
 
         public init(title: String? = nil, subtitle: String? = nil, value: String? = nil, progress: Double? = nil,
                     icon: String? = nil, url: URL? = nil, tint: Tint? = nil, done: Bool? = nil, due: Date? = nil,
-                    action: ItemAction? = nil) {
+                    dueIsDay: Bool = false, action: ItemAction? = nil) {
             self.title = title; self.subtitle = subtitle; self.value = value
             self.progress = progress.map { min(max($0, 0), 1) }; self.icon = icon; self.url = url; self.tint = tint
-            self.done = done; self.due = due; self.action = action
+            self.done = done; self.due = due; self.dueIsDay = due != nil && dueIsDay; self.action = action
+        }
+
+        /// "2026-11-09": a day without a time.
+        public static func isPlainDay(_ text: String) -> Bool {
+            text.trimmingCharacters(in: .whitespaces).wholeMatch(of: /[0-9]{4}-[0-9]{2}-[0-9]{2}/) != nil
+        }
+
+        /// The countdown to `due` ("2 d", "5 h", "today", "3 d ago") and its level; nil without a due.
+        public func countdown(now: Date = Date(), calendar: Calendar = .current) -> (text: String, level: Format.Level)? {
+            due.map { Format.countdown($0, dayOnly: dueIsDay, now: now, calendar: calendar) }
+        }
+
+        /// The due, short ("today", "Mon 18:00", "3 d ago"); nil without a due.
+        public func dueText(now: Date = Date(), calendar: Calendar = .current) -> String? {
+            due.map { Format.due($0, dayOnly: dueIsDay, now: now, calendar: calendar) }
         }
 
         enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action }
@@ -402,7 +420,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                       progress: c.double(.progress), icon: c.text(.icon),
                       url: c.text(.url).flatMap(URLPolicy.webURL),
                       tint: c.text(.tint).map { Tint(lenient: $0) }, done: c.bool(.done), due: c.date(.due),
-                      action: c.lenient(ItemAction.self, .action))
+                      dueIsDay: c.text(.due).map(Self.isPlainDay) ?? false, action: c.lenient(ItemAction.self, .action))
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -415,7 +433,8 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             try c.encodeIfPresent(url, forKey: .url)
             try c.encodeIfPresent(tint, forKey: .tint)
             try c.encodeIfPresent(done, forKey: .done)
-            try c.encodeIfPresent(due.map(ServerDate.string), forKey: .due)
+            // A day stays a plain day in the cache, so it is the same calendar day after a time-zone change.
+            try c.encodeIfPresent(due.map { dueIsDay ? Format.dayString($0) : ServerDate.string($0) }, forKey: .due)
             try c.encodeIfPresent(action, forKey: .action)
         }
     }
