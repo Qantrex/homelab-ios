@@ -69,4 +69,19 @@ for b in "$app" "$appex" "$share"; do
     exit 1
   fi
 done
+# No binary may link SwiftUICore directly: then SwiftUI symbols that moved there in iOS 26 (LazyState, used by every
+# @State) bind to SwiftUICore and the app dies at launch on iOS 18 (2026-11-06; fix: -disable-autolink-framework
+# SwiftUICore in Package.swift). Needs llvm-otool or otool.
+otool=$(command -v llvm-otool || command -v otool || true)
+if [ -n "$otool" ]; then
+  for b in "$app/Homelab" "$appex/HomelabWidget" "$share/HomelabShare"; do
+    if "$otool" -L "$b" | grep -q "SwiftUICore.framework"; then
+      echo "FAIL: ${b#"$tmp"/} links SwiftUICore directly (crashes at launch on iOS 18; see Package.swift noSwiftUICore)"
+      exit 1
+    fi
+  done
+  echo "ok: no binary links SwiftUICore directly (runs on iOS 18)"
+else
+  echo "WARN: no otool here, SwiftUICore link check skipped"
+fi
 echo "verify-ipa: ok"

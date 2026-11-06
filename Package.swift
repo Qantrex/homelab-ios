@@ -11,6 +11,8 @@ let kitOnly = ProcessInfo.processInfo.environment["KIT_ONLY"] == "1"
 let swiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("ExistentialAny"),
 ]
+/// See the HomelabUI target: never link SwiftUICore directly (iOS 18 has those symbols in SwiftUI).
+let noSwiftUICore: [SwiftSetting] = [.unsafeFlags(["-Xfrontend", "-disable-autolink-framework", "-Xfrontend", "SwiftUICore"])]
 
 var products: [Product] = [
     .library(name: "HomelabKit", targets: ["HomelabKit"]),
@@ -36,13 +38,18 @@ if !kitOnly {
         .library(name: "HomelabShare", targets: ["HomelabShare"]),
     ]
     targets += [
-        .target(name: "HomelabDesign", dependencies: ["HomelabKit"], swiftSettings: swiftSettings),
-        .target(name: "HomelabUI", dependencies: ["HomelabKit", "HomelabDesign"], swiftSettings: swiftSettings),
-        .target(name: "Homelab", dependencies: ["HomelabKit", "HomelabUI"], swiftSettings: swiftSettings),
+        .target(name: "HomelabDesign", dependencies: ["HomelabKit"], swiftSettings: swiftSettings + noSwiftUICore),
+        // `import VisionKit` (the document scanner) autolinks SwiftUICore. Linked directly, SwiftUICore makes the linker
+        // bind SwiftUI symbols that moved there in iOS 26 (e.g. `LazyState`, which every `@State` uses) to SwiftUICore,
+        // and the app dies at launch on iOS 18 (dyld: "Symbol not found ... Expected in SwiftUICore", iPhone with
+        // iOS 18.7, 2026-11-06). Without the direct link they resolve through SwiftUI, which has them on iOS 18.
+        .target(name: "HomelabUI", dependencies: ["HomelabKit", "HomelabDesign"],
+                swiftSettings: swiftSettings + noSwiftUICore),
+        .target(name: "Homelab", dependencies: ["HomelabKit", "HomelabUI"], swiftSettings: swiftSettings + noSwiftUICore),
         .target(
             name: "HomelabWidget",
             dependencies: ["HomelabKit", "HomelabDesign"],
-            swiftSettings: swiftSettings,
+            swiftSettings: swiftSettings + noSwiftUICore,
             // The extension's entry point is Foundation's _NSExtensionMain, so nothing references the WidgetBundle's
             // `main` and -dead_strip drops the whole widget. The empty binary then fails xtool's signing ("Can't find
             // free space of LoadCommands for CodeSignature"). Keep `main` and everything it uses.
@@ -51,7 +58,7 @@ if !kitOnly {
         .target(
             name: "HomelabShare",
             dependencies: ["HomelabKit", "HomelabDesign"],
-            swiftSettings: swiftSettings,
+            swiftSettings: swiftSettings + noSwiftUICore,
             // Same dead-strip problem as the widget: only the runtime looks the principal class up (by name,
             // NSExtensionPrincipalClass), so -dead_strip drops it and signing fails ("Can't find free space of
             // LoadCommands for CodeSignature"). Keep the class (and with it everything it uses).
