@@ -136,6 +136,8 @@ struct HomeTile: View {
     let tap: () -> Void
 
     @State private var taps = 0
+    /// The icon column grows with the text, so a big symbol isn't clipped at large sizes.
+    @ScaledMetric(relativeTo: .title3) private var iconWidth: CGFloat = 28
 
     private var on: Bool { entity.control == .toggle && entity.isOn }
 
@@ -149,7 +151,8 @@ struct HomeTile: View {
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: entitySymbol(entity))
                     .font(.title3).foregroundStyle(on ? Palette.text : Palette.secondary)
-                    .frame(width: 28)
+                    .frame(width: iconWidth)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entity.name).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
                         .lineLimit(2).multilineTextAlignment(.leading)
@@ -162,15 +165,30 @@ struct HomeTile: View {
             .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             .background(on ? Palette.raised : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 16))
-            .animation(.snappy, value: on)
+            .reducedMotionAnimation(.snappy, value: on)
         }
         .buttonStyle(.press)
         .sensoryFeedback(.impact(weight: .medium), trigger: taps)
         .disabled(busy || !entity.isAvailable || entity.control == .none)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(entity.name))
-        .accessibilityValue(Text(entity.displayState))
-        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(Text(spokenState))
+        .accessibilityHint(hint)
+        .accessibilityAddTraits(entity.control == .toggle ? [.isButton, .isToggle] : .isButton)
+    }
+
+    /// What the tile shows, in words ("On", "ran 3 hours ago"), and "busy" while a tap is on its way.
+    private var spokenState: String {
+        let state = Format.spoken(stateText)
+        return busy ? state + ", " + String(localized: "busy") : state
+    }
+
+    private var hint: Text {
+        switch entity.control {
+        case .toggle: on ? Text("Turns it off") : Text("Turns it on")
+        case .run: Text("Runs it")
+        case .none: Text("")
+        }
     }
 
     private var stateText: String {

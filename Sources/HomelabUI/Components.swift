@@ -4,14 +4,20 @@ import LocalAuthentication
 import SwiftUI
 
 /// Server text as inline Markdown (bold, code, links). Never HTML, never block elements. Links that aren't
-/// http(s) are removed, so a server can't make the app open `tel:` or another app's scheme.
+/// http(s) are removed, so a server can't make the app open `tel:` or another app's scheme. Links are iris and
+/// underlined (docs/DESIGN.md §3: iris means a link, never colour alone). Text ignores a run's colour on links on
+/// some iOS versions: a view showing markdown also sets `.tint(Palette.iris)`.
 func markdown(_ text: String) -> AttributedString {
     let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace,
                                                           failurePolicy: .returnPartiallyParsedIfPossible)
     var s = (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     for run in s.runs {
-        if let link = run.link, URLPolicy.webURL(link.absoluteString) == nil {
+        guard let link = run.link else { continue }
+        if URLPolicy.webURL(link.absoluteString) == nil {
             s[run.range].link = nil
+        } else {
+            s[run.range].foregroundColor = Palette.iris
+            s[run.range].underlineStyle = Text.LineStyle.single
         }
     }
     return s
@@ -25,7 +31,8 @@ struct PollKey: Hashable {
 }
 
 /// "Can't reach … Is Tailscale on?" with a retry. At accessibility text sizes Retry goes under the text: next to
-/// it the text got one word per line (CI screenshot, 2026-11-06).
+/// it the text got one word per line (CI screenshot, 2026-11-06). VoiceOver: the texts are one element, Retry its
+/// own (44 pt), and the message is announced when the banner appears.
 struct ErrorBanner: View {
     let error: APIError
     let snapshotAge: Date?
@@ -52,7 +59,9 @@ struct ErrorBanner: View {
         }
         .padding(16)   // a panel like every other (DESIGN.md §2); the gold icon carries the status
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+        .onAppear { announce(error.message) }
+        .onChange(of: error.message) { _, message in announce(message) }
     }
 
     private var icon: some View {
@@ -70,12 +79,20 @@ struct ErrorBanner: View {
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
     }
 
     private var retryButton: some View {
-        Button("Retry", action: retry)
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+        Button(action: retry) {
+            Text("Retry")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Palette.text)
+                .padding(.horizontal, 16)
+                .frame(minWidth: 44, minHeight: 44)
+                .background(Palette.raised, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.press)
     }
 }
 
@@ -96,7 +113,8 @@ struct Placeholder: View {
 
 /// Section header (docs/DESIGN.md §1): a bold sentence-case title, an optional count in the data font, an optional
 /// action on the right. Put it in a `VStack(spacing: Space.titleToPanel)` with its panel (8 pt), and sections in a
-/// stack with `Space.section` (32 pt) between them (§2).
+/// stack with `Space.section` (32 pt) between them (§2). VoiceOver: title and count are one heading; the action is
+/// its own button with a 44 pt target (the layout keeps the title's height).
 struct SectionTitle: View {
     let text: LocalizedStringKey
     var trailing: String?
@@ -104,16 +122,24 @@ struct SectionTitle: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(text).font(Typo.sectionTitle).foregroundStyle(Palette.text)
-            if let trailing { Text(trailing).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary) }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(text).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+                if let trailing { Text(trailing).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary) }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
             Spacer()
             if let action {
-                Button(action: action.run) { Text(action.label).font(.subheadline.weight(.semibold)) }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Palette.secondary)
+                Button(action: action.run) {
+                    Text(action.label).font(.subheadline.weight(.semibold))
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Palette.secondary)
+                .padding(.vertical, -12)   // the 44 pt target reaches over the 8 pt gap, the title row stays as high
             }
         }
-        .accessibilityAddTraits(.isHeader)
     }
 }
 

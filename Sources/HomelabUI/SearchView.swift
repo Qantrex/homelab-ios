@@ -24,7 +24,8 @@ struct PosterImage: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .animation(.easeOut(duration: 0.2), value: image == nil)
+            .reducedMotionAnimation(.easeOut(duration: 0.2), value: image == nil)
+            .accessibilityIgnoresInvertColors()   // Smart Invert keeps photos as they are
             .accessibilityHidden(true)
             .task(id: (model?.selected?.id.uuidString ?? "") + "|" + (path ?? "")) { await load() }
     }
@@ -114,7 +115,12 @@ struct SearchView: View {
         guard !Task.isCancelled else { return }
         loading = false
         switch r {
-        case .success(let result): found = result; failure = nil
+        case .success(let result):
+            found = result; failure = nil
+            // VoiceOver hears what came back, without leaving the search field.
+            let n = result.shown.count
+            announce(n == 0 ? String(localized: "Nothing found")
+                            : n == 1 ? String(localized: "1 result") : String(localized: "\(n) results"))
         case .failure(let error): failure = error
         }
     }
