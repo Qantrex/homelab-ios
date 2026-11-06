@@ -60,14 +60,18 @@ public struct Storage: Sendable {
     }
 }
 
-/// The list of servers and which one is shown. `servers.json`.
+/// The list of servers, which one the tabs show and which one the Home tiles come from. `servers.json`.
 public struct ServerList: Codable, Sendable, Equatable {
     public var servers: [ServerConfig]
+    /// Settings → "Show data from": Today, Lab, Actions and Chat.
     public var selected: UUID?
+    /// Settings → "Home tiles from" (a Home Assistant server). Nil, or gone: the first one.
+    public var home: UUID?
 
-    public init(servers: [ServerConfig] = [], selected: UUID? = nil) {
+    public init(servers: [ServerConfig] = [], selected: UUID? = nil, home: UUID? = nil) {
         self.servers = servers
         self.selected = selected
+        self.home = home
     }
 
     public static let fileName = "servers.json"
@@ -78,9 +82,10 @@ public struct ServerList: Codable, Sendable, Equatable {
         return companion.first { $0.id == selected } ?? companion.first
     }
 
-    /// The Home Assistant server for the Home tab (the first one).
+    /// The Home Assistant server for the Home tiles: the chosen one, else the first.
     public var homeAssistant: ServerConfig? {
-        servers.first(where: \.showsHomeTab)
+        let ha = servers.filter(\.showsHomeTab)
+        return ha.first { $0.id == home } ?? ha.first
     }
 
     public mutating func upsert(_ server: ServerConfig) {
@@ -95,6 +100,7 @@ public struct ServerList: Codable, Sendable, Equatable {
     public mutating func remove(_ id: UUID) {
         servers.removeAll { $0.id == id }
         if selected == id { selected = servers.first(where: \.speaksCompanionAPI)?.id }
+        if home == id { home = nil }
     }
 }
 
