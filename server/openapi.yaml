@@ -502,6 +502,13 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ActionOption" }
         placeholder: { type: string }
+        hidden_when:
+          type: object
+          description: "Other field name -> values of it. While that field holds one of them the app hides this field and doesn't send it (Due on the shopping list). Unknown names and non-list values are ignored."
+          additionalProperties:
+            type: array
+            items: { type: string }
+          example: { list: [shopping] }
     ActionOption:
       type: object
       required: [value]

@@ -139,6 +139,9 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         public var required: Bool
         public var options: [Option]
         public var placeholder: String?
+        /// Other field name → values of it that hide this field (`hidden_when`): while that field holds one of them
+        /// the form neither shows nor sends this one. Unknown names are harmless (the field stays visible).
+        public var hiddenWhen: [String: [String]]
 
         public var id: String { name }
 
@@ -147,7 +150,8 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         }
 
         public init(name: String, label: String? = nil, kind: Kind = .text, max: Int = 200, required: Bool = false,
-                    options: [Option] = [], placeholder: String? = nil) {
+                    options: [Option] = [], placeholder: String? = nil, hiddenWhen: [String: [String]] = [:]) {
+            self.hiddenWhen = hiddenWhen
             self.name = name; self.label = label ?? name
             // A choice without options can only be typed.
             self.kind = kind == .choice && options.isEmpty ? .text : kind
@@ -155,7 +159,9 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
             self.options = options; self.placeholder = placeholder
         }
 
-        enum CodingKeys: String, CodingKey { case name, label, kind, max, required, options, placeholder }
+        enum CodingKeys: String, CodingKey { case name, label, kind, max, required, options, placeholder
+            case hiddenWhen = "hidden_when"
+        }
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -164,7 +170,20 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
             }
             self.init(name: name, label: c.text(.label), kind: c.text(.kind).flatMap { Kind(rawValue: $0.lowercased()) } ?? .text,
                       max: c.int(.max) ?? 200, required: c.bool(.required) ?? false,
-                      options: c.array(Option.self, .options), placeholder: c.text(.placeholder))
+                      options: c.array(Option.self, .options), placeholder: c.text(.placeholder),
+                      hiddenWhen: (c.lenient([String: Lossy<[String]>].self, .hiddenWhen) ?? [:]).compactMapValues(\.value))
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(name, forKey: .name)
+            try c.encode(label, forKey: .label)
+            try c.encode(kind, forKey: .kind)
+            try c.encode(max, forKey: .max)
+            try c.encode(required, forKey: .required)
+            if !options.isEmpty { try c.encode(options, forKey: .options) }
+            try c.encodeIfPresent(placeholder, forKey: .placeholder)
+            if !hiddenWhen.isEmpty { try c.encode(hiddenWhen, forKey: .hiddenWhen) }
         }
     }
 
@@ -382,10 +401,22 @@ public struct ActionForm: Sendable, Equatable {
     /// Length as the server counts it: code points (Python's `len`), so "👨‍👩‍👧" is 5, not 1.
     public static func length(_ text: String) -> Int { text.unicodeScalars.count }
 
+    /// Whether `hiddenWhen` hides the field right now: the other field holds one of the listed values (a value
+    /// the form started with counts like a typed one).
+    public func isHidden(_ field: ActionSpec.Field) -> Bool {
+        field.hiddenWhen.contains { other, values in
+            other != field.name
+                && values.contains((fieldValues[other] ?? "").trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+    }
+
+    /// The fields to show and send, in form order.
+    public var visibleFields: [ActionSpec.Field] { spec.fields.filter { !isHidden($0) } }
+
     /// The payload to send: without empty fields; trimmed, except an unchanged prefilled value (`prefilled`).
     public var payload: [String: String] {
         var out: [String: String] = [:]
-        for field in spec.fields {
+        for field in visibleFields {
             let raw = fieldValues[field.name] ?? ""
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
@@ -406,7 +437,7 @@ public struct ActionForm: Sendable, Equatable {
             out.append("\(name) is too long (\(Self.maxArg) characters at most).")
         }
         let payload = payload
-        for field in spec.fields {
+        for field in visibleFields {
             let v = payload[field.name]
             guard let v else {
                 if field.required { out.append("\(field.label) is missing.") }
@@ -442,7 +473,7 @@ public struct ActionForm: Sendable, Equatable {
             }
         }
         let payload = payload
-        for field in spec.fields {
+        for field in visibleFields {
             guard let v = payload[field.name] else { continue }
             out.append((field.label, field.options.first { $0.value == v }?.label ?? v))
         }

@@ -58,9 +58,9 @@ struct ActionFormView: View {
                     }
                     .surfaceRows()
                 }
-                if !spec.fields.isEmpty {
+                if !form.visibleFields.isEmpty {
                     Section {
-                        ForEach(spec.fields) { field in fieldRow(field) }
+                        ForEach(form.visibleFields) { field in fieldRow(field) }
                     }
                     .surfaceRows()
                 }

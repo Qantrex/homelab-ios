@@ -1,7 +1,8 @@
 {"actions": [
   {"name": "todo-add", "label": "Add a to-do", "icon": "checklist", "hint": "Goes to the Home Assistant list; with a time the phone reminds you.",
    "fields": [{"name": "summary", "label": "To-do", "kind": "text", "max": 120, "required": true},
-              {"name": "due", "label": "Due", "kind": "date-or-datetime", "max": 25, "required": false},
+              {"name": "due", "label": "Due", "kind": "date-or-datetime", "max": 25, "required": false,
+               "hidden_when": {"list": ["shopping"]}},
               {"name": "description", "label": "Notes", "kind": "multiline", "max": 300, "required": false},
               {"name": "list", "label": "List", "kind": "choice", "max": 10, "required": false,
                "options": [{"value": "todo", "label": "To-dos"}, {"value": "shopping", "label": "Shopping"}]}]},

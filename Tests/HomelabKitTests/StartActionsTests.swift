@@ -187,6 +187,40 @@ import Testing
         #expect(todo.summary.map { "\($0.label)=\($0.value)" } == ["To-do=Milk", "List=Shopping"])
     }
 
+    @Test func fieldsHideByAnotherFieldsValue() throws {
+        let todo = try spec("todo-add")
+        #expect(todo.fields[1].hiddenWhen == ["list": ["shopping"]])
+        var form = ActionForm(todo, now: now, calendar: vienna)
+        form.fieldValues = ["summary": "Milk", "due": "2026-11-07", "list": "todo"]
+        #expect(form.payload["due"] == "2026-11-07" && form.visibleFields.map(\.name).contains("due"))
+        form.fieldValues["list"] = "shopping"
+        #expect(form.payload == ["summary": "Milk", "list": "shopping"])
+        #expect(!form.visibleFields.map(\.name).contains("due"))
+        #expect(form.summary.map(\.label) == ["To-do", "List"])
+        // A bad value in a hidden field blocks nothing.
+        form.fieldValues["due"] = "soon"
+        #expect(form.problems.isEmpty)
+        form.fieldValues["list"] = "todo"
+        #expect(!form.problems.isEmpty)
+        // The other field's value may come from a default.
+        let list = try decode("""
+        {"actions": [{"name": "x", "fields": [
+          {"name": "list", "kind": "choice", "required": true, "options": [{"value": "shopping"}, {"value": "todo"}]},
+          {"name": "due", "required": true, "hidden_when": {"list": ["shopping"], "ghost": ["a"], "bad": "x"}}]}]}
+        """)
+        #expect(list[0].fields[1].hiddenWhen == ["list": ["shopping"], "ghost": ["a"]])
+        var d = ActionForm(list[0], now: now, calendar: vienna)
+        #expect(d.fieldValues["list"] == "shopping")
+        #expect(d.payload == ["list": "shopping"] && d.problems.isEmpty)
+        d.fieldValues["list"] = "todo"
+        #expect(d.problems == ["due is missing."])
+        // Cache round trip keeps it; odd values don't break decoding.
+        let again = try JSONDecoder().decode([ActionSpec].self, from: JSONEncoder().encode(list))
+        #expect(again == list)
+        let odd = try decode(#"{"actions": [{"name": "y", "fields": [{"name": "a", "hidden_when": "no"}]}]}"#)
+        #expect(odd[0].fields[0].hiddenWhen.isEmpty)
+    }
+
     @Test func fieldDefaults() throws {
         let at = Date(timeIntervalSince1970: 1_793_975_400)   // 15:30 Vienna
         func d(_ kind: ActionSpec.Field.Kind) -> String? {

@@ -98,8 +98,13 @@ is the "everything odd at once" example.
                       {"label": "No wake-up", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": ":off"}]}]},
              {"name": "todo-add", "label": "Add a to-do", "icon": "checklist",
               "fields": [{"name": "summary", "label": "To-do", "kind": "text", "max": 120, "required": true},
-                         {"name": "due", "label": "Due", "kind": "date-or-datetime", "max": 25}]}]}
+                         {"name": "due", "label": "Due", "kind": "date-or-datetime", "max": 25,
+                          "hidden_when": {"list": ["shopping"]}}]}]}
 ```
+
+A field may carry `hidden_when`: `{"<other field>": ["value", ...]}`. While that other field's current value is one of
+the listed ones, the app hides the field and doesn't send it (Due on the shopping list). Unknown field names and
+non-list values are ignored (the field stays visible). The server still refuses what the action refuses with 400.
 
 `POST /actions/wake-set` with `{"arg": "2026-11-07T07:30", "payload": {}}` → `{"ok": true, "text": "Done: wake-set 2026-11-07T07:30"}`
 
