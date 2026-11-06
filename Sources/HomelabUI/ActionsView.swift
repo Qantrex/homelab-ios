@@ -16,9 +16,12 @@ struct ActionsView: View {
     @State private var outcome: ActionOutcome?
     /// The Scan screen (feature `documents`).
     @State private var scanning = false
+    /// The search screen (feature `search`): from the Find tile or a `homelab://search?q=` link.
+    @State private var searching: SearchRequest?
 
     /// Scan tile: only where the server takes documents.
     private var canScan: Bool { model.selected != nil && model.selectedStatus.features.contains(.documents) }
+    private var canSearch: Bool { model.selected != nil && model.selectedStatus.features.contains(.search) }
     private var pending: [PendingAction] { model.selectedStatus.snapshot?.state.pending ?? [] }
     private var startable: [ActionSpec] {
         model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
@@ -39,12 +42,13 @@ struct ActionsView: View {
                             Task { await model.refresh() }
                         }
                     }
-                    if !startable.isEmpty || canScan {
+                    if !startable.isEmpty || canScan || canSearch {
                         VStack(alignment: .leading, spacing: Space.titleToPanel) {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
-                                      open: { formFor = $0 }, scan: { scanning = true })
+                                      open: { formFor = $0 }, scan: { scanning = true },
+                                      search: canSearch ? { searching = SearchRequest(query: "") } : nil)
                             if !model.outboxDropped.isEmpty {
                                 NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
                             }
@@ -60,7 +64,7 @@ struct ActionsView: View {
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startable.isEmpty && !canScan && model.selectedStatus.snapshot != nil
+                } else if pending.isEmpty && startable.isEmpty && !canScan && !canSearch && model.selectedStatus.snapshot != nil
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
@@ -77,6 +81,9 @@ struct ActionsView: View {
             }
             .sheet(isPresented: $scanning, onDismiss: { openRequested() }) {
                 if let server = model.selected { ScanView(model: model, server: server) }
+            }
+            .sheet(item: $searching, onDismiss: { openRequested() }) { request in
+                if let server = model.selected { SearchView(model: model, server: server, query: request.query) }
             }
             .onChange(of: openable) { _, _ in openRequested() }
             .onAppear { openRequested() }
@@ -126,7 +133,7 @@ struct ActionsView: View {
     /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
     private var openable: String {
         let s = model.selectedStatus
-        return [model.openAction ?? "", "\(model.openScan)", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
+        return [model.openAction ?? "", "\(model.openScan)", model.openSearch?.id.uuidString ?? "", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
                 "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)", "\(model.formSheetOpen)"]
             .joined(separator: "|")
     }
@@ -134,6 +141,10 @@ struct ActionsView: View {
     /// Opens a requested form once this tab shows and the list knows the action. While another tab shows or a form
     /// is open (here or a card's) the request waits (`AppModel.takeOpenAction`).
     private func openRequested() {
+        if model.tab == .actions, formFor == nil, !scanning, searching == nil, let request = model.takeOpenSearch() {   // homelab://search
+            searching = request
+            return
+        }
         if model.tab == .actions, formFor == nil, !scanning, model.takeOpenScan() {   // homelab://scan
             scanning = true
             return

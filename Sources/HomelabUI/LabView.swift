@@ -178,6 +178,9 @@ struct LabView: View {
             }
         }
 
+        // Cards the server wants here (tailnet, ad blocking, backups), as rows, between the hosts and the services.
+        ForEach(state.cards.filter { $0.place == .lab }) { CardView(card: $0, lab: true, model: model) }
+
         if !status.services.isEmpty {
             ServicesSection(services: status.services)
         }
@@ -297,14 +300,15 @@ struct HostTile: View {
                     .frame(height: 20)
             }
             if host.reachable == true {
-                metric("Load", Format.load(host.load), Format.loadShare(host.load, cores: host.cpuCount))
-                metric("RAM", Format.percent(host.memPct), host.memPct.map { Double($0) / 100 })
+                metric("Load", Format.load(host.load), Format.loadShare(host.load, cores: host.cpuCount),
+                       host.loadLevel)
+                metric("RAM", Format.percent(host.memPct), host.memPct.map { Double($0) / 100 }, host.ramLevel)
                 if let d = Format.worstDisk(host.disks) {
-                    metric("Disk", "\(d.percent)%", Double(d.percent) / 100)
+                    metric("Disk", "\(d.percent)%", Double(d.percent) / 100, host.diskLevel)
                 }
                 HStack(spacing: 12) {
                     if host.temp != nil {
-                        chip(Format.temperature(host.temp), symbol: "thermometer.medium", warn: (host.temp ?? 0) >= Format.hotCelsius)
+                        chip(Format.temperature(host.temp), symbol: "thermometer.medium", warn: host.tempLevel != .normal)
                     }
                     if host.containersTotal != nil {
                         chip(Format.containers(up: host.containersUp, total: host.containersTotal), symbol: "shippingbox",
@@ -337,13 +341,13 @@ struct HostTile: View {
     private var spokenMetrics: String { hostSpokenMetrics(host, flags: shownFlags) }
 
     /// Label in sentence case (secondary), value in the data font, a thin meter under them.
-    private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?) -> some View {
+    private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?, _ level: ValueLevel) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(label).font(.footnote).foregroundStyle(Palette.secondary)
                 Spacer(minLength: 8)
                 Text(value).font(Typo.data(.footnote))
-                    .foregroundStyle(Meter.valueColor(share))   // the bar stays grey; the number turns gold/love
+                    .foregroundStyle(Meter.valueColor(level))   // the bar stays grey; the number turns gold/love at its limits
                     .contentTransition(.numericText())
                     .animation(.snappy, value: value)
             }
@@ -363,29 +367,34 @@ struct HostTile: View {
 
 // MARK: - Host row (Standard density)
 
-/// The header over the three value columns of the host rows.
+/// The header over the three value columns of the host rows. The columns are as wide as `HostRow`'s (same scaled
+/// width), so "Load", "RAM" and "Disk" stay over their numbers at every text size.
 fileprivate struct HostColumnHeader: View {
+    @ScaledMetric(relativeTo: .subheadline) private var column: CGFloat = 50
+
     var body: some View {
         HStack(spacing: 8) {
             Spacer(minLength: 0)
             ForEach(["Load", "RAM", "Disk"], id: \.self) { title in
                 Text(LocalizedStringKey(title)).font(Typo.meta).foregroundStyle(Palette.tertiary)
-                    .frame(minWidth: HostRow.column, alignment: .trailing)
+                    .lineLimit(1)
+                    .frame(width: column, alignment: .trailing)
             }
         }
         .accessibilityHidden(true)
     }
 }
 
-/// One host as a row (research 3c #6): status dot · name in 17 semibold · a small grey sparkline · Load, RAM and Disk
-/// as three right-aligned mono values. Only a value over its limit turns gold or love. Under the name, in meta: the
-/// state when it isn't OK, flags, a hot temperature or missing containers.
+/// One host as a row (research 3c #6): status dot · name in 17 semibold (up to two lines, never cut) · a small grey
+/// sparkline (dropped first when the row is too narrow) · Load, RAM and Disk as three right-aligned mono values in
+/// fixed columns. Only a value over its limit turns gold or love (`Host.loadLevel` and friends: the sparkline's
+/// limits). Under the name, in meta: the state when it isn't OK, flags, a hot temperature or missing containers. At
+/// accessibility sizes the values go under the name, one "Load 0.42" per line (docs/DESIGN.md §6).
 struct HostRow: View {
     let host: Host
     let health: HostHealth
     @Environment(\.dynamicTypeSize) private var typeSize
-
-    static let column: CGFloat = 46
+    @ScaledMetric(relativeTo: .subheadline) private var column: CGFloat = 50
 
     private var shownFlags: [String] { host.flags.filter { $0 != "asleep" } }
     private var diskPercent: Int? { Format.worstDisk(host.disks)?.percent }
@@ -397,34 +406,28 @@ struct HostRow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     nameBlock(withMeta: true)
                     if up {
-                        HStack(spacing: 16) {
-                            labelled("Load", loadText, loadShare)
-                            labelled("RAM", ramText, ramShare)
-                            labelled("Disk", diskText, diskShare)
+                        VStack(alignment: .leading, spacing: 4) {
+                            labelled("Load", loadText, host.loadLevel)
+                            labelled("RAM", ramText, host.ramLevel)
+                            labelled("Disk", diskText, host.diskLevel)
                         }
+                        .padding(.leading, 18)   // under the name, past the status dot
                     }
                 }
             } else {
                 // The second line spans the whole row: squeezed next to the values it broke after every word
                 // ("Under-vol-tage") on a 5.4" phone (2026-11-06).
                 VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .center, spacing: 8) {
-                    nameBlock(withMeta: false)
-                    Spacer(minLength: 4)
-                    if up, let history = host.history, history.last(.load) != nil {
-                        Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"),
-                                  lineWidth: 1, fill: false)
-                            .frame(width: 56, height: 20)
+                    // The sparkline goes first when the name and the values don't fit with it; the name then wraps.
+                    ViewThatFits(in: .horizontal) {
+                        line(withSparkline: true)
+                        line(withSparkline: false)
                     }
-                    value(loadText, loadShare)
-                    value(ramText, ramShare)
-                    value(diskText, diskShare)
-                }
-                if let meta {
-                    meta.font(Typo.secondary).foregroundStyle(Palette.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.leading, 18)   // under the name, past the status dot
-                }
+                    if let meta {
+                        meta.font(Typo.secondary).foregroundStyle(Palette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 18)   // under the name, past the status dot
+                    }
                 }
             }
         }
@@ -439,12 +442,29 @@ struct HostRow: View {
         .accessibilityAddTraits(.isButton)
     }
 
+    private func line(withSparkline: Bool) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            nameBlock(withMeta: false)
+            Spacer(minLength: 4)
+            if withSparkline, up, let history = host.history, history.last(.load) != nil {
+                Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"),
+                          lineWidth: 1, fill: false)
+                    .frame(width: 56, height: 20)
+            }
+            value(loadText, host.loadLevel)
+            value(ramText, host.ramLevel)
+            value(diskText, host.diskLevel)
+        }
+    }
+
     private func nameBlock(withMeta: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
             VStack(alignment: .leading, spacing: 2) {
-                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(1).minimumScaleFactor(0.8)
+                // Two lines, never cut and never shrunk ("pi-me…" and "media…" on the 5.4" phone, 2026-11-06).
+                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 if withMeta, let meta { meta.font(Typo.secondary).foregroundStyle(Palette.secondary) }
             }
         }
@@ -458,7 +478,7 @@ struct HostRow: View {
         } else if health != .ok {
             parts.append(Text(health.label))
         }
-        if up, (host.temp ?? 0) >= Format.hotCelsius {
+        if up, host.tempLevel != .normal {
             parts.append(Text(Image(systemName: "thermometer.medium")).foregroundColor(Palette.gold) + Text(" " + Format.temperature(host.temp)))
         }
         if up, host.containersTotal != nil, (host.containersUp ?? 0) < (host.containersTotal ?? 0) {
@@ -474,34 +494,36 @@ struct HostRow: View {
     private var loadText: String { up ? Format.load(host.load) : "–" }
     private var ramText: String { up ? Format.percent(host.memPct) : "–" }
     private var diskText: String { up ? (diskPercent.map { "\($0)%" } ?? "–") : "–" }
-    private var loadShare: Double? { up ? Format.loadShare(host.load, cores: host.cpuCount) : nil }
-    private var ramShare: Double? { up ? host.memPct.map { Double($0) / 100 } : nil }
-    private var diskShare: Double? { up ? diskPercent.map { Double($0) / 100 } : nil }
 
-    private func value(_ text: String, _ share: Double?) -> some View {
+    private func value(_ text: String, _ level: ValueLevel) -> some View {
         Text(text).font(Typo.rowValue)
-            .foregroundStyle(text == "–" ? Palette.tertiary : Meter.valueColor(share))
-            .lineLimit(1).minimumScaleFactor(0.8)
-            .frame(minWidth: Self.column, alignment: .trailing)
+            .foregroundStyle(text == "–" ? Palette.tertiary : Meter.valueColor(level))
+            .lineLimit(1)
+            .frame(width: column, alignment: .trailing)
     }
 
-    private func labelled(_ label: LocalizedStringKey, _ text: String, _ share: Double?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    /// "Load 0.42" on one line: the label in meta, the value in the data font.
+    private func labelled(_ label: LocalizedStringKey, _ text: String, _ level: ValueLevel) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(label).font(Typo.meta).foregroundStyle(Palette.tertiary)
-            Text(text).font(Typo.rowValue).foregroundStyle(text == "–" ? Palette.tertiary : Meter.valueColor(share))
+            Text(text).font(Typo.rowValue).foregroundStyle(text == "–" ? Palette.tertiary : Meter.valueColor(level))
         }
     }
 }
 
-/// What VoiceOver reads after a host's name: the numbers the tile or row shows.
+/// What VoiceOver reads after a host's name: the numbers the tile or row shows. A number over its limit says "high".
 fileprivate func hostSpokenMetrics(_ host: Host, flags shownFlags: [String]) -> String {
     guard host.reachable == true else {
         let seen = host.checked.map { [String(localized: "last seen \(Format.age($0))")] } ?? []
         return (seen + shownFlags.map(Format.flag)).joined(separator: ", ")
     }
-    var parts = [String(localized: "load \(Format.load(host.load))"), String(localized: "memory \(Format.percent(host.memPct))")]
-    if let d = Format.worstDisk(host.disks) { parts.append(String(localized: "disk \(d.mount) \(d.percent) percent")) }
-    if host.temp != nil { parts.append(Format.temperature(host.temp)) }
+    func high(_ text: String, _ level: ValueLevel) -> String { level.isHigh ? text + " " + String(localized: "high") : text }
+    var parts = [high(String(localized: "load \(Format.load(host.load))"), host.loadLevel),
+                 high(String(localized: "memory \(Format.percent(host.memPct))"), host.ramLevel)]
+    if let d = Format.worstDisk(host.disks) {
+        parts.append(high(String(localized: "disk \(d.mount) \(d.percent) percent"), host.diskLevel))
+    }
+    if host.temp != nil { parts.append(high(Format.temperature(host.temp), host.tempLevel)) }
     if host.containersTotal != nil {
         parts.append(String(localized: "containers \(Format.containers(up: host.containersUp, total: host.containersTotal))"))
     }

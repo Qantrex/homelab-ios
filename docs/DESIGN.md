@@ -61,7 +61,12 @@ colour alone.
 
 - The hero headline stays white. The mood is the light behind it (`MoodGlow`) plus a status icon, not coloured text.
 - Colour sits on symbols, dots and numbers only. A meter or sparkline is grey; only the value next to it (and the
-  sparkline's last dot) turns gold at 75 % of its limit and love at 90 % (`Meter.valueColor`).
+  sparkline's last dot) turns gold or love. **One set of limits** (`HostHistory.Series.limits`, `Series.level`,
+  `Meter.valueColor`) for the row, the tile, the dot and the detail chart: gold from / love from: load 1x / 2x the core
+  count, RAM 90 / 95 %, fullest disk 75 / 90 %, temperature 80 / 90 C. Reaching the limit counts. A value over its limit
+  also says "high" to VoiceOver.
+- Text colours keep 4.5:1 on the panel: tertiary #808080 (dark) / #6E6E6E (light), light-mode gold #9A6100. Min and max
+  numbers are secondary, not tertiary.
 - A broken item shows a coloured dot or SF Symbol next to it (with its word: "unhealthy", "93%"), not a coloured card.
 - One accent per element: never coloured text in a coloured border in a coloured glow.
 - Never blue, also not by default: every control sets `.tint(Palette.accent)`.

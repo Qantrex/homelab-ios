@@ -1,0 +1,205 @@
+{
+ "time": "2026-11-04T21:30:00",
+ "status": "ok",
+ "checked": "2026-11-04T21:28:00",
+ "problems": [],
+ "hosts": [
+  {
+   "id": "nas",
+   "name": "nas",
+   "kind": "nas",
+   "reachable": true,
+   "checked": "2026-11-04T21:28:00",
+   "load": 0.42,
+   "cpu_count": 4,
+   "mem_pct": 38,
+   "temp": 41.5,
+   "disks": {
+    "/": 31,
+    "/srv/media": 64
+   },
+   "containers": {
+    "up": 12,
+    "total": 12
+   },
+   "updates": {
+    "upgradable": 0,
+    "reboot_required": false
+   },
+   "backup": {
+    "last": "2026-11-04T04:45:10",
+    "result": "success"
+   },
+   "flags": []
+  },
+  {
+   "id": "pi",
+   "name": "pi",
+   "kind": "raspberry-pi",
+   "reachable": true,
+   "checked": "2026-11-04T21:28:00",
+   "load": 0.9,
+   "cpu_count": 4,
+   "mem_pct": 55,
+   "temp": 52.0,
+   "disks": {
+    "/": 47
+   },
+   "containers": {
+    "up": 8,
+    "total": 8
+   },
+   "updates": {
+    "upgradable": 3,
+    "reboot_required": false
+   },
+   "flags": []
+  }
+ ],
+ "pending": [],
+ "cards": [
+  {
+   "id": "tailnet",
+   "title": "Tailnet",
+   "subtitle": "Key expiry off on all servers",
+   "icon": "network",
+   "tint": "gray",
+   "style": "list",
+   "place": "lab",
+   "updated": "2026-11-04T21:28:00",
+   "items": [
+    {
+     "title": "pi",
+     "subtitle": "linux · direct",
+     "value": "online"
+    },
+    {
+     "title": "nas",
+     "subtitle": "linux · relay",
+     "value": "online"
+    },
+    {
+     "title": "laptop",
+     "subtitle": "linux · key until 26.03.2027",
+     "value": "seen 3 h ago"
+    },
+    {
+     "title": "phone",
+     "subtitle": "iOS · key until 12.11.2026",
+     "value": "online",
+     "tint": "yellow"
+    },
+    {
+     "title": "tablet",
+     "subtitle": "iOS · key has expired",
+     "value": "offline",
+     "tint": "red"
+    }
+   ]
+  },
+  {
+   "id": "dns",
+   "title": "Ad blocking",
+   "icon": "shield",
+   "tint": "gray",
+   "style": "metrics",
+   "place": "lab",
+   "updated": "2026-11-04T21:28:00",
+   "items": [
+    {
+     "title": "Queries",
+     "subtitle": "24 h, both Pi-holes",
+     "value": "23.4k"
+    },
+    {
+     "title": "Blocked",
+     "value": "18.4 %"
+    },
+    {
+     "title": "Blocking",
+     "value": "on",
+     "action": {
+      "name": "dns-pause",
+      "label": "Pause 5 min",
+      "arg": "5"
+     }
+    }
+   ]
+  },
+  {
+   "id": "dns-top",
+   "title": "Top blocked",
+   "icon": "hand.raised",
+   "tint": "gray",
+   "style": "list",
+   "place": "lab",
+   "items": [
+    {
+     "title": "ads.example.net",
+     "value": "812"
+    },
+    {
+     "title": "tracker.example.org",
+     "value": "640"
+    },
+    {
+     "title": "telemetry.example.com",
+     "value": "377"
+    }
+   ]
+  },
+  {
+   "id": "backups",
+   "title": "Backups",
+   "icon": "externaldrive.badge.checkmark",
+   "tint": "gray",
+   "style": "list",
+   "place": "lab",
+   "updated": "2026-11-04T21:28:00",
+   "items": [
+    {
+     "title": "pi → GitHub",
+     "subtitle": "18 MB, Wed",
+     "value": "today 04:52"
+    },
+    {
+     "title": "pi → cloud",
+     "subtitle": "21 snapshots · 274 MB of 8 GB",
+     "value": "today 04:52",
+     "progress": 0.03
+    },
+    {
+     "title": "nas → GitHub",
+     "subtitle": "last run failed",
+     "value": "2 d ago",
+     "tint": "red"
+    },
+    {
+     "title": "nas local copy",
+     "subtitle": "not set up",
+     "value": "–"
+    }
+   ]
+  },
+  {
+   "id": "mystery",
+   "title": "Somewhere else",
+   "style": "list",
+   "place": "moon",
+   "items": [
+    {
+     "title": "Unknown place shows on Today"
+    }
+   ]
+  }
+ ],
+ "busy": [],
+ "last_message": {
+  "id": 1762288000000000000,
+  "ts": "2026-11-04T06:00:00",
+  "from": "agent",
+  "job": "digest",
+  "status": "OK",
+  "text": "All hosts fine. Backups ran at 04:45."
+ }
+}

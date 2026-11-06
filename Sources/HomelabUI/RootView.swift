@@ -73,7 +73,7 @@ public struct RootView: View {
             }
             // Proposals to approve, or actions the app starts itself (like AppModel.availableTabs).
             if model.selectedStatus.features.contains(.actions) || model.selectedStatus.features.contains(.runActions)
-                || model.selectedStatus.features.contains(.documents) {
+                || model.selectedStatus.features.contains(.documents) || model.selectedStatus.features.contains(.search) {
                 Tab("Actions", systemImage: "checkmark.shield", value: AppTab.actions) {
                     ActionsView(model: model)
                 }

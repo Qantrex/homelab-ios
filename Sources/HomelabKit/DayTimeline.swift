@@ -4,7 +4,7 @@ extension HomelabState {
     /// The card Today shows as the day under the headline (and the Day widget): the server's "today" card, else the
     /// first metrics card that is not the weather card (that one has its own line under the headline).
     public var dayCard: Card? {
-        cards.first { $0.id == "today" } ?? cards.first { $0.style == .metrics && $0.id != "weather" }
+        cards.first { $0.id == "today" } ?? cards.first { $0.style == .metrics && $0.id != "weather" && $0.place == .today }
     }
 }
 

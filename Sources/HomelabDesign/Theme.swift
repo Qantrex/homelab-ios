@@ -23,14 +23,16 @@ public enum Palette {
     /// Main text and the accent (buttons, selected tab): white on black, black on white.
     public static let text = dynamic(dark: 0xF2F2F2, light: 0x0A0A0A)
     public static let secondary = dynamic(dark: 0x9A9A9A, light: 0x5C5C5C)
-    public static let tertiary = dynamic(dark: 0x5E5E5E, light: 0x9A9A9A)
+    /// Meta text (ages, footers, column headers): 4.5:1 or more on the panel in both modes.
+    public static let tertiary = dynamic(dark: 0x808080, light: 0x6E6E6E)
     /// Text on an accent-coloured button.
     public static let onAccent = dynamic(dark: 0x000000, light: 0xFFFFFF)
     public static let accent = text
 
     /// Rosé Pine Moon (dark) and Rosé Pine Dawn (light, readable on white).
     public static let love = dynamic(dark: 0xEB6F92, light: 0xB4637A)
-    public static let gold = dynamic(dark: 0xF6C177, light: 0xEA9D34)
+    /// Light gold is dark enough for text: about 4.5:1 on #F2F2F2.
+    public static let gold = dynamic(dark: 0xF6C177, light: 0x9A6100)
     public static let iris = dynamic(dark: 0xC4A7E7, light: 0x907AA9)
 
     static func dynamic(dark: UInt32, light: UInt32) -> Color {
@@ -234,10 +236,14 @@ public struct Meter: View {
         self.tint = tint
     }
 
-    /// The colour of the number that goes with a share of a limit: gold from 75 %, love from 90 %, else normal text.
-    public static func valueColor(_ share: Double?, normal: Color = Palette.text) -> Color {
-        guard let share else { return normal }
-        return share >= 0.9 ? Palette.love : share >= 0.75 ? Palette.gold : normal
+    /// The colour of a number over its limit: gold from the series' warning limit, love from its problem limit
+    /// (`HostHistory.Series.level`), else normal text. The sparkline's dot and the detail chart use the same limits.
+    public static func valueColor(_ level: ValueLevel, normal: Color = Palette.text) -> Color {
+        switch level {
+        case .normal: normal
+        case .warning: Palette.gold
+        case .problem: Palette.love
+        }
     }
 
     public var body: some View {

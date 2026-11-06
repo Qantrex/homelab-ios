@@ -6,6 +6,17 @@ import FoundationNetworking
 /// The one network seam: URLSession in the app, a fake in tests.
 public protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    /// Like `send`, but stops reading past `maxBytes` (`APIError.tooLarge`): for pictures, which are small.
+    func send(_ request: URLRequest, maxBytes: Int) async throws -> (Data, HTTPURLResponse)
+}
+
+extension HTTPTransport {
+    /// Transports that can't stop early read everything and check afterwards.
+    public func send(_ request: URLRequest, maxBytes: Int) async throws -> (Data, HTTPURLResponse) {
+        let (data, response) = try await send(request)
+        if data.count > maxBytes { throw APIError.tooLarge }
+        return (data, response)
+    }
 }
 
 public struct URLSessionTransport: HTTPTransport {
@@ -48,6 +59,11 @@ public struct URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await send(request, maxBytes: maxBytes)
+    }
+
+    public func send(_ request: URLRequest, maxBytes limit: Int) async throws -> (Data, HTTPURLResponse) {
+        let maxBytes = min(limit, self.maxBytes)
         #if canImport(Darwin)
         // Streamed, so a hostile server can't make the app buffer more than `maxBytes`.
         let (bytes, response) = try await (Self.isUpload(request) ? uploadSession : session).bytes(for: request)
@@ -232,6 +248,12 @@ public enum APIError: Error, Equatable, Sendable {
     /// reason shows that reason, and so does a 5xx (`serverSaid`); without one, the generic texts.
     public static func fromAction(status: Int, body: Data) -> APIError? {
         if status == 404 || status == 429, let text = serverErrorText(body) { return .badRequest(text) }
+        if (500..<600).contains(status), let text = serverErrorText(body) { return .serverSaid(status: status, text: text) }
+        return from(status: status, body: body)
+    }
+
+    /// The answer to `GET /search`: a 5xx with the server's own words ("Seerr did not answer") shows them.
+    public static func fromSearch(status: Int, body: Data) -> APIError? {
         if (500..<600).contains(status), let text = serverErrorText(body) { return .serverSaid(status: status, text: text) }
         return from(status: status, body: body)
     }
