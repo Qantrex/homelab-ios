@@ -32,6 +32,52 @@ public enum Format {
         return m == 0 ? "in \(h) h" : "in \(h) h \(m) min"
     }
 
+    // Spoken twins (VoiceOver): the screen shows "26 min", "3 h ago", "+3"; VoiceOver reads "26 minutes", "3 hours
+    // ago", "3 minutes late". English, like the rest of the app's text.
+
+    /// "1 minute", "26 minutes", "1 hour", "3 days".
+    public static func spokenAmount(_ n: Int, _ unit: SpokenUnit) -> String {
+        "\(n) \(n == 1 ? unit.one : unit.many)"
+    }
+
+    public enum SpokenUnit: Sendable {
+        case minute, hour, day
+        var one: String { switch self { case .minute: "minute"; case .hour: "hour"; case .day: "day" } }
+        var many: String { one + "s" }
+    }
+
+    /// `age` for VoiceOver: "just now", "2 minutes ago", "3 hours ago", "yesterday", "4 days ago".
+    public static func spokenAge(_ date: Date?, now: Date = Date()) -> String {
+        spoken(age(date, now: now))
+    }
+
+    /// `countdown(minutes:)` for VoiceOver: "now", "in 26 minutes", "in 1 hour", "in 2 hours 5 minutes".
+    public static func spokenCountdown(minutes: Int) -> String {
+        spoken(countdown(minutes: minutes))
+    }
+
+    /// A delay for VoiceOver: "3 minutes late"; "late" without a number.
+    public static func spokenDelay(minutes: Int?) -> String {
+        guard let minutes, minutes > 0 else { return "late" }
+        return spokenAmount(minutes, .minute) + " late"
+    }
+
+    /// Any short text with "26 min", "3 h", "2 d", "+3 min" in it, with the units in words: "in 2 h 5 min" →
+    /// "in 2 hours 5 minutes", "4 d ago" → "4 days ago", "+3 min" → "3 minutes late". Other text stays as it is.
+    public static func spoken(_ text: String) -> String {
+        var out = ""
+        var rest = Substring(text)
+        let pattern = /(\+)?\b([0-9]+)[ \u{202F}\u{00A0}](min|h|d)\b/
+        while let m = rest.firstMatch(of: pattern) {
+            out += rest[rest.startIndex..<m.range.lowerBound]
+            let n = Int(m.output.2) ?? 0
+            let unit: SpokenUnit = switch m.output.3 { case "min": .minute; case "h": .hour; default: .day }
+            out += spokenAmount(n, unit) + (m.output.1 != nil ? " late" : "")
+            rest = rest[m.range.upperBound...]
+        }
+        return out + rest
+    }
+
     /// How close a `due` is, for its colour: past (love), under 24 h ahead or today (gold), later (plain).
     public enum Level: String, Sendable, Equatable, CaseIterable {
         case past, soon, later

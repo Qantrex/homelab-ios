@@ -42,7 +42,7 @@ public struct MoodGlow: View {
                 .frame(height: reach * 1.15)
                 .transition(.opacity)
         }
-        .animation(.easeInOut(duration: 0.8), value: level)
+        .reducedMotionAnimation(.easeInOut(duration: 0.8), value: level)
         .accessibilityHidden(true)
     }
 }
@@ -56,6 +56,8 @@ public struct DayLineAcross: View {
     let compact: Bool
     /// Whole hours in tomorrow mode, for widgets that don't redraw every minute.
     let coarse: Bool
+    /// The compact track's time: 15 pt at the default text size, scaled with the text around it.
+    @ScaledMetric(relativeTo: .subheadline) private var compactValueSize: CGFloat = 15
 
     public init(line: DayTimeline, valueSize: CGFloat? = nil, compact: Bool = false, coarse: Bool = false) {
         self.line = line
@@ -71,7 +73,7 @@ public struct DayLineAcross: View {
                     DayRail(phase: stop.phase, fill: line.fill(after: i), axis: .horizontal)
                         .frame(height: 18)
                     DayStopLabel(stop: stop, countdown: compact ? nil : line.minutesToNext,
-                                 valueSize: compact ? 15 : valueSize, compact: compact,
+                                 valueSize: compact ? compactValueSize : valueSize, compact: compact,
                                  coarse: coarse && line.isTomorrow)
                         .padding(.trailing, 8)
                 }
@@ -176,13 +178,22 @@ public struct DayStopLabel: View {
         }
     }
 
+    /// What VoiceOver adds after the stop: "passed", "next" or nothing.
+    private var phaseWord: Text {
+        switch stop.phase {
+        case .past: Text("passed")
+        case .next: Text("next")
+        case .later: Text("")
+        }
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(stop.item.value ?? "")
                 .font(valueSize.map { Font.system(size: $0, weight: .semibold, design: .monospaced) } ?? Typo.displayData)
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(valueColor)
-                .contentTransition(.numericText())
+                .reducedMotionNumericText()
             Text(stop.item.title ?? "")
                 .font((compact ? Font.footnote : .subheadline).weight(stop.phase == .next ? .semibold : .regular))
                 .foregroundStyle(stop.phase == .past ? Palette.tertiary : stop.phase == .next ? Palette.text : Palette.secondary)
@@ -193,10 +204,11 @@ public struct DayStopLabel: View {
             if stop.phase == .next, let countdown {
                 Text(DayTimeline.countdownText(minutes: countdown, coarse: coarse))
                     .font(.footnote.weight(.semibold)).foregroundStyle(Palette.text).lineLimit(1)
+                    .accessibilityLabel(Format.spoken(DayTimeline.countdownText(minutes: countdown, coarse: coarse)))
             }
         }
-        .animation(.snappy, value: stop)
+        .reducedMotionAnimation(.snappy, value: stop)
         .accessibilityElement(children: .combine)
-        .accessibilityValue(stop.phase == .past ? Text("passed") : Text(""))
+        .accessibilityValue(phaseWord)
     }
 }

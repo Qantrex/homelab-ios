@@ -15,7 +15,7 @@ roles in `Typo`; no screen picks a size by hand.
 
 | Role | Font | Use for |
 |---|---|---|
-| Hero | `Typo.hero` (SF Pro, heavy, 48 pt, scales) | Today's headline only |
+| Hero | `Typo.hero` via `.heroFont()` (SF Pro, heavy, 48 pt, scales like `.largeTitle`) | Today's headline only |
 | Display | `Typo.display` 28 semibold; `Typo.displayData` the same in SF Mono | The one big number in a card: a chart's current value, the next stop |
 | Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("Waiting for you", "Machines"), sheet titles |
 | Headline | `Typo.headline` (17 semibold) | The name of a row or card ("restart media sonarr", "Living room"), the fact line |
@@ -65,8 +65,12 @@ colour alone.
   `Meter.valueColor`) for the row, the tile, the dot and the detail chart: gold from / love from: load 1x / 2x the core
   count, RAM 90 / 95 %, fullest disk 75 / 90 %, temperature 80 / 90 C. Reaching the limit counts. A value over its limit
   also says "high" to VoiceOver.
-- Text colours keep 4.5:1 on the panel: tertiary #808080 (dark) / #6E6E6E (light), light-mode gold #9A6100. Min and max
-  numbers are secondary, not tertiary.
+- Text colours keep 4.5:1 on the panel: tertiary #808080 (dark) / #6E6E6E (light), light-mode gold #9A6100, love
+  #9E4A63, iris #735C8C (also on `raised`). Min and max numbers are secondary, not tertiary.
+- Increase Contrast: `Palette` switches to stronger twins: surface #262626, raised #333333, line #5A5A5A, secondary and
+  tertiary #B3B3B3 on black; surface #E8E8E8, raised #D9D9D9, line #8C8C8C, secondary and tertiary #3D3D3D and darker
+  love, gold and iris on white.
+- Links (iris) are also underlined: never colour alone.
 - A broken item shows a coloured dot or SF Symbol next to it (with its word: "unhealthy", "93%"), not a coloured card.
 - One accent per element: never coloured text in a coloured border in a coloured glow.
 - Never blue, also not by default: every control sets `.tint(Palette.accent)`.
@@ -87,6 +91,11 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
   behaviour.
 - Large titles on the tab roots except Today (whose hero is its title).
 - Dynamic Type: stack horizontally adjacent things vertically at accessibility sizes; no truncation of important text.
+  The hero scales too (`.heroFont()`, relative to `.largeTitle`).
+- VoiceOver: what the screen shortens, it says in full: ages and countdowns in words (`Format.spoken`, "in 26
+  minutes"), a value over its limit "high", a dot's colour as its word. Buttons are their own stops (44 pt), headings
+  are one element. Changes that appear by themselves (an error, search results, a send) are announced (`announce`).
+- Reduce Motion: animations through `reducedMotionAnimation`, rolling digits through `reducedMotionNumericText`.
 - Test on the smallest phone (5.4") and at AX text sizes: `scripts/phone-shots`, CI shots.
 
 ## Checklist for a screen
