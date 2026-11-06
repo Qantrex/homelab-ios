@@ -345,6 +345,30 @@ A message from `GET /messages` (and `state.last_message`) may carry two more lis
               "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}}]}
 ```
 
+## Checking a live server
+
+`scripts/check-live-api [--token T] [-v] [BASE_URL]` (bash and python3, nothing to install) checks a server against
+this contract. It only sends GETs: `/info`, `/state`, then `/actions`, `/services`, `/messages?after=0` and
+`/search?q=matrix` when `features` lists `run-actions`, `services`, `chat` and `search`. It follows no redirects.
+Without `BASE_URL` it uses `HOMELAB_URL` or the first line of `~/.config/homelab-ios/check-live-api.url`, so your
+server's address stays out of the repo; the reference server is `http://127.0.0.1:8791`. On a tailnet `tailscale serve`
+adds your identity; for a token server use `--token` or `HOMELAB_TOKEN`.
+
+Every answer is checked against `server/openapi.yaml`, then against what the app relies on. The script prints a
+PASS/WARN/FAIL/SKIP table and the details, and exits 1 on any error.
+
+| Error (exit 1) | Warning |
+|---|---|
+| No answer, not 200, not a JSON object; `api` not 1; a missing required field (`api`, `id` in hosts, pending and cards, `text` in problems, `name` in actions, `name`/`url` in services); a required field of the wrong type | Something from the tolerance table above: unknown enum values, upper-case enums, numbers or booleans sent as strings, values out of range, objects or lists where a single value belongs, non-http(s) links, plain-string problems. Unknown fields are fine and not reported |
+| Duplicate ids (hosts, problems, pending, cards, messages, actions, fields, containers per host, search results) | Messages out of id order or more than 200, a message's `pending` that differs from `state.pending` |
+| A time the app can't read (`time`, `checked`, `since`, `created`, `ts`, `end`, `due`) | A history `end` after the answer's `time`, a series of only nulls or with non-numbers |
+| A card or item `action` that `/actions` doesn't list, an `arg` that fits none of its variants, a one-tap item action without a field the action requires | Payload keys the action doesn't have, a card-only action (`todo-done`, `read-later-done`, `parcel-done`, or one with a hidden field) without `"start": false` |
+| A field that is `hidden` and `required` (or `required` with `hidden_when`); an `arg` variant with a part kind the app doesn't know, a literal without text or a choice without options; an action left with no usable variant | `hidden_when` naming no other field, a choice field without options, two free parts (`word`, `number`) in a row |
+| A history series over 288 points; a restartable container whose `<host>:<name>` restart-container can't build | A restartable container with no `restart-container`, `containers` counts that differ from `container_list`, a restart host option that isn't a host |
+| A `poster`/`image`/`thumb`-like URL on another server (send it relative) | The same URL absolute on this server |
+| The `today` card's `date` not a plain `YYYY-MM-DD` day | A `date` in the past or more than a day ahead |
+| A long hex string (32+), a known token shape (GitHub, `sk-`, `tskey-`, Slack, AWS, JWT, private key, `Bearer ...`) or a field named `token`/`password`/`api_key` with a value, anywhere except signed `buttons` | |
+
 ## Versioning
 
 - `api: 1` and the `/api/v1/` prefix stay for every compatible change.
