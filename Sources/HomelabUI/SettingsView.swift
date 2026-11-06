@@ -48,7 +48,7 @@ struct SettingsView: View {
                         } label: {
                             LabeledContent("Sections") {
                                 Text("\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
-                                    .font(Typo.rowValue).foregroundStyle(Palette.secondary)
+                                    .font(Typo.secondary).foregroundStyle(Palette.secondary)
                             }
                         }
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
