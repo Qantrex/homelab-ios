@@ -322,7 +322,8 @@ struct DayNumbers: View {
     }
 }
 
-/// Overkill: every machine with all its numbers, one dense block each. Tap a host in Lab for the details screen.
+/// Overkill: every machine with all its numbers and its 24 h load, one dense block each. Tap a host in Lab for the
+/// details screen.
 struct MachineList: View {
     let hosts: [Host]
     let exact: Bool
@@ -345,6 +346,12 @@ struct MachineList: View {
                         }
                         Text(numbers(host)).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let history = host.history, history.last(.load) != nil {
+                            Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "\(host.name) load, last 24 hours"),
+                                      lineWidth: 1.2, fill: false)
+                                .frame(height: 18)
+                                .padding(.top, 2)
+                        }
                         if !host.flags.isEmpty {
                             Text(host.flags.map(Format.flag).joined(separator: " · ")).font(Typo.mono(.caption2))
                                 .foregroundStyle(host.flags.contains(where: Format.isAlarming) ? Palette.love : Palette.gold)

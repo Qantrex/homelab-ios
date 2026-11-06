@@ -171,7 +171,7 @@ import Testing
         let odd = try form("wake-set", "next tuesday")
         #expect(odd.variant == 0 && odd.arg == "2026-11-07T07:00")
         #expect(try form("commute-mode", "2026-11-07:car").arg == "2026-11-07:bike")
-        #expect(try form("restart-container", "media:sonarr").arg == nil)   // host not offered
+        #expect(try form("restart-container", "gpu:sonarr").arg == nil)   // host not offered
     }
 }
 

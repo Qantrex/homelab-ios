@@ -289,6 +289,59 @@ components:
           items: { type: string }
           description: "Known: undervoltage_now, throttled_now, undervoltage_since_boot, asleep. Others are shown as text."
         url: { type: string, format: uri, description: A web UI for this host. }
+        history: { $ref: "#/components/schemas/HostHistory" }
+        container_list:
+          type: array
+          items: { $ref: "#/components/schemas/Container" }
+          description: >-
+            Every container of the host (Lab shows them, problems first). The summary `containers: {up, total}` stays.
+    HostHistory:
+      type: object
+      description: >-
+        The last 24 h of a host, for sparklines. One point every `step` seconds, oldest first; the last point of every
+        series is at `end`. Each series is optional; null = no data for that slot (host unreachable). At most 288
+        points per series (the app keeps the newest). Missing `end`: the host's `checked`.
+      properties:
+        step: { type: integer, minimum: 1, example: 300, description: Seconds between two points. }
+        end: { type: string, format: date-time, example: "2026-11-06T13:40:00", description: "Local time, or with a zone." }
+        load:
+          type: array
+          maxItems: 288
+          items: { type: [number, "null"] }
+          description: 1-minute load average.
+        mem_pct:
+          type: array
+          maxItems: 288
+          items: { type: [number, "null"], minimum: 0, maximum: 100 }
+        temp:
+          type: array
+          maxItems: 288
+          items: { type: [number, "null"] }
+          description: °C
+        disk_pct:
+          type: array
+          maxItems: 288
+          items: { type: [number, "null"], minimum: 0, maximum: 100 }
+          description: Percent used of the fullest disk.
+    Container:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: sonarr }
+        state:
+          type: string
+          enum: [running, exited, restarting, paused, created, dead]
+          description: Docker's state. Unknown values are shown as unknown.
+        health:
+          type: [string, "null"]
+          enum: [healthy, unhealthy, starting, null]
+          description: null = no health check.
+        restarts: { type: integer, minimum: 0, description: Docker's RestartCount. }
+        restartable:
+          type: boolean
+          description: >-
+            On the host's restart list: the action `restart-container` with the argument `<host-id>:<name>` would be
+            accepted. The app offers Restart only when `/actions` also lists `restart-container`.
     PendingAction:
       type: object
       required: [id]

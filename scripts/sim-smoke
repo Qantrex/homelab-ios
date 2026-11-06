@@ -10,12 +10,13 @@
 #   21     offline: the fixture server is stopped, the app relaunches with its cached data (error bar + age)
 #   22-23  the smallest iPhone available (SE / "e" model / smallest screen): demo today + actions
 #   24-25  action forms (demo, reset first): Wake-up in dark, Add an event with accessibility-XL text (-HomelabAction)
-#   26     demo Today (reset first) in Overkill with the Snarky personality (last: both settings stay set afterwards)
+#   26     demo host detail (reset first) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
+#   27     demo Today (reset first) in Overkill with the Snarky personality (last: both settings stay set afterwards)
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
 
-usage() { sed -n '2,14p' "$0"; exit 2; }
+usage() { sed -n '2,15p' "$0"; exit 2; }
 [ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
 
 # pick_udid main|small [EXCLUDE_UDID]
@@ -249,7 +250,12 @@ xcrun simctl ui "$dev" content_size accessibility-extra-large || true
 scene demo-form-event-xxl "${FRESH_DEMO[@]}" -HomelabTab actions -HomelabAction calendar-add
 xcrun simctl ui "$dev" content_size large || true
 
-# 26: everything at once, with a personality
+# 26: a host's details (Lab), opened with -HomelabHost: sparklines, containers (problems first) and Restart buttons
+xcrun simctl ui "$dev" appearance dark || true
+scene demo-host-media-dark "${FRESH_DEMO[@]}" -HomelabTab lab -HomelabHost media
+xcrun simctl ui "$dev" appearance light || true
+
+# 27: everything at once, with a personality
 scene demo-today-overkill-snarky "${FRESH_DEMO[@]}" -HomelabTab today -HomelabDensity overkill -HomelabPersonality snarky
 
 # App log for this run (Logger subsystem com.qantrex.homelab), from the main simulator

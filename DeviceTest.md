@@ -45,14 +45,18 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O2 | Problems | Listed first, with icon and "since …" | | |
 | O3 | Hosts | One tile per host, "x/y up" in the title, load/RAM/disk bars, a sleeping PC shows "Asleep", not red | | |
 | O4 | Host detail | Tap a tile: Status, System, Disks, Maintenance, Flags as the host has them. "Open web interface" opens Safari | | |
-| O5 | Cards | Server cards show (title, icon, items or text). A card item with a link opens Safari | | |
-| O11 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked or gone (HA too). Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
-| O12 | Card button | To-dos "+ ADD" → the Add a to-do form with the list already chosen → Run → sheet closes, alert with the agent's answer | | |
-| O13 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
-| O6 | Services | Service buttons are grouped and open the right page in Safari | | |
-| O7 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
-| O9 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
-| O10 | Actions shortcut | "N actions are waiting for you" jumps to the Actions tab | | |
+| O5 | Sparklines | Real agent (step 4): each host tile has a thin load line; the detail shows "Last 24 h" with Load, Memory, Temperature, Fullest disk, each with now (top right), min and max in mono. Lines are white/black, gold or love only when the newest value is high; a host that was down has a gap. Footer "One point every 5 min, until …" matches the last watchdog run. VoiceOver reads "Load, last 24 hours, now …, minimum …, maximum …" | | |
+| O6 | Containers | Host detail → Containers: every container, problems first with a love (exited, dead, unhealthy) or gold (restarting) dot and "N problems" in the header; state, health and restarts in mono. Matches `docker ps -a` on the host | | |
+| O7 | Restart a container | Restart only on containers from the host's restart list (none when the server has no `restart-container`). Tap → "Restart `<name>`?" with a red Restart → spinner in the row → alert "Restarted `<name>`" with the agent's output, success haptic; after the refresh its state is running. A refused restart: "Restart of `<name>` failed" or "Didn't run", error haptic | | |
+| O8 | Overkill machines | Settings → Detail → Overkill: under each machine's numbers on Today a thin 24 h load line | | |
+| O9 | Cards | Server cards show (title, icon, items or text). A card item with a link opens Safari | | |
+| O10 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked or gone (HA too). Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
+| O11 | Card button | To-dos "+ ADD" → the Add a to-do form with the list already chosen → Run → sheet closes, alert with the agent's answer | | |
+| O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
+| O13 | Services | Service buttons are grouped and open the right page in Safari | | |
+| O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
+| O15 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
+| O16 | Actions shortcut | "N actions are waiting for you" jumps to the Actions tab | | |
 
 ## Actions
 

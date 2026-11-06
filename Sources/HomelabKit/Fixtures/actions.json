@@ -28,6 +28,7 @@
      {"value": "tv-on", "label": "TV on"}, {"value": "tv-off", "label": "TV off"}]}]}]},
   {"name": "restart-container", "label": "Restart a container", "icon": "arrow.clockwise", "destructive": true,
    "hint": "Only containers on the host's restart list.", "fields": [],
-   "arg": [{"label": "Container", "parts": [{"kind": "choice", "label": "Host", "options": [{"value": "nas", "label": "nas"}, {"value": "pi", "label": "pi"}]},
+   "arg": [{"label": "Container", "parts": [{"kind": "choice", "label": "Host", "options": [{"value": "nas", "label": "nas"}, {"value": "pi", "label": "pi"},
+                                                                                     {"value": "server", "label": "server"}, {"value": "media", "label": "media"}]},
                                             {"kind": "literal", "text": ":"}, {"kind": "word", "label": "Container"}]}]}
 ]}

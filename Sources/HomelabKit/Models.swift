@@ -147,22 +147,33 @@ public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
     public var backupResult: String?
     public var flags: [String]
     public var url: URL?
+    /// The last 24 h (load, RAM, temperature, fullest disk). Nil when the server sends none.
+    public var history: HostHistory?
+    /// Every container with its state, unique names. Empty when the server sends none (`containers` still counts).
+    public var containerList: [ContainerInfo]
 
     public init(id: String, name: String? = nil, kind: String? = nil, reachable: Bool? = nil, checked: Date? = nil,
                 load: Double? = nil, cpuCount: Int? = nil, memPct: Int? = nil, temp: Double? = nil,
                 disks: [String: Int] = [:], containersUp: Int? = nil, containersTotal: Int? = nil,
                 upgradable: Int? = nil, rebootRequired: Bool? = nil, backupLast: String? = nil,
-                backupResult: String? = nil, flags: [String] = [], url: URL? = nil) {
+                backupResult: String? = nil, flags: [String] = [], url: URL? = nil, history: HostHistory? = nil,
+                containerList: [ContainerInfo] = []) {
         self.id = id; self.name = name ?? id; self.kind = kind; self.reachable = reachable; self.checked = checked
         self.load = load; self.cpuCount = cpuCount; self.memPct = memPct; self.temp = temp; self.disks = disks
         self.containersUp = containersUp; self.containersTotal = containersTotal; self.upgradable = upgradable
         self.rebootRequired = rebootRequired; self.backupLast = backupLast; self.backupResult = backupResult
         self.flags = flags; self.url = url
+        self.history = history.flatMap { $0.isEmpty ? nil : $0 }
+        var names = Set<String>()
+        self.containerList = Array(containerList.filter { names.insert($0.name).inserted }.prefix(Self.maxContainers))
     }
 
+    /// More than this many containers on one host is a server bug; the rest are dropped.
+    public static let maxContainers = 300
+
     enum CodingKeys: String, CodingKey {
-        case id, name, kind, reachable, checked, load, temp, disks, containers, updates, backup, flags, url
-        case cpuCount = "cpu_count", memPct = "mem_pct"
+        case id, name, kind, reachable, checked, load, temp, disks, containers, updates, backup, flags, url, history
+        case cpuCount = "cpu_count", memPct = "mem_pct", containerList = "container_list"
     }
     enum ContainerKeys: String, CodingKey { case up, total }
     enum UpdateKeys: String, CodingKey { case upgradable, rebootRequired = "reboot_required" }
@@ -177,7 +188,13 @@ public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
                   checked: c.date(.checked), load: c.double(.load), cpuCount: c.int(.cpuCount),
                   memPct: c.int(.memPct).map { min(max($0, 0), 100) }, temp: c.double(.temp),
                   disks: c.numberMap(.disks).mapValues { min(max(Int($0.rounded()), 0), 100) },
-                  flags: c.strings(.flags), url: c.text(.url).flatMap(URLPolicy.webURL))
+                  flags: c.strings(.flags), url: c.text(.url).flatMap(URLPolicy.webURL),
+                  containerList: c.array(ContainerInfo.self, .containerList))
+        // Without its own end, the history ends when the host was checked.
+        if var h = c.lenient(HostHistory.self, .history), !h.isEmpty {
+            if h.end == nil { h.end = checked }
+            history = h
+        }
         if let n = try? c.nestedContainer(keyedBy: ContainerKeys.self, forKey: .containers) {
             containersUp = n.int(.up); containersTotal = n.int(.total)
         }
@@ -218,6 +235,8 @@ public struct Host: Codable, Sendable, Equatable, Hashable, Identifiable {
         }
         if !flags.isEmpty { try c.encode(flags, forKey: .flags) }
         try c.encodeIfPresent(url, forKey: .url)
+        try c.encodeIfPresent(history, forKey: .history)
+        if !containerList.isEmpty { try c.encode(containerList, forKey: .containerList) }
     }
 }
 

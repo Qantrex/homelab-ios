@@ -44,6 +44,7 @@ Other people's servers send odd JSON, so the app is forgiving. A server can rely
 | An object or list where a single value belongs | Drops that field, keeps the rest |
 | A bad element in a list (no id, wrong type) | Drops that element, keeps the list |
 | `mem_pct`, disk percent outside 0–100, `progress` outside 0–1 | Clamps it |
+| A history value that isn't a number, more than 288 points | A gap; keeps the newest 288 |
 | Duplicate ids | Keeps the first |
 | A problem as a plain string | Treats it as `{text}` |
 | A link that isn't `http`/`https` | Drops the link |
@@ -134,6 +135,24 @@ with a part kind the app doesn't know is dropped; an action left with no usable 
 
 A pending action only shows the buttons the server sends: a missing `always` means no Always button; no buttons at
 all means the action is shown for information only.
+
+## Host history and containers (Lab)
+
+Two optional fields on each host in `GET /state`. Without them Lab looks as before.
+
+```json
+{"id": "media", "name": "media", "reachable": true, "load": 3.1, "cpu_count": 4,
+ "history": {"step": 300, "end": "2026-11-06T13:40:00",
+             "load": [0.4, 0.5, null, 3.1], "mem_pct": [41, 42, null, 88], "temp": [48.2, 49.0, null, 71.2],
+             "disk_pct": [91, 91, null, 93]},
+ "container_list": [{"name": "sonarr", "state": "running", "health": "unhealthy", "restarts": 2, "restartable": true},
+                    {"name": "gluetun", "state": "exited", "health": null, "restarts": 3, "restartable": true}]}
+```
+
+| Field | Meaning | The app shows |
+|---|---|---|
+| `history` | The last 24 h, one point every `step` seconds, oldest first; the last point is at `end` (local time, or with a zone; missing → the host's `checked`). Every series is optional and ends at `end`; `null` = no data for that slot (host unreachable). At most 288 points per series. `disk_pct` is the fullest disk | A load sparkline on each host tile and, in Overkill, under each machine on Today. Host details: load, memory, temperature and fullest disk for 24 h with min, max and now. Gaps break the line; the line turns gold or love only when the newest value is over a limit (load ≥ cores / ≥ 2 × cores, memory 90 / 95 %, temperature 80 / 90 °C, disk 75 / 90 %) |
+| `container_list` | Every container of the host: `name`; `state` (Docker's: `running`, `exited`, `restarting`, `paused`, `created`, `dead`; "Up 3 hours" also counts as running); `health` (`healthy`, `unhealthy`, `starting` or null); `restarts` (Docker's RestartCount); `restartable` (the host's restart list has it: `restart-container` with `<host>:<name>` would be accepted). `containers: {up, total}` stays | Host details: the list with problems first (exited, dead and unhealthy in love, restarting in gold), state, health and restarts in mono. A **Restart** button on each `restartable` one, when the server also offers `run-actions` with a `restart-container` action whose form can build `<host-id>:<name>`. It asks with a red button, runs the action like the Actions tab would and shows the answer |
 
 ## How the app shows cards
 
