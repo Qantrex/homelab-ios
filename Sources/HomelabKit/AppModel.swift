@@ -46,7 +46,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var today: TodayLayout?
     /// Calm, Standard or Overkill; nil = Standard.
     public var density: Density?
-    /// Off, Dry or Snarky; nil = Off.
+    /// Off, Dry, Snarky or Ultrakill; nil = Off.
     public var personality: Personality?
 
     public static let fileName = "settings.json"

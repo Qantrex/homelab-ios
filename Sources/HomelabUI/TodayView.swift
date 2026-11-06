@@ -140,9 +140,14 @@ struct TodayView: View {
         }
     }
 
-    /// What the voice says. Each tap on it moves to the next line.
+    /// What the voice says about the most notable fact (Voice.take: the real numbers, with an opinion); without a
+    /// take (no data yet, the lab unreachable) the mood's general line. Each tap on it moves to the next variant.
     private func take(_ m: TodayMood) -> String? {
-        let all = Voice.lines(Voice.moment(m.level), model.settings.voice)
+        let voice = model.settings.voice
+        guard model.selected != nil, voice != .off else { return nil }
+        let count = Voice.takeCount(for: state, personality: voice)
+        if count > 0, let t = Voice.take(for: state, personality: voice, variant: pokes % count) { return t.text }
+        let all = Voice.lines(Voice.moment(m.level), voice)
         guard !all.isEmpty else { return nil }
         let day = Calendar.current.ordinality(of: .day, in: .era, for: .now) ?? 0
         return all[(day + pokes) % all.count]
