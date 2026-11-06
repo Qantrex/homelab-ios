@@ -11,7 +11,7 @@ developer account. You install it with [SideStore](https://sidestore.io) and a f
 
 | Tab | What you see and do |
 |---|---|
-| Today | Your day first: the server's "today" card in big numbers, actions waiting for you, your pinned Home Assistant tiles (tap to toggle or run), the other cards (media, downloads, school, …) and the last report. The machines are one status line that opens Lab. Pull to refresh; refreshes every 30 s while open |
+| Today | Your day first. On top, how the lab is doing in two words ("All quiet." or "1 problem.", calm or loud); tap it for Lab. Under it the server's "today" card as a line through the day (wake-up → leave by → first lesson) that fills up to now and counts down to the next stop. Then actions waiting for you, your pinned Home Assistant tiles (tap to toggle or run), the other cards (downloads and what's playing with progress rings, school, …) and the last report. Settings → Today: reorder or hide sections, and pick Calm, Standard or Overkill (everything, with every machine's numbers and exact times). Pull to refresh; refreshes every 30 s while open |
 | Actions | Actions your homelab proposes, with reason and age. Approve, Always or Deny, each with a confirm step. Shows the server's answer |
 | Chat | Chat with your homelab agent. "Working…" while it runs, report tags (`morning`, `watchdog`, …), long-press to copy, quick buttons for the commands the server lists |
 | Lab | Problems, a tile per host (load, RAM, worst disk, temperature, containers, flags), tap a host for details. A launcher for your web UIs (opens Safari) |

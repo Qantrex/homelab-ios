@@ -217,6 +217,44 @@ public struct Meter: View {
     }
 }
 
+/// A ring for 0…1 progress (a download, an episode), with the percent inside; a check mark when done.
+public struct ProgressRing: View {
+    let value: Double
+    let tint: Color
+    let size: CGFloat
+
+    public init(_ value: Double, tint: Color = Palette.text, size: CGFloat = 34) {
+        self.value = value.isFinite ? min(max(value, 0), 1) : 0
+        self.tint = tint
+        self.size = size
+    }
+
+    public var body: some View {
+        let width = max(size * 0.09, 2.5)
+        let percent = Format.ringPercent(value)
+        ZStack {
+            Circle().stroke(Palette.line, lineWidth: width)
+            Circle()
+                .trim(from: 0, to: value)
+                .stroke(tint, style: StrokeStyle(lineWidth: width, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            if percent >= 100 {
+                Image(systemName: "checkmark").font(.system(size: size * 0.34, weight: .bold)).foregroundStyle(tint)
+            } else {
+                Text("\(percent)")
+                    .font(.system(size: size * 0.32, weight: .semibold, design: .monospaced))
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .foregroundStyle(Palette.text)
+                    .padding(.horizontal, width)
+            }
+        }
+        .frame(width: size, height: size)
+        .animation(.easeOut(duration: 0.6), value: value)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Tag-like text: "watchdog", "3 updates".
 public struct Chip: View {
     let text: String

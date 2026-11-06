@@ -124,7 +124,7 @@ struct TodayView: View {
     private func section(for section: TodaySection) -> some View {
         switch section {
         case .day:
-            if let dayCard { DayNumbers(card: dayCard) }
+            if let dayCard { DaySection(card: dayCard) }
         case .waiting:
             if let state, model.selected != nil, !state.pending.isEmpty { waiting(state.pending) }
         case .home:
@@ -237,19 +237,197 @@ struct MoodGlow: View {
     }
 }
 
-/// The day in numbers under the hero ("06:20 wake-up · 08:00 first lesson · 07:31 leave by"): big mono numbers,
-/// no panel, a hairline above. From the server's "today" card.
-struct DayNumbers: View {
+/// The day under the hero, from the server's "today" card. Its clock times become a line through the day
+/// (wake-up → leave by → first lesson) that fills up to now; the next stop is bright and counts down, past ones fade.
+/// Items without a time (a disruption, "Leave by ?") are notes under the line. A card without clock times keeps the
+/// big-number grid; a text card ("No school today: …") shows its text.
+struct DaySection: View {
     let card: Card
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
+        // Redrawn every minute, so the line and the countdown move while the screen is open.
+        TimelineView(.everyMinute) { context in
+            let line = DayTimeline(card: card, now: context.date)
+            VStack(alignment: .leading, spacing: 14) {
+                if line.stops.isEmpty {
+                    Rectangle().fill(Palette.line).frame(height: 1)
+                    if let text = line.text {
+                        Text(markdown(text)).font(.title3.weight(.medium)).foregroundStyle(Palette.secondary)
+                    } else {
+                        DayNumbers(items: line.notes)
+                    }
+                } else {
+                    if line.across(accessibilityText: typeSize.isAccessibilitySize) { across(line) } else { down(line) }
+                    if !line.notes.isEmpty { notes(line.notes) }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(card.title ?? String(localized: "Today")))
+    }
+
+    /// Side by side: equal columns, each with its piece of the line on top.
+    private func across(_ line: DayTimeline) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Array(line.stops.enumerated()), id: \.offset) { i, stop in
+                VStack(alignment: .leading, spacing: 10) {
+                    DayRail(phase: stop.phase, fill: line.fill(after: i), axis: .horizontal)
+                        .frame(height: 18)
+                    StopLabel(stop: stop, countdown: line.minutesToNext)
+                        .padding(.trailing, 8)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// Top to bottom (huge text, or more stops than fit across): the line runs down the left edge.
+    private func down(_ line: DayTimeline) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle().fill(Palette.line).frame(height: 1).padding(.bottom, 14)
+            ForEach(Array(line.stops.enumerated()), id: \.offset) { i, stop in
+                StopLabel(stop: stop, countdown: line.minutesToNext)
+                    .padding(.leading, 30)
+                    .padding(.bottom, 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(alignment: .topLeading) {
+                        // As tall as the row and moved down, so the dot sits beside the big time and the line
+                        // reaches the next row's dot.
+                        DayRail(phase: stop.phase, fill: line.fill(after: i), axis: .vertical,
+                                showsLine: i < line.stops.count - 1)
+                            .frame(width: 18)
+                            .offset(y: 9)
+                    }
+            }
+        }
+    }
+
+    private func notes(_ items: [Card.Item]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .semibold)).tracking(1)
+                        .foregroundStyle(item.tint?.color ?? Palette.secondary)
+                    Text([item.value, item.subtitle].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption).foregroundStyle(item.tint?.color ?? Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+}
+
+/// One piece of the day line: the stop's dot and the stretch to the next stop, filled as far as now has come.
+/// Past stops are grey dots, the next one is bright with a halo, later ones are rings.
+private struct DayRail: View {
+    let phase: DayTimeline.Phase
+    let fill: Double
+    let axis: Axis
+    /// False for the last stop top to bottom: its piece would run into the notes under it.
+    var showsLine = true
+
+    /// The dot's centre along the line. Its piece runs from here to the same point of the next stop's piece (which
+    /// starts where this one ends), so the line runs dot centre to dot centre.
+    static func start(_ axis: Axis) -> CGFloat { axis == .horizontal ? 6 : 9 }
+
+    var body: some View {
+        GeometryReader { geo in
+            let length = axis == .horizontal ? geo.size.width : geo.size.height
+            let reached = length * fill
+            let start = Self.start(axis)
+            ZStack(alignment: axis == .horizontal ? .leading : .top) {
+                if showsLine { bar(1, color: Palette.line, length: length).offset(along(start)) }
+                if showsLine, reached > 0 { bar(2, color: Palette.text, length: reached).offset(along(start)) }
+                if showsLine, fill > 0 && fill < 1 {
+                    // Where "now" is.
+                    Circle().fill(Palette.text).frame(width: 6, height: 6)
+                        .frame(width: axis == .horizontal ? 6 : 12, height: axis == .horizontal ? 18 : 6)
+                        .offset(along(start + reached - 3))
+                }
+                dot
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: axis == .horizontal ? .leading : .top)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func along(_ d: CGFloat) -> CGSize {
+        axis == .horizontal ? CGSize(width: d, height: 0) : CGSize(width: 0, height: d)
+    }
+
+    /// The line itself, centred across the dot.
+    private func bar(_ thickness: CGFloat, color: Color, length: CGFloat) -> some View {
+        Rectangle().fill(color)
+            .frame(width: axis == .horizontal ? length : thickness, height: axis == .horizontal ? thickness : length)
+            .frame(width: axis == .horizontal ? nil : 12, height: axis == .horizontal ? 18 : nil)
+    }
+
+    @ViewBuilder
+    private var dot: some View {
+        ZStack {
+            switch phase {
+            case .past:
+                Circle().fill(Palette.secondary).frame(width: 8, height: 8)
+            case .next:
+                Circle().fill(Palette.text.opacity(0.22)).frame(width: 20, height: 20)
+                Circle().fill(Palette.text).frame(width: 11, height: 11)
+            case .later:
+                Circle().fill(Palette.background).frame(width: 10, height: 10)
+                Circle().strokeBorder(Palette.secondary, lineWidth: 1.5).frame(width: 10, height: 10)
+            }
+        }
+        .frame(width: 12, height: 18)
+    }
+}
+
+/// A stop's big time, its name, the server's detail ("U6 07:36") and, on the next stop, the countdown.
+private struct StopLabel: View {
+    let stop: DayTimeline.Stop
+    let countdown: Int?
+
+    private var valueColor: Color {
+        switch stop.phase {
+        case .past: Palette.tertiary
+        case .next: stop.item.tint?.color ?? Palette.text
+        case .later: stop.item.tint?.color ?? Palette.secondary
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(stop.item.value ?? "")
+                .font(.system(size: 30, weight: .semibold, design: .monospaced))
+                .minimumScaleFactor(0.6).lineLimit(1)
+                .foregroundStyle(valueColor)
+            Text(stop.item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .medium))
+                .tracking(1).foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.secondary)
+                .lineLimit(1).minimumScaleFactor(0.8)
+            if let s = stop.item.subtitle {
+                Text(s).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            if stop.phase == .next, let countdown {
+                Text(Format.countdown(minutes: countdown).uppercased())
+                    .font(Typo.mono(.caption2, weight: .bold)).foregroundStyle(Palette.text).lineLimit(1)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(stop.phase == .past ? Text("passed") : Text(""))
+    }
+}
+
+/// The day in big numbers, for a card without clock times: no panel, mono numbers.
+struct DayNumbers: View {
+    let items: [Card.Item]
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Rectangle().fill(Palette.line).frame(height: 1)
             LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .topLeading)]
                                                             : [GridItem(.adaptive(minimum: 96), spacing: 12, alignment: .topLeading)],
                       alignment: .leading, spacing: 14) {
-                ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(item.value ?? "–")
                             .font(.system(size: 30, weight: .semibold, design: .monospaced))
@@ -265,8 +443,6 @@ struct DayNumbers: View {
                 }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(card.title ?? String(localized: "Today")))
     }
 }
 

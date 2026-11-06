@@ -355,6 +355,7 @@ struct CardView: View {
     let card: Card
     var hero = false
     @Environment(\.openURL) private var openURL
+    @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 34
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -397,19 +398,22 @@ struct CardView: View {
 
     @ViewBuilder
     private func itemRow(_ item: Card.Item) -> some View {
-        let row = VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                if let icon = item.icon { Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? Palette.secondary) }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(item.title ?? "").font(.subheadline).lineLimit(2)
-                    if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(Palette.secondary).lineLimit(1) }
-                }
-                Spacer(minLength: 8)
-                if let v = item.value { Text(v).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary) }
+        // A row with progress (a download, an episode) leads with a ring; the others with their icon.
+        let row = HStack(alignment: item.progress == nil ? .firstTextBaseline : .center, spacing: 10) {
+            if let p = item.progress {
+                ProgressRing(p, tint: item.tint?.color ?? Palette.text, size: ringSize)
+            } else if let icon = item.icon {
+                Image(systemName: Symbols.safe(icon, fallback: "circle")).foregroundStyle(item.tint?.color ?? Palette.secondary)
             }
-            if let p = item.progress { Meter(p) }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title ?? "").font(.subheadline).lineLimit(2)
+                if let s = item.subtitle { Text(s).font(.caption).foregroundStyle(Palette.secondary).lineLimit(1) }
+            }
+            Spacer(minLength: 8)
+            if let v = item.value { Text(v).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary) }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityValue(item.progress.map { Text("\(Format.ringPercent($0)) percent") } ?? Text(""))
         if let url = item.url {
             Button { openURL(url) } label: { row }.buttonStyle(.plain)
         } else {

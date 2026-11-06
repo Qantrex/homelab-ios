@@ -6,8 +6,11 @@ First release.
 
 App:
 
-- Today: the date, one status line, the server's "today" card in big numbers, actions waiting, pinned Home Assistant
-  tiles, the other cards and the last report.
+- Today: a mood headline on top (calm when all is fine, gold or love with a glow and a haptic when not), the server's
+  "today" card as a day line (clock times in order, filled up to now, countdown to the next stop), actions waiting,
+  pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Calm,
+  Standard or Overkill density (Overkill adds every machine's numbers, exact times and busy jobs).
+- Progress in cards (downloads, now playing) as rings with the percent inside.
 - Lab (was Overview): overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags),
   host details, a service launcher (opens Safari). Pull to refresh, refresh every 30 s while open, last data with its
   age when offline.

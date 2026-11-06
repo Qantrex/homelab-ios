@@ -33,6 +33,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
         page.messages = page.messages.map { var m = $0; m.ts = s(m.ts); return m }
+        state.cards = state.cards.map { $0.id == "today" ? Self.demoDay($0, now: now) : $0 }
         state.lastMessage = page.messages.last
         state.busy = []
         page.busy = []
@@ -40,6 +41,29 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         self.page = page
         entities = Fixtures.decode([Lossy<HAEntity>].self, "ha-states.json")?.compactMap(\.value) ?? []
         self.delay = delay
+    }
+
+    /// The day's clock times follow the real clock too: the first stop was 45 min ago, so the day line always has a
+    /// "now" between its stops. Times inside subtitles ("U6 07:36") move along. Late at night, when the day wouldn't
+    /// fit before midnight, the fixture's times stay.
+    static func demoDay(_ card: Card, now: Date, calendar: Calendar = .current) -> Card {
+        let minutes = card.items.compactMap { DayTimeline.minute($0.value) }
+        guard let first = minutes.min(), let last = minutes.max() else { return card }
+        let c = calendar.dateComponents([.hour, .minute], from: now)
+        let shift = (c.hour ?? 0) * 60 + (c.minute ?? 0) - 45 - first
+        guard first + shift >= 0, last + shift < 24 * 60 else { return card }
+        func move(_ text: String?) -> String? {
+            text.map { t in
+                t.split(separator: " ", omittingEmptySubsequences: false).map { word in
+                    guard let m = DayTimeline.minute(String(word)) else { return String(word) }
+                    let s = ((m + shift) % 1440 + 1440) % 1440
+                    return String(format: "%02d:%02d", s / 60, s % 60)
+                }.joined(separator: " ")
+            }
+        }
+        var card = card
+        card.items = card.items.map { var i = $0; i.value = move(i.value); i.subtitle = move(i.subtitle); return i }
+        return card
     }
 
     public func info() async throws -> ServerInfo {

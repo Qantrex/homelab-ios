@@ -24,6 +24,20 @@ public enum Format {
         return String(format: "%02d.%02d. ", d.day ?? 0, d.month ?? 0) + clock + " (\(age(date, now: now)))"
     }
 
+    /// Time to the next stop of the day: "now", "in 26 min", "in 1 h", "in 2 h 5 min".
+    public static func countdown(minutes: Int) -> String {
+        guard minutes > 0 else { return "now" }
+        if minutes < 60 { return "in \(minutes) min" }
+        let h = minutes / 60, m = minutes % 60
+        return m == 0 ? "in \(h) h" : "in \(h) h \(m) min"
+    }
+
+    /// The number inside a progress ring, 0…100. Rounded down, so 100 only shows when it's really done.
+    public static func ringPercent(_ progress: Double) -> Int {
+        guard progress.isFinite else { return 0 }
+        return Int((min(max(progress, 0), 1) * 100 + 1e-9).rounded(.down))
+    }
+
     /// Same default as the reference server's `temp_warning`.
     public static let hotCelsius = 80.0
 

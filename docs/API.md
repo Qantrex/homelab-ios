@@ -101,6 +101,16 @@ is the "everything odd at once" example.
 A pending action only shows the buttons the server sends: a missing `always` means no Always button; no buttons at
 all means the action is shown for information only.
 
+## How the app shows cards
+
+| You send | Today shows |
+|---|---|
+| A card with `id: "today"` (else the first `metrics` card) | The day under the headline. Items whose `value` is a clock time (`"06:20"`, `"7:05"`) become stops on a line through the day, in time order (not your order); the line fills up to now, past stops fade, the next one shows a countdown ("in 26 min"). Items without a clock time (`"?"`, `"too late"`, no value) are notes under the line. No clock times at all: the values in big numbers. No items: the card's `text` |
+| `progress` (0–1) on a `list` item | A ring with the percent in front of the row (a check mark at 1) |
+| `tint` on an item | Warm tints (`orange`, `yellow`) are gold, `red` is love, `purple`/`pink` iris, the rest grey. Use it for status, not decoration |
+
+Clock times are read in the phone's time zone, like times without a zone (see above).
+
 ## Versioning
 
 - `api: 1` and the `/api/v1/` prefix stay for every compatible change.
