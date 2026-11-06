@@ -50,9 +50,8 @@ struct ErrorBanner: View {
                 }
             }
         }
-        .padding(12)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.gold.opacity(0.5), lineWidth: 1))
+        .padding(16)   // a panel like every other (DESIGN.md §2); the gold icon carries the status
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
