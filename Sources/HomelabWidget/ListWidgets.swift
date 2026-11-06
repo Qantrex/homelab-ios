@@ -71,10 +71,14 @@ struct DeadlinesView: View {
                 ForEach(Array(items.prefix(2).enumerated()), id: \.offset) { _, item in
                     if let cd = countdown(item) {
                         HStack(spacing: 4) {
-                            if cd.level == .past { Image(systemName: "exclamationmark.triangle.fill").font(.caption2) }
+                            if cd.level == .past {
+                                Image(systemName: "exclamationmark.triangle.fill").font(.caption2).widgetAccentable()
+                                    .accessibilityHidden(true)
+                            }
                             Text(item.title ?? "").font(.headline).lineLimit(1).privacySensitive()
                             Spacer(minLength: 2)
                             Text(cd.text).font(Typo.data(.caption, weight: .semibold)).lineLimit(1)
+                                .accessibilityLabel(Format.spoken(cd.text))
                         }
                     }
                 }
@@ -90,6 +94,7 @@ struct DeadlinesView: View {
         } else if let item = items.first, let cd = countdown(item) {
             let text = cd.text == "today" || cd.text.hasSuffix("ago") ? "\(item.title ?? "") \(cd.text)" : "\(item.title ?? "") in \(cd.text)"
             Label(text, systemImage: cd.level == .past ? "exclamationmark.triangle.fill" : "hourglass").privacySensitive()
+                .accessibilityLabel(Format.spoken(text))
         }
     }
 
@@ -111,7 +116,7 @@ struct DeadlinesView: View {
                 Image(systemName: "hourglass").font(.footnote.weight(.semibold)).foregroundStyle(Palette.secondary)
                 Text("Deadlines").font(.footnote.weight(.semibold)).foregroundStyle(Palette.text)
                 Spacer(minLength: 4)
-                if entry.stale { Text(entry.age).font(.caption2).foregroundStyle(Palette.tertiary) }
+                if entry.stale && entry.snapshot != nil { StaleAge(entry: entry) }
             }
             if countsOnly {
                 Spacer(minLength: 0)
@@ -133,13 +138,14 @@ struct DeadlinesView: View {
                             }
                             Spacer(minLength: 4)
                             Text(cd.text).font(Typo.data(.footnote, weight: .semibold)).foregroundStyle(levelColor(cd.level)).lineLimit(1)
+                                .accessibilityLabel(Format.spoken(cd.text))
                         }
                     }
                 }
                 Spacer(minLength: 0)
             }
         }
-        .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
+        // Stale data isn't dimmed (that took the words under 4.5:1): StaleAge in the corner says how old it is.
     }
 }
 
@@ -209,7 +215,7 @@ struct TodosView: View {
                 Image(systemName: "checklist").font(.footnote.weight(.semibold)).foregroundStyle(Palette.secondary)
                 Text("To-dos").font(.footnote.weight(.semibold)).foregroundStyle(Palette.text)
                 Spacer(minLength: 4)
-                if entry.stale { Text(entry.age).font(.caption2).foregroundStyle(Palette.tertiary) }
+                if entry.stale && entry.snapshot != nil { StaleAge(entry: entry) }
             }
             if countsOnly {
                 Spacer(minLength: 0)
@@ -234,6 +240,5 @@ struct TodosView: View {
                 Spacer(minLength: 0)
             }
         }
-        .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
     }
 }
