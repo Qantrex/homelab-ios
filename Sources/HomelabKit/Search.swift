@@ -89,7 +89,7 @@ public enum ImageKind: Sendable, Equatable {
 
 /// Pictures of one server: memory first, then a small disk cache, then the server (through the API client, so with
 /// its login and only ever its own host). One request per picture at a time; a failure is not asked again for a
-/// minute. Never stores anything the client refused.
+/// minute. Never stores anything the client refused, or a picture past `ImagePixels`' size limits.
 public actor ImageLoader {
     public static let memoryLimit = 24 * 1024 * 1024
     public static let diskLimit = 20 * 1024 * 1024
@@ -134,7 +134,8 @@ public actor ImageLoader {
             task = running
         } else {
             requests += 1
-            task = Task { [api] in try? await api.image(path: ref) }
+            // The declared pixel size is checked before anything is kept: a small file can decode to gigabytes.
+            task = Task { [api] in (try? await api.image(path: ref)).flatMap { ImagePixels.isAcceptable($0) ? $0 : nil } }
             inflight[key] = task
         }
         let result = await task.value
@@ -183,7 +184,7 @@ public actor ImageLoader {
               let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
               let modified = attrs[.modificationDate] as? Date, now.timeIntervalSince(modified) < Self.maxAge,
               let data = try? Data(contentsOf: url), data.count <= CompanionClient.maxImageBytes,
-              ImageKind(sniffing: data) != nil else { return nil }
+              ImagePixels.isAcceptable(data) else { return nil }
         return data
     }
 

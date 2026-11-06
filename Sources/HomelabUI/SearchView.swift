@@ -32,7 +32,8 @@ struct PosterImage: View {
     private func load() async {
         guard let model, let server = model.selected, let path else { image = nil; return }
         guard let data = await model.imageLoader(for: server).data(for: path), !Task.isCancelled else { return }
-        image = UIImage(data: data)
+        // A thumbnail at display size (a poster is at most ~200 pt wide), never the full bitmap.
+        image = ImagePixels.thumbnail(data, maxPixel: 900).map { UIImage(cgImage: $0) }
     }
 }
 
