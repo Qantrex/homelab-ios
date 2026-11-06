@@ -1,0 +1,85 @@
+{
+ "time": "2026-11-07T07:12:30",
+ "status": "ok",
+ "checked": "2026-11-07T07:12:00",
+ "problems": [],
+ "hosts": [],
+ "pending": [],
+ "cards": [
+  {
+   "id": "departures",
+   "title": "U6",
+   "icon": "tram.fill",
+   "tint": "red",
+   "style": "departures",
+   "updated": "07:12",
+   "items": [
+    {
+     "title": "Floridsdorf",
+     "subtitle": "Erlaaer Straße",
+     "value": "07:31",
+     "due": "2026-11-07T07:31:00+01:00"
+    },
+    {
+     "title": "Floridsdorf",
+     "subtitle": "Erlaaer Straße · +3 min",
+     "value": "07:36",
+     "due": "2026-11-07T07:36:00+01:00",
+     "tint": "orange"
+    },
+    {
+     "title": "Floridsdorf",
+     "subtitle": "Erlaaer Straße",
+     "value": "07:41",
+     "due": "2026-11-07T07:41:30+01:00"
+    },
+    {
+     "title": "Floridsdorf",
+     "subtitle": "Erlaaer Straße",
+     "value": "07:49",
+     "due": "2026-11-07T07:49:00+01:00"
+    },
+    {
+     "title": "Siebenhirten",
+     "subtitle": "Jägerstraße",
+     "value": "07:28",
+     "due": "2026-11-07T07:28:52+01:00"
+    },
+    {
+     "title": "Siebenhirten",
+     "subtitle": "Jägerstraße",
+     "value": "07:34",
+     "due": "2026-11-07T07:34:30+01:00"
+    },
+    {
+     "title": "Siebenhirten",
+     "subtitle": "Jägerstraße",
+     "value": "07:39",
+     "due": "2026-11-07T07:39:30+01:00"
+    },
+    {
+     "title": "Siebenhirten",
+     "subtitle": "Jägerstraße",
+     "value": "07:44",
+     "due": "2026-11-07T07:44:30+01:00"
+    }
+   ],
+   "text": "U6: Schadhaftes Fahrzeug"
+  }
+ ],
+ "busy": [],
+ "commute": {
+  "date": "2026-11-07",
+  "mode": "u6",
+  "line": "U6",
+  "first_lesson": "2026-11-07T08:00:00+01:00",
+  "leave_by": "2026-11-07T07:26:00+01:00",
+  "train": "2026-11-07T07:31:00+01:00",
+  "next": "2026-11-07T07:36:00+01:00",
+  "next_too_late": true,
+  "disruptions": [
+   "U6: Schadhaftes Fahrzeug"
+  ],
+  "updated": "2026-11-07T07:12:00+01:00"
+ }
+}
