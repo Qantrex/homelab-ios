@@ -81,7 +81,9 @@ colour alone.
 
 HIG Branding: "Use your brand's unique voice and tone", "branding always defers to content", don't repeat a logo.
 
-- The personality lives in words: the hero's second line, empty screens, notification subtitles, problem comments.
+- The personality lives in words: the hero's second line, Lab's header, an aside under each problem, empty screens
+  and lists, the alert after an action ("Done." and a remark), notification subtitles. All text and picking is in
+  HomelabKit (`Voice.line(for:)`, VoiceLines.swift); a view only shows the line.
 - No mascot, no character art, no speech bubbles. The line is plain `.body`/`.title3` text in `Palette.secondary`,
   directly under what it comments on.
 - The fact is always shown plainly next to the joke, so the joke can be ignored.

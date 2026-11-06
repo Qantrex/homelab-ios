@@ -230,6 +230,9 @@ struct PersonalityPreview: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.opacity)
                     .id(voice)
+                ForEach(Voice.preview(for: state, personality: voice, variant: variant), id: \.self) {
+                    Text(verbatim: $0).font(Typo.meta).foregroundStyle(Palette.tertiary).fixedSize(horizontal: false, vertical: true)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 4)

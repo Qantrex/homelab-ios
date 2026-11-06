@@ -25,8 +25,9 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         public var kind: Kind
         public var title: String
         public var body: String
-        /// For the personality line in the notification's subtitle (none for the summary).
-        public var moment: Voice.Moment?
+        /// Where the personality's line for the notification's subtitle comes from (`Voice.line(_:_:)`; none for the
+        /// summary).
+        public var moment: Voice.Spot?
         /// The proposal of a `pending` alert: its buttons decide the notification's Approve / Deny buttons.
         public var proposal: PendingAction? = nil
     }
@@ -56,13 +57,13 @@ public struct AlertTracker: Codable, Sendable, Equatable {
             for p in state.problems where !seenProblems.contains(p.id) {
                 alerts.append(Alert(id: "problem-\(p.id)", kind: .problem,
                                     title: p.severity == .warning ? "\(server): warning" : "\(server): problem",
-                                    body: p.text, moment: p.severity == .warning ? .headsUp : .alarm))
+                                    body: p.text, moment: .notice(p.severity == .warning ? .warning : .problem)))
             }
         }
         if options.pending {
             for a in state.pending where !seenPending.contains(a.id) {
                 alerts.append(Alert(id: "pending-\(a.id)", kind: .pending, title: "\(server): approve \(a.title)?",
-                                    body: a.reason ?? "Proposed by \(a.job ?? "the agent").", moment: .waiting,
+                                    body: a.reason ?? "Proposed by \(a.job ?? "the agent").", moment: .notice(.waiting),
                                     proposal: a))
             }
         }

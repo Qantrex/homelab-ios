@@ -283,7 +283,13 @@ struct CardView: View {
     @ViewBuilder
     private func rows<Row: View>(_ items: [Card.Item], @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
         if items.isEmpty, let text = card.text {
-            Text(markdown(text)).tint(Palette.iris).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(markdown(text)).tint(Palette.iris).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)
+                if !compact, let empty = Voice.Empty(card: card),
+                   let line = Voice.line(for: .empty(empty), personality: model?.settings.voice ?? .off) {
+                    Text(line).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                }
+            }
         } else {
             let shown = compact ? Array(items.prefix(Self.compactRows)) : items
             VStack(alignment: .leading, spacing: compact ? 8 : 12) {

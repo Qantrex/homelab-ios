@@ -1,13 +1,16 @@
 import Foundation
 
 /// How the app talks, like a weather app's personality setting. Off (the default) is plain; Dry, Snarky and Ultrakill
-/// add a take on the most notable fact under Today's headline (`Voice.take`, Takes.swift), a line on empty screens and
-/// a notification's subtitle (`Voice.line`). The facts themselves (counts, problem texts, the headline) never change
-/// with it, and every take names the fact it comments on.
+/// add a take on the most notable fact under Today's headline (`Voice.take`, Takes.swift) and a line in every other
+/// place a `Voice.Spot` names: Lab's header, an aside under each problem, empty screens and lists, the alert after an
+/// action, a notification's subtitle (`Voice.line(for:…)`, VoiceLines.swift). The facts themselves (counts, problem
+/// texts, the headline) never change with it and always show plainly next to the line, so the joke can be ignored.
 public enum Personality: String, Codable, CaseIterable, Sendable, Identifiable {
     case off, dry, snarky
-    /// CARROT's far end: gallows humour, bleak cynicism, politically incorrect takes on institutions and ideas, the odd
-    /// swear word. Never slurs, jokes demeaning protected groups, anything sexual, self-harm, real people or threats.
+    /// CARROT's far end: gallows humour, bleak cynicism, and politically incorrect satire of institutions, ideologies and
+    /// current politics (EU regulation, the AI hype, rent, inflation, election promises, surveillance, the Magistrat),
+    /// with the odd swear word. It mocks ideas, institutions and systems, never groups of people. Never slurs, jokes
+    /// about protected groups, anything sexual, self-harm, real named people or endorsing violence (VoiceTests).
     case ultrakill
 
     public var id: String { rawValue }
@@ -35,15 +38,26 @@ public enum Voice {
         case calm, headsUp, alarm, unknown   // Today's headline, by mood
         case waiting                         // a notification for an action to approve
         case nothingToApprove, emptyChat     // empty screens
+
+        /// The same place as a `Spot` (which has every place the voice speaks in).
+        public var spot: Spot {
+            switch self {
+            case .calm: .today(.calm)
+            case .headsUp: .today(.headsUp)
+            case .alarm: .today(.alarm)
+            case .unknown: .today(.unknown)
+            case .waiting: .notice(.waiting)
+            case .nothingToApprove: .empty(.approvals)
+            case .emptyChat: .empty(.chat)
+            }
+        }
     }
 
     /// One line for the moment, nil when the personality is off. The pick changes with the day, not with every
     /// refresh, so the line doesn't jump around while the screen is open.
     public static func line(_ moment: Moment, _ personality: Personality, on date: Date = Date(),
                             calendar: Calendar = .current) -> String? {
-        let options = lines(moment, personality)
-        guard !options.isEmpty else { return nil }
-        return options[dayNumber(date, calendar) % options.count]
+        line(for: moment.spot, personality: personality, now: date, calendar: calendar)
     }
 
     /// What the voice says under Today's headline, for the preview in Settings: the take on the most notable fact of
@@ -76,70 +90,9 @@ public enum Voice {
         max(calendar.ordinality(of: .day, in: .era, for: date) ?? 0, 0)
     }
 
-    /// Every line, for the tests and for anyone adding their own. Keep them short (one line on a small phone), free
-    /// of names and of anything that only fits my homelab. These have no facts to work with (a notification's
-    /// subtitle, an empty screen); the takes on real numbers are in Takes.swift.
+    /// Every line for a moment (the same as `lines(for: moment.spot, …)`), for the tests and for anyone adding their
+    /// own. The lines themselves are in VoiceLines.swift; the takes on real numbers are in Takes.swift.
     public static func lines(_ moment: Moment, _ personality: Personality) -> [String] {
-        switch (personality, moment) {
-        case (.off, _):
-            []
-
-        case (.dry, .calm):
-            ["Nothing needs you.", "The machines are behaving. For now.", "No news, which is the good kind.",
-             "Uneventful. As intended.", "All present and quietly whirring."]
-        case (.dry, .headsUp):
-            ["Worth a look today.", "Not urgent. Not nothing.", "Something would like a word.",
-             "A small matter, politely raised."]
-        case (.dry, .alarm):
-            ["Something needs fixing.", "Best look at this soon.", "Not how it should be.",
-             "Rather less fine than usual."]
-        case (.dry, .unknown):
-            ["Can't see the lab from here.", "No answer from the lab.", "The lab isn't taking calls."]
-        case (.dry, .waiting):
-            ["Your call.", "Needs a yes or a no.", "Awaiting a decision. Yours."]
-        case (.dry, .nothingToApprove):
-            ["Nothing waits for you.", "No decisions pending. Restful."]
-        case (.dry, .emptyChat):
-            ["Ask it something.", "The agent is listening, politely."]
-
-        case (.snarky, .calm):
-            ["Suspiciously quiet.", "Nothing's on fire. Yet.", "Go outside. The lab will cope.",
-             "Even the cheap hardware behaves.", "Stop refreshing. It's fine."]
-        case (.snarky, .headsUp):
-            ["Something is sulking.", "Not broken. Just needy.", "A warning. Ignore it at your peril.",
-             "One of your boxes wants attention."]
-        case (.snarky, .alarm):
-            ["Of course it broke now.", "It worked yesterday. Allegedly.", "Coffee first. Then this.",
-             "Cheaper than the cloud, they said."]
-        case (.snarky, .unknown):
-            ["The lab is giving you the silent treatment.", "Tailscale off again?", "Did someone trip over a cable?"]
-        case (.snarky, .waiting):
-            ["It won't approve itself.", "The agent has ideas again.", "A robot awaits your blessing."]
-        case (.snarky, .nothingToApprove):
-            ["Nothing to approve. The agent is behaving.", "No requests. The robot is napping."]
-        case (.snarky, .emptyChat):
-            ["Say something. It's lonely in here.", "It knows your lab better than you do."]
-
-        case (.ultrakill, .calm):
-            ["Nothing's broken. Enjoy it. Nothing lasts.", "All quiet. Entropy is just pacing itself.",
-             "Everything works. Suspicious, in this economy.", "It works. Leave it alone, you menace.",
-             "Calm. Like a morgue."]
-        case (.ultrakill, .headsUp):
-            ["Something's dying slowly. Like the EU's plans.", "Not dead yet. Give it time.",
-             "A warning. Ignore it like the climate reports.", "Your lab is sulking. Draft the eulogy."]
-        case (.ultrakill, .alarm):
-            ["Shit's broken. Go fix it.", "Something died. Go find the body.",
-             "Time of death: just now. Cause: you.", "Another casualty of your homelab."]
-        case (.ultrakill, .unknown):
-            ["The lab's ignoring you. Smart lab.", "No signal. Either dead or unionising.",
-             "Silence. Like the Magistrat on a Friday."]
-        case (.ultrakill, .waiting):
-            ["Decide. Faster than the Magistrat, ideally.", "The bot did the work. Press the button.",
-             "Approve it before entropy does."]
-        case (.ultrakill, .nothingToApprove):
-            ["Nothing to approve. Go be productive. Or don't.", "No requests. The bot gave up on you."]
-        case (.ultrakill, .emptyChat):
-            ["Say something. We're all dying anyway.", "Type something. The void is listening."]
-        }
+        VoiceLines.all(moment.spot.place, personality)
     }
 }

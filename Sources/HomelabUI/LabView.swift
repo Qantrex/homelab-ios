@@ -90,6 +90,9 @@ struct LabView: View {
                 Spacer(minLength: 0)
                 if status.loading { ProgressView() }
             }
+            if let mood = Voice.LabMood(state), let line = Voice.line(for: .lab(mood), personality: model.settings.voice) {
+                Text(line).font(Typo.secondary).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             // Large text: one fact per line instead of a wrapped "a · b · c".
             if typeSize.isAccessibilitySize {
                 ForEach(sublines, id: \.self) {
@@ -139,7 +142,7 @@ struct LabView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(state.problems.enumerated()), id: \.element.id) { index, p in
                         if index > 0 { Divider().padding(.leading, 16) }
-                        ProblemRow(problem: p)
+                        ProblemRow(problem: p, aside: Voice.aside(for: p, in: state, personality: model.settings.voice))
                     }
                     if !state.pending.isEmpty {
                         Divider().padding(.leading, 16)
@@ -212,6 +215,8 @@ struct LabView: View {
 /// in 17 semibold · severity word in 15 secondary · since when at the right in 13 tertiary.
 fileprivate struct ProblemRow: View {
     let problem: Problem
+    /// The personality's aside under the status line (`Voice.aside`), nil when off.
+    var aside: String?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -225,6 +230,7 @@ fileprivate struct ProblemRow: View {
                 (Text(word).font(Typo.secondary).foregroundStyle(Palette.secondary)
                     + Text(age.map { " · \($0)" } ?? "").font(Typo.secondary).foregroundStyle(Palette.tertiary))
                     .accessibilityLabel(Format.spoken(([word] + (age.map { [$0] } ?? [])).joined(separator: ", ")))
+                if let aside { Text(aside).font(Typo.secondary).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 0)
         }
