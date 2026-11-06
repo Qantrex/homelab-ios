@@ -93,6 +93,15 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 5. Leading edges: one line down the screen.
 6. Gaps: 8 under a section title, 32 between sections (use `Space`).
 
+## Lock screen and Live Activity
+
+- Lock-screen widgets (`accessory*`) draw in one colour (vibrant mode): gold and love disappear. Every status there is
+  a symbol plus words ("Delay +3 min" with a clock badge, "Disruption" with a triangle), never colour alone. Gold is
+  an addition on the home screen and in the Live Activity.
+- Mono (the data font) only for times and numbers; titles and directions stay in the normal font.
+- The Live Activity is true black with white text; its countdown runs by itself (`Text(timerInterval:)`).
+- With the app lock on, widgets show counts only, except public data (the U6 times).
+
 ## 6. Row grammar
 
 One row, everywhere (problems, hosts, containers): status glyph or dot (the only colour) · name 17 semibold · reason

@@ -219,7 +219,9 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 | `action` on an item: `{name, label, arg, payload}` | One tap runs that action (`POST /actions/<name>` with `arg` and `payload`, all strings) after a confirm with `label` as its text, then Today refreshes. Shown only with `run-actions` and when `GET /actions` lists the action; payload fields the action doesn't have are dropped, and the server checks everything again |
 | `action` on a card | A "+ `label`" button in the card's header (without `label`: the action's own label from `GET /actions`) that opens that action's form, **prefilled** with `payload` and `arg` (an `arg` that fits one of the action's variants picks it and fills its parts). Same rule: hidden unless `GET /actions` lists it |
 
-Older apps show `checklist` and `countdown` cards as `list` and ignore `done`, `due` and `action`.
+| `style: "departures"` | Public transport (step 6c). One item per departure: `title` the direction ("Floridsdorf"), `subtitle` the stop ("Erlaaer Straße", plus ` · +3 min` when late and ` · planned` when only the timetable is known), `value` the clock text, `due` the time **with a zone**, `tint: "orange"` when late. Items with the same direction and stop form one row, in your order (put the relevant direction first); up to 4 per direction. Each row: direction and the next time (mono), the stop and the next three times; a late one has a gold "+3". Trains whose `due` has passed drop out every minute. `text` is the disruption line ("U6: Schadhaftes Fahrzeug") under the rows, with a gold triangle; set the card `tint` to `red` then. Also the **U6 widget** (lock screen rectangular, inline, circular; home screen small) |
+
+Older apps show `checklist`, `countdown` and `departures` cards as `list` and ignore `done`, `due` and `action`.
 
 ```json
 {"id": "todos", "title": "To-dos", "icon": "checklist", "style": "checklist",
@@ -236,6 +238,41 @@ Older apps show `checklist` and `countdown` cards as `list` and ignore `done`, `
 ```
 
 Clock times are read in the phone's time zone, like times without a zone (see above).
+
+## Commute (Live Activity "Leave by")
+
+`state.commute` is optional. When it is there and `date` is today, the app can show **Leave by 07:26 · U6 07:31** on
+the lock screen (a Live Activity) until the first lesson:
+
+```json
+{"commute": {"date": "2026-11-07", "mode": "u6", "line": "U6",
+             "first_lesson": "2026-11-07T08:00:00+01:00", "leave_by": "2026-11-07T07:26:00+01:00",
+             "train": "2026-11-07T07:31:00+01:00", "next": "2026-11-07T07:36:00+01:00", "next_too_late": true,
+             "disruptions": ["U6: Schadhaftes Fahrzeug"], "updated": "2026-11-07T07:12:00+01:00"}}
+```
+
+| Field | Meaning |
+|---|---|
+| `date` | The day it is for. Required; anything else is ignored. A plan for another day is never shown |
+| `mode` | `u6` (default when there is a `train`) or `bike` |
+| `first_lesson`, `leave_by`, `train` | Needed for a train day; if one is missing there is nothing to show. Times with a zone |
+| `next`, `next_too_late` | The train after it; `next_too_late` adds ", too late" |
+| `disruptions` | Short titles; the first shows with a gold triangle (and "+1" for more) |
+| `mode: "bike"` + `ride` | Bike day: `first_lesson`, `leave_by` and `ride` (minutes), no `train`/`next` |
+| `{date, error}` / `{date, active: false, why}` | Nothing to show; a running activity ends |
+
+The app starts it only **in the foreground**, from 90 minutes before `leave_by` until `first_lesson`, with the
+Settings toggle "Leave-by on the lock screen" on and Live Activities allowed (iOS Settings). It updates (the pick
+changed) or ends (first lesson, another day, error, toggle off) from the app and from the background refresh, which
+iOS runs every 15 to 60 minutes or less. No push: the countdown runs by itself and the activity turns stale at the
+train's time. The server's own "Leave by" notification stays the reliable alert.
+
+## Widgets
+
+The widgets read the app's last snapshot. For a server reached by identity (`auth: identity`, Tailscale) they also GET
+`/state` themselves when that snapshot is older than 5 minutes (8 s timeout, no token, no redirects), so they stay fresh
+with the app closed. Token servers are never fetched by widgets. With the app lock on, the deadlines and to-do widgets
+show counts only; the U6 widget (public times) stays.
 
 ## Chat messages with proposals and cards
 

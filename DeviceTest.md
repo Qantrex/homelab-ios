@@ -137,6 +137,27 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | W7 | Day | "Homelab day" small: next stop big with "in N min", the line as dots; medium: every stop like on Today; lock screen rectangular and inline: next stop and countdown. The countdown moves on its own within a few minutes; after the last stop it says "passed". App lock on: "Open the app" | | |
 | W7b | Tomorrow | After the last lesson (server: the today card has tomorrow's `date`): Today's day card says "Tomorrow", the first stop (wake-up) is bright with "in 10 h 20 min", no stop is grey, the line is empty. Day widget small shows "Tomorrow" and the same countdown; after midnight it is the normal day again | | |
 
+### At a glance (6c)
+
+Needs a server with the `departures` card and `commute` (or Settings → Demo servers: the demo has both, moved to now).
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| W8 | U6 widget | Add "U6 departures": small shows the direction, the stop and the next 3 times in mono; a late one has a gold "+3"; a disruption is a gold triangle with its words. Lock screen: rectangular (line and direction, 3 times, then "Disruption" or "Delay +n min" with a symbol), inline ("U6 20:54 · 20:59"), circular (countdown to the next train in the ring). Trains drop off at their time without opening the app | | |
+| W9 | Deadlines widget | Rectangular: the next 2 with "2 d" / "5 h"; inline "SYT hand-in in 2 d"; circular: number due this week; small: 3, medium: 5 with subtitles. Overdue ones read "3 d ago" with a triangle on the lock screen | | |
+| W10 | To-dos widget | Rectangular: 3 open titles; circular: the open count; small: 4; medium: 6. A tap opens Today | | |
+| W11 | Locked privacy | Settings → Lock with Face ID on: deadlines and to-dos show only counts ("3 deadlines this week", "4 to-dos"), never titles; the U6 widget still shows times. On the lock screen of a locked phone the titles are blank | | |
+| W12 | Widget fetches itself | Close the app, Tailscale on: after 15 to 30 min the widgets' age is fresh without opening the app (Settings → Diagnostics → At a glance → Widget fetch: "ok"). Tailscale off: the cached data stays with its age, Diagnostics shows the error. StandBy (on its side, charging): the U6 small widget shows | | |
+| LA1 | Live Activity starts | On a school morning (or with the demo server) open the app: "Leave by hh:mm" with a countdown and "U6 hh:mm · next hh:mm" is on the lock screen; the disruption is a gold triangle with its words | | |
+| LA2 | It runs by itself | Lock the phone for 10 minutes: the countdown keeps counting. After the train time the activity is greyed (stale) | | |
+| LA3 | Updates and ends | When the pick changes on the server (a delay), a background refresh updates it (Diagnostics → Leave-by: "background: updated"). At the first lesson it is gone. Turn "Leave-by on the lock screen" off in Settings: it ends | | |
+| LA4 | Not allowed / not started | Live Activities off for Homelab in iOS Settings: Diagnostics says "off in iOS Settings", no crash. The activity never starts from the background (only opening the app starts it) | | |
+
+(LA1 to LA4 are named so because L1 to L6 are the Face ID lock rows.)
+
+W7b now also: the Day widget's medium header says "Tomorrow" with the card's date, the countdown reads "in 10 h" and turns "in 9 h" on the hour.
+The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
+
 ## Background and notifications
 
 | # | Test | Pass when | Result | Note |
