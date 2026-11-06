@@ -46,6 +46,22 @@ public enum Voice {
         return options[dayNumber(date, calendar) % options.count]
     }
 
+    /// What the voice says under Today's headline, for the preview in Settings: the take on the most notable fact of
+    /// `state`, else the mood's general line; nil when the personality is off. `variant` moves on like a tap on
+    /// Today's line does.
+    public static func sample(for state: HomelabState?, level: TodayMood.Level, personality: Personality,
+                              variant: Int = 0, now: Date = Date(), calendar: Calendar = .current) -> String? {
+        let variant = max(variant, 0)
+        let count = takeCount(for: state, personality: personality, now: now, calendar: calendar)
+        if count > 0, let t = take(for: state, personality: personality, now: now, calendar: calendar,
+                                   variant: variant % count) {
+            return t.text
+        }
+        let all = lines(moment(level), personality)
+        guard !all.isEmpty else { return nil }
+        return all[(dayNumber(now, calendar) + variant) % all.count]
+    }
+
     public static func moment(_ level: TodayMood.Level) -> Moment {
         switch level {
         case .calm: .calm
