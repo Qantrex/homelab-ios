@@ -160,7 +160,7 @@ struct ProposalRow: View {
                         }
                         // The whole reason: this is where the owner decides, so nothing is cut off.
                         if let reason = action.reason {
-                            Text(markdown(reason)).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                            Text(markdown(reason)).tint(Palette.iris).font(Typo.secondary).foregroundStyle(Palette.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         meta

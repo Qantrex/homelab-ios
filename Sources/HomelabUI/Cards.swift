@@ -179,7 +179,7 @@ struct CardView: View {
     private var content: some View {
         switch card.style {
         case .text:
-            Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n")))
+            Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n"))).tint(Palette.iris)
                 .font(compact ? Typo.meta : Typo.body)
         case .metrics where usesRows, .list where usesRows:
             labRows
@@ -283,7 +283,7 @@ struct CardView: View {
     @ViewBuilder
     private func rows<Row: View>(_ items: [Card.Item], @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
         if items.isEmpty, let text = card.text {
-            Text(markdown(text)).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)
+            Text(markdown(text)).tint(Palette.iris).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)
         } else {
             let shown = compact ? Array(items.prefix(Self.compactRows)) : items
             VStack(alignment: .leading, spacing: compact ? 8 : 12) {
@@ -508,7 +508,7 @@ struct CardView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: count)
         return Group {
             if items.isEmpty, let text = card.text {
-                Text(markdown(text)).font(compact ? .footnote : .body).foregroundStyle(Palette.secondary)
+                Text(markdown(text)).tint(Palette.iris).font(compact ? .footnote : .body).foregroundStyle(Palette.secondary)
             } else {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                     ForEach(Array(items.enumerated()), id: \.offset) { _, item in poster(item) }
