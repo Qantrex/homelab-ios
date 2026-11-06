@@ -4,9 +4,14 @@
 # - Sign in once with `xtool auth login` (a free Apple ID works; its apps expire after 7 days, then re-run this).
 # - The iPhone must trust this computer and have Developer Mode on (Settings -> Privacy & Security).
 # - Linux needs usbmuxd running so xtool can see the phone.
-# xtool registers the bundle ID com.qantrex.homelab, the widget and the App Group for you.
+# xtool registers the bundle ID com.qantrex.homelab, the widget and (xtool after 1.24.0) the App Group for you.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 command -v xtool >/dev/null || { echo "xtool not found: install it from https://github.com/xtool-org/xtool"; exit 1; }
+# xtool up to 1.24.0 drops the App Group for a free Apple ID: the widgets then never see the app's data (docs/SETUP.md).
+v=$(xtool --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+if [ -n "$v" ] && [ "$(printf '%s\n' "$v" 1.24.0 | sort -V | tail -1)" = 1.24.0 ]; then
+  echo "WARN: xtool $v drops the App Group for a free Apple ID: the widgets will say 'No App Group'. See docs/SETUP.md"
+fi
 exec xtool dev "$@"

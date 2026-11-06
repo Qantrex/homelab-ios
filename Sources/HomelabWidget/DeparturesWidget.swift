@@ -44,7 +44,7 @@ struct DeparturesView: View {
     }
 
     private var empty: String {
-        entry.snapshot == nil ? String(localized: "Open the app") : String(localized: "No departures soon")
+        entry.snapshot == nil ? entry.noData(String(localized: "Open the app")) : String(localized: "No departures soon")
     }
 
     // MARK: Lock screen

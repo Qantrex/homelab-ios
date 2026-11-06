@@ -32,8 +32,13 @@ struct Entry: TimelineEntry {
     // Old data keeps its status (dimmed, with its age) instead of turning grey: the background refresh is rare.
     var stale: Bool { snapshot?.isStaleForWidget(now: date) ?? true }
     var mood: TodayMood {
-        snapshot == nil ? TodayMood(level: .unknown, headline: String(localized: "Open the app."), detail: nil)
+        snapshot == nil ? TodayMood(level: .unknown, headline: noData(String(localized: "Open the app.")), detail: nil)
                         : TodayMood(state: state)
+    }
+    /// What a widget says without a snapshot. With no App Group it can't see anything the app saved (xtool up to 1.24.0
+    /// drops the group for a free Apple ID, docs/SETUP.md), so "Open the app" wouldn't help: it says so instead.
+    func noData(_ openTheApp: String) -> String {
+        AppGroup.current == nil ? String(localized: "No App Group: see Diagnostics") : openTheApp
     }
     var pending: Int { state?.pending.count ?? 0 }
     var age: String { snapshot.map { Format.age($0.fetched, now: date) } ?? "" }
@@ -372,7 +377,7 @@ struct DayView: View {
 
     private var empty: String {
         if entry.redacted { return String(localized: "Open the app") }
-        if entry.snapshot == nil { return String(localized: "Open Homelab to load your day.") }
+        if entry.snapshot == nil { return entry.noData(String(localized: "Open Homelab to load your day.")) }
         if let text = card?.text { return text }
         return String(localized: "Nothing planned today.")
     }
@@ -440,7 +445,8 @@ struct HostsView: View {
                 }
             } else {
                 Spacer()
-                Text(entry.snapshot == nil ? "Open Homelab to load your machines." : "No machines reported.")
+                Text(entry.snapshot == nil ? entry.noData(String(localized: "Open Homelab to load your machines."))
+                                           : String(localized: "No machines reported."))
                     .font(.footnote).foregroundStyle(Palette.secondary)
             }
             Spacer(minLength: 0)

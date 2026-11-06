@@ -205,6 +205,36 @@ import Testing
         #expect(storage.read(ServerList.self, "a.json") == nil)
     }
 
+    /// An install without an App Group (xtool <= 1.24.0) saved into the app's own folder: the first install with a group
+    /// takes those files over, without overwriting and only once.
+    @Test func adoptsFilesFromTheLocalFolderOnce() throws {
+        let local = Storage(directory: temporaryDirectory())
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: base, auth: .identity)
+        try local.write(ServerList(servers: [lab], selected: lab.id), ServerList.fileName)
+        try local.write(AppSettings(), AppSettings.fileName)
+        try FileManager.default.createDirectory(at: local.url("images"), withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: local.url("images").appendingPathComponent("a.jpg"))
+
+        let group = Storage(directory: temporaryDirectory())
+        try group.write(RunLog(result: "widget"), RunLog.widgetFetch)   // the widget wrote first: kept
+        try local.write(RunLog(result: "app"), RunLog.widgetFetch)
+        let copied = group.adoptFiles(from: local.directory)
+        #expect(copied == ["images", AppSettings.fileName, ServerList.fileName])   // the server list last
+        #expect(group.read(ServerList.self, ServerList.fileName)?.selectedServer == lab)
+        #expect(group.read(RunLog.self, RunLog.widgetFetch)?.result == "widget")
+        #expect(FileManager.default.fileExists(atPath: group.url("images").appendingPathComponent("a.jpg").path))
+        #expect(local.read(ServerList.self, ServerList.fileName) != nil)   // copied, not moved
+
+        // Once the group has a server list, nothing more comes over (a changed list in the group stays).
+        try group.write(ServerList(), ServerList.fileName)
+        try local.write(ServerList(), "late.json")
+        #expect(group.adoptFiles(from: local.directory).isEmpty)
+        #expect(group.read(ServerList.self, ServerList.fileName) == ServerList())
+        // Nothing to adopt from a folder without a server list, or from the group itself.
+        #expect(Storage(directory: temporaryDirectory()).adoptFiles(from: temporaryDirectory()).isEmpty)
+        #expect(local.adoptFiles(from: local.directory).isEmpty)
+    }
+
     @Test func demoServers() {
         let d = ServerConfig.demo()
         let h = ServerConfig.demoHomeAssistant()

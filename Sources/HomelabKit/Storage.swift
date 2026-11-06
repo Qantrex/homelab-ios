@@ -13,11 +13,39 @@ public struct Storage: Sendable {
     /// The shared location for app + widget.
     public static func shared(group: String? = AppGroup.current) -> Storage {
         if let group, let url = AppGroup.containerURL(group) {
-            return Storage(directory: url.appendingPathComponent("Homelab", isDirectory: true))
+            let storage = Storage(directory: url.appendingPathComponent("Homelab", isDirectory: true))
+            storage.adoptFiles(from: localDirectory)
+            return storage
         }
+        return Storage(directory: localDirectory)
+    }
+
+    /// Where the files go without an App Group: this bundle's own Application Support. The widget can't see it.
+    static var localDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        return Storage(directory: base.appendingPathComponent("Homelab", isDirectory: true))
+        return base.appendingPathComponent("Homelab", isDirectory: true)
+    }
+
+    /// An install without an App Group (xtool up to 1.24.0 drops it for a free Apple ID, docs/SETUP.md) kept the server
+    /// list, settings and cache in the app's own folder. The first time a group is there, they are copied into it, so
+    /// the next install doesn't start from zero. Only into a group that has no server list yet, and never over a file
+    /// that is there. Copies, not moves: an install that loses the group again still finds them. Returns the names.
+    @discardableResult
+    func adoptFiles(from old: URL) -> [String] {
+        let fm = FileManager.default
+        guard old.standardizedFileURL != directory.standardizedFileURL,
+              !fm.fileExists(atPath: url(ServerList.fileName).path),
+              fm.fileExists(atPath: old.appendingPathComponent(ServerList.fileName).path),
+              let names = try? fm.contentsOfDirectory(atPath: old.path) else { return [] }
+        // The server list last: it marks the copy as done, so one that was cut short is finished next time.
+        let ordered = names.filter { $0 != ServerList.fileName }.sorted() + [ServerList.fileName]
+        var copied: [String] = []
+        for name in ordered where !fm.fileExists(atPath: url(name).path) {
+            if (try? fm.copyItem(at: old.appendingPathComponent(name), to: url(name))) != nil { copied.append(name) }
+        }
+        if !copied.isEmpty { AppLog.notice("storage: copied \(copied.count) files into the App Group") }
+        return copied
     }
 
     public func url(_ name: String) -> URL { directory.appendingPathComponent(name) }

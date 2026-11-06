@@ -56,7 +56,7 @@ struct DeadlinesView: View {
     }
 
     private var empty: String {
-        entry.snapshot == nil ? String(localized: "Open the app") : String(localized: "No deadlines")
+        entry.snapshot == nil ? entry.noData(String(localized: "Open the app")) : String(localized: "No deadlines")
     }
 
     private var rectangular: some View {
@@ -182,7 +182,7 @@ struct TodosView: View {
     }
 
     private var empty: String {
-        entry.snapshot == nil ? String(localized: "Open the app") : String(localized: "Nothing open")
+        entry.snapshot == nil ? entry.noData(String(localized: "Open the app")) : String(localized: "Nothing open")
     }
 
     private var rectangular: some View {
