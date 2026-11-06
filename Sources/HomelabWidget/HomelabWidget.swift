@@ -7,13 +7,18 @@ import WidgetKit
 /// look (docs/DESIGN.md): true black, a white headline, the mood as Today's glow plus a status icon, sentence-case
 /// meta in secondary, numbers in the data font. Margins are the system's per family; inside, a 4/8 grid.
 /// StaticConfiguration only: xtool can't build App Intents, so no configurable or interactive widgets.
-/// The widget never holds tokens and never talks to the network.
+/// The widget never holds tokens. A widget may GET `/state` itself for an identity (Tailscale) server, at most every
+/// 5 minutes across all kinds (WidgetData); otherwise it shows what the app wrote.
 @main
 struct HomelabWidgets: WidgetBundle {
     var body: some Widget {
         StatusWidget()
         DayWidget()
         HostsWidget()
+        DeparturesWidget()
+        DeadlinesWidget()
+        TodosWidget()
+        LeaveActivityWidget()
     }
 }
 
@@ -37,8 +42,10 @@ struct Entry: TimelineEntry {
 }
 
 struct Provider: TimelineProvider {
-    /// The Day widget redraws every minute while a stop is near (its countdown); the others every 15 minutes.
-    var followsDay = false
+    /// When the entries are: the Day widget redraws every minute while a stop is near (its countdown), U6 at each
+    /// departure, deadlines at midnight and at timed dues; the others every 15 minutes.
+    enum Follows { case none, day, departures, deadlines }
+    var follows = Follows.none
 
     func placeholder(in context: Context) -> Entry {
         Entry(date: Date(), snapshot: Self.sample)
@@ -50,12 +57,29 @@ struct Provider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
-        // The app reloads timelines whenever it has new data; these are only so the age and the day line stay right.
-        let now = Date()
-        let snap = Self.load()
-        let redacted = Self.locked()
-        let dates = DayTimeline.redrawDates(card: followsDay && !redacted ? snap?.state.dayCard : nil, now: now)
-        completion(Timeline(entries: dates.map { Entry(date: $0, snapshot: snap, redacted: redacted) }, policy: .atEnd))
+        // WidgetKit's completion isn't Sendable; it is called exactly once, from this task.
+        nonisolated(unsafe) let completion = completion
+        Task {
+            // Fresh data when the shared snapshot is older than 5 minutes (identity servers only), else what is there.
+            let now = Date()
+            let snap = await WidgetData.current(now: now)
+            let redacted = Self.locked()
+            let dates: [Date]
+            switch follows {
+            case .none:
+                dates = [now]
+            case .day:
+                dates = DayTimeline.redrawDates(card: redacted ? nil : snap?.state.dayCard, now: now)
+            case .departures:
+                dates = snap?.state.departuresCard.map { DepartureTimeline.entries(DepartureBoard(card: $0), now: now) } ?? [now]
+            case .deadlines:
+                dates = Deadlines.redrawDates(redacted ? nil : snap?.state.deadlinesCard, now: now)
+            }
+            // The next reload in 15 minutes (WidgetKit decides; a widget seen often gets about 40-70 a day). The
+            // entries above are free and cover the time until then.
+            completion(Timeline(entries: dates.map { Entry(date: $0, snapshot: snap, redacted: redacted) },
+                                policy: .after(now.addingTimeInterval(15 * 60))))
+        }
     }
 
     static func load() -> Snapshot? {
@@ -210,7 +234,7 @@ struct StatusView: View {
 
 struct DayWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "HomelabDay", provider: Provider(followsDay: true)) { entry in
+        StaticConfiguration(kind: "HomelabDay", provider: Provider(follows: .day)) { entry in
             DayView(entry: entry)
                 .containerBackground(Palette.background, for: .widget)
                 .widgetURL(URL(string: "homelab://today"))
