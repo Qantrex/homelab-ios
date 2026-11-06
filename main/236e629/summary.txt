@@ -1,4 +1,4 @@
-sim-smoke: 23 screenshots ok, 0 failed, 0 crash reports
+sim-smoke: 27 screenshots ok, 0 failed, 0 crash reports
 main simulator:  iPhone 17 Pro
 small simulator: iPhone 17e
 core shots (01-05 demo light): ok
@@ -25,3 +25,7 @@ core shots (01-05 demo light): ok
   ok:     21-live-offline-cached
   ok:     22-small-demo-today-light
   ok:     23-small-demo-actions-light
+  ok:     24-demo-form-wake-dark
+  ok:     25-demo-form-event-xxl
+  ok:     26-demo-host-media-dark
+  ok:     27-demo-today-overkill-snarky
