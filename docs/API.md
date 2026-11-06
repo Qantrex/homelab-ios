@@ -19,7 +19,10 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `POST /actions/<name>` | `{arg, payload}` | `{ok, text, running}` | Starting one of them, after the app's confirm step |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429
-(too many runs), 5xx. A forged or expired button gets 403; the app shows the error and refreshes the list.
+(too many runs), 5xx. A forged or expired button gets 403; the app says "No longer valid" and refreshes the list.
+A 5xx on `POST /actions/<name>` with `{"error": "..."}` shows that text as the reason it failed (say there whether
+anything ran); a 5xx without it, or a broken connection, shows "Not sure it ran" (with "Check the chat" when the
+server has `chat`).
 
 ## Auth
 
@@ -163,9 +166,9 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 | `tint` on an item | Warm tints (`orange`, `yellow`) are gold, `red` is love, `purple`/`pink` iris, the rest grey. Use it for status, not decoration |
 | `style: "checklist"` | To-dos: a circle per item (filled when `done: true`), the title, the subtitle and `due` as a short day or time ("today 18:00", "tomorrow", "Mon", "13.11."). Tapping the circle of an item with an `action` asks once ("Tick off Milk?"), then runs it |
 | `style: "countdown"` | Each item counts down to its `due` in big mono numbers: "40 min", "5 h", "2 d", "today" (a day without a time), "3 d ago". Gold when it's under 24 h ahead (or today), love when it's past. The app sorts the items by `due`, soonest first; items without `due` last |
-| `due` on an item | A day (`"2026-11-07"`) or a time (`"2026-11-07T18:00"`, local without a zone). A time of exactly 00:00 counts as a day |
+| `due` on an item | A day (`"2026-11-07"`) or a time (`"2026-11-07T18:00"`, local without a zone). A time stays a time, 00:00 too ("Mon 00:00"); send a day without a time for a whole day |
 | `action` on an item: `{name, label, arg, payload}` | One tap runs that action (`POST /actions/<name>` with `arg` and `payload`, all strings) after a confirm with `label` as its text, then Today refreshes. Shown only with `run-actions` and when `GET /actions` lists the action; payload fields the action doesn't have are dropped, and the server checks everything again |
-| `action` on a card | A button in the card's header (`label`, else "+") that opens that action's form, **prefilled** with `payload` and `arg` (an `arg` that fits one of the action's variants picks it and fills its parts). Same rule: hidden unless `GET /actions` lists it |
+| `action` on a card | A "+ `label`" button in the card's header (without `label`: the action's own label from `GET /actions`) that opens that action's form, **prefilled** with `payload` and `arg` (an `arg` that fits one of the action's variants picks it and fills its parts). Same rule: hidden unless `GET /actions` lists it |
 
 Older apps show `checklist` and `countdown` cards as `list` and ignore `done`, `due` and `action`.
 

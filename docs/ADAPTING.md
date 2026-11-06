@@ -2,10 +2,8 @@
 
 The app is built for one homelab (the owner's). If yours is similar, fork it, turn off what you don't have and add
 what you need. This page lists the places to change, in order. It is written for you and for Claude working for
-you (see [Prompt for Claude](#prompt-for-claude) at the end).
-
-The app is still growing (more card styles, chat cards, item actions, Lab history). The places below stay the same.
-Before you add a case to an enum, read the current one.
+you (see [Prompt for Claude](#prompt-for-claude) at the end). Before you add a case to an enum, read the current
+one.
 
 ## What a module is
 
@@ -27,11 +25,11 @@ gets no tab or section for it. `AppModel.availableTabs` (`Sources/HomelabKit/App
 |---|---|---|---|---|
 | Headline (mood) | `status` | `Mood.swift`, `Voice.swift` (personality) | `TodayView.swift` (top) | Always on. Personality: Settings, off by default |
 | Day line | `cards` + a card with `id: "today"` | `DayTimeline.swift` | `TodayView.swift` (`DaySection`), `HomelabDesign/DayLine.swift`, Day widget | Settings → Today → "The day in numbers"; or send no `today` card |
-| Cards | `cards` | `Card` in `Models.swift` | `CardView` in `LabView.swift`, Today's "Cards" section | Settings → Today → "Cards"; or leave out `cards` |
+| Cards | `cards` | `Card` in `Models.swift` | `CardView` in `Cards.swift`, Today's "Cards" section | Settings → Today → "Cards"; or leave out `cards` |
 | Approvals (proposed actions) | `actions` | `PendingAction` in `Models.swift`, `Alerts.swift` | `ActionsView.swift`, Today's "Waiting for you" | Leave out `actions`; Settings → Today |
 | Start actions | `run-actions` | `StartActions.swift` (`ActionSpec`, `ActionForm`) | `ActionsView.swift` ("Start"), `ActionFormView.swift` | Leave out `run-actions`, or list no actions |
 | Chat | `chat` | `ChatTimeline.swift`; `commands` in `/info` | `ChatView.swift` | Leave out `chat` |
-| Lab (hosts, problems) | `hosts` | `Host`, `Problem` in `Models.swift`, `Format.swift` | `LabView.swift` | Tab shows whenever a server is set |
+| Lab (hosts, problems, history, containers) | `hosts` | `Host`, `Problem` in `Models.swift`, `Format.swift`; `HostHistory.swift` (24 h history, containers, restart form) | `LabView.swift`, `HostDetailView.swift`, `HomelabDesign/Sparkline.swift` | Tab shows whenever a server is set; history and containers show when hosts send them |
 | Machines (Overkill) | `hosts` | `TodayLayout.swift` (`Density`) | `MachineList` in `TodayView.swift` | Settings → Today → detail; section "Machines" |
 | Service launcher | `services` | `Service` in `Models.swift` | `ServicesSection` in `LabView.swift` | Leave out `services` (or send an empty list) |
 | Home Assistant tiles | – (a Home Assistant server in Settings) | `HomeAssistant.swift` | `HomeTiles.swift` | Don't add an HA server; or Settings → Today → "Home tiles" |
@@ -94,7 +92,7 @@ content. Add a style only when none of those can show it.
 | 1 | The style in the `style` enum, with what its `items` mean | `server/openapi.yaml`, "How the app shows cards" in `docs/API.md` |
 | 2 | A case in `Card.Style`. Unknown styles fall back to `list`, so send `items` that still read as a list in older apps | `Sources/HomelabKit/Models.swift` |
 | 3 | Any logic (sorting, parsing values) in Kit, with tests | `Sources/HomelabKit/<Style>.swift`, `Tests/HomelabKitTests/` |
-| 4 | A case in the `switch card.style` of `CardView` | `Sources/HomelabUI/LabView.swift` |
+| 4 | A case in the `switch card.style` of `CardView` | `Sources/HomelabUI/Cards.swift` |
 | 5 | A card with the style in a new fixture (don't change one other tests rely on), and a sim-smoke shot of it | `Sources/HomelabKit/Fixtures/`, `scripts/sim-smoke` |
 
 ### A new action the app can start
@@ -104,7 +102,7 @@ No app change, as long as the form only needs the part and field kinds the app k
 
 | Kinds the app knows | |
 |---|---|
-| Argument parts | `literal`, `date` (2026-11-07), `time` (07:30), `number`, `word` (`[A-Za-z0-9._-]`), `choice` |
+| Argument parts | `literal`, `date` (2026-11-07), `time` (07:30), `number`, `word` (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`: no leading `.`, `_` or `-`), `choice` |
 | Payload fields | `text`, `multiline`, `date`, `datetime`, `date-or-datetime`, `number`, `choice` |
 
 The owner's agent (not in this repo) keeps the list in one file, `chat/app-actions.json`. Each entry names an

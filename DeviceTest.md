@@ -47,11 +47,11 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O4 | Host detail | Tap a tile: Status, System, Disks, Maintenance, Flags as the host has them. "Open web interface" opens Safari | | |
 | O5 | Sparklines | Real agent (step 4): each host tile has a thin load line; the detail shows "Last 24 h" with Load, Memory, Temperature, Fullest disk, each with now (top right), min and max in mono. Lines are white/black, gold or love only when the newest value is high; a host that was down has a gap. Footer "One point every 5 min, until …" matches the last watchdog run. VoiceOver reads "Load, last 24 hours, now …, minimum …, maximum …" | | |
 | O6 | Containers | Host detail → Containers: every container, problems first with a love (exited, dead, unhealthy) or gold (restarting) dot and "N problems" in the header; state, health and restarts in mono. Matches `docker ps -a` on the host | | |
-| O7 | Restart a container | Restart only on containers from the host's restart list (none when the server has no `restart-container`). Tap → "Restart `<name>`?" with a red Restart → spinner in the row → alert "Restarted `<name>`" with the agent's output, success haptic; after the refresh its state is running. A refused restart: "Restart of `<name>` failed" or "Didn't run", error haptic | | |
+| O7 | Restart a container | Restart only on containers from the host's restart list (none when the server has no `restart-container`). Tap → "Restart `<name>`?" with a red Restart → spinner in the row → alert "Restarted `<name>`" with the agent's output, success haptic. Until the host's next check (up to ~10 min) the row says "restarted HH:MM, waiting for the next check" and has no Restart button; after that check its state is running (demo: checked at once, so no such line). A refused restart: "Restart of `<name>` failed" or "Didn't run", error haptic | | |
 | O8 | Overkill machines | Settings → Detail → Overkill: under each machine's numbers on Today a thin 24 h load line | | |
 | O9 | Cards | Server cards show (title, icon, items or text). A card item with a link opens Safari | | |
 | O10 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked at once and stays ticked (not tappable) until the server's list drops it (HA too, up to 3 min). A to-do with double spaces in its text ticks off too. Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
-| O11 | Card button | To-dos "+ ADD" → the Add a to-do form with the list already chosen → Run → sheet closes, alert with the agent's answer | | |
+| O11 | Card button | To-dos "+ ADD" → the Add a to-do form. List: the card's list when the server sends one in the card action's `payload` (`{"list": "todo"}`), else "–" (pick one); both are fine → Run → sheet closes, alert with the agent's answer | | |
 | O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
 | O13 | Services | Service buttons are grouped and open the right page in Safari | | |
 | O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
@@ -66,13 +66,13 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | A2 | Approve | Approve → dialog "Run once" → "Running…" → alert with the server's result text. The row goes away | | |
 | A3 | Always | Always → "Run and always allow" with the explanation → result text. Only shown when the server offers it | | |
 | A4 | Deny | Deny → red "Deny", "Drops the proposal. Nothing runs." → result text. Nothing ran on the server | | |
-| A6 | Already handled | Approve the same action on another device (or web), then tap it here: "Didn't work" / "This button is no longer valid (already handled or expired)." | | |
+| A6 | Already handled | Approve the same action on another device (or web), then tap it here: "No longer valid" / "This button is no longer valid (already handled or expired)." | | |
 | A7 | Nothing pending | "Nothing to approve" placeholder; with Start tiles above it, one quiet row instead | | |
-| A8 | Start: tiles | Real server: "Start" shows a tile per action in the agent's `chat/app-actions.json` (icon, label, name in mono). Demo: six tiles | | |
+| A8 | Start: tiles | Real server: "Start" shows a tile per action in the agent's `chat/app-actions.json` (icon, label, name in mono). Demo: seven tiles | | |
 | A9 | Start: a form | Wake-up: "Wake me" / "No wake-up" switch, day picker starts at tomorrow, time at 07:00, the argument in mono under it (`2026-11-07T07:00`). Add a to-do with an empty To-do: Run → gold "To-do is missing." and a warning haptic, nothing sent. Due switch on → a day; "At a time" on → a time | | |
 | A10 | Start: run | Add a to-do "Test from the app" → confirm shows the fields and "Runs at once on …" → Run now → sheet closes, alert "Add a to-do" with the agent's output, success haptic. The to-do is in HA; the chat shows what I started and the result. Restart a container asks with a red button | | |
 | A11 | Start: refused | Restart a container with a name not on the host's list → alert "Restart a container failed" with the helper's output; error haptic | | |
-| A12 | Start: link | `homelab://actions/wake-set` (Safari or Shortcuts) opens the app on Actions with the Wake-up form | | |
+| A12 | Start: link | `homelab://actions/wake-set` (Safari or Shortcuts) opens the app on Actions with the Wake-up form. Right after a reset (before the server's info), open the link and tap another tab at once: the form doesn't pop up later | | |
 
 ## Chat
 

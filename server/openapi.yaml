@@ -176,6 +176,7 @@ paths:
         "400": { description: "Argument or payload refused; `error` says why." }
         "404": { description: Not an action the app may start. }
         "429": { description: Too many actions from the app in the last hour. }
+        "5XX": { description: "The server failed. Its `error` text, if any, is shown as the reason, so say there whether anything ran. Without it the app says it is not sure the action ran." }
 components:
   securitySchemes:
     identityHeader:
@@ -479,7 +480,7 @@ components:
       required: [kind]
       description: A variant with a part the app doesn't know is dropped (it couldn't build the argument).
       properties:
-        kind: { type: string, enum: [literal, date, time, number, word, choice], description: "date 2026-11-07, time 07:30, word [A-Za-z0-9._-]" }
+        kind: { type: string, enum: [literal, date, time, number, word, choice], description: "date 2026-11-07, time 07:30, word [A-Za-z0-9][A-Za-z0-9._-]{0,63} (no leading . _ -)" }
         label: { type: string, example: Day }
         text: { type: string, description: "literal only: the fixed text, e.g. T or :off" }
         options:
