@@ -149,7 +149,7 @@ struct TodayView: View {
         case .report:
             if let state, model.selected != nil { lastReport(state) }
         case .machines:
-            if let state, model.selected != nil, !state.hosts.isEmpty { MachineList(hosts: state.hosts, problems: state.problems, exact: density.exactTimes) }
+            if let state, model.selected != nil, !state.hosts.isEmpty { MachineList(hosts: state.hosts, state: state, exact: density.exactTimes) }
         }
     }
 
@@ -328,8 +328,8 @@ struct DayNumbers: View {
 /// details screen.
 struct MachineList: View {
     let hosts: [Host]
-    /// The server's problems, for each host's level (`HostHealth.init(_:problems:)`).
-    let problems: [Problem]
+    /// The state the hosts come from, for each host's level (`HomelabState.health(of:)`).
+    let state: HomelabState
     let exact: Bool
 
     var body: some View {
@@ -337,7 +337,7 @@ struct MachineList: View {
             SectionTitle(text: "Machines", trailing: "\(hosts.filter { $0.reachable == true }.count)/\(hosts.count) up")
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(hosts) { host in
-                    let health = HostHealth(host, problems: problems)
+                    let health = state.health(of: host)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Circle().fill(health.color).frame(width: 7, height: 7)

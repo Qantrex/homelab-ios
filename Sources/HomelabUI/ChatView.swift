@@ -96,8 +96,9 @@ struct ChatView: View {
                         .padding(.horizontal)
                         .padding(.top, 6)
                 }
+                // The composer is a bottom inset of the scroll view, so the last bubble's buttons stay above it.
                 messages
-                composer
+                    .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             }
             .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Chat")
@@ -128,7 +129,7 @@ struct ChatView: View {
     private var messages: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 10) {
+                VStack(spacing: 10) {
                     if chat.loadedOnce && chat.timeline.messages.isEmpty && chat.timeline.outgoing.isEmpty {
                         Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right", message: emptyMessage)
                             .padding(.top, 40)
@@ -176,6 +177,19 @@ struct ChatView: View {
             .onChange(of: chat.timeline.messages.count + chat.timeline.outgoing.count) { _, _ in
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
             }
+            // On open and when the first load lands: the bottom of the newest message, even if it is taller than the
+            // screen. Twice, because lazy rows are measured while scrolling.
+            .onAppear { scrollToEnd(proxy) }
+            .onChange(of: chat.loadedOnce) { _, _ in scrollToEnd(proxy) }
+            .onChange(of: focused) { _, _ in scrollToEnd(proxy) }
+        }
+    }
+
+    private func scrollToEnd(_ proxy: ScrollViewProxy) {
+        proxy.scrollTo("bottom", anchor: .bottom)
+        Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 

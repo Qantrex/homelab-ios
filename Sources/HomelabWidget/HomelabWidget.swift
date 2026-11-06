@@ -341,7 +341,7 @@ struct HostsView: View {
                 let limit = family == .systemLarge ? 8 : 4
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                           alignment: .leading, spacing: 8) {
-                    ForEach(hosts.prefix(limit)) { HostCell(host: $0, health: HostHealth($0, problems: state?.problems ?? [])) }
+                    ForEach(hosts.prefix(limit)) { HostCell(host: $0, health: state?.health(of: $0) ?? HostHealth($0)) }
                 }
                 .opacity(entry.stale ? 0.55 : 1)   // only the data dims; the age above stays readable
                 if family == .systemLarge, let problems = state?.problems, !problems.isEmpty {

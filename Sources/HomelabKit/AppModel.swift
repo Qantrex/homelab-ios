@@ -88,6 +88,9 @@ public struct ServerStatus: Sendable, Equatable {
         self.snapshot = snapshot
     }
 
+    /// A host's level, the one way everywhere (tile, detail, widget): with the server's problems if a state is known.
+    public func health(of host: Host) -> HostHealth { snapshot?.state.health(of: host) ?? HostHealth(host) }
+
     /// The server's /info, live or from the cache.
     public var knownInfo: ServerInfo? { info ?? snapshot?.info }
 

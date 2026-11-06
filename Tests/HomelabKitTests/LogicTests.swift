@@ -237,7 +237,7 @@ import Testing
 
     @Test func numbers() {
         #expect(Format.percent(nil) == "–" && Format.percent(42) == "42%")
-        #expect(Format.temperature(52.6) == "53\u{202F}°C")   // narrow no-break space, no wide gap in mono
+        #expect(Format.temperature(52.6) == "53°C")   // no space: even U+202F is a full cell in mono
         #expect(Format.load(0.4) == "0.40")
         #expect(Format.loadShare(2, cores: 4) == 0.5 && Format.loadShare(2, cores: nil) == 2)
         #expect(Format.containers(up: 3, total: 4) == "3/4" && Format.containers(up: nil, total: nil) == "–")
@@ -263,7 +263,11 @@ import Testing
         #expect(h["gpu"] == .asleep)
         #expect(HostHealth(Host(id: "x", reachable: false)) == .problem)
         #expect(HostHealth(Host(id: "x")) == .unknown)
-        #expect(HostHealth(Host(id: "x", reachable: true, flags: ["undervoltage_now"])) == .problem)
+        #expect(HostHealth(Host(id: "x", reachable: true, flags: ["undervoltage_now"])) == .warning)   // flags alone: the server decides on a problem
+        let pi = Host(id: "p", reachable: true, flags: ["undervoltage_now", "throttled_now"])
+        #expect(HostHealth(pi, problems: []) == .warning)
+        #expect(HostHealth(pi, problems: [Problem(text: "p: under-voltage", host: "p")]) == .problem)
+        #expect(Format.withUnit("5", "kWh") == "5\u{202F}kWh" && Format.withUnit("45", "%") == "45%" && Format.withUnit("20", "°C") == "20°C")
     }
 
     @Test func hostHealthTakesTheServersProblemsForTheHost() throws {
@@ -272,6 +276,8 @@ import Testing
         #expect(h["media"] == .problem)     // "container sonarr is unhealthy" is a problem, not just 10/11 up
         #expect(h["pi"] == .warning)        // its listed problem is a warning
         #expect(h["server"] == .ok && h["gpu"] == .asleep)
+        let status = ServerStatus(snapshot: Snapshot(serverID: UUID(), serverName: "t", state: s))
+        #expect(status.health(of: s.hosts.first { $0.id == "media" }!) == .problem)   // same answer as the tile
         // Never lower than the host's own level, and only problems of this host count.
         let down = Host(id: "x", reachable: false)
         #expect(HostHealth(down, problems: [Problem(text: "x: slow", host: "x", severity: .warning)]) == .problem)

@@ -198,7 +198,7 @@ import Testing
     @Test func entityDisplay() throws {
         let states = try fixture([Lossy<HAEntity>].self, "ha-states.json").compactMap(\.value)
         let byID = Dictionary(uniqueKeysWithValues: states.map { ($0.entityID, $0) })
-        #expect(byID["sensor.living_room_temperature"]?.displayState == "21.4\u{202F}°C")
+        #expect(byID["sensor.living_room_temperature"]?.displayState == "21.4°C")
         #expect(HAEntity(entityID: "sensor.h", state: "45", unit: "%").displayState == "45%")
         #expect(HAEntity(entityID: "sensor.e", state: "3.2", unit: "kWh").displayState == "3.2\u{202F}kWh")
         #expect(byID["binary_sensor.front_door"]?.displayState == "Closed")

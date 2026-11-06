@@ -71,7 +71,7 @@ public struct HAEntity: Codable, Sendable, Equatable, Identifiable, Hashable {
     public var isOn: Bool { ["on", "open", "playing", "home", "unlocked"].contains(state.lowercased()) }
     public var isAvailable: Bool { !["unavailable", "unknown"].contains(state.lowercased()) }
 
-    /// The state as people read it: "21.4 °C" (narrow no-break space), "45%", "On", "Open".
+    /// The state as people read it: "21.4°C", "45%", "On", "Open".
     public var displayState: String {
         if !isAvailable { return state.lowercased() == "unknown" ? "Unknown" : "Unavailable" }
         switch domain {
@@ -85,7 +85,7 @@ public struct HAEntity: Codable, Sendable, Equatable, Identifiable, Hashable {
             default: return on ? "On" : "Off"
             }
         default:
-            if let unit, !unit.isEmpty { return state + (unit == "%" ? "" : Format.unitSpace) + unit }
+            if let unit, !unit.isEmpty { return Format.withUnit(state, unit) }
             if ["on", "off"].contains(state.lowercased()) { return state.lowercased() == "on" ? "On" : "Off" }
             return state.prefix(1).uppercased() + state.dropFirst()
         }

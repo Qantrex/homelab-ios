@@ -152,7 +152,7 @@ public extension HostHistory.Series {
         }
     }
 
-    /// "1.85", "71%", "63 °C".
+    /// "1.85", "71%", "63°C".
     func format(_ value: Double) -> String {
         switch self {
         case .load: Format.load(value)

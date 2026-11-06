@@ -110,13 +110,18 @@ public enum Format {
         value.map { "\($0)%" } ?? "–"
     }
 
-    /// "63 °C" with a narrow no-break space (U+202F): no wide gap in mono chips, never a line break before the unit.
+    /// "63°C", without a space: any space (even U+202F) renders as a full cell in the mono font.
     public static func temperature(_ celsius: Double?) -> String {
         guard let celsius else { return "–" }
-        return "\(Int(celsius.rounded()))\(unitSpace)°C"
+        return "\(Int(celsius.rounded()))°C"
     }
 
-    /// Between a number and its unit ("63 °C", "21.4 kWh"). Percent goes without a space ("71%").
+    /// Between a number and its unit ("21.4 kWh"). Percent and degrees go without a space ("71%", "63°C").
+    public static func withUnit(_ value: String, _ unit: String) -> String {
+        ["%", "°C", "°F", "°"].contains(unit) ? value + unit : value + unitSpace + unit
+    }
+
+    /// Narrow no-break space (U+202F) for the other units.
     public static let unitSpace = "\u{202F}"
 
     public static func load(_ load: Double?) -> String {
@@ -177,7 +182,8 @@ extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
-/// The level of one host, for its colour: an unreachable host or an alarming flag is a problem, hot or full is a warning.
+/// The level of one host, for its colour. On its own an unreachable host is a problem; flags, hot or full are warnings.
+/// Only the server decides what else is a problem (`init(_:problems:)`).
 public enum HostHealth: Sendable, Equatable {
     case ok, warning, problem, asleep, unknown
 
@@ -185,7 +191,7 @@ public enum HostHealth: Sendable, Equatable {
         if host.flags.contains("asleep") { self = .asleep; return }
         guard let reachable = host.reachable else { self = .unknown; return }
         if !reachable { self = .problem; return }
-        if host.flags.contains(where: Format.isAlarming) { self = .problem; return }
+        if host.flags.contains(where: Format.isAlarming) { self = .warning; return }
         if let up = host.containersUp, let total = host.containersTotal, up < total { self = .warning; return }
         if let d = Format.worstDisk(host.disks), d.percent >= 90 { self = .warning; return }
         if let t = host.temp, t >= Format.hotCelsius { self = .warning; return }
