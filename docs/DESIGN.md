@@ -16,15 +16,17 @@ roles in `Typo`; no screen picks a size by hand.
 | Role | Font | Use for |
 |---|---|---|
 | Hero | `Typo.hero` via `.heroFont()` (SF Pro, heavy, 48 pt, scales like `.largeTitle`) | Today's headline only |
-| Display | `Typo.display` 28 semibold; `Typo.displayData` the same in SF Mono | The one big number in a card: a chart's current value, the next stop |
+| Display | `Typo.display` 28 semibold; `Typo.displayData` the same with fixed-width digits | The one big number in a card: a chart's current value, the next stop |
 | Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("Waiting for you", "Machines"), sheet titles |
 | Headline | `Typo.headline` (17 semibold) | The name of a row or card ("restart media sonarr", "Living room"), the fact line |
 | Body | `Typo.body` (17 regular) | Text people read: chat, the voice line |
 | Secondary | `Typo.secondary` (15), `Palette.secondary` | What explains a row: reason, subtitle, the status line of a screen |
 | Meta | `Typo.meta` (13), `Palette.tertiary` | When, where from ("checked 2 min ago"), column headers, footers |
-| Data | `Typo.data(…)` (SF Mono); `Typo.rowValue` (15 medium) | **Numbers and ids only**: 3.10, 88%, 07:30, ab12. In a row's right-hand column: `rowValue` |
+| Data | `Typo.data(…)` (SF Pro, fixed-width digits); `Typo.rowValue` (15 medium) | **Numbers only**: 3.10, 88%, 07:30. In a row's right-hand column: `rowValue` |
+| Code | `Typo.code(…)` (SF Mono) | Code in chat only (code blocks, inline code) |
 
-- Mono is for values, never for labels, dates in sentences, titles or buttons.
+- One typeface: SF Pro. Numbers use its fixed-width digits (`Typo.data`), so columns line up without a second font.
+  SF Mono only for code in chat. Owner, 2026-11-06: "too many different fonts and mono font".
 - No uppercase labels with tracking (the "terminal caption" look). Section titles are sentence case.
 - No italics. Emphasis is weight or colour, not slant.
 - Minimum 11 pt; prefer Regular, Medium, Semibold, Bold.

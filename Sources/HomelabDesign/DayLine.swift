@@ -190,7 +190,7 @@ public struct DayStopLabel: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(stop.item.value ?? "")
-                .font(valueSize.map { Font.system(size: $0, weight: .semibold, design: .monospaced) } ?? Typo.displayData)
+                .font(valueSize.map { Font.system(size: $0, weight: .semibold).monospacedDigit() } ?? Typo.displayData)
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(valueColor)
                 .contentTransition(Motion.numeric)

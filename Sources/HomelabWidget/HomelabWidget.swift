@@ -314,7 +314,7 @@ struct DayView: View {
             if let stop = focus, let line {
                 Text(stop.item.title ?? "").font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary).lineLimit(1)
                 Text(stop.item.value ?? "")
-                    .font(.system(size: 34, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 34, weight: .semibold).monospacedDigit())
                     .minimumScaleFactor(0.6).lineLimit(1)
                     .foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.text)
                 Text(detail(stop, line)).font(.footnote.weight(stop.phase == .next ? .semibold : .regular))

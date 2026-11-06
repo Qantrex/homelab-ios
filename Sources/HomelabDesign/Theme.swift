@@ -52,12 +52,16 @@ public enum Palette {
     }
 }
 
-/// Fonts (docs/DESIGN.md §1): system text styles for words, the monospaced design only for values.
+/// Fonts (docs/DESIGN.md §1): one typeface, SF Pro. Values use its fixed-width digits so columns line up; SF Mono is
+/// only for code in chat (`code`). Owner's review 2026-11-06: "too many different fonts and mono font".
 public enum Typo {
-    /// Values only: numbers, times, ids, arguments. Never labels or titles.
+    /// Values: numbers, times, percentages. SF Pro with fixed-width digits, so it reads like the text around it.
     public static func data(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
-        .system(style, design: .monospaced).weight(weight)
+        .system(style).weight(weight).monospacedDigit()
     }
+
+    /// Code only: code blocks and inline code in chat. Never values, labels or commands.
+    public static func code(_ style: Font.TextStyle) -> Font { .system(style, design: .monospaced) }
 
     /// Older name of `data`; new code uses `data`.
     public static func mono(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font { data(style, weight: weight) }
@@ -72,8 +76,8 @@ public enum Typo {
     public static func hero(size: CGFloat) -> Font { .system(size: size, weight: .heavy, design: .default) }
     /// 28 semibold. The one big number in a card (current value in a chart, next stop of the day line).
     public static let display: Font = .title.weight(.semibold)
-    /// `display` for values: SF Mono with fixed-width digits.
-    public static let displayData: Font = .system(.title, design: .monospaced).weight(.semibold)
+    /// `display` for values: fixed-width digits.
+    public static let displayData: Font = Font.title.weight(.semibold).monospacedDigit()
     /// 20 bold. Section titles, sentence case, no tracking.
     public static let sectionTitle: Font = .title3.bold()
     /// 17 semibold. The name of a row or card.
@@ -84,7 +88,7 @@ public enum Typo {
     public static let secondary: Font = .subheadline
     /// 13 regular, in `Palette.tertiary`. Ages, "checked 2 min ago", footers.
     public static let meta: Font = .footnote
-    /// 15 medium mono. A value in a row's right-hand column.
+    /// 15 medium, fixed-width digits. A value in a row's right-hand column.
     public static let rowValue: Font = data(.subheadline, weight: .medium)
 }
 
@@ -296,7 +300,7 @@ public struct ProgressRing: View {
                 Image(systemName: "checkmark").font(.system(size: size * 0.34, weight: .bold)).foregroundStyle(tint)
             } else {
                 Text("\(percent)")
-                    .font(.system(size: size * 0.32, weight: .semibold, design: .monospaced))
+                    .font(.system(size: size * 0.32, weight: .semibold).monospacedDigit())
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                     .foregroundStyle(Palette.text)

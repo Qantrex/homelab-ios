@@ -232,7 +232,7 @@ struct ChatView: View {
                         ForEach(quick, id: \.self) { cmd in
                             Button { submit(cmd) } label: {
                                 Text(cmd)
-                                    .font(Typo.data(.footnote))
+                                    .font(Typo.secondary)
                                     .foregroundStyle(Palette.secondary)
                                     .padding(.horizontal, 12)
                                     .frame(minHeight: 32)
@@ -587,7 +587,7 @@ struct ChatText: View {
         case .code(let s, _):
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(verbatim: s)
-                    .font(Typo.data(.footnote))
+                    .font(Typo.code(.footnote))
                     .padding(12)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -637,7 +637,7 @@ struct ChatText: View {
         var a = markdown(s)
         for run in a.runs {
             if run.inlinePresentationIntent?.contains(.code) == true {
-                a[run.range].font = Typo.data(.subheadline)
+                a[run.range].font = Typo.code(.subheadline)
                 a[run.range].backgroundColor = onBubble ? Palette.line : Palette.raised
             }
             if run.link != nil {
