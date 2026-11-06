@@ -1,8 +1,8 @@
 import HomelabKit
 import SwiftUI
 
-/// A small line of the last values (a host's 24 h load, RAM, temperature or disk). Monochrome, with a dot on the newest
-/// value; the line turns gold or love only when that value is over `warning` or `problem`. Gaps (no data) break the
+/// A small line of the last values (a host's 24 h load, RAM, temperature or disk). The line is grey; only the dot on the
+/// newest value turns gold or love, when that value is over `warning` or `problem`. Gaps (no data) break the
 /// line. The shape comes from `SparklineShape` (HomelabKit, tested); this view only draws it.
 public struct Sparkline: View {
     let shape: SparklineShape
@@ -12,7 +12,7 @@ public struct Sparkline: View {
     let label: String
     let value: String
 
-    /// A ready shape. The line is gold or love only by `tintValue` (nil: plain), so an hours-old value doesn't colour
+    /// A ready shape. The dot is gold or love only by `tintValue` (nil: plain), so an hours-old value doesn't colour
     /// it; VoiceOver says "now" only for that value too. `label` is what VoiceOver says first ("Load, last 24 hours"),
     /// followed by min, max and now in `format`.
     public init(shape: SparklineShape, tintValue: Double?, warning: Double? = nil, problem: Double? = nil, label: String,
@@ -45,10 +45,10 @@ public struct Sparkline: View {
                                height: max(geo.size.height - inset * 2, 1))
             ZStack(alignment: .topLeading) {
                 if fill {
-                    area(in: frame).fill(LinearGradient(colors: [tint.opacity(0.12), tint.opacity(0)],
+                    area(in: frame).fill(LinearGradient(colors: [Palette.secondary.opacity(0.12), Palette.secondary.opacity(0)],
                                                         startPoint: .top, endPoint: .bottom))
                 }
-                line(in: frame).stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+                line(in: frame).stroke(Palette.secondary, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
                 if let p = shape.last {
                     let dot = lineWidth * 2 + 2
                     Circle().fill(tint)

@@ -14,12 +14,12 @@ import UIKit
 public enum Palette {
     /// Screen background: #000000 in dark mode, white in light mode.
     public static let background = dynamic(dark: 0x000000, light: 0xFFFFFF)
-    /// Panels on the background.
-    public static let surface = dynamic(dark: 0x0B0B0B, light: 0xF6F6F6)
+    /// Panels on the background: #141414 on black (contrast about 1.2:1, visible on OLED in daylight; research D7).
+    public static let surface = dynamic(dark: 0x141414, light: 0xF2F2F2)
     /// Raised things inside a panel (buttons, tiles that are on).
-    public static let raised = dynamic(dark: 0x1A1A1A, light: 0xE9E9E9)
+    public static let raised = dynamic(dark: 0x1F1F1F, light: 0xE6E6E6)
     /// Hairlines and meter tracks.
-    public static let line = dynamic(dark: 0x262626, light: 0xDDDDDD)
+    public static let line = dynamic(dark: 0x2A2A2A, light: 0xD8D8D8)
     /// Main text and the accent (buttons, selected tab): white on black, black on white.
     public static let text = dynamic(dark: 0xF2F2F2, light: 0x0A0A0A)
     public static let secondary = dynamic(dark: 0x9A9A9A, light: 0x5C5C5C)
@@ -52,11 +52,36 @@ public enum Typo {
     /// Older name of `data`; new code uses `data`.
     public static func mono(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font { data(style, weight: weight) }
 
-    /// Today's headline: the one big thing on the first screen. Scales with Dynamic Type from 48 pt.
-    public static let hero: Font = .system(size: 48, weight: .heavy, design: .default)
+    // The type scale (docs/DESIGN.md §1): 48 / 28 / 20 / 17 / 15 / 13, each step at least 1.13x. Max five per screen.
 
-    /// Section titles: sentence case, bold, no tracking.
+    /// 48 heavy. Today's headline: the one big thing on the first screen. Scales with Dynamic Type.
+    public static let hero: Font = .system(size: 48, weight: .heavy, design: .default)
+    /// 28 semibold. The one big number in a card (current value in a chart, next stop of the day line).
+    public static let display: Font = .title.weight(.semibold)
+    /// `display` for values: SF Mono with fixed-width digits.
+    public static let displayData: Font = .system(.title, design: .monospaced).weight(.semibold)
+    /// 20 bold. Section titles, sentence case, no tracking.
     public static let sectionTitle: Font = .title3.bold()
+    /// 17 semibold. The name of a row or card.
+    public static let headline: Font = .headline
+    /// 17 regular. Text people read.
+    public static let body: Font = .body
+    /// 15 regular, in `Palette.secondary`. What explains a row.
+    public static let secondary: Font = .subheadline
+    /// 13 regular, in `Palette.tertiary`. Ages, "checked 2 min ago", footers.
+    public static let meta: Font = .footnote
+    /// 15 medium mono. A value in a row's right-hand column.
+    public static let rowValue: Font = data(.subheadline, weight: .medium)
+}
+
+/// Spacing tokens (docs/DESIGN.md §2). Inside a group is clearly smaller than between groups.
+public enum Space {
+    /// Section title to its panel.
+    public static let titleToPanel: CGFloat = 8
+    /// Between two sections.
+    public static let section: CGFloat = 32
+    /// Between rows that are separate things (not in one panel).
+    public static let row: CGFloat = 12
 }
 
 #if canImport(UIKit)
@@ -198,28 +223,28 @@ public struct StatusPill: View {
     }
 }
 
-/// A thin bar for 0…1 values (disk, progress). Colour turns orange/red near full when `warns` is set.
+/// A thin grey bar for 0…1 values (disk, progress). Colour belongs to numbers, not bars (docs/DESIGN.md §3): a bar
+/// stays grey and the value next to it takes `Meter.valueColor`. `warns` and `tint` are accepted for old call sites.
 public struct Meter: View {
     let value: Double
     let tint: Color
-    let warns: Bool
 
-    public init(_ value: Double, tint: Color = Palette.text, warns: Bool = false) {
+    public init(_ value: Double, tint: Color = Palette.secondary, warns: Bool = false) {
         self.value = min(max(value, 0), 1)
         self.tint = tint
-        self.warns = warns
     }
 
-    var color: Color {
-        guard warns else { return tint }
-        return value >= 0.9 ? Palette.love : value >= 0.75 ? Palette.gold : tint
+    /// The colour of the number that goes with a share of a limit: gold from 75 %, love from 90 %, else normal text.
+    public static func valueColor(_ share: Double?, normal: Color = Palette.text) -> Color {
+        guard let share else { return normal }
+        return share >= 0.9 ? Palette.love : share >= 0.75 ? Palette.gold : normal
     }
 
     public var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Palette.line)
-                Capsule().fill(color).frame(width: max(geo.size.width * value, value > 0 ? 3 : 0))
+                Capsule().fill(tint).frame(width: max(geo.size.width * value, value > 0 ? 3 : 0))
             }
         }
         .frame(height: 4)

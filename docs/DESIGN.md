@@ -10,15 +10,19 @@ When a screen breaks a rule here, change the screen, not the rule. When a rule i
 
 HIG: "Minimize the number of typefaces", use the system text styles, keep the hierarchy at every text size.
 
+The scale is 48 / 28 / 20 / 17 / 15 / 13, every step at least 1.13x. At most five of them on one screen. All are named
+roles in `Typo`; no screen picks a size by hand.
+
 | Role | Font | Use for |
 |---|---|---|
 | Hero | `Typo.hero` (SF Pro, heavy, 48 pt, scales) | Today's headline only |
-| Title | `Typo.sectionTitle` (`.title3.bold()`) | Section titles ("Waiting for you", "Machines"), sheet titles |
-| Headline | `.headline` | The name of a row or card ("restart media sonarr", "Living room") |
-| Body | `.body` | Text people read: reasons, chat, the voice line |
-| Secondary | `.subheadline`, `Palette.secondary` | What explains a row: reason, subtitle, due |
-| Meta | `.footnote`, `Palette.tertiary` | When, where from ("checked 2 min ago") |
-| Data | `Typo.data(…)` (SF Mono) | **Numbers and ids only**: 3.10, 88%, 07:30, ab12, 2026-11-07T07:00 |
+| Display | `Typo.display` 28 semibold; `Typo.displayData` the same in SF Mono | The one big number in a card: a chart's current value, the next stop |
+| Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("Waiting for you", "Machines"), sheet titles |
+| Headline | `Typo.headline` (17 semibold) | The name of a row or card ("restart media sonarr", "Living room"), the fact line |
+| Body | `Typo.body` (17 regular) | Text people read: chat, the voice line |
+| Secondary | `Typo.secondary` (15), `Palette.secondary` | What explains a row: reason, subtitle, the status line of a screen |
+| Meta | `Typo.meta` (13), `Palette.tertiary` | When, where from ("checked 2 min ago"), column headers, footers |
+| Data | `Typo.data(…)` (SF Mono); `Typo.rowValue` (15 medium) | **Numbers and ids only**: 3.10, 88%, 07:30, ab12. In a row's right-hand column: `rowValue` |
 
 - Mono is for values, never for labels, dates in sentences, titles or buttons.
 - No uppercase labels with tracking (the "terminal caption" look). Section titles are sentence case.
@@ -30,9 +34,13 @@ HIG: "Minimize the number of typefaces", use the system text styles, keep the hi
 HIG: group related items with negative space, container shapes **or** separators; align things that belong together.
 
 - Screen margin 16 pt (the system's), one column. Everything on a screen starts at the same leading edge.
-- 8-pt grid: 4 inside a label stack, 8 between a label and its value, 12 between rows, 24 between sections,
-  32 under the hero.
-- **One container style**: `.panel()`: filled `Palette.surface`, corner radius 16, no border. Rows inside a panel
+- 8-pt grid, tokens in `Space`: 2-4 inside a label stack, **8 from a section title to its panel**
+  (`Space.titleToPanel`), 12 between separate rows, **32 between sections** (`Space.section`), 32 under the hero.
+  Inside a group is always clearly smaller than between groups.
+- **One container style**: `.panel()` (or `.rowsPanel()` when the rows bring their own padding): filled `Palette.surface`,
+  corner radius 16, no border. Surfaces by lightness, not borders: `background` #000000, `surface` #141414 (panels),
+  `raised` #1F1F1F (things inside a panel: buttons, a tile that is on), `line` #2A2A2A (tracks). Light mode:
+  white, #F2F2F2, #E6E6E6, #D8D8D8. Rows inside a panel
   are split by separators (inset 16), never by nested panels.
 - No hairline borders around panels, tiles or bubbles. Status is never a coloured border (see 3).
 - A section = a title + one panel (or a grid of tiles). Not a panel per item.
@@ -52,6 +60,8 @@ colour alone.
 | `iris` #c4a7e7 | A link | Links only |
 
 - The hero headline stays white. The mood is the light behind it (`MoodGlow`) plus a status icon, not coloured text.
+- Colour sits on symbols, dots and numbers only. A meter or sparkline is grey; only the value next to it (and the
+  sparkline's last dot) turns gold at 75 % of its limit and love at 90 % (`Meter.valueColor`).
 - A broken item shows a coloured dot or SF Symbol next to it (with its word: "unhealthy", "93%"), not a coloured card.
 - One accent per element: never coloured text in a coloured border in a coloured glow.
 - Never blue, also not by default: every control sets `.tint(Palette.accent)`.
@@ -81,3 +91,12 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 3. Count borders: zero. Count nested panels: zero.
 4. Count colours: only status things are coloured, and each says why in words.
 5. Leading edges: one line down the screen.
+6. Gaps: 8 under a section title, 32 between sections (use `Space`).
+
+## 6. Row grammar
+
+One row, everywhere (problems, hosts, containers): status glyph or dot (the only colour) · name 17 semibold · reason
+15 secondary · right column: values 15 mono medium, or an age 13 tertiary. Hosts (Lab, Standard): dot · name ·
+sparkline 56x20 · Load, RAM, Disk in three right-aligned columns under a 13 header; a meta line under the name only
+when there is something to say. Overkill density keeps the host tiles. At accessibility sizes the values go under
+the name with their labels.

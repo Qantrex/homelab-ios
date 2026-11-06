@@ -11,11 +11,12 @@ struct LabView: View {
 
     private var status: ServerStatus { model.selectedStatus }
     private var state: HomelabState? { status.snapshot?.state }
+    private var overkill: Bool { model.settings.todayDensity == .overkill }
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
+                LazyVStack(alignment: .leading, spacing: Space.section) {
                     header
                     if let error = status.error {
                         ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched) { refresh() }
@@ -78,54 +79,49 @@ struct LabView: View {
 
     // MARK: Header
 
-    /// One statement (docs/DESIGN.md): the status icon and how the lab is doing, the facts under it. No box.
+    /// One status line (docs/DESIGN.md): the coloured status icon and how the lab is doing in 15 pt secondary, the
+    /// check time under it in meta. No box.
     private var header: some View {
         let s = state?.status ?? .unknown
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Image(systemName: s.symbol).foregroundStyle(s.color).accessibilityHidden(true)
-                Text(headline).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+                Text(headline).font(Typo.secondary).foregroundStyle(Palette.secondary)
                 Spacer(minLength: 0)
                 if status.loading { ProgressView() }
             }
             // Large text: one fact per line instead of a wrapped "a · b · c".
             if typeSize.isAccessibilitySize {
-                ForEach(sublines, id: \.self) { Text($0).font(.footnote).foregroundStyle(Palette.tertiary) }
+                ForEach(sublines, id: \.self) { Text($0).font(Typo.meta).foregroundStyle(Palette.tertiary) }
             } else {
-                Text(sublines.joined(separator: " · ")).font(.footnote).foregroundStyle(Palette.tertiary)
+                Text(sublines.joined(separator: " · ")).font(Typo.meta).foregroundStyle(Palette.tertiary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
+    /// "1 problem · 1 warning"; counted like Today's mood.
     private var headline: String {
         guard let state else { return String(localized: "Not loaded") }
         switch state.status {
         case .ok: return String(localized: "All good")
         case .unknown: return String(localized: "Status unknown")
         case .warning, .problem:
-            // Counted like Today's mood: warnings apart (they go in the subline).
             let t = ProblemTally(state)
-            if t.problems > 0 { return t.problems == 1 ? String(localized: "1 problem") : String(localized: "\(t.problems) problems") }
-            if t.warnings > 0 { return t.warnings == 1 ? String(localized: "1 warning") : String(localized: "\(t.warnings) warnings") }
-            return String(localized: "Warning")
+            var parts: [String] = []
+            if t.problems > 0 { parts.append(t.problems == 1 ? String(localized: "1 problem") : String(localized: "\(t.problems) problems")) }
+            if t.warnings > 0 { parts.append(t.warnings == 1 ? String(localized: "1 warning") : String(localized: "\(t.warnings) warnings")) }
+            return parts.isEmpty ? String(localized: "Warning") : parts.joined(separator: " · ")
         }
     }
 
     private var sublines: [String] {
         var parts: [String] = []
-        if let state, state.status == .warning || state.status == .problem {
-            let t = ProblemTally(state)
-            if t.problems > 0, t.warnings > 0 {
-                parts.append(t.warnings == 1 ? String(localized: "1 warning") : String(localized: "\(t.warnings) warnings"))
-            }
-        }
         if let checked = state?.checked { parts.append(String(localized: "checked \(Format.age(checked))")) }
         if let fetched = status.snapshot?.fetched, status.snapshot?.isStale() == true {
             parts.append(String(localized: "updated \(Format.age(fetched))"))
         }
-        if let n = state?.pending.count, n > 0 { parts.append(n == 1 ? String(localized: "1 action waiting") : String(localized: "\(n) actions waiting")) }
         return parts.isEmpty ? [model.selected?.host ?? ""] : parts
     }
 
@@ -134,47 +130,50 @@ struct LabView: View {
     @ViewBuilder
     private func content(_ state: HomelabState) -> some View {
         if !state.problems.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.titleToPanel) {
                 SectionTitle(text: "Problems")
-                // One panel, one row per problem; the severity is the icon and its word, not a coloured card.
+                // One panel, one row per problem; the waiting actions are its last row.
                 VStack(spacing: 0) {
                     ForEach(Array(state.problems.enumerated()), id: \.element.id) { index, p in
                         if index > 0 { Divider().padding(.leading, 16) }
                         ProblemRow(problem: p)
                     }
+                    if !state.pending.isEmpty {
+                        Divider().padding(.leading, 16)
+                        pendingRow(state.pending.count)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .rowsPanel()
             }
-        }
-
-        if !state.pending.isEmpty {
-            Button {
-                model.tab = .actions
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
-                    Text(state.pending.count == 1 ? "1 action is waiting for you" : "\(state.pending.count) actions are waiting for you")
-                        .font(.body)
-                        .foregroundStyle(Palette.text)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Palette.tertiary)
-                }
-                .panel()
-            }
-            .buttonStyle(.press)
+        } else if !state.pending.isEmpty {
+            pendingRow(state.pending.count).rowsPanel()
         }
 
         if !state.hosts.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.titleToPanel) {
                 SectionTitle(text: "Hosts", trailing: "\(state.hosts.filter { $0.reachable == true }.count)/\(state.hosts.count) up")
-                // Large text: one host per row, so names and numbers fit on a small phone.
-                LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
-                                                                : [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
-                    ForEach(state.hosts) { host in
-                        NavigationLink(value: host) { HostTile(host: host, health: state.health(of: host)) }
-                            .buttonStyle(.press)
+                if overkill {
+                    // Overkill keeps the tiles; large text: one per row.
+                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
+                                                                    : [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
+                        ForEach(state.hosts) { host in
+                            NavigationLink(value: host) { HostTile(host: host, health: state.health(of: host)) }
+                                .buttonStyle(.press)
+                        }
                     }
+                } else {
+                    // Standard: one panel, a row per host, the numbers in three right-hand columns.
+                    VStack(spacing: 0) {
+                        if !typeSize.isAccessibilitySize {
+                            HostColumnHeader().padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 2)
+                        }
+                        ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
+                            if index > 0 { Divider().padding(.leading, 16) }
+                            NavigationLink(value: host) { HostRow(host: host, health: state.health(of: host)) }
+                                .buttonStyle(PressStyle(scale: 1))
+                        }
+                    }
+                    .rowsPanel()
                 }
             }
         }
@@ -183,33 +182,55 @@ struct LabView: View {
             ServicesSection(services: status.services)
         }
     }
+
+    private func pendingRow(_ count: Int) -> some View {
+        Button {
+            model.tab = .actions
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
+                Text(count == 1 ? "1 action is waiting for you" : "\(count) actions are waiting for you")
+                    .font(Typo.headline)
+                    .foregroundStyle(Palette.text)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.tertiary)
+            }
+            .padding(16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle(scale: 1))
+    }
 }
 
-/// One problem in the Problems panel: status icon, the text, severity word and since when.
+/// One problem in the Problems panel (row grammar, research 3c #5): status icon (the only colour) · what happened
+/// in 17 semibold · severity word in 15 secondary · since when at the right in 13 tertiary.
 fileprivate struct ProblemRow: View {
     let problem: Problem
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: problem.severity.symbol).foregroundStyle(problem.severity.color).accessibilityHidden(true)
                 .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(problem.text).font(.body).foregroundStyle(Palette.text)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(problem.text).font(Typo.headline).foregroundStyle(Palette.text)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(meta).font(.footnote).foregroundStyle(Palette.tertiary)
+                Text(word).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                if typeSize.isAccessibilitySize, let age { Text(age).font(Typo.meta).foregroundStyle(Palette.tertiary) }
             }
             Spacer(minLength: 0)
+            if !typeSize.isAccessibilitySize, let age {
+                Text(age).font(Typo.meta).foregroundStyle(Palette.tertiary).padding(.top, 3)
+            }
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
-    private var meta: String {
-        let word = problem.severity == .warning ? String(localized: "Warning") : String(localized: "Problem")
-        guard let since = problem.since else { return word }
-        return String(localized: "\(word), since \(Format.age(since))")
-    }
+    private var word: String { problem.severity == .warning ? String(localized: "Warning") : String(localized: "Problem") }
+    private var age: String? { problem.since.map { String(localized: "since \(Format.age($0))") } }
 }
 
 /// Colour of a report's status word (OK, WARN, ALERT).
@@ -260,7 +281,7 @@ struct HostTile: View {
             // The name is never cut: it wraps. The state is a dot and its word under it.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(Palette.secondary).accessibilityHidden(true)
-                Text(host.name).font(.headline).foregroundStyle(Palette.text)
+                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if health != .ok {
@@ -313,24 +334,7 @@ struct HostTile: View {
         .accessibilityAddTraits(.isButton)
     }
 
-    /// What VoiceOver reads after the name: the numbers the tile shows.
-    private var spokenMetrics: String {
-        guard host.reachable == true else {
-            let seen = host.checked.map { [String(localized: "last seen \(Format.age($0))")] } ?? []
-            return (seen + shownFlags.map(Format.flag)).joined(separator: ", ")
-        }
-        var parts = [String(localized: "load \(Format.load(host.load))"), String(localized: "memory \(Format.percent(host.memPct))")]
-        if let d = Format.worstDisk(host.disks) { parts.append(String(localized: "disk \(d.mount) \(d.percent) percent")) }
-        if host.temp != nil { parts.append(Format.temperature(host.temp)) }
-        if host.containersTotal != nil {
-            parts.append(String(localized: "containers \(Format.containers(up: host.containersUp, total: host.containersTotal))"))
-        }
-        if let h = host.history, let lo = h.min(.load), let hi = h.max(.load) {
-            parts.append(String(localized: "load 24 h: min \(Format.load(lo)), max \(Format.load(hi))"))
-        }
-        parts += shownFlags.map(Format.flag)
-        return parts.joined(separator: ", ")
-    }
+    private var spokenMetrics: String { hostSpokenMetrics(host, flags: shownFlags) }
 
     /// Label in sentence case (secondary), value in the data font, a thin meter under them.
     private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?) -> some View {
@@ -339,7 +343,7 @@ struct HostTile: View {
                 Text(label).font(.footnote).foregroundStyle(Palette.secondary)
                 Spacer(minLength: 8)
                 Text(value).font(Typo.data(.footnote))
-                    .foregroundStyle(Palette.text)
+                    .foregroundStyle(Meter.valueColor(share))   // the bar stays grey; the number turns gold/love
                     .contentTransition(.numericText())
                     .animation(.snappy, value: value)
             }
@@ -355,6 +359,148 @@ struct HostTile: View {
         }
         .lineLimit(1)
     }
+}
+
+// MARK: - Host row (Standard density)
+
+/// The header over the three value columns of the host rows.
+fileprivate struct HostColumnHeader: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Spacer(minLength: 0)
+            ForEach(["Load", "RAM", "Disk"], id: \.self) { title in
+                Text(LocalizedStringKey(title)).font(Typo.meta).foregroundStyle(Palette.tertiary)
+                    .frame(minWidth: HostRow.column, alignment: .trailing)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// One host as a row (research 3c #6): status dot · name in 17 semibold · a small grey sparkline · Load, RAM and Disk
+/// as three right-aligned mono values. Only a value over its limit turns gold or love. Under the name, in meta: the
+/// state when it isn't OK, flags, a hot temperature or missing containers.
+struct HostRow: View {
+    let host: Host
+    let health: HostHealth
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    static let column: CGFloat = 46
+
+    private var shownFlags: [String] { host.flags.filter { $0 != "asleep" } }
+    private var diskPercent: Int? { Format.worstDisk(host.disks)?.percent }
+    private var up: Bool { host.reachable == true }
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    nameBlock
+                    if up {
+                        HStack(spacing: 16) {
+                            labelled("Load", loadText, loadShare)
+                            labelled("RAM", ramText, ramShare)
+                            labelled("Disk", diskText, diskShare)
+                        }
+                    }
+                }
+            } else {
+                HStack(alignment: .center, spacing: 8) {
+                    nameBlock
+                    Spacer(minLength: 4)
+                    if up, let history = host.history, history.last(.load) != nil {
+                        Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"),
+                                  lineWidth: 1, fill: false)
+                            .frame(width: 56, height: 20)
+                    }
+                    value(loadText, loadShare)
+                    value(ramText, ramShare)
+                    value(diskText, diskShare)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(host.name), \(health.label)"))
+        .accessibilityValue(Text(hostSpokenMetrics(host, flags: shownFlags)))
+        .accessibilityHint(Text("Shows details"))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var nameBlock: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).fixedSize(horizontal: false, vertical: true)
+                if let meta { meta }
+            }
+        }
+    }
+
+    /// The second line: only when there is something to say. Symbols carry the gold, the words stay grey.
+    private var meta: Text? {
+        var parts: [Text] = []
+        if !up {
+            parts.append(Text(health == .asleep ? health.label : host.checked.map { String(localized: "last seen \(Format.age($0))") } ?? health.label))
+        } else if health != .ok {
+            parts.append(Text(health.label))
+        }
+        if up, (host.temp ?? 0) >= Format.hotCelsius {
+            parts.append(Text(Image(systemName: "thermometer.medium")).foregroundColor(Palette.gold) + Text(" " + Format.temperature(host.temp)))
+        }
+        if up, host.containersTotal != nil, (host.containersUp ?? 0) < (host.containersTotal ?? 0) {
+            parts.append(Text(Image(systemName: "shippingbox")).foregroundColor(Palette.gold)
+                         + Text(" " + Format.containers(up: host.containersUp, total: host.containersTotal)))
+        }
+        if !shownFlags.isEmpty { parts.append(Text(shownFlags.map(Format.flag).joined(separator: ", "))) }
+        guard var first = parts.first else { return nil }
+        for p in parts.dropFirst() { first = first + Text(" · ") + p }
+        return first
+    }
+
+    private var loadText: String { up ? Format.load(host.load) : "–" }
+    private var ramText: String { up ? Format.percent(host.memPct) : "–" }
+    private var diskText: String { up ? (diskPercent.map { "\($0)%" } ?? "–") : "–" }
+    private var loadShare: Double? { up ? Format.loadShare(host.load, cores: host.cpuCount) : nil }
+    private var ramShare: Double? { up ? host.memPct.map { Double($0) / 100 } : nil }
+    private var diskShare: Double? { up ? diskPercent.map { Double($0) / 100 } : nil }
+
+    private func value(_ text: String, _ share: Double?) -> some View {
+        Text(text).font(Typo.rowValue)
+            .foregroundStyle(text == "–" ? Palette.tertiary : Meter.valueColor(share))
+            .lineLimit(1).minimumScaleFactor(0.8)
+            .frame(minWidth: Self.column, alignment: .trailing)
+    }
+
+    private func labelled(_ label: LocalizedStringKey, _ text: String, _ share: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(Typo.meta).foregroundStyle(Palette.tertiary)
+            Text(text).font(Typo.rowValue).foregroundStyle(text == "–" ? Palette.tertiary : Meter.valueColor(share))
+        }
+    }
+}
+
+/// What VoiceOver reads after a host's name: the numbers the tile or row shows.
+fileprivate func hostSpokenMetrics(_ host: Host, flags shownFlags: [String]) -> String {
+    guard host.reachable == true else {
+        let seen = host.checked.map { [String(localized: "last seen \(Format.age($0))")] } ?? []
+        return (seen + shownFlags.map(Format.flag)).joined(separator: ", ")
+    }
+    var parts = [String(localized: "load \(Format.load(host.load))"), String(localized: "memory \(Format.percent(host.memPct))")]
+    if let d = Format.worstDisk(host.disks) { parts.append(String(localized: "disk \(d.mount) \(d.percent) percent")) }
+    if host.temp != nil { parts.append(Format.temperature(host.temp)) }
+    if host.containersTotal != nil {
+        parts.append(String(localized: "containers \(Format.containers(up: host.containersUp, total: host.containersTotal))"))
+    }
+    if let h = host.history, let lo = h.min(.load), let hi = h.max(.load) {
+        parts.append(String(localized: "load 24 h: min \(Format.load(lo)), max \(Format.load(hi))"))
+    }
+    parts += shownFlags.map(Format.flag)
+    return parts.joined(separator: ", ")
 }
 
 // MARK: - Services (cards: Cards.swift)
@@ -374,7 +520,7 @@ struct ServicesSection: View {
 
     /// One panel; rows split by separators, a group's name as a small heading when there are several.
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.titleToPanel) {
             SectionTitle(text: "Services")
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(groups.enumerated()), id: \.element.0) { gi, entry in
@@ -401,7 +547,7 @@ struct ServicesSection: View {
             HStack(spacing: 12) {
                 Image(systemName: Symbols.safe(s.icon, fallback: "globe"))
                     .foregroundStyle(Palette.secondary).frame(width: 24).accessibilityHidden(true)
-                Text(s.name).font(.body).foregroundStyle(Palette.text)
+                Text(s.name).font(Typo.body).foregroundStyle(Palette.text)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 Image(systemName: "arrow.up.right").font(.footnote.weight(.semibold))
