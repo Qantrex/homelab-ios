@@ -126,7 +126,34 @@ public struct HostHistory: Codable, Sendable, Equatable, Hashable {
     }
 }
 
+/// How a value stands against its limits: the row's number, the sparkline's dot and the detail chart all use this
+/// (`Series.level`), so they cannot disagree.
+public enum ValueLevel: Sendable, Equatable {
+    case normal, warning, problem
+
+    /// Over a limit (VoiceOver says "high").
+    public var isHigh: Bool { self != .normal }
+}
+
+public extension Host {
+    /// Where the host's current numbers stand against the series limits (the same rule as the sparkline's dot).
+    var loadLevel: ValueLevel { HostHistory.Series.load.level(of: load, cores: cpuCount) }
+    var ramLevel: ValueLevel { HostHistory.Series.memPct.level(of: memPct.map(Double.init), cores: nil) }
+    /// The fullest disk.
+    var diskLevel: ValueLevel {
+        HostHistory.Series.diskPct.level(of: Format.worstDisk(disks).map { Double($0.percent) }, cores: nil)
+    }
+    var tempLevel: ValueLevel { HostHistory.Series.temp.level(of: temp, cores: nil) }
+}
+
 public extension HostHistory.Series {
+    /// Where `value` stands: warning from `limits.warning`, problem from `limits.problem` (both inclusive). Nil = normal.
+    func level(of value: Double?, cores: Int?) -> ValueLevel {
+        guard let value else { return .normal }
+        let l = limits(cores: cores)
+        return value >= l.problem ? .problem : value >= l.warning ? .warning : .normal
+    }
+
     /// From where on the last value is a warning (gold) and a problem (love). Load counts per core.
     func limits(cores: Int?) -> (warning: Double, problem: Double) {
         let cores = Double(Swift.max(cores ?? 1, 1))

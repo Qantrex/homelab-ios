@@ -10,9 +10,18 @@ import WidgetKit
 public enum BackgroundRefresh {
     public static let identifier = "com.qantrex.homelab.refresh"
 
+    /// On school mornings (Mon-Fri 05:30-09:00) ask for a run sooner, so the "Leave by" activity follows the pick.
+    /// iOS still decides when; this is only the earliest it may run.
+    static func interval(now: Date = Date(), calendar: Calendar = .current) -> TimeInterval {
+        let c = calendar.dateComponents([.weekday, .hour, .minute], from: now)
+        let minutes = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        let weekday = (2...6).contains(c.weekday ?? 1)
+        return weekday && (5 * 60 + 30..<9 * 60).contains(minutes) ? 10 * 60 : 20 * 60
+    }
+
     public static func schedule() {
         let request = BGAppRefreshTaskRequest(identifier: identifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 20 * 60)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: interval())
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
@@ -25,6 +34,7 @@ public enum BackgroundRefresh {
                            transport: any HTTPTransport = URLSessionTransport()) async {
         schedule()
         await refresh(storage: storage, tokens: tokens, transport: transport)
+        await updateLeaveActivity(storage: storage)
         // Then shares and scans the app couldn't send earlier (the extension stores them in the App Group): after the
         // refresh, so a slow upload can't eat the ~30 s and cancel it, and only small PDFs (the app sends big ones).
         let list0 = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
@@ -32,6 +42,14 @@ public enum BackgroundRefresh {
             if server.kind == .demo { return DemoBackend(delay: .zero) }
             return CompanionClient(config: server, tokens: tokens, transport: transport)
         }
+    }
+
+    /// Update or end the "Leave by" activity from the newest data. Never starts one (iOS refuses that from here).
+    static func updateLeaveActivity(storage: Storage) async {
+        let settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
+        let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
+        let plan = list.selectedServer.flatMap { storage.read(Snapshot.self, Snapshot.fileName($0.id)) }?.state.commute
+        await LeaveActivityController.apply(plan: plan, enabled: settings.leaveByOn, foreground: false, storage: storage)
     }
 
     static func refresh(storage: Storage, tokens: any TokenStore, transport: any HTTPTransport) async {

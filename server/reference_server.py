@@ -28,11 +28,13 @@ import shutil
 import signal
 import socket
 import ssl
+import struct
 import subprocess
 import sys
 import threading
 import time
 import traceback
+import zlib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -1042,6 +1044,29 @@ class RealApp:
         return 200, {"services": self.cfg.services}
 
 
+class Binary:
+    """A non-JSON answer (a picture): `_send` writes it as it is."""
+
+    def __init__(self, ctype, data):
+        self.ctype, self.data = ctype, data
+
+
+POSTER_RE = re.compile(r"^poster/(w154|w342)/([A-Za-z0-9]{10,40})\.(png|jpg)$")
+
+
+def grey_png(seed, width=80, height=120):
+    """A small grey 2:3 PNG for the fixture posters (the same seed gives the same picture)."""
+    tone = 28 + sum(seed.encode()) % 24
+    rows = b"".join(b"\x00" + bytes(min(tone + y * 26 // height + (7 if (x + y) // 8 % 2 == 0 else 0), 255)
+                                    for x in range(width)) for y in range(height))
+
+    def chunk(kind, body):
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
 class FixtureApp:
     """Serves the app's fixture JSON files. A mock: binds 127.0.0.1 only."""
 
@@ -1077,6 +1102,10 @@ class FixtureApp:
         self.raw_routes = {"documents"}
         self.routes["documents"] = {"POST": self.post_document}
         self.routes["share"] = {"POST": self.post_share}
+        # Search (feature "search"): search.json is the whole catalogue; the query filters its titles.
+        self.search_doc = self._load("search.json", optional=True)
+        if self.search_doc is not None:
+            self.routes["search"] = {"GET": self.search}
         # Actions the app may start (feature run-actions): actions.json, one POST route per listed name.
         self.actions_doc = self._load("actions.json", optional=True)
         if isinstance(self.actions_doc, dict):
@@ -1116,6 +1145,33 @@ class FixtureApp:
         if "state" in query:
             self.set_state(query["state"][0])
         return 200, {"ok": True, "state": self.state_name}
+
+    def search(self, query, body):
+        q = " ".join((query.get("q") or [""])[0].split())
+        if not 2 <= len(q) <= 100 or any(ord(c) < 32 for c in q):
+            raise BadRequest("q must be 2 to 100 characters")
+        cards = []
+        for card in self.search_doc.get("cards") or []:
+            items = [i for i in card.get("items") or [] if q.lower() in str(i.get("title", "")).lower()]
+            if items:
+                cards.append(dict(card, items=items))
+        return 200, {"query": q, "cards": cards}
+
+    def poster(self, path):
+        """GET /api/v1/poster/<size>/<file>: a generated grey picture, only for the paths the fixtures name."""
+        m = POSTER_RE.match(path)
+        if not m or m.group(2) + "." + m.group(3) not in self._poster_files():
+            return 404, {"error": "not found"}
+        return 200, Binary("image/png" if m.group(3) == "png" else "image/jpeg", grey_png(m.group(2)))
+
+    def _poster_files(self):
+        """File names the search answers name: nothing else is served (the real server does the same)."""
+        files = set()
+        for card in (self.search_doc or {}).get("cards") or []:
+            for item in card.get("items") or []:
+                if isinstance(item.get("image"), str):
+                    files.add(item["image"].rsplit("/", 1)[-1])
+        return files
 
     def state(self, query, body):
         with self.lock:
@@ -1286,9 +1342,13 @@ class Handler(BaseHTTPRequestHandler):
         log("%s %s" % (self.client_address[0], (fmt % args)[:200]))
 
     def _send(self, code, obj):
-        data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        ctype = "application/json; charset=utf-8"
+        if isinstance(obj, Binary):
+            data, ctype = obj.data, obj.ctype
+        else:
+            data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(data)))
@@ -1338,6 +1398,8 @@ class Handler(BaseHTTPRequestHandler):
         denied = app.auth.check(self.headers, self.client_address[0])
         if denied:
             return denied[0], {"error": denied[1]}
+        if method == "GET" and path.startswith(API_PREFIX + "poster/") and hasattr(app, "poster"):
+            return app.poster(path[len(API_PREFIX):])
         route = app.routes.get(path[len(API_PREFIX):].rstrip("/"))
         if route is None:
             return 404, {"error": "not found"}

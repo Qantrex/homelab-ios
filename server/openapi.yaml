@@ -214,6 +214,46 @@ paths:
         "413": { description: "Larger than the server's limit (25 MB)." }
         "415": { description: Not `application/pdf`. }
         "429": { description: More than 20 uploads in the last hour, or the spool is full. }
+  /search:
+    get:
+      summary: Search the server's media library or other sources (feature `search`).
+      description: |
+        The answer is cards, drawn like any card; the media search answers one `poster-grid` card whose items have an
+        `image` and, where a request makes sense, an `action`. No cards, or cards without items, mean nothing was found.
+        `q` is 2 to 100 characters after trimming; the app sends it whitespace-normalised.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 100 } }
+      responses:
+        "200":
+          description: The query as understood and the cards that answer it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query: { type: string }
+                  cards:
+                    type: array
+                    items: { $ref: "#/components/schemas/Card" }
+        "400": { description: "`q` too short, too long or with control characters; `error` says why." }
+        "429": { description: Too many searches. }
+        "502": { description: "The source did not answer; `error` has the words the app shows (\"Seerr did not answer\")." }
+  /poster/{size}/{file}:
+    get:
+      summary: A picture an item's `image` names (the path is up to the server; this is the reference one).
+      description: |
+        The app loads item `image`s with the same login as the API, accepts at most 1 MB, and only JPEG, PNG or WebP.
+        A path on the server or an absolute URL on the same scheme, host and port; nothing else is ever loaded.
+      parameters:
+        - { name: size, in: path, required: true, schema: { type: string, enum: [w154, w342] } }
+        - { name: file, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9]{10,40}\\.(jpg|png)$" } }
+      responses:
+        "200":
+          description: The picture.
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404": { description: Not a picture this server issued. }
   /share:
     post:
       summary: Send a web link (feature `share`).
@@ -269,11 +309,12 @@ components:
           type: array
           items:
             type: string
-            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share]
+            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share, search]
           description: |
             `actions`: proposed actions to approve (`pending`, `/button`). `run-actions`: the app may start actions
             itself (`/actions`). `documents`: `POST /documents` takes a PDF (the Scan tile, the share extension).
-            `share`: `POST /share` takes a link. The other values switch the matching tabs and sections.
+            `share`: `POST /share` takes a link. `search`: `GET /search?q=` answers cards (the Find a movie or show
+            screen). The other values switch the matching tabs and sections.
         auth: { type: string, enum: [identity, token, none] }
         commands:
           type: array
@@ -305,6 +346,32 @@ components:
           items: { type: string }
           description: Jobs running right now (the chat shows "working…").
         last_message: { $ref: "#/components/schemas/Message" }
+        commute: { $ref: "#/components/schemas/Commute" }
+    Commute:
+      type: object
+      required: [date]
+      description: |
+        The way to school today (optional, additive). The app uses it only when `date` is today. It drives the
+        "Leave by" Live Activity. Times are ISO 8601 with a zone. Bike day: `mode: bike`, `ride` and `leave_by`,
+        no `train`/`next`. Error: `{date, error}`. Not active: `{date, active: false, why}`.
+      properties:
+        date: { type: string, format: date, example: "2026-11-07" }
+        mode: { type: string, enum: [u6, bike] }
+        line: { type: string, example: U6 }
+        first_lesson: { type: string, format: date-time }
+        leave_by: { type: string, format: date-time }
+        train: { type: string, format: date-time, description: The train to take. }
+        next: { type: string, format: date-time, description: The train after it. }
+        next_too_late: { type: boolean, description: The next train would be too late for the first lesson. }
+        disruptions:
+          type: array
+          items: { type: string }
+          description: "Short titles, e.g. `U6: Schadhaftes Fahrzeug`. The first one shows on the lock screen."
+        ride: { type: integer, minimum: 1, description: Bike day, minutes. }
+        updated: { type: string, format: date-time }
+        error: { type: string }
+        active: { type: boolean }
+        why: { type: string }
     Status:
       type: string
       enum: [ok, warning, problem, unknown]
@@ -443,14 +510,26 @@ components:
         subtitle: { type: string }
         icon: { type: string, description: An SF Symbol name, e.g. play.tv. Unknown names fall back to a square. }
         tint: { type: string, enum: [gray, blue, green, orange, red, purple, teal, yellow, pink] }
+        place:
+          type: string
+          enum: [today, lab]
+          default: today
+          description: "Where the card shows. `lab`: in Lab between Hosts and Services, as rows. Unknown or missing
+            means Today."
         style:
           type: string
-          enum: [list, metrics, text, checklist, countdown]
+          enum: [list, metrics, text, checklist, countdown, departures, poster-grid]
           default: list
           description: |
+            `poster-grid`: the items as posters (`image`, 2:3) in 2-3 columns with title, subtitle, value and the item's
+            `action` as a button. Older apps show it as `list`.
             `checklist`: to-dos, a circle per item (filled when `done`), with `due` as a short day/time.
             `countdown`: each item counts down to its `due` ("2 d", "5 h", "today", "3 d ago"); the app sorts by `due`.
-            Older apps show both as `list`.
+            `departures`: public transport. Each item is one departure: `title` the direction, `subtitle` the stop
+            (with ` · +3 min` when late and ` · planned` when there is no real-time data), `value` the clock text,
+            `due` the time with a zone, `tint: orange` when late. Items of one direction and stop are grouped in the
+            order you send them (the relevant direction first). `text` holds the disruption titles (and `tint: red`).
+            Older apps show `checklist`, `countdown` and `departures` as `list`.
         updated: { type: string, description: Free text or a date-time. }
         text: { type: string, description: For style text. Inline Markdown. }
         action:
@@ -469,6 +548,12 @@ components:
               icon: { type: string }
               url: { type: string, format: uri }
               tint: { type: string }
+              image:
+                type: string
+                maxLength: 512
+                description: A picture of this server, a path (`/api/v1/poster/w342/ab12.jpg`) or an absolute URL with
+                  the server's own scheme, host and port. The app loads nothing else, with the API's login, at most
+                  1 MB, JPEG, PNG or WebP. Used by `poster-grid`.
               done: { type: boolean, description: Checklist items. Ticked off or not. }
               cancelled: { type: boolean, description: A lesson that falls out. Drawn struck through and grey. }
               due:

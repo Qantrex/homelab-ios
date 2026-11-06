@@ -61,7 +61,12 @@ colour alone.
 
 - The hero headline stays white. The mood is the light behind it (`MoodGlow`) plus a status icon, not coloured text.
 - Colour sits on symbols, dots and numbers only. A meter or sparkline is grey; only the value next to it (and the
-  sparkline's last dot) turns gold at 75 % of its limit and love at 90 % (`Meter.valueColor`).
+  sparkline's last dot) turns gold or love. **One set of limits** (`HostHistory.Series.limits`, `Series.level`,
+  `Meter.valueColor`) for the row, the tile, the dot and the detail chart: gold from / love from: load 1x / 2x the core
+  count, RAM 90 / 95 %, fullest disk 75 / 90 %, temperature 80 / 90 C. Reaching the limit counts. A value over its limit
+  also says "high" to VoiceOver.
+- Text colours keep 4.5:1 on the panel: tertiary #808080 (dark) / #6E6E6E (light), light-mode gold #9A6100. Min and max
+  numbers are secondary, not tertiary.
 - A broken item shows a coloured dot or SF Symbol next to it (with its word: "unhealthy", "93%"), not a coloured card.
 - One accent per element: never coloured text in a coloured border in a coloured glow.
 - Never blue, also not by default: every control sets `.tint(Palette.accent)`.
@@ -92,6 +97,15 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 4. Count colours: only status things are coloured, and each says why in words.
 5. Leading edges: one line down the screen.
 6. Gaps: 8 under a section title, 32 between sections (use `Space`).
+
+## Lock screen and Live Activity
+
+- Lock-screen widgets (`accessory*`) draw in one colour (vibrant mode): gold and love disappear. Every status there is
+  a symbol plus words ("Delay +3 min" with a clock badge, "Disruption" with a triangle), never colour alone. Gold is
+  an addition on the home screen and in the Live Activity.
+- Mono (the data font) only for times and numbers; titles and directions stay in the normal font.
+- The Live Activity is true black with white text; its countdown runs by itself (`Text(timerInterval:)`).
+- With the app lock on, widgets show counts only, except public data (the U6 times).
 
 ## 6. Row grammar
 

@@ -23,6 +23,8 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         case documents
         /// POST /share: a link goes to a price check or the read-later list.
         case share
+        /// GET /search?q=: the server answers a text search with cards (movies and shows with posters).
+        case search
     }
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,
@@ -369,13 +371,28 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// The day the card is about, "2026-11-06" (the "today" card sends it; tomorrow's card has tomorrow's date). Nil =
     /// not sent. Kept as the server's text; `isPlainDay` decides whether it is usable.
     public var date: String?
+    /// Where the card shows: Today (default) or Lab. Unknown values mean Today.
+    public var place: Place
+
+    public enum Place: String, Codable, Sendable {
+        case today, lab
+
+        public init(lenient raw: String?) {
+            self = raw.flatMap { Place(rawValue: $0.lowercased()) } ?? .today
+        }
+    }
 
     public enum Style: String, Codable, Sendable {
         case list, metrics, text
+        /// Posters in a grid of 2-3 columns (`Item.image`, 2:3), title, subtitle, value and an optional request button.
+        case posterGrid = "poster-grid"
         /// To-dos: a circle per item (filled when `done`), title, subtitle and `due`.
         case checklist
         /// Items count down to their `due` ("2 d", "5 h", "today", "3 d ago"), soonest first (`sortedForCountdown`).
         case countdown
+        /// Public transport: items are departures, `title` the direction, `subtitle` the stop (with "+3 min" or
+        /// "planned"), `due` the time. `DepartureBoard` groups them. Older apps show it as `list`.
+        case departures
     }
 
     public struct Item: Codable, Sendable, Equatable, Hashable {
@@ -397,14 +414,19 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         public var action: ItemAction?
         /// A lesson that falls out: struck through and grey. Nil = not sent (it takes place).
         public var cancelled: Bool?
+        /// A poster or picture of this server: a path ("/api/v1/poster/w342/ab12.jpg") or an absolute URL on the same
+        /// scheme, host and port as the server. Anything else is dropped when decoding; `URLPolicy.imageURL` decides
+        /// again before anything is loaded.
+        public var image: String?
 
         public init(title: String? = nil, subtitle: String? = nil, value: String? = nil, progress: Double? = nil,
                     icon: String? = nil, url: URL? = nil, tint: Tint? = nil, done: Bool? = nil, due: Date? = nil,
-                    dueIsDay: Bool = false, action: ItemAction? = nil, cancelled: Bool? = nil) {
+                    dueIsDay: Bool = false, action: ItemAction? = nil, cancelled: Bool? = nil, image: String? = nil) {
             self.title = title; self.subtitle = subtitle; self.value = value
             self.progress = progress.map { min(max($0, 0), 1) }; self.icon = icon; self.url = url; self.tint = tint
             self.done = done; self.due = due; self.dueIsDay = due != nil && dueIsDay; self.action = action
             self.cancelled = cancelled
+            self.image = image.flatMap(URLPolicy.cleanImageReference)
         }
 
         /// "2026-11-09": a day without a time.
@@ -422,7 +444,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             due.map { Format.due($0, dayOnly: dueIsDay, now: now, calendar: calendar) }
         }
 
-        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action, cancelled }
+        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action, cancelled, image }
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -431,7 +453,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                       url: c.text(.url).flatMap(URLPolicy.webURL),
                       tint: c.text(.tint).map { Tint(lenient: $0) }, done: c.bool(.done), due: c.date(.due),
                       dueIsDay: c.text(.due).map(Self.isPlainDay) ?? false, action: c.lenient(ItemAction.self, .action),
-                      cancelled: c.bool(.cancelled))
+                      cancelled: c.bool(.cancelled), image: c.text(.image))
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -448,18 +470,20 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             try c.encodeIfPresent(due.map { dueIsDay ? Format.dayString($0) : ServerDate.string($0) }, forKey: .due)
             try c.encodeIfPresent(action, forKey: .action)
             try c.encodeIfPresent(cancelled, forKey: .cancelled)
+            try c.encodeIfPresent(image, forKey: .image)
         }
     }
 
     public init(id: String, title: String? = nil, subtitle: String? = nil, icon: String? = nil, tint: Tint = .gray,
                 style: Style = .list, updated: String? = nil, text: String? = nil, items: [Item] = [],
-                action: ItemAction? = nil, date: String? = nil) {
+                action: ItemAction? = nil, date: String? = nil, place: Place = .today) {
         self.id = id; self.title = title; self.subtitle = subtitle; self.icon = icon; self.tint = tint
+        self.place = place
         self.style = style; self.updated = updated; self.text = text; self.items = items; self.action = action
         self.date = date.flatMap { Item.isPlainDay($0) ? $0.trimmingCharacters(in: .whitespaces) : nil }
     }
 
-    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action, date }
+    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action, date, place }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -470,7 +494,8 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                   tint: Tint(lenient: c.text(.tint)),
                   style: c.text(.style).flatMap { Style(rawValue: $0.lowercased()) } ?? .list,
                   updated: c.text(.updated), text: c.text(.text), items: c.array(Item.self, .items),
-                  action: c.lenient(ItemAction.self, .action), date: c.text(.date))
+                  action: c.lenient(ItemAction.self, .action), date: c.text(.date),
+                  place: Place(lenient: c.text(.place)))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -486,6 +511,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         try c.encode(items, forKey: .items)
         try c.encodeIfPresent(action, forKey: .action)
         try c.encodeIfPresent(date, forKey: .date)
+        if place != .today { try c.encode(place, forKey: .place) }
     }
 
     /// Items in countdown order: soonest `due` first (overdue ones lead), items without `due` last, ties in the
@@ -619,17 +645,21 @@ public struct HomelabState: Codable, Sendable, Equatable {
     public var cards: [Card]
     public var busy: [String]
     public var lastMessage: ChatMessage?
+    /// The way to school today (step 6c): leave-by, the train, disruptions. Nil when the server sends none, or sends
+    /// something unreadable.
+    public var commute: CommutePlan?
 
     public init(time: Date? = nil, status: OverallStatus = .unknown, checked: Date? = nil, problems: [Problem] = [],
                 hosts: [Host] = [], pending: [PendingAction] = [], cards: [Card] = [], busy: [String] = [],
-                lastMessage: ChatMessage? = nil) {
+                lastMessage: ChatMessage? = nil, commute: CommutePlan? = nil) {
         self.time = time; self.status = status; self.checked = checked; self.problems = problems; self.hosts = hosts
         self.pending = pending; self.cards = cards; self.busy = busy; self.lastMessage = lastMessage
+        self.commute = commute
     }
 
     enum CodingKeys: String, CodingKey {
         case time, status, checked, problems, hosts, pending, cards, busy
-        case lastMessage = "last_message"
+        case lastMessage = "last_message", commute
     }
 
     public init(from decoder: any Decoder) throws {
@@ -650,7 +680,8 @@ public struct HomelabState: Codable, Sendable, Equatable {
             if hosts.isEmpty && problems.isEmpty { status = .unknown }
         }
         self.init(time: c.date(.time), status: status, checked: c.date(.checked), problems: problems, hosts: hosts,
-                  pending: pending, cards: cards, busy: c.strings(.busy), lastMessage: c.lenient(ChatMessage.self, .lastMessage))
+                  pending: pending, cards: cards, busy: c.strings(.busy), lastMessage: c.lenient(ChatMessage.self, .lastMessage),
+                  commute: c.lenient(CommutePlan.self, .commute))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -664,6 +695,7 @@ public struct HomelabState: Codable, Sendable, Equatable {
         try c.encode(cards, forKey: .cards)
         try c.encode(busy, forKey: .busy)
         try c.encodeIfPresent(lastMessage, forKey: .lastMessage)
+        try c.encodeIfPresent(commute, forKey: .commute)
     }
 }
 

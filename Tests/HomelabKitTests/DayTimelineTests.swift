@@ -198,9 +198,28 @@ import Testing
     }
 
     @Test func tomorrowWidgetRedraws() {
-        // Only the 15-minute ones in the evening: no per-minute countdown, nothing turns past.
+        // No per-minute countdown in the evening and nothing turns past, but the hour-only countdown ("in 10 h")
+        // is redrawn when the hour count drops, and every minute in the last hour before the first stop (06:20).
         let d = DayTimeline.redrawDates(card: tomorrowCard, now: Self.at(20, 0), calendar: Self.utc)
-        #expect(d == [Self.at(20, 0), Self.at(20, 15), Self.at(20, 30), Self.at(20, 45)])
+        #expect(Array(d.prefix(5)) == [Self.at(20, 0), Self.at(20, 15), Self.at(20, 20), Self.at(20, 30), Self.at(20, 45)])
+        #expect(d.contains(Self.at(21, 20)) && d.contains(Self.at(29, 20)) && d.contains(Self.at(29, 21)) && d.contains(Self.at(30, 19)))
+        #expect(!d.contains(Self.at(20, 59)) && !d.contains(Self.at(30, 20)) && d == d.sorted() && d.count == 4 + 10 + 59)
+    }
+
+    @Test func tomorrowCountdownIsWholeHoursInWidgets() {
+        let t = line(20, 0, tomorrowCard)       // 10 h 20 min to wake-up
+        #expect(t.widgetCountdown == "in 10 h")
+        #expect(DayTimeline.countdownText(minutes: 620) == "in 10 h 20 min")
+        #expect(DayTimeline.countdownText(minutes: 620, coarse: true) == "in 10 h")
+        #expect(DayTimeline.countdownText(minutes: 59, coarse: true) == "in 59 min")
+        // Today is exact.
+        #expect(line(7, 5).widgetCountdown == Format.countdown(minutes: line(7, 5).minutesToNext ?? 0))
+    }
+
+    @Test func plainDayForTheWidgetHeader() {
+        let d = DayTimeline.plainDay("2026-11-07", calendar: Self.utc)
+        #expect(d == Date(timeIntervalSince1970: 1_793_923_200 + 86400))
+        #expect(DayTimeline.plainDay("soon") == nil && DayTimeline.plainDay(nil) == nil && DayTimeline.plainDay("2026-11-07T10:00") == nil)
     }
 
     static let vienna: Calendar = {

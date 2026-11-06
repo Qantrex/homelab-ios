@@ -56,6 +56,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
 | O12b | Lessons card | Cancelled lessons struck through and grey, substitutions / room changes with a gold dot and a gold time, the change in the subtitle. VoiceOver says "cancelled" / "changed" | | |
 | O12c | Weather line | Standard / Overkill: under "Checked 2 min ago" one grey line with the weather card's subtitle ("Rain from 15:00, take an umbrella"); Calm: no such line, only the card | | |
+| O12d | Lab cards | Server with `place: "lab"` cards (tailnet, ad blocking, backups; demo has them): they show in Lab between Hosts and Services, not on Today. Rows: a dot, name, reason in grey, value in mono at the right; a yellow tint gives a gold dot and value, red love. Nothing is cut at 5.4" or at the largest text size (values go under the name) | | |
+| O12e | Pause blocking | Ad blocking card → "Pause 5 min" → "Pause 5 min Blocking?" confirm → the value reads "paused · 5 min" in gold with a "Resume" button (demo) | | |
 | O13 | Services | Service buttons are grouped and open the right page in Safari | | |
 | O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
 | O15 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
@@ -98,6 +100,17 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | S13 | Big PDF | Share a PDF over 25 MB: "more than the 25 MB the server takes". A 20 MB PDF over Tailscale arrives (limit of `tailscale serve`) | | |
 | S14 | Share sheet listing | After install the Homelab icon is in the share row (More → Homelab on if missing). Works after a SideStore refresh | | |
 
+## Find and request
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| F1 | Entry | Server with `search`: Actions → Start has "Find a movie or show". A server without it: no tile | | |
+| F2 | Search | Type 1 letter: nothing is sent. 2+ letters: after a short pause posters appear (3 columns, grey placeholder first, then the picture). Typing on does not flicker. "zzzz": "Nothing found" | | |
+| F3 | Request | A poster with a "Request" button → "Request <title>?" confirm → alert with the server's text, the poster says "requested" and loses the button. Cancel does nothing | | |
+| F4 | Pictures | Posters come from the server only (check the server log: no other host). Airplane mode after one search: the same posters still show (cache); the search itself shows the offline banner | | |
+| F5 | `homelab://search?q=dune` | Opens Actions and the search with "dune" typed and results. On a server without `search` nothing opens | | |
+| F6 | Large text | At an accessibility size the grid has 2 columns and nothing is cut; VoiceOver reads title, subtitle, value, then the Request button | | |
+
 ## Chat
 
 | # | Test | Pass when | Result | Note |
@@ -136,6 +149,27 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | W6 | Stale data marked | Tailscale off, wait 15+ min: "Data is old" and a grey question mark, not a green check | | |
 | W7 | Day | "Homelab day" small: next stop big with "in N min", the line as dots; medium: every stop like on Today; lock screen rectangular and inline: next stop and countdown. The countdown moves on its own within a few minutes; after the last stop it says "passed". App lock on: "Open the app" | | |
 | W7b | Tomorrow | After the last lesson (server: the today card has tomorrow's `date`): Today's day card says "Tomorrow", the first stop (wake-up) is bright with "in 10 h 20 min", no stop is grey, the line is empty. Day widget small shows "Tomorrow" and the same countdown; after midnight it is the normal day again | | |
+
+### At a glance (6c)
+
+Needs a server with the `departures` card and `commute` (or Settings → Demo servers: the demo has both, moved to now).
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| W8 | U6 widget | Add "U6 departures": small shows the direction, the stop and the next 3 times in mono; a late one has a gold "+3"; a disruption is a gold triangle with its words. Lock screen: rectangular (line and direction, 3 times, then "Disruption" or "Delay +n min" with a symbol), inline ("U6 20:54 · 20:59"), circular (countdown to the next train in the ring). Trains drop off at their time without opening the app | | |
+| W9 | Deadlines widget | Rectangular: the next 2 with "2 d" / "5 h"; inline "SYT hand-in in 2 d"; circular: number due this week; small: 3, medium: 5 with subtitles. Overdue ones read "3 d ago" with a triangle on the lock screen | | |
+| W10 | To-dos widget | Rectangular: 3 open titles; circular: the open count; small: 4; medium: 6. A tap opens Today | | |
+| W11 | Locked privacy | Settings → Lock with Face ID on: deadlines and to-dos show only counts ("3 deadlines this week", "4 to-dos"), never titles; the U6 widget still shows times. On the lock screen of a locked phone the titles are blank | | |
+| W12 | Widget fetches itself | Close the app, Tailscale on: after 15 to 30 min the widgets' age is fresh without opening the app (Settings → Diagnostics → At a glance → Widget fetch: "ok"). Tailscale off: the cached data stays with its age, Diagnostics shows the error. StandBy (on its side, charging): the U6 small widget shows | | |
+| LA1 | Live Activity starts | On a school morning (or with the demo server) open the app: "Leave by hh:mm" with a countdown and "U6 hh:mm · next hh:mm" is on the lock screen; the disruption is a gold triangle with its words | | |
+| LA2 | It runs by itself | Lock the phone for 10 minutes: the countdown keeps counting. After the train time the activity is greyed (stale) | | |
+| LA3 | Updates and ends | When the pick changes on the server (a delay), a background refresh updates it (Diagnostics → Leave-by: "background: updated"). At the first lesson it is gone. Turn "Leave-by on the lock screen" off in Settings: it ends | | |
+| LA4 | Not allowed / not started | Live Activities off for Homelab in iOS Settings: Diagnostics says "off in iOS Settings", no crash. The activity never starts from the background (only opening the app starts it) | | |
+
+(LA1 to LA4 are named so because L1 to L6 are the Face ID lock rows.)
+
+W7b now also: the Day widget's medium header says "Tomorrow" with the card's date, the countdown reads "in 10 h" and turns "in 9 h" on the hour.
+The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 
 ## Background and notifications
 

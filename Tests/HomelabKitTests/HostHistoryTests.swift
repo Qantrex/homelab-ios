@@ -176,6 +176,34 @@ import Testing
                       HostHistory.Series.temp.limits(cores: 4), HostHistory.Series.diskPct.limits(cores: 4)]
         #expect(limits.map(\.warning) == [4, 1, 80, 75])
         #expect(limits.map(\.problem) == [8, 2, 90, 90])
+    }
+
+    /// The row's number, the sparkline's dot and the detail chart share one rule (DESIGN.md §3).
+    @Test func levelsFollowTheSeriesLimits() {
+        typealias S = HostHistory.Series
+        // Load counts per core: gold at the core count, love at twice it. 3.1 on 4 cores is quiet.
+        #expect(S.load.level(of: 3.1, cores: 4) == .normal)
+        #expect(S.load.level(of: 4, cores: 4) == .warning)
+        #expect(S.load.level(of: 7.99, cores: 4) == .warning)
+        #expect(S.load.level(of: 8, cores: 4) == .problem)
+        #expect(S.load.level(of: 1, cores: nil) == .warning)           // unknown cores count as 1
+        #expect(S.memPct.level(of: 89, cores: nil) == .normal && S.memPct.level(of: 90, cores: nil) == .warning)
+        #expect(S.memPct.level(of: 95, cores: nil) == .problem)
+        #expect(S.diskPct.level(of: 74, cores: nil) == .normal && S.diskPct.level(of: 75, cores: nil) == .warning)
+        #expect(S.diskPct.level(of: 90, cores: nil) == .problem)
+        #expect(S.temp.level(of: 79.9, cores: nil) == .normal && S.temp.level(of: 80, cores: nil) == .warning)
+        #expect(S.temp.level(of: 90, cores: nil) == .problem)
+        #expect(S.load.level(of: nil, cores: 4) == .normal)
+        // Same boundaries as the sparkline: it tints where level != .normal.
+        for s in [S.load, .memPct, .temp, .diskPct] {
+            let l = s.limits(cores: 4)
+            #expect(s.level(of: l.warning, cores: 4) == .warning && s.level(of: l.problem, cores: 4) == .problem)
+        }
+        // A host's current numbers: 3.1 on 4 cores is quiet (the old 75 % rule made it gold), RAM 93 gold, disk 91 love.
+        let host = Host(id: "h", reachable: true, load: 3.1, cpuCount: 4, memPct: 93, temp: 81, disks: ["/": 40, "/srv": 91])
+        #expect(host.loadLevel == .normal && host.ramLevel == .warning && host.diskLevel == .problem && host.tempLevel == .warning)
+        #expect(Host(id: "x").loadLevel == .normal && Host(id: "x").diskLevel == .normal)
+        #expect(!ValueLevel.normal.isHigh && ValueLevel.warning.isHigh && ValueLevel.problem.isHigh)
         #expect(HostHistory.Series.load.format(1.849) == "1.85")
         #expect(HostHistory.Series.memPct.format(70.6) == "71%")
         #expect(HostHistory.Series.temp.format(63.2) == "63°C")

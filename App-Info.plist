@@ -46,6 +46,8 @@
     <string>Homelab can lock itself with Face ID, so only you can approve actions.</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>Homelab connects to the servers you add in your home network.</string>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>

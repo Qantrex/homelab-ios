@@ -45,7 +45,7 @@ import Testing
         #expect(s.pending[0].buttons.count == 3 && s.pending[0].buttons[.always] == "HOMELAB_ALWAYS_ab12_1123456789abcdef")
         #expect(s.pending[1].buttons[.always] == nil)
         #expect(s.pending[0].title == "restart media sonarr")
-        #expect(s.cards.map(\.style) == [.list, .list, .metrics, .list, .metrics, .text, .text, .checklist, .countdown, .list])
+        #expect(s.cards.map(\.style) == [.list, .list, .metrics, .list, .departures, .metrics, .text, .text, .checklist, .countdown, .list])
         #expect(s.cards[0].tint == .purple && s.cards[0].items[0].progress == 0.42)
         #expect(s.busy == ["chat"])
     }

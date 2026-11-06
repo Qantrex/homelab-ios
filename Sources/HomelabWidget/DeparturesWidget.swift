@@ -1,0 +1,149 @@
+import HomelabDesign
+import HomelabKit
+import SwiftUI
+import WidgetKit
+
+/// U6 departures (step 6c): the next trains of the direction the server lists first. Lock-screen widgets draw in one
+/// colour, so a delay or a disruption is always a symbol plus words (docs/DESIGN.md §3); gold only on the home
+/// screen, as an addition. The times are public data, so the app lock does not hide them.
+struct DeparturesWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "HomelabU6", provider: Provider(follows: .departures)) { entry in
+            DeparturesView(entry: entry)
+                .containerBackground(Palette.background, for: .widget)
+                .widgetURL(URL(string: "homelab://today"))
+        }
+        .configurationDisplayName("U6 departures")
+        .description("The next U6 trains from your stop, with delays and disruptions.")
+        .supportedFamilies([.accessoryRectangular, .accessoryInline, .accessoryCircular, .systemSmall])
+    }
+}
+
+struct DeparturesView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: Entry
+
+    private var board: DepartureBoard? {
+        entry.state?.departuresCard.map { DepartureBoard(card: $0).upcoming(now: entry.date) }
+    }
+    private var group: DepartureBoard.Group? { board?.groups.first }
+    private var line: String { board?.line ?? "U6" }
+    private var disrupted: Bool { board?.isDisrupted == true }
+    /// The biggest delay among the shown trains.
+    private var delay: Int? { group?.departures.prefix(3).compactMap(\.delay).max() }
+
+    private func clock(_ d: DepartureBoard.Departure) -> String { DepartureBoard.clock(d.due) }
+
+    var body: some View {
+        switch family {
+        case .accessoryRectangular: rectangular
+        case .accessoryInline: inline
+        case .accessoryCircular: circular
+        default: small
+        }
+    }
+
+    private var empty: String {
+        entry.snapshot == nil ? String(localized: "Open the app") : String(localized: "No departures soon")
+    }
+
+    // MARK: Lock screen
+
+    private var rectangular: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if let group {
+                Text("\(line) \(group.towards)").font(.headline).lineLimit(1)
+                Text(group.departures.prefix(3).map(clock).joined(separator: " · ")).font(Typo.data(.caption)).lineLimit(1)
+                if disrupted {
+                    Label("Disruption", systemImage: "exclamationmark.triangle.fill").font(.caption2).lineLimit(1)
+                } else if let delay {
+                    Label("Delay +\(delay) min", systemImage: "clock.badge.exclamationmark").font(.caption2).lineLimit(1)
+                } else {
+                    Text(group.stop ?? "").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            } else {
+                Text(line).font(.headline)
+                Text(empty).font(.caption).lineLimit(2)
+                if disrupted { Label("Disruption", systemImage: "exclamationmark.triangle.fill").font(.caption2) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var inline: some View {
+        if let group {
+            let times = group.departures.prefix(2).map(clock).joined(separator: " · ")
+            if disrupted {
+                Label("\(line) disruption · \(times)", systemImage: "exclamationmark.triangle.fill")
+            } else {
+                Label("\(line) \(times)", systemImage: "tram.fill")
+            }
+        } else {
+            Label("\(line) \(empty)", systemImage: disrupted ? "exclamationmark.triangle.fill" : "tram.fill")
+        }
+    }
+
+    private var circular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            if let next = group?.departures.first {
+                // Counts down to the next train by itself, and starts over at the next entry (each departure).
+                ProgressView(timerInterval: entry.date...next.due, countsDown: true) {
+                    EmptyView()
+                } currentValueLabel: {
+                    VStack(spacing: 0) {
+                        if disrupted { Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 9)) }
+                        Text(timerInterval: entry.date...next.due, countsDown: true, showsHours: false)
+                            .font(Typo.data(.caption2, weight: .semibold)).multilineTextAlignment(.center)
+                    }
+                }
+                .progressViewStyle(.circular)
+            } else {
+                VStack(spacing: 0) {
+                    Image(systemName: disrupted ? "exclamationmark.triangle.fill" : "tram.fill").font(.title3)
+                    Text(line).font(.caption2.weight(.bold))
+                }
+            }
+        }
+        .accessibilityLabel(Text(group?.departures.first.map { "\(line) \(clock($0))" } ?? "\(line) \(empty)"))
+    }
+
+    // MARK: Home screen, StandBy
+
+    private var small: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "tram.fill").font(.footnote.weight(.semibold)).foregroundStyle(Palette.secondary)
+                Text(line).font(.footnote.weight(.semibold)).foregroundStyle(Palette.text)
+                Spacer(minLength: 4)
+                Text(entry.stale ? entry.age : "").font(.caption2).foregroundStyle(Palette.tertiary)
+            }
+            if let group {
+                Text("\(group.towards)").font(.footnote.weight(.medium)).foregroundStyle(Palette.text).lineLimit(1)
+                Text(group.stop ?? "").font(.caption2).foregroundStyle(Palette.secondary).lineLimit(1)
+                ForEach(Array(group.departures.prefix(3).enumerated()), id: \.offset) { i, d in
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(clock(d)).font(Typo.data(.title3, weight: i == 0 ? .semibold : .regular))
+                            .foregroundStyle(i == 0 ? Palette.text : Palette.secondary)
+                        if d.late {
+                            Text(d.delay.map { "+\($0)" } ?? String(localized: "late"))
+                                .font(Typo.data(.caption, weight: .semibold)).foregroundStyle(Palette.gold)
+                        }
+                    }
+                }
+            } else {
+                Spacer(minLength: 0)
+                Text(empty).font(.subheadline.weight(.medium)).foregroundStyle(Palette.secondary).lineLimit(3)
+            }
+            Spacer(minLength: 0)
+            if let text = board?.disruption {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold)
+                    Text(text).foregroundStyle(Palette.text).lineLimit(2)
+                }
+                .font(.caption2)
+            }
+        }
+        .opacity(entry.stale && entry.snapshot != nil ? 0.6 : 1)
+    }
+}

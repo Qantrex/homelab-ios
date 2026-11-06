@@ -6,6 +6,29 @@ First release.
 
 App:
 
+- Lab rows: host names wrap to two lines instead of being cut, the sparkline drops first on a narrow row, the value
+  columns have a fixed width that grows with the text size, and at accessibility sizes each value gets its own
+  "Load 0.42" line. Numbers turn gold or love at the same limits as the sparkline's dot and the detail chart (load per
+  core 1x / 2x, RAM 90 / 95 %, disk 75 / 90 %, temperature 80 / 90 C); VoiceOver says "high". Meta text and light-mode
+  gold have enough contrast.
+- Find and request (feature `search`): the Actions tab has a "Find a movie or show" tile (and `homelab://search?q=`);
+  the search field asks the server 400 ms after the last key (2 to 100 characters) and shows the answered cards as a
+  poster grid with a Request button per title (one confirm, then it runs). New card style `poster-grid` and item
+  `image`: a path on the server or a URL on its own host; loaded with the API's login, 1 MB and JPEG/PNG/WebP at most,
+  cached in memory and in a 20 MB disk cache, a quiet placeholder meanwhile. No other host is ever asked.
+- Cards for Lab: `place: "lab"` puts a card in Lab (between Hosts and Services) instead of Today, drawn as rows with a
+  status dot, the reason in grey and the value in the data font (tailnet nodes, ad blocking with "Pause 5 min",
+  backups). Older apps show them on Today.
+- At a glance (6c): a `departures` card (public transport: direction and next time, stop and the next three, a gold
+  "+3" when late, disruption line with a gold triangle) and `commute` in `/state`. Widgets: U6 (lock screen
+  rectangular, inline, circular; small for StandBy), Deadlines (rectangular, inline, circular, small, medium) and
+  To-dos (rectangular, circular, small, medium). With the app lock on, deadlines and to-dos show counts only. Widgets
+  fetch `/state` themselves for identity (Tailscale) servers when the shared snapshot is older than 5 minutes (no
+  token, 8 s timeout). Live Activity "Leave by 07:26 · U6 07:31": starts when the app is open on a school morning,
+  updates and ends from the background refresh; Settings toggle and Diagnostics lines. Still 3 App IDs.
+- Widget fixes: Hosts shows "Disk 93%" in gold or love again; the Day widget's medium header follows the day mode
+  (not the card title) and shows the card's date for tomorrow; tomorrow's countdown in widgets is whole hours
+  ("in 10 h") and redraws when the hour changes.
 - Your whole day: in the evening the "today" card can be tomorrow's (`date`): header "Tomorrow", countdown to the
   first stop, also in the Day widget. Cancelled lessons (`cancelled`) are struck through, substitutions get a gold dot,
   the weather card's line sits under the headline's facts.

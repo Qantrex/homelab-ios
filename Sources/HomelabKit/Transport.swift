@@ -6,6 +6,17 @@ import FoundationNetworking
 /// The one network seam: URLSession in the app, a fake in tests.
 public protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    /// Like `send`, but stops reading past `maxBytes` (`APIError.tooLarge`): for pictures, which are small.
+    func send(_ request: URLRequest, maxBytes: Int) async throws -> (Data, HTTPURLResponse)
+}
+
+extension HTTPTransport {
+    /// Transports that can't stop early read everything and check afterwards.
+    public func send(_ request: URLRequest, maxBytes: Int) async throws -> (Data, HTTPURLResponse) {
+        let (data, response) = try await send(request)
+        if data.count > maxBytes { throw APIError.tooLarge }
+        return (data, response)
+    }
 }
 
 public struct URLSessionTransport: HTTPTransport {
@@ -32,13 +43,19 @@ public struct URLSessionTransport: HTTPTransport {
     public static let defaultSession: URLSession = makeSession(resourceTimeout: 150)
     public static let uploadSession: URLSession = makeSession(resourceTimeout: 900)
 
-    static func makeSession(resourceTimeout: TimeInterval) -> URLSession {
+    /// For widgets: an extension has a few seconds, and an off tailnet must not hang it. 8 s for the request and the
+    /// whole transfer, answers up to 2 MB (`/state` is about 11 KB), still no redirects, cookies or cache.
+    public static let widget = URLSessionTransport(session: makeSession(resourceTimeout: 8, requestTimeout: 8),
+                                                   uploadSession: makeSession(resourceTimeout: 8, requestTimeout: 8),
+                                                   maxBytes: 2 * 1024 * 1024)
+
+    static func makeSession(resourceTimeout: TimeInterval, requestTimeout: TimeInterval = 20) -> URLSession {
         let c = URLSessionConfiguration.ephemeral
         c.httpCookieAcceptPolicy = .never
         c.httpShouldSetCookies = false
         c.urlCache = nil
         c.requestCachePolicy = .reloadIgnoringLocalCacheData
-        c.timeoutIntervalForRequest = 20
+        c.timeoutIntervalForRequest = requestTimeout
         c.timeoutIntervalForResource = resourceTimeout
         #if canImport(Darwin)
         c.waitsForConnectivity = false   // fail fast: the UI shows "is Tailscale on?"
@@ -48,6 +65,11 @@ public struct URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await send(request, maxBytes: maxBytes)
+    }
+
+    public func send(_ request: URLRequest, maxBytes limit: Int) async throws -> (Data, HTTPURLResponse) {
+        let maxBytes = min(limit, self.maxBytes)
         #if canImport(Darwin)
         // Streamed, so a hostile server can't make the app buffer more than `maxBytes`.
         let (bytes, response) = try await (Self.isUpload(request) ? uploadSession : session).bytes(for: request)
@@ -232,6 +254,12 @@ public enum APIError: Error, Equatable, Sendable {
     /// reason shows that reason, and so does a 5xx (`serverSaid`); without one, the generic texts.
     public static func fromAction(status: Int, body: Data) -> APIError? {
         if status == 404 || status == 429, let text = serverErrorText(body) { return .badRequest(text) }
+        if (500..<600).contains(status), let text = serverErrorText(body) { return .serverSaid(status: status, text: text) }
+        return from(status: status, body: body)
+    }
+
+    /// The answer to `GET /search`: a 5xx with the server's own words ("Seerr did not answer") shows them.
+    public static func fromSearch(status: Int, body: Data) -> APIError? {
         if (500..<600).contains(status), let text = serverErrorText(body) { return .serverSaid(status: status, text: text) }
         return from(status: status, body: body)
     }

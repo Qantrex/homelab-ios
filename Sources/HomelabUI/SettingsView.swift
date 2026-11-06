@@ -72,6 +72,13 @@ struct SettingsView: View {
                     }
 
                     Section {
+                        Toggle("Leave-by on the lock screen", isOn: Binding(
+                            get: { model.settings.leaveByOn }, set: { model.settings.leaveByOn = $0 }))
+                    } footer: {
+                        SettingsFooter("On a school morning, opening the app puts \"Leave by 07:26 · U6 07:31\" on the lock screen until the first lesson. It only starts while the app is open, and needs Live Activities allowed for Homelab in iOS Settings.")
+                    }
+
+                    Section {
                         Toggle("Lock with Face ID", isOn: Binding(
                             get: { model.settings.faceIDLock },
                             set: { on in Task { await setLock(on) } }))
@@ -481,6 +488,11 @@ struct DiagnosticsView: View {
                     LabeledContent("Last run", value: Format.age(model.settings.lastBackgroundRun))
                     LabeledContent("Result", value: model.settings.lastBackgroundResult ?? "–")
                 }
+                Section("At a glance") {
+                    LabeledContent("Live Activities", value: LeaveActivityController.allowed ? String(localized: "allowed") : String(localized: "off in iOS Settings"))
+                    LabeledContent("Leave-by", value: logText(RunLog.leaveActivity))
+                    LabeledContent("Widget fetch", value: logText(RunLog.widgetFetch))
+                }
                 Section("Servers") {
                     ForEach(model.servers.servers) { s in
                         let st = model.status[s.id]
@@ -515,11 +527,18 @@ struct DiagnosticsView: View {
         .task { probes = AppGroup.resolve().probes }
     }
 
+    /// "3 min ago: ok" for a log the widget or the Live Activity wrote.
+    private func logText(_ name: String) -> String {
+        guard let log = model.storage.read(RunLog.self, name) else { return "–" }
+        return "\(Format.age(log.date)): \(log.result)"
+    }
+
     private func report() -> String {
         var lines = ["Homelab \(AppVersion.short) (\(AppVersion.build)), iOS \(UIDeviceInfo.version)",
                      "bundle \(Bundle.main.bundleIdentifier ?? "?"), group \(AppGroup.current ?? "none")"]
         lines += probes.map { "group \($0.group): found=\($0.containerFound) writable=\($0.writable)" }
         lines.append("background: \(Format.age(model.settings.lastBackgroundRun)) \(model.settings.lastBackgroundResult ?? "")")
+        lines.append("live activities: \(LeaveActivityController.allowed ? "allowed" : "off"), leave-by \(logText(RunLog.leaveActivity)), widget fetch \(logText(RunLog.widgetFetch))")
         for s in model.servers.servers {
             let st = model.status[s.id]
             lines.append("server \(s.kind.rawValue)/\(s.auth.rawValue) \(s.host): data \(Format.age(st?.snapshot?.fetched)), error \(st?.error?.message ?? "none")")

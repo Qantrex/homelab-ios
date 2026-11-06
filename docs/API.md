@@ -18,6 +18,8 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `GET /actions` | – | `{actions: [{name, label, icon, hint, destructive, arg, fields}]}` | Feature `run-actions`: the "Start" list on the Actions tab and its forms |
 | `POST /actions/<name>` | `{arg, payload}` | `{ok, text, running}` | Starting one of them, after the app's confirm step |
 | `POST /documents` | the raw PDF (`Content-Type: application/pdf`, headers `X-Homelab-Id`, `X-Homelab-Title`) | `202 {ok, id, text}` | Feature `documents`: the Scan tile and the share extension send PDFs to your document inbox (Paperless) |
+| `GET /search?q=<text>` | – | `{query, cards}` | Feature `search`: the Find and request screen (movies and shows as a poster grid) |
+| `GET /poster/<size>/<file>` (or any path an item's `image` names) | – | the picture | Posters for `poster-grid` cards; see "Pictures" |
 | `POST /share` | `{id, kind: "url", url, title}` | `{ok, id, route, text}` | Feature `share`: the share extension sends a web link; the server routes it (a willhaben ad, or a read-later list) |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429
@@ -52,6 +54,59 @@ outbox): 2xx, and 400, 413, 415, 422. Everything else (offline, 401, 403, 404, 4
 retried: when the app comes to the foreground and in the background refresh, for up to 7 days.
 
 The reference server (`--fixtures` mode) implements both endpoints in memory with a fake result, so you can try them.
+
+## Search and pictures (`search`)
+
+`GET /search?q=<text>`: `q` is 2 to 100 characters after trimming (the app removes control characters and makes runs of
+white space one space, and does not ask for less or more); the server answers 400 otherwise. Reply:
+
+```json
+{"query": "quiet",
+ "cards": [{"id": "search-media", "title": "Movies and shows", "icon": "film", "style": "poster-grid",
+            "items": [{"title": "The Long Quiet", "subtitle": "Movie · 2024", "value": "in Plex",
+                       "image": "/api/v1/poster/w342/ab12cd34ef56.jpg"},
+                      {"title": "Harbour Lights", "subtitle": "Show · 2019", "value": "",
+                       "image": "/api/v1/poster/w342/gh78ij90kl12.jpg",
+                       "action": {"name": "seerr-request", "label": "Request", "arg": "tv:1399"}}]}]}
+```
+
+No cards (or cards without items) means nothing was found. Errors: 400 (bad `q`, with `error`), 429, and 5xx with
+`{"error": "..."}` (the app shows that text, e.g. "Seerr did not answer"). The app shows the answered cards like any
+card, so the server can answer with other styles too. The app asks 400 ms after the last key. The request button is the
+item's `action` with the usual confirm ("Request <title>?"), `POST /actions/<name>`; after it ran, the poster shows
+"requested" and no button. Without `search` in `features` the app has no search screen; the Actions tab shows for
+`search` alone.
+
+Link: `homelab://search?q=dune` opens the Actions tab with the search screen and the text in the field (`q` optional,
+cut to 100 characters). Servers without the feature drop it.
+
+**Card style `poster-grid`**: the items as posters, 3 columns (2 at accessibility text sizes), each poster 2:3 with the
+`title` (2 lines), `subtitle`, `value` and the item's `action` button under it. Older apps show it as `list`.
+
+**Item `image`**: a picture for the item. A path on the server (`/api/v1/poster/w342/ab12.jpg`, resolved against the
+server's address, a path prefix of the server is kept) or an absolute URL with the **same scheme, host and port** as the
+server. Anything else (other hosts, `//host/...`, `file:`, user names, `..` segments, encoded slashes, backslashes,
+over 512 characters) is dropped, and the app never asks any host but its server. The app loads it with the same login as
+the API (token header, no cookies, no redirects), accepts at most **1 MB** and only JPEG, PNG or WebP (decided by the
+first bytes; a `Content-Type` that is not `image/*` is refused too), caches it in memory and in a small disk cache
+(20 MB, 30 days, oldest out) and shows a quiet placeholder (the card's icon) while it loads or when it fails. A failed
+picture is not asked again for a minute. A server should send `Cache-Control` and keep names stable (the name changes
+when the picture does).
+
+## Cards for Lab (`place`)
+
+A card may carry `"place": "lab"`: it shows in Lab, between Hosts and Services, and not on Today. Missing or unknown
+means `today` (older apps ignore the field and show it on Today). A `metrics` card with `place: "lab"` is never taken
+as the day card. Lab draws `list` and `metrics` cards as rows (DESIGN.md §6): a status dot, the item `title`, the
+`subtitle` as its reason, the `value` in the data font at the right (under the name at accessibility sizes), a thin
+bar for `progress`, and an item `action` as a button at the end (the usual confirm). `tint` is the status: `yellow` or
+`orange` is a warning (gold), `red` a problem (love), anything else normal. The first three users:
+
+| Card id | What | Rows |
+|---|---|---|
+| `tailnet` | The tailnet's nodes | name, "linux · direct", "online" or "seen 3 h ago"; a key that expires soon `yellow`, expired or an offline server `red` |
+| `dns` and `dns-top` | Ad blocking | Queries, Blocked, Blocking with a "Pause 5 min" button (`dns-pause`); the blocked domains |
+| `backups` | Backup runs | what, size or snapshots, "today 04:52", `progress` for space used |
 
 ## Auth
 
@@ -147,7 +202,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 
 | Field | Effect |
 |---|---|
-| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `share` → the share extension sends links. Missing list = `status` + `hosts` only |
+| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `search` → the "Find a movie or show" tile on the Actions tab (the tab shows for it alone) and the search link; `share` → the share extension sends links. Missing list = `status` + `hosts` only |
 | `commands` | Quick buttons above the chat input. Only `/word` entries, at most 24 chars, no spaces, the first 8. Empty = no buttons |
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
@@ -175,7 +230,7 @@ carry `action: {"name": "parcel-done", "label": "Delivered", "arg": "<parcel id>
 `url` (its tracking page, https, opened on tap). `wake-set` may offer a third variant `{Day}:clear` ("Normal").
 
 Links from pushes and notifications: `homelab://today`, `homelab://actions`, `homelab://chat`, `homelab://lab` open that
-tab (`overview` and `home` still open Today).
+tab (`overview` and `home` still open Today). `homelab://search?q=` opens the search screen (see above).
 
 The result shows as an alert: `ok` false is an error, `running` says the result will come in the chat. A variant
 with a part kind the app doesn't know is dropped; an action left with no usable variant is not shown.
@@ -219,7 +274,9 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 | `action` on an item: `{name, label, arg, payload}` | One tap runs that action (`POST /actions/<name>` with `arg` and `payload`, all strings) after a confirm with `label` as its text, then Today refreshes. Shown only with `run-actions` and when `GET /actions` lists the action; payload fields the action doesn't have are dropped, and the server checks everything again |
 | `action` on a card | A "+ `label`" button in the card's header (without `label`: the action's own label from `GET /actions`) that opens that action's form, **prefilled** with `payload` and `arg` (an `arg` that fits one of the action's variants picks it and fills its parts). Same rule: hidden unless `GET /actions` lists it |
 
-Older apps show `checklist` and `countdown` cards as `list` and ignore `done`, `due` and `action`.
+| `style: "departures"` | Public transport (step 6c). One item per departure: `title` the direction ("Floridsdorf"), `subtitle` the stop ("Erlaaer Straße", plus ` · +3 min` when late and ` · planned` when only the timetable is known), `value` the clock text, `due` the time **with a zone**, `tint: "orange"` when late. Items with the same direction and stop form one row, in your order (put the relevant direction first); up to 4 per direction. Each row: direction and the next time (mono), the stop and the next three times; a late one has a gold "+3". Trains whose `due` has passed drop out every minute. `text` is the disruption line ("U6: Schadhaftes Fahrzeug") under the rows, with a gold triangle; set the card `tint` to `red` then. Also the **U6 widget** (lock screen rectangular, inline, circular; home screen small) |
+
+Older apps show `checklist`, `countdown` and `departures` cards as `list` and ignore `done`, `due` and `action`.
 
 ```json
 {"id": "todos", "title": "To-dos", "icon": "checklist", "style": "checklist",
@@ -236,6 +293,41 @@ Older apps show `checklist` and `countdown` cards as `list` and ignore `done`, `
 ```
 
 Clock times are read in the phone's time zone, like times without a zone (see above).
+
+## Commute (Live Activity "Leave by")
+
+`state.commute` is optional. When it is there and `date` is today, the app can show **Leave by 07:26 · U6 07:31** on
+the lock screen (a Live Activity) until the first lesson:
+
+```json
+{"commute": {"date": "2026-11-07", "mode": "u6", "line": "U6",
+             "first_lesson": "2026-11-07T08:00:00+01:00", "leave_by": "2026-11-07T07:26:00+01:00",
+             "train": "2026-11-07T07:31:00+01:00", "next": "2026-11-07T07:36:00+01:00", "next_too_late": true,
+             "disruptions": ["U6: Schadhaftes Fahrzeug"], "updated": "2026-11-07T07:12:00+01:00"}}
+```
+
+| Field | Meaning |
+|---|---|
+| `date` | The day it is for. Required; anything else is ignored. A plan for another day is never shown |
+| `mode` | `u6` (default when there is a `train`) or `bike` |
+| `first_lesson`, `leave_by`, `train` | Needed for a train day; if one is missing there is nothing to show. Times with a zone |
+| `next`, `next_too_late` | The train after it; `next_too_late` adds ", too late" |
+| `disruptions` | Short titles; the first shows with a gold triangle (and "+1" for more) |
+| `mode: "bike"` + `ride` | Bike day: `first_lesson`, `leave_by` and `ride` (minutes), no `train`/`next` |
+| `{date, error}` / `{date, active: false, why}` | Nothing to show; a running activity ends |
+
+The app starts it only **in the foreground**, from 90 minutes before `leave_by` until `first_lesson`, with the
+Settings toggle "Leave-by on the lock screen" on and Live Activities allowed (iOS Settings). It updates (the pick
+changed) or ends (first lesson, another day, error, toggle off) from the app and from the background refresh, which
+iOS runs every 15 to 60 minutes or less. No push: the countdown runs by itself and the activity turns stale at the
+train's time. The server's own "Leave by" notification stays the reliable alert.
+
+## Widgets
+
+The widgets read the app's last snapshot. For a server reached by identity (`auth: identity`, Tailscale) they also GET
+`/state` themselves when that snapshot is older than 5 minutes (8 s timeout, no token, no redirects), so they stay fresh
+with the app closed. Token servers are never fetched by widgets. With the app lock on, the deadlines and to-do widgets
+show counts only; the U6 widget (public times) stays.
 
 ## Chat messages with proposals and cards
 

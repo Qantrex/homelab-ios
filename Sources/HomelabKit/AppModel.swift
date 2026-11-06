@@ -48,6 +48,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var density: Density?
     /// Off, Dry, Snarky or Ultrakill; nil = Off.
     public var personality: Personality?
+    /// The "Leave by" Live Activity on school mornings; nil = on.
+    public var leaveActivity: Bool?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -55,6 +57,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var todayDensity: Density {
         get { density ?? .standard }
         set { density = newValue == .standard ? nil : newValue }
+    }
+
+    /// The Settings toggle "Leave-by on the lock screen" (default on).
+    public var leaveByOn: Bool {
+        get { leaveActivity ?? true }
+        set { leaveActivity = newValue ? nil : false }
     }
 
     public var voice: Personality {
@@ -124,6 +132,9 @@ public final class AppModel {
     /// The Scan screen was asked for (`homelab://scan`, the Home-screen quick action). The Actions tab opens it once
     /// the server is known to take documents, and clears it.
     public private(set) var openScan = false
+    /// The search screen was asked for (`homelab://search?q=dune`). The Actions tab opens it once the server is known
+    /// to have the `search` feature, and clears it.
+    public private(set) var openSearch: SearchRequest?
     /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
     public private(set) var outboxCount = 0
     /// Scans and links the outbox gave up on (server removed, 7 days, refused): shown until cleared.
@@ -151,6 +162,8 @@ public final class AppModel {
     @ObservationIgnored public var onWidgetDataChange: @MainActor () -> Void = {}
 
     @ObservationIgnored private var demo: DemoBackend?
+    /// The picture loader per server (memory and disk cache), made when a card first shows a picture.
+    @ObservationIgnored private var loaders: [UUID: ImageLoader] = [:]
     /// The running refresh per server, so callers can wait for fresh data instead of starting a second fetch.
     @ObservationIgnored private var running: [UUID: Task<Void, Never>] = [:]
     /// A refresh was asked for while one was running (e.g. right after pressing a button): run once more after it.
@@ -191,7 +204,7 @@ public final class AppModel {
         if selected != nil {
             let f = selectedStatus.features
             t.insert(.lab)
-            if f.contains(.actions) || f.contains(.runActions) || f.contains(.documents) { t.insert(.actions) }
+            if f.contains(.actions) || f.contains(.runActions) || f.contains(.documents) || f.contains(.search) { t.insert(.actions) }
             if f.contains(.chat) { t.insert(.chat) }
         }
         return t
@@ -223,6 +236,19 @@ public final class AppModel {
         }
         if selectedStatus.knownInfo != nil || selected == nil { openScan = false }
         return false
+    }
+
+    /// The Actions tab asks whether to open the search screen now: once, when the tab shows, no form is open and the
+    /// server has `search`. Without that feature (known) the request is dropped.
+    public func takeOpenSearch() -> SearchRequest? {
+        guard let request = openSearch else { return nil }
+        if selectedStatus.features.contains(.search) {
+            guard tab == .actions, !formSheetOpen else { return nil }
+            openSearch = nil
+            return request
+        }
+        if selectedStatus.knownInfo != nil || selected == nil { openSearch = nil }
+        return nil
     }
 
     /// Where unsent shares and scans wait (App Group, so the share extension fills it too).
@@ -267,6 +293,7 @@ public final class AppModel {
         openAction = nil
         openHost = nil
         openScan = false
+        openSearch = nil
     }
 
     /// The app locks (Face ID, in the background): the system closes every sheet, so no form counts as open.
@@ -316,6 +343,7 @@ public final class AppModel {
             status[server.id] = server.speaksCompanionAPI ? ServerStatus() : nil
             restarted[server.id] = nil
         }
+        loaders[server.id] = nil   // a new address or token: the loader asks with the old ones
         saveServers()
         if server.id == selected?.id { writeWidgetSnapshot() }
         validateTab()
@@ -327,6 +355,7 @@ public final class AppModel {
         servers.remove(id)
         status[id] = nil
         restarted[id] = nil
+        loaders[id] = nil
         refreshAgain.remove(id)
         saveServers()
         writeWidgetSnapshot()
@@ -394,6 +423,24 @@ public final class AppModel {
 
     public func companion(for server: ServerConfig) -> any CompanionAPI {
         server.kind == .demo ? demoBackend() : CompanionClient(config: server, tokens: tokens, transport: transport)
+    }
+
+    /// Loads this server's pictures (`Card.Item.image`): through its API client, so with its login and only its own
+    /// host, cached in memory and in `images` next to the other app files (30 days, 20 MB).
+    public func imageLoader(for server: ServerConfig) -> ImageLoader {
+        if let l = loaders[server.id] { return l }
+        let l = ImageLoader(api: companion(for: server), scope: server.id.uuidString, directory: storage.url("images"))
+        loaders[server.id] = l
+        return l
+    }
+
+    /// `GET /search?q=` on the selected server (feature `search`).
+    public func search(_ q: String, on server: ServerConfig) async -> Result<SearchResult, APIError> {
+        do {
+            return .success(try await companion(for: server).search(q: q))
+        } catch {
+            return .failure(APIError.from(error, host: server.host))
+        }
     }
 
     public func homeAssistantAPI(for server: ServerConfig) -> any HomeAssistantAPI {
@@ -702,6 +749,14 @@ public final class AppModel {
             dropRequests()
             request(.actions)
             openScan = true
+            return
+        }
+        // homelab://search?q=dune: the search screen on the Actions tab, the text already in the field.
+        if url.scheme == "homelab", url.host?.lowercased() == "search" {
+            dropRequests()
+            request(.actions)
+            let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value
+            openSearch = SearchRequest(query: SearchQuery.prefill(q ?? ""))
             return
         }
         guard let t = AppTab(url: url) else { return }
