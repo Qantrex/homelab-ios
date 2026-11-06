@@ -23,7 +23,10 @@ App:
   now in mono, gold or love only when the newest value is over a limit, gaps where the host was down) and the
   host's containers, problems first (exited, dead, unhealthy in love, restarting in gold) with state, health and
   restarts. Containers on the host's restart list get a Restart button: a red confirm, then the server's
-  `restart-container` action, its answer and a haptic. Overkill on Today shows each machine's load sparkline.
+  `restart-container` action, its answer and a haptic ("started" when it still runs on the server); until the
+  host's next check the row says "restarted HH:mm, waiting for the next check" instead of offering Restart again.
+  Sparklines run on a 24 h time axis (a history that stopped ends left of the edge; old values are dimmed with
+  "until HH:mm" and never colour the line). Overkill on Today shows each machine's load sparkline.
   `homelab://lab/<host-id>` and `-HomelabHost` open a host's details.
 - Look: true black (white in light mode), monochrome, thin borders, mono numbers; colour only for problems (Rosé
   Pine love) and warnings (gold). No blue.

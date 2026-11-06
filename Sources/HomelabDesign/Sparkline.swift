@@ -17,20 +17,29 @@ public struct Sparkline: View {
     public init(_ values: [Double?], range: ClosedRange<Double>? = nil, warning: Double? = nil, problem: Double? = nil,
                 label: String, lineWidth: CGFloat = 1.5, fill: Bool = true, format: (Double) -> String = { String(format: "%.1f", $0) }) {
         let shape = SparklineShape(values, range: range)
+        self.init(shape: shape, tintValue: shape.lastValue, warning: warning, problem: problem, label: label,
+                  lineWidth: lineWidth, fill: fill, format: format)
+    }
+
+    /// A ready shape. The line is gold or love only by `tintValue` (nil: plain), so an hours-old value doesn't colour
+    /// it; VoiceOver says "now" only for that value too.
+    public init(shape: SparklineShape, tintValue: Double?, warning: Double? = nil, problem: Double? = nil, label: String,
+                lineWidth: CGFloat = 1.5, fill: Bool = true, format: (Double) -> String = { String(format: "%.1f", $0) }) {
         self.shape = shape
         self.lineWidth = lineWidth
         self.fill = fill
         self.label = label
-        let last = shape.lastValue
-        if let last, let problem, last >= problem {
+        if let v = tintValue, let problem, v >= problem {
             tint = Palette.love
-        } else if let last, let warning, last >= warning {
+        } else if let v = tintValue, let warning, v >= warning {
             tint = Palette.gold
         } else {
             tint = Palette.text
         }
-        if let lo = shape.min, let hi = shape.max, let last {
-            value = String(localized: "minimum \(format(lo)), maximum \(format(hi)), now \(format(last))")
+        if let lo = shape.min, let hi = shape.max, let now = tintValue {
+            value = String(localized: "minimum \(format(lo)), maximum \(format(hi)), now \(format(now))")
+        } else if let lo = shape.min, let hi = shape.max {
+            value = String(localized: "minimum \(format(lo)), maximum \(format(hi)), no current value")
         } else {
             value = String(localized: "no data")
         }
@@ -93,12 +102,13 @@ public struct Sparkline: View {
 }
 
 public extension Sparkline {
-    /// One series of a host's history, with that series' scale, limits and number format.
-    init(_ history: HostHistory, _ series: HostHistory.Series, cores: Int?, label: String, lineWidth: CGFloat = 1.5,
-         fill: Bool = true) {
-        let values = history[series]
+    /// One series of a host's history on a 24 h time axis ending `now`, with that series' scale, limits and number
+    /// format. Coloured only by a recent last value (`HostHistory.recentLast`).
+    init(_ history: HostHistory, _ series: HostHistory.Series, cores: Int?, label: String, now: Date = Date(),
+         lineWidth: CGFloat = 1.5, fill: Bool = true) {
         let limits = series.limits(cores: cores)
-        self.init(values, range: series.range(values), warning: limits.warning, problem: limits.problem, label: label,
-                  lineWidth: lineWidth, fill: fill, format: series.format)
+        self.init(shape: history.shape(series, now: now), tintValue: history.recentLast(series, now: now),
+                  warning: limits.warning, problem: limits.problem, label: label, lineWidth: lineWidth, fill: fill,
+                  format: series.format)
     }
 }

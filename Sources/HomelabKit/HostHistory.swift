@@ -77,6 +77,32 @@ public struct HostHistory: Codable, Sendable, Equatable, Hashable {
     /// The newest value there is (the last slot may be a gap).
     public func last(_ series: Series) -> Double? { self[series].last { $0 != nil } ?? nil }
 
+    /// How long a last value counts as "now": two steps, at least 15 min (the watchdog runs every 5–9 min).
+    public var freshFor: TimeInterval { Double(Swift.max(step * 2, 15 * 60)) }
+
+    /// The newest value, only when it is recent (`freshFor`); nil when the history stopped hours ago. Colours and
+    /// "now" use this, so an old value doesn't look current.
+    public func recentLast(_ series: Series, now: Date = Date()) -> Double? {
+        guard let p = points(series).last, now.timeIntervalSince(p.date) <= freshFor else { return nil }
+        return p.value
+    }
+
+    /// The slots a sparkline spans: 24 h, at most `maxPoints`.
+    public var windowSlots: Int { Swift.max(Swift.min(86400 / step, Self.maxPoints), 2) }
+
+    /// How many slots the last point lies before `now` (0 without `end` or when `end` is ahead).
+    public func slotsBehind(now: Date = Date()) -> Double {
+        guard let end else { return 0 }
+        return Swift.max(0, now.timeIntervalSince(end)) / Double(step)
+    }
+
+    /// One series as a sparkline on a 24 h time axis ending `now`: points sit by their time, not their index, so
+    /// series of different length line up and an old history ends left of the right edge.
+    public func shape(_ series: Series, now: Date = Date(), range: ClosedRange<Double>? = nil) -> SparklineShape {
+        SparklineShape(self[series], range: range ?? series.range(self[series]), slots: windowSlots,
+                       offset: slotsBehind(now: now))
+    }
+
     enum CodingKeys: String, CodingKey { case step, end, load, memPct = "mem_pct", temp, diskPct = "disk_pct" }
 
     public init(from decoder: any Decoder) throws {
@@ -153,20 +179,28 @@ public struct SparklineShape: Sendable, Equatable {
     public let lastValue: Double?
 
     /// `range` nil: from the smallest to the largest value. Values outside the range are drawn at its edge.
-    public init(_ values: [Double?], range: ClosedRange<Double>? = nil) {
+    /// `slots`: how many slots the width spans (nil: exactly the values, oldest at the left edge); the newest value
+    /// sits `offset` slots left of the right edge. Points that would lie left of the edge are left out.
+    public init(_ values: [Double?], range: ClosedRange<Double>? = nil, slots: Int? = nil, offset: Double = 0) {
         let known = values.compactMap { $0 }.filter(\.isFinite)
         min = known.min(); max = known.max()
         lastValue = values.last { $0 != nil } ?? nil
         var lo = range?.lowerBound ?? min ?? 0, hi = range?.upperBound ?? max ?? 1
         if hi - lo < 1e-9 { lo -= 1; hi += 1 }   // a flat line sits in the middle
         let n = values.count
+        let window = Double(Swift.max(slots ?? n, 2))
+        let offset = offset.isFinite ? Swift.max(offset, 0) : 0
+        func x(_ i: Int) -> Double {
+            if slots == nil && n <= 1 { return 1 }
+            return 1 - (offset + Double(n - 1 - i)) / (window - 1)
+        }
         func point(_ i: Int, _ v: Double) -> Point {
-            Point(x: n > 1 ? Double(i) / Double(n - 1) : 1, y: Swift.min(Swift.max((v - lo) / (hi - lo), 0), 1))
+            Point(x: x(i), y: Swift.min(Swift.max((v - lo) / (hi - lo), 0), 1))
         }
         var runs: [[Point]] = []
         var current: [Point] = []
         var last: Point?
-        for (i, v) in values.enumerated() {
+        for (i, v) in values.enumerated() where x(i) >= -1e-9 {
             if let v, v.isFinite {
                 let p = point(i, v)
                 current.append(p)
@@ -188,7 +222,7 @@ public struct SparklineShape: Sendable, Equatable {
 public struct ContainerInfo: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// Docker's state.
     public enum State: String, Codable, Sendable, CaseIterable {
-        case running, exited, restarting, paused, created, dead, unknown
+        case running, exited, restarting, paused, created, removing, dead, unknown
 
         /// "running", also docker ps' "Up 3 hours" and "Exited (1) 2 hours ago".
         public init(lenient raw: String?) {

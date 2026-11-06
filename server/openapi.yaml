@@ -330,7 +330,7 @@ components:
         name: { type: string, example: sonarr }
         state:
           type: string
-          enum: [running, exited, restarting, paused, created, dead]
+          enum: [running, exited, restarting, paused, created, removing, dead]
           description: Docker's state. Unknown values are shown as unknown.
         health:
           type: [string, "null"]

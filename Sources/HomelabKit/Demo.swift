@@ -201,6 +201,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         c.restarts = (c.restarts ?? 0) + 1
         current.hosts[h].containerList[i] = c
         if wasDown, let up = current.hosts[h].containersUp { current.hosts[h].containersUp = up + 1 }
+        current.hosts[h].checked = Date()   // the demo checks the host at once
     }
 
     // MARK: Home Assistant

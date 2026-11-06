@@ -102,8 +102,9 @@ struct HostDetailView: View {
         let problems = list.filter(\.isProblem).count
         return Section {
             ForEach(list) { c in
-                ContainerRow(container: c, restarting: restarting.contains(c.name),
-                             canRestart: model.selectedStatus.restartForm(host: host, container: c) != nil) {
+                let waiting = model.restartWaiting(host: host, container: c)
+                ContainerRow(container: c, restarting: restarting.contains(c.name), restartedAt: waiting,
+                             canRestart: waiting == nil && model.selectedStatus.restartForm(host: host, container: c) != nil) {
                     confirm = c
                 }
             }
@@ -131,10 +132,14 @@ struct HostDetailView: View {
         switch r {
         case .success(let res):
             outcome = ActionOutcome(ok: res.ok)
-            result = ResultMessage(title: res.ok ? String(localized: "Restarted \(c.name)")
-                                                 : String(localized: "Restart of \(c.name) failed"),
-                                   text: res.text)
+            // The list only changes with the host's next check: until then the row says it was restarted.
+            if res.ok { model.noteRestart(host: current.id, container: c.name) }
+            let title = !res.ok ? String(localized: "Restart of \(c.name) failed")
+                : res.running ? String(localized: "Restart of \(c.name) started") : String(localized: "Restarted \(c.name)")
+            result = ResultMessage(title: title, text: res.text)
         case .failure(let e):
+            // A broken connection may still have restarted it: wait for the next check too.
+            if e.mayHaveRun { model.noteRestart(host: current.id, container: c.name) }
             outcome = ActionOutcome(ok: false)
             result = ResultMessage(title: e.actionFailure.title, text: e.actionFailure.text)
         }
@@ -146,6 +151,8 @@ struct HostDetailView: View {
 struct ContainerRow: View {
     let container: ContainerInfo
     let restarting: Bool
+    /// Restarted from here; the shown state is older than that until the host's next check.
+    var restartedAt: Date?
     let canRestart: Bool
     let restart: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -160,6 +167,11 @@ struct ContainerRow: View {
                     Text(container.name).font(Typo.mono(.subheadline, weight: .semibold)).lineLimit(1).truncationMode(.middle)
                     Text(detail).font(Typo.mono(.caption2))
                         .foregroundStyle(container.severity?.color ?? Palette.secondary)
+                    if let restartedAt {
+                        Text("restarted \(restartedAt.formatted(date: .omitted, time: .shortened)), waiting for the next check")
+                            .font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -214,17 +226,29 @@ struct HistorySection: View {
     }
 
     private func row(_ series: HostHistory.Series) -> some View {
-        let now = history.last(series) ?? 0
-        let lo = history.min(series) ?? now, hi = history.max(series) ?? now
+        let date = Date()
+        // "now" only for a recent value; an old history shows its last value dimmed with its time.
+        let now = history.recentLast(series, now: date)
+        let last = history.points(series).last
+        let shown = now ?? history.last(series) ?? 0
+        let lo = history.min(series) ?? shown, hi = history.max(series) ?? shown
         let limits = series.limits(cores: cores)
-        let nowColor = now >= limits.problem ? Palette.love : now >= limits.warning ? Palette.gold : Palette.text
+        let nowColor = now.map { $0 >= limits.problem ? Palette.love : $0 >= limits.warning ? Palette.gold : Palette.text }
+            ?? Palette.tertiary
+        let spokenNow = now.map { String(localized: "now \(series.format($0))") }
+            ?? last.map { String(localized: "until \($0.date.formatted(date: .omitted, time: .shortened)): \(series.format($0.value))") }
+            ?? String(localized: "no current value")
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title(series)).font(.subheadline)
                 Spacer()
-                Text(series.format(now)).font(Typo.mono(.subheadline, weight: .semibold)).foregroundStyle(nowColor)
+                if now == nil, let last {
+                    Text("until \(last.date.formatted(date: .omitted, time: .shortened))").font(Typo.mono(.caption2))
+                        .foregroundStyle(Palette.tertiary)
+                }
+                Text(series.format(shown)).font(Typo.mono(.subheadline, weight: .semibold)).foregroundStyle(nowColor)
             }
-            Sparkline(history, series, cores: cores, label: title(series))
+            Sparkline(history, series, cores: cores, label: title(series), now: date)
                 .frame(height: 44)
             HStack {
                 Text("min \(series.format(lo))")
@@ -237,7 +261,7 @@ struct HistorySection: View {
         .padding(.vertical, 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(title(series)), last 24 hours"))
-        .accessibilityValue(Text("now \(series.format(now)), minimum \(series.format(lo)), maximum \(series.format(hi))"))
+        .accessibilityValue(Text("\(spokenNow), minimum \(series.format(lo)), maximum \(series.format(hi))"))
     }
 
     private func title(_ series: HostHistory.Series) -> String {

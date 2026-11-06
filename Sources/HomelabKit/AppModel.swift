@@ -118,8 +118,12 @@ public final class AppModel {
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
     /// A host's detail to open in Lab (deep link `homelab://lab/<host-id>`, launch argument `-HomelabHost`). Lab opens
-    /// it once the state has that host, and clears it.
-    public var openHost: String?
+    /// it once the state has that host (`takeOpenHost`), and clears it.
+    public var openHost: String? { didSet { openHostSince = openHost == nil ? nil : Date() } }
+    /// When `openHost` was asked for: a snapshot fetched after it that lacks the host drops the request.
+    @ObservationIgnored private var openHostSince: Date?
+    /// Containers restarted from Lab, per server and `<host>:<name>`, until the host's next check (`restartWaiting`).
+    public private(set) var restarted: [UUID: [String: Date]] = [:]
     public var locked = false
 
     public let storage: Storage
@@ -456,6 +460,43 @@ public final class AppModel {
         return nil
     }
 
+    /// The host a link asked for (`openHost`), once the selected snapshot has it; the request is cleared then. A
+    /// snapshot fetched after the request without that host drops it, so it doesn't pop up later (another server, a
+    /// host that is gone). Nil while there is no such snapshot yet: the request waits.
+    public func takeOpenHost() -> Host? {
+        guard let id = openHost, let snap = selectedStatus.snapshot else { return nil }
+        if let host = snap.state.hosts.first(where: { $0.id == id }) {
+            openHost = nil
+            return host
+        }
+        if let since = openHostSince, snap.fetched >= since { openHost = nil }
+        return nil
+    }
+
+    /// How long a restart waits for the host's next check at most (the watchdog runs every 5–9 min).
+    public nonisolated static let restartWait: TimeInterval = 10 * 60
+
+    /// Notes a container restarted from Lab on the selected server: its row says so until the host is checked again.
+    public func noteRestart(host: String, container: String, at date: Date = Date()) {
+        guard let id = selected?.id else { return }
+        restarted[id, default: [:]] = restarted[id, default: [:]].filter { date.timeIntervalSince($0.value) < Self.restartWait }
+        restarted[id, default: [:]]["\(host):\(container)"] = date
+    }
+
+    /// When `container` on `host` was restarted from here, while the data still predates it: the host wasn't checked
+    /// since (and it's under `restartWait` ago). Nil once a newer check shows the container's real state.
+    public func restartWaiting(host: Host, container: ContainerInfo, now: Date = Date()) -> Date? {
+        guard let id = selected?.id, let t = restarted[id]?["\(host.id):\(container.name)"] else { return nil }
+        return Self.waitsForCheck(restarted: t, checked: host.checked, now: now) ? t : nil
+    }
+
+    /// A restart at `restarted` still waits for the host's next check at `now`.
+    public nonisolated static func waitsForCheck(restarted: Date, checked: Date?, now: Date) -> Bool {
+        if now.timeIntervalSince(restarted) >= restartWait { return false }
+        if let checked, checked > restarted { return false }
+        return true
+    }
+
     /// The action a card or item offers, if the selected server lets the app start it (feature `run-actions` and
     /// listed in `GET /actions`). Nil = hide the button.
     public func startable(_ action: ItemAction?) -> ActionSpec? {
@@ -474,7 +515,9 @@ public final class AppModel {
 
     /// The widget reads the selected server's snapshot from shared storage.
     func writeWidgetSnapshot() {
-        if let snap = selectedStatus.snapshot {
+        if var snap = selectedStatus.snapshot {
+            // The widget shows neither the 24 h history nor the container lists: keep its copy small.
+            snap.state.hosts = snap.state.hosts.map { var h = $0; h.history = nil; h.containerList = []; return h }
             try? storage.write(snap, Snapshot.widgetFileName)
         } else {
             storage.remove(Snapshot.widgetFileName)

@@ -37,21 +37,16 @@ struct LabView: View {
             .toolbar { serverMenu }
             .navigationDestination(for: Host.self) { HostDetailView(model: model, host: $0) }
             .pollingState(model)
-            .onChange(of: hostToOpen) { _, _ in openRequestedHost() }
+            .onChange(of: model.openHost) { _, _ in openRequestedHost() }
+            .onChange(of: status.snapshot?.fetched) { _, _ in openRequestedHost() }
             .onChange(of: model.selected?.id) { _, _ in path = [] }   // another server's hosts
             .onAppear { openRequestedHost() }
         }
     }
 
-    /// A requested host (deep link, launch argument) opens once the state has it.
-    private var hostToOpen: Host? {
-        model.openHost.flatMap { id in state?.hosts.first { $0.id == id } }
-    }
-
+    /// A requested host (deep link, launch argument) opens once the state has it (`AppModel.takeOpenHost`).
     private func openRequestedHost() {
-        guard let host = hostToOpen else { return }
-        model.openHost = nil
-        path = [host]
+        if let host = model.takeOpenHost() { path = [host] }
     }
 
     private func refresh() {
@@ -287,6 +282,9 @@ struct HostTile: View {
         if host.temp != nil { parts.append(Format.temperature(host.temp)) }
         if host.containersTotal != nil {
             parts.append(String(localized: "containers \(Format.containers(up: host.containersUp, total: host.containersTotal))"))
+        }
+        if let h = host.history, let lo = h.min(.load), let hi = h.max(.load) {
+            parts.append(String(localized: "load 24 h: min \(Format.load(lo)), max \(Format.load(hi))"))
         }
         parts += host.flags.map(Format.flag)
         return parts.joined(separator: ", ")

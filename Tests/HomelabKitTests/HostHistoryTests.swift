@@ -120,7 +120,7 @@ import Testing
           {"name": "sonarr", "state": "running", "health": "unhealthy", "restarts": 2, "restartable": true},
           {"name": "radarr", "state": "Up 3 hours", "health": "none", "restarts": "-1", "restartable": "yes"},
           {"name": "gluetun", "state": "Exited (1) 2 hours ago", "restarts": "3"},
-          {"name": "odd", "state": "removing", "health": "STARTING"},
+          {"name": "odd", "state": "Migrating", "health": "STARTING"},
           {"name": "sonarr", "state": "exited"},
           {"state": "running"}, "nope", 42]}
         """)
@@ -255,5 +255,117 @@ import Testing
         _ = try await demo.run("restart-container", arg: "media:sonarr", payload: [:])
         let sonarr = try #require(try await demo.state().hosts.first { $0.id == "media" }?.containerList.first { $0.name == "sonarr" })
         #expect(sonarr.health == .healthy && sonarr.state == .running)
+    }
+
+    // MARK: Review fixes
+
+    @Test func sparklineXFollowsTime() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        // 12 points (one hour at 5 min) sit in the right 1/24 of a 24 h line, the newest at the right edge.
+        let hour = HostHistory(step: 300, end: now, load: Array(repeating: 1.0, count: 12))
+        #expect(hour.windowSlots == 288)
+        let shape = hour.shape(.load, now: now)
+        let xs = try #require(shape.runs.first).map(\.x)
+        #expect(xs.count == 12 && xs.allSatisfy { $0 >= 23.0 / 24 } && xs.last == 1)
+        // Two series of different length end at the same x.
+        let mixed = HostHistory(step: 300, end: now.addingTimeInterval(-600), load: [1, 2, 3], memPct: Array(repeating: 50, count: 100))
+        let a = try #require(mixed.shape(.load, now: now).last), b = try #require(mixed.shape(.memPct, now: now).last)
+        #expect(abs(a.x - b.x) < 1e-9 && abs(a.x - (1 - 2.0 / 287)) < 1e-9)
+        // A full day that ended an hour ago: its first hour falls off the left edge.
+        let full = HostHistory(step: 300, end: now.addingTimeInterval(-3600), load: Array(repeating: 1.0, count: 288))
+        let fullShape = full.shape(.load, now: now)
+        #expect(fullShape.runs.flatMap { $0 }.count == 276 && fullShape.runs.flatMap { $0 }.allSatisfy { $0.x >= 0 })
+        // A longer step spans fewer slots; an end in the future counts as now.
+        #expect(HostHistory(step: 3600).windowSlots == 24)
+        #expect(HostHistory(step: 300, end: now.addingTimeInterval(60)).slotsBehind(now: now) == 0)
+        // Without slots the index layout stays.
+        #expect(SparklineShape([0, 5, 10], range: 0...10).runs == [[.init(x: 0, y: 0), .init(x: 0.5, y: 0.5), .init(x: 1, y: 1)]])
+    }
+
+    @Test func oldHistoryHasNoCurrentValue() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let fresh = HostHistory(step: 300, end: now.addingTimeInterval(-240), load: [1, 9])
+        #expect(fresh.recentLast(.load, now: now) == 9)
+        let old = HostHistory(step: 300, end: now.addingTimeInterval(-3 * 3600), load: [1, 9])
+        #expect(old.recentLast(.load, now: now) == nil && old.last(.load) == 9)
+        // The last value counts from its own time: a trailing gap makes it older.
+        let gap = HostHistory(step: 300, end: now, load: [9] + Array(repeating: nil, count: 4))
+        #expect(gap.recentLast(.load, now: now) == nil)
+        #expect(HostHistory(step: 300, load: [1]).recentLast(.load, now: now) == nil)   // no end, no time
+    }
+
+    @Test func removingIsNoProblem() throws {
+        let c = try decode(ContainerInfo.self, #"{"name": "old", "state": "removing"}"#)
+        #expect(c.state == .removing && !c.isProblem && c.severity == nil)
+    }
+
+    @Test func restartWaitsForTheNextCheck() {
+        let t = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(AppModel.waitsForCheck(restarted: t, checked: t.addingTimeInterval(-60), now: t.addingTimeInterval(120)))
+        #expect(AppModel.waitsForCheck(restarted: t, checked: nil, now: t.addingTimeInterval(120)))
+        #expect(!AppModel.waitsForCheck(restarted: t, checked: t.addingTimeInterval(30), now: t.addingTimeInterval(120)))
+        #expect(!AppModel.waitsForCheck(restarted: t, checked: nil, now: t.addingTimeInterval(AppModel.restartWait)))
+    }
+
+    @MainActor @Test func restartedContainersWaitPerServer() throws {
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES"])
+        let now = Date()
+        let media = HomelabKit.Host(id: "media", checked: now.addingTimeInterval(-120))
+        let sonarr = ContainerInfo(name: "sonarr", restartable: true)
+        #expect(m.restartWaiting(host: media, container: sonarr, now: now) == nil)
+        m.noteRestart(host: "media", container: "sonarr", at: now)
+        #expect(m.restartWaiting(host: media, container: sonarr, now: now.addingTimeInterval(60)) == now)
+        #expect(m.restartWaiting(host: media, container: ContainerInfo(name: "radarr"), now: now) == nil)
+        var checked = media
+        checked.checked = now.addingTimeInterval(30)
+        #expect(m.restartWaiting(host: checked, container: sonarr, now: now.addingTimeInterval(60)) == nil)
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        m.select(lab.id)
+        #expect(m.restartWaiting(host: media, container: sonarr, now: now.addingTimeInterval(60)) == nil)
+    }
+
+    @MainActor @Test func requestedHostOpensOrIsDropped() async throws {
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES", "-HomelabHost", "media"])
+        #expect(m.takeOpenHost() == nil && m.openHost == "media")   // no data yet: it waits
+        await m.refresh()
+        #expect(m.takeOpenHost()?.id == "media" && m.openHost == nil)
+        m.openHost = "nope"
+        #expect(m.takeOpenHost() == nil && m.openHost == "nope")    // the data predates the request
+        await m.refresh()
+        #expect(m.takeOpenHost() == nil && m.openHost == nil)       // newer data without it: dropped
+    }
+
+    @MainActor @Test func hostLinkWithoutLab() {
+        // No server: no Lab, so the link opens Today and doesn't keep the host for later.
+        let (m, _, _, _) = makeModel()
+        m.open(URL(string: "homelab://lab/media")!)
+        #expect(m.tab == .today && m.requestedTab == nil && m.openHost == nil)
+        // While another tab waits for the server's info, a host link still opens Lab at once.
+        let (w, _, _, _) = makeModel(args: ["app", "-HomelabResetState", "YES", "-HomelabServer", "https://lab.example.ts.net",
+                                            "-HomelabTab", "chat"])
+        #expect(w.requestedTab == .chat)
+        w.open(URL(string: "homelab://lab/pi")!)
+        #expect(w.tab == .lab && w.requestedTab == nil && w.openHost == "pi")
+    }
+
+    @MainActor @Test func widgetCopyLeavesOutHistory() async throws {
+        let (m, _, storage, _) = makeModel()
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        await m.refresh()
+        let full = try #require(storage.read(Snapshot.self, Snapshot.fileName(lab.id)))
+        #expect(full.state.hosts.contains { $0.history != nil && !$0.containerList.isEmpty })
+        let widget = try #require(storage.read(Snapshot.self, Snapshot.widgetFileName))
+        #expect(widget.state.hosts.count == full.state.hosts.count)
+        #expect(widget.state.hosts.allSatisfy { $0.history == nil && $0.containerList.isEmpty })
+    }
+
+    @Test func demoRestartChecksTheHost() async throws {
+        let demo = DemoBackend(delay: .zero, now: Date())
+        let before = Date()
+        _ = try await demo.run("restart-container", arg: "media:gluetun", payload: [:])
+        let media = try #require(try await demo.state().hosts.first { $0.id == "media" })
+        #expect((media.checked ?? .distantPast) >= before)
     }
 }
