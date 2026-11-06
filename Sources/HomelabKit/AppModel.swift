@@ -672,13 +672,17 @@ public final class AppModel {
         return selectedStatus.actions.first { $0.name == action.name }
     }
 
-    /// Runs a card item's action at once (after the view's confirm): its form prefilled with the action's `arg` and
-    /// `payload`, sent like `run(_ form:on:)`. `.notFound` when the server doesn't list the action.
+    /// Runs a card item's action at once (after the view's confirm): exactly its `arg` and its `payload`
+    /// (`ActionForm.prefilled(_:action:)`), sent like `run(_ form:on:)`. `.notFound` when the server doesn't list the
+    /// action; refused, with nothing sent, when the arg no longer fits the server's action (never its default).
     public func run(_ action: ItemAction, on server: ServerConfig) async -> Result<ActionResult, APIError> {
         guard let spec = status[server.id]?.actions.first(where: { $0.name == action.name }) else {
             return .failure(.notFound)
         }
-        return await run(ActionForm(spec, prefill: action), on: server)
+        guard let form = ActionForm.prefilled(spec, action: action) else {
+            return .failure(.badRequest(ActionForm.itemActionMismatch))
+        }
+        return await run(form, on: server)
     }
 
     /// The widget reads the selected server's snapshot from shared storage.
