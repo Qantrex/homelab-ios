@@ -15,7 +15,7 @@ struct LabView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: 24) {
                     header
                     if let error = status.error {
                         ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched) { refresh() }
@@ -78,34 +78,25 @@ struct LabView: View {
 
     // MARK: Header
 
+    /// One statement (docs/DESIGN.md): the status icon and how the lab is doing, the facts under it. No box.
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            let s = state?.status ?? .unknown
-            Image(systemName: s.symbol)
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(s.color)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(headline).font(Typo.mono(.headline, weight: .semibold))
-                // Large text: one fact per line instead of a wrapped "a · b · c".
-                if typeSize.isAccessibilitySize {
-                    ForEach(sublines, id: \.self) { Text($0).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary) }
-                } else {
-                    Text(sublines.joined(separator: " · ")).font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
-                }
+        let s = state?.status ?? .unknown
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: s.symbol).foregroundStyle(s.color).accessibilityHidden(true)
+                Text(headline).font(Typo.sectionTitle).foregroundStyle(Palette.text)
+                Spacer(minLength: 0)
+                if status.loading { ProgressView() }
             }
-            Spacer()
-            if status.loading { ProgressView() }
+            // Large text: one fact per line instead of a wrapped "a · b · c".
+            if typeSize.isAccessibilitySize {
+                ForEach(sublines, id: \.self) { Text($0).font(.footnote).foregroundStyle(Palette.tertiary) }
+            } else {
+                Text(sublines.joined(separator: " · ")).font(.footnote).foregroundStyle(Palette.tertiary)
+            }
         }
-        .card(accent: headerAccent)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-
-    /// The header's border: the status colour for a warning or problem, else the normal hairline. (A separate
-    /// property: inline, Xcode 26's type checker gave up on it.)
-    private var headerAccent: Color? {
-        guard let s = state?.status, s == .warning || s == .problem else { return nil }
-        return s.color
     }
 
     private var headline: String {
@@ -143,22 +134,17 @@ struct LabView: View {
     @ViewBuilder
     private func content(_ state: HomelabState) -> some View {
         if !state.problems.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Problems")
-                ForEach(state.problems) { p in
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: p.severity.symbol).foregroundStyle(p.severity.color)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(p.text).font(.subheadline)
-                            if let since = p.since {
-                                Text("since \(Format.age(since))").font(Typo.mono(.caption2)).foregroundStyle(Palette.secondary)
-                            }
-                        }
+                // One panel, one row per problem; the severity is the icon and its word, not a coloured card.
+                VStack(spacing: 0) {
+                    ForEach(Array(state.problems.enumerated()), id: \.element.id) { index, p in
+                        if index > 0 { Divider().padding(.leading, 16) }
+                        ProblemRow(problem: p)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
-                    .card(accent: p.severity.color)   // each card its own severity
                 }
+                .frame(maxWidth: .infinity)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
 
@@ -166,20 +152,21 @@ struct LabView: View {
             Button {
                 model.tab = .actions
             } label: {
-                HStack {
-                    Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold)
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
                     Text(state.pending.count == 1 ? "1 action is waiting for you" : "\(state.pending.count) actions are waiting for you")
-                        .font(.subheadline.weight(.medium))
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.tertiary)
+                        .font(.body)
+                        .foregroundStyle(Palette.text)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Palette.tertiary)
                 }
-                .card()
+                .panel()
             }
             .buttonStyle(.press)
         }
 
         if !state.hosts.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(text: "Hosts", trailing: "\(state.hosts.filter { $0.reachable == true }.count)/\(state.hosts.count) up")
                 // Large text: one host per row, so names and numbers fit on a small phone.
                 LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
@@ -195,6 +182,33 @@ struct LabView: View {
         if !status.services.isEmpty {
             ServicesSection(services: status.services)
         }
+    }
+}
+
+/// One problem in the Problems panel: status icon, the text, severity word and since when.
+fileprivate struct ProblemRow: View {
+    let problem: Problem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: problem.severity.symbol).foregroundStyle(problem.severity.color).accessibilityHidden(true)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(problem.text).font(.body).foregroundStyle(Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(meta).font(.footnote).foregroundStyle(Palette.tertiary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var meta: String {
+        let word = problem.severity == .warning ? String(localized: "Warning") : String(localized: "Problem")
+        guard let since = problem.since else { return word }
+        return String(localized: "\(word), since \(Format.age(since))")
     }
 }
 
@@ -236,33 +250,30 @@ struct HostTile: View {
     let host: Host
     /// With the server's problems for this host (`HomelabState.health(of:)`).
     let health: HostHealth
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Flags the tile lists below the numbers; "asleep" is already the state word.
     private var shownFlags: [String] { host.flags.filter { $0 != "asleep" } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(Palette.secondary)
-                // The name first; the state word only where it still fits (the dot and VoiceOver keep the state).
-                Text(host.name).font(Typo.mono(.subheadline, weight: .semibold)).lineLimit(1)
-                    .layoutPriority(2)
-                Spacer(minLength: 0)
-                // Colour plus a word, so the state doesn't depend on seeing colour.
-                if health != .ok {
-                    ViewThatFits(in: .horizontal) {
-                        Text(health.label.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).foregroundStyle(health.color)
-                            .lineLimit(1).fixedSize()
-                        Color.clear.frame(width: 0, height: 0)
-                    }
-                    .layoutPriority(1)
+            // The name is never cut: it wraps. The state is a dot and its word under it.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(Palette.secondary).accessibilityHidden(true)
+                Text(host.name).font(.headline).foregroundStyle(Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if health != .ok {
+                HStack(spacing: 6) {
+                    Circle().fill(health.color).frame(width: 8, height: 8)
+                    Text(health.label).font(.footnote).foregroundStyle(Palette.secondary)
                 }
-                Circle().fill(health.color).frame(width: 7, height: 7)
+                .accessibilityHidden(true)
             }
             if let history = host.history, history.last(.load) != nil {
                 // 24 h of load; also for a host that is down now (its last hours are a gap).
-                Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"), lineWidth: 1.2)
-                    .frame(height: 22)
+                Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"), lineWidth: 1, fill: false)
+                    .frame(height: 20)
             }
             if host.reachable == true {
                 metric("Load", Format.load(host.load), Format.loadShare(host.load, cores: host.cpuCount))
@@ -270,33 +281,31 @@ struct HostTile: View {
                 if let d = Format.worstDisk(host.disks) {
                     metric("Disk", "\(d.percent)%", Double(d.percent) / 100)
                 }
-                HStack(spacing: 6) {
-                    if host.temp != nil { Chip(Format.temperature(host.temp), color: (host.temp ?? 0) >= Format.hotCelsius ? Palette.gold : Palette.secondary, symbol: "thermometer.medium") }
+                HStack(spacing: 12) {
+                    if host.temp != nil {
+                        chip(Format.temperature(host.temp), symbol: "thermometer.medium", warn: (host.temp ?? 0) >= Format.hotCelsius)
+                    }
                     if host.containersTotal != nil {
-                        Chip(Format.containers(up: host.containersUp, total: host.containersTotal),
-                             color: (host.containersUp ?? 0) < (host.containersTotal ?? 0) ? Palette.gold : Palette.secondary, symbol: "shippingbox")
+                        chip(Format.containers(up: host.containersUp, total: host.containersTotal), symbol: "shippingbox",
+                             warn: (host.containersUp ?? 0) < (host.containersTotal ?? 0))
                     }
                 }
-            } else {
-                // A sleeping machine: the header already says so. A down one keeps its word here too, in case the
-                // header had no room for it.
-                if health != .asleep {
-                    Text(health.label).font(Typo.mono(.caption)).foregroundStyle(health.color)
-                }
-                if let checked = host.checked {
-                    Text("last seen \(Format.age(checked))").font(Typo.mono(.caption)).foregroundStyle(Palette.secondary)
-                }
-                Spacer(minLength: 0)
+            } else if let checked = host.checked {
+                Text("last seen \(Format.age(checked))").font(.footnote).foregroundStyle(Palette.tertiary)
             }
             if !shownFlags.isEmpty {
-                Text(shownFlags.map(Format.flag).joined(separator: ", "))
-                    .font(.caption2)
-                    .foregroundStyle(health == .problem ? Palette.love : Palette.gold)   // flags alone are a warning; the server decides problems
-                    .lineLimit(2)
+                Label {
+                    Text(shownFlags.map(Format.flag).joined(separator: ", ")).font(.footnote).foregroundStyle(Palette.secondary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").font(.footnote)
+                        .foregroundStyle(health == .problem ? Palette.love : Palette.gold)   // flags alone are a warning; the server decides problems
+                }
             }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
-        .card(accent: health == .problem ? Palette.love : nil)
+        // Equal heights in a row: every tile has the same minimum, taller only for more text.
+        .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 0 : 176, alignment: .topLeading)
+        .panel()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(host.name), \(health.label)"))
         .accessibilityValue(Text(spokenMetrics))
@@ -323,17 +332,28 @@ struct HostTile: View {
         return parts.joined(separator: ", ")
     }
 
+    /// Label in sentence case (secondary), value in the data font, a thin meter under them.
     private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(label).textCase(.uppercase).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
-                Spacer()
-                Text(value).font(Typo.mono(.caption))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label).font(.footnote).foregroundStyle(Palette.secondary)
+                Spacer(minLength: 8)
+                Text(value).font(Typo.data(.footnote))
+                    .foregroundStyle(Palette.text)
                     .contentTransition(.numericText())
                     .animation(.snappy, value: value)
             }
             if let share { Meter(share, warns: true) }
         }
+    }
+
+    /// A fact without a border: an icon and the value. Only the icon turns gold.
+    private func chip(_ text: String, symbol: String, warn: Bool) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol).font(.footnote).foregroundStyle(warn ? Palette.gold : Palette.secondary)
+            Text(text).font(Typo.data(.footnote)).foregroundStyle(Palette.secondary)
+        }
+        .lineLimit(1)
     }
 }
 
@@ -352,34 +372,46 @@ struct ServicesSection: View {
         return order.map { ($0, byGroup[$0] ?? []) }
     }
 
+    /// One panel; rows split by separators, a group's name as a small heading when there are several.
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: "Services")
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(groups, id: \.0) { group, items in
-                    VStack(alignment: .leading, spacing: 6) {
-                        if groups.count > 1 { Text(group).font(.caption.weight(.semibold)).foregroundStyle(.secondary) }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], alignment: .leading, spacing: 8) {
-                            ForEach(items) { s in
-                                Button {
-                                    openURL(s.url)
-                                } label: {
-                                    Label(s.name, systemImage: Symbols.safe(s.icon, fallback: "globe"))
-                                        .font(.subheadline)
-                                        .lineLimit(1)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.vertical, 8)
-                                        .padding(.horizontal, 10)
-                                        .background(Palette.raised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityHint(Text(s.url.host ?? ""))
-                            }
-                        }
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(groups.enumerated()), id: \.element.0) { gi, entry in
+                    if groups.count > 1 {
+                        Text(entry.0).font(.footnote).foregroundStyle(Palette.secondary)
+                            .padding(.horizontal, 16).padding(.top, gi == 0 ? 16 : 20).padding(.bottom, 4)
+                    }
+                    ForEach(Array(entry.1.enumerated()), id: \.element.id) { si, s in
+                        if si > 0 { Divider().padding(.leading, 16) }
+                        serviceRow(s)
                     }
                 }
+                if groups.count > 1 { Color.clear.frame(height: 4) }
             }
-            .card()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+    }
+
+    private func serviceRow(_ s: Service) -> some View {
+        Button {
+            openURL(s.url)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: Symbols.safe(s.icon, fallback: "globe"))
+                    .foregroundStyle(Palette.secondary).frame(width: 24).accessibilityHidden(true)
+                Text(s.name).font(.body).foregroundStyle(Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right").font(.footnote.weight(.semibold))
+                    .foregroundStyle(Palette.tertiary).accessibilityHidden(true)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text(s.url.host ?? ""))
     }
 }

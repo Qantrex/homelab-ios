@@ -26,7 +26,7 @@ public struct Sparkline: View {
         } else if let v = tintValue, let warning, v >= warning {
             tint = Palette.gold
         } else {
-            tint = Palette.text
+            tint = Palette.secondary   // quiet: colour is for status
         }
         if let lo = shape.min, let hi = shape.max, let now = tintValue {
             value = String(localized: "minimum \(format(lo)), maximum \(format(hi)), now \(format(now))")
@@ -45,12 +45,12 @@ public struct Sparkline: View {
                                height: max(geo.size.height - inset * 2, 1))
             ZStack(alignment: .topLeading) {
                 if fill {
-                    area(in: frame).fill(LinearGradient(colors: [tint.opacity(0.18), tint.opacity(0)],
+                    area(in: frame).fill(LinearGradient(colors: [tint.opacity(0.12), tint.opacity(0)],
                                                         startPoint: .top, endPoint: .bottom))
                 }
                 line(in: frame).stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
                 if let p = shape.last {
-                    let dot = lineWidth * 3 + 1
+                    let dot = lineWidth * 2 + 2
                     Circle().fill(tint)
                         .frame(width: dot, height: dot)
                         .position(position(p, in: frame))
