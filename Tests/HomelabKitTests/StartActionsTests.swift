@@ -127,7 +127,8 @@ import Testing
 
     @Test func numberAndRequiredDayFields() throws {
         var form = ActionForm(try spec("calendar-add"), now: now, calendar: vienna)
-        #expect(form.problems == ["Title is missing.", "Start is missing."])
+        #expect(form.fieldValues == ["start": "2026-11-07"])   // a required day starts at tomorrow
+        #expect(form.problems == ["Title is missing."])
         form.fieldValues["title"] = "Dentist"
         form.fieldValues["start"] = "2026-11-10T15:00"
         form.fieldValues["duration_min"] = "4x"
@@ -147,6 +148,16 @@ import Testing
         var todo = ActionForm(try spec("todo-add"), now: now, calendar: vienna)
         todo.fieldValues = ["summary": "Milk", "list": "shopping"]
         #expect(todo.summary.map { "\($0.label)=\($0.value)" } == ["To-do=Milk", "List=Shopping"])
+    }
+
+    @Test func fieldDefaults() throws {
+        let at = Date(timeIntervalSince1970: 1_793_975_400)   // 15:30 Vienna
+        func d(_ kind: ActionSpec.Field.Kind) -> String? {
+            ActionForm.defaultValue(.init(name: "x", kind: kind, options: [.init(value: "a")]), now: at, calendar: vienna)
+        }
+        #expect(d(.date) == "2026-11-07" && d(.dateOrDatetime) == "2026-11-07")
+        #expect(d(.datetime) == "2026-11-06T16:00")
+        #expect(d(.choice) == "a" && d(.text) == nil && d(.number) == nil)
     }
 
     @Test func datesAsTheServerReadsThem() throws {

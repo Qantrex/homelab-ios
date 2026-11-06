@@ -2,10 +2,14 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-/// Proposed actions waiting for the owner: approve once, always, or deny.
+/// Actions I start myself ("Start", feature run-actions) and proposed actions waiting for me: approve once, always,
+/// or deny.
 struct ActionsView: View {
     let model: AppModel
     @State private var confirm: Confirmation?
+    @State private var formFor: ActionSpec?
+    /// A started action's result, shown once its form sheet is gone (an alert can't show over the sheet).
+    @State private var afterSheet: ResultMessage?
     @State private var running: Set<String> = []
     @State private var result: ResultMessage?
     /// The last button's outcome, for the haptic: success when it ran, an error buzz when it didn't.
@@ -29,6 +33,15 @@ struct ActionsView: View {
     }
 
     private var pending: [PendingAction] { model.selectedStatus.snapshot?.state.pending ?? [] }
+    private var startable: [ActionSpec] {
+        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions : []
+    }
+    private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
+    private var nothingToApprove: LocalizedStringKey {
+        Voice.line(.nothingToApprove, model.settings.voice)
+            .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
+            ?? "When your homelab proposes an action, it shows up here."
+    }
 
     var body: some View {
         NavigationStack {
@@ -40,23 +53,51 @@ struct ActionsView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     .listRowBackground(Color.clear)
                 }
-                ForEach(pending) { action in
-                    ActionRow(action: action, running: running.contains(action.id),
-                              hasChat: model.selectedStatus.features.contains(.chat)) { verb in
-                        confirm = Confirmation(action: action, verb: verb)
+                if !startable.isEmpty {
+                    Section {
+                        StartGrid(actions: startable) { formFor = $0 }
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+                            .listRowBackground(Color.clear)
+                    } header: {
+                        SectionTitle(text: "Start").textCase(nil)
+                    }
+                }
+                if approves {
+                    Section {
+                        if pending.isEmpty, !startable.isEmpty, model.selectedStatus.snapshot != nil {
+                            // With Start tiles above, the empty state is one quiet row, not a full-screen placeholder.
+                            Label { Text(nothingToApprove).font(.subheadline).foregroundStyle(Palette.secondary) }
+                                icon: { Image(systemName: "checkmark.shield").foregroundStyle(Palette.tertiary) }
+                        }
+                        ForEach(pending) { action in
+                            ActionRow(action: action, running: running.contains(action.id),
+                                      hasChat: model.selectedStatus.features.contains(.chat)) { verb in
+                                confirm = Confirmation(action: action, verb: verb)
+                            }
+                        }
+                    } header: {
+                        if !startable.isEmpty {
+                            SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)").textCase(nil)
+                        }
                     }
                 }
             }
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && model.selectedStatus.snapshot != nil {
-                    Placeholder(title: "Nothing to approve", symbol: "checkmark.shield",
-                                message: Voice.line(.nothingToApprove, model.settings.voice)
-                                    .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
-                                    ?? "When your homelab proposes an action, it shows up here.")
+                } else if pending.isEmpty && startable.isEmpty && model.selectedStatus.snapshot != nil {
+                    Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
             }
+            .sheet(item: $formFor, onDismiss: {
+                if let r = afterSheet { result = r; afterSheet = nil }
+            }) { spec in
+                if let server = model.selected {
+                    ActionFormView(model: model, server: server, spec: spec) { finished(spec, $0) }
+                }
+            }
+            .onChange(of: openable) { _, _ in openRequested() }
+            .onAppear { openRequested() }
             .animation(.snappy, value: pending.map(\.id))
             .sensoryFeedback(trigger: outcome) { _, new in new.map { $0.ok ? .success : .error } }
             .refreshable { await model.refresh() }
@@ -72,6 +113,28 @@ struct ActionsView: View {
                 Alert(title: Text(r.title), message: Text(r.text), dismissButton: .default(Text("OK")))
             }
             .task { await model.refresh() }
+        }
+    }
+
+    /// A requested form (deep link, launch argument) can open once the list knows the action.
+    private var openable: String? {
+        model.openAction.flatMap { name in startable.contains { $0.name == name } ? name : nil }
+    }
+
+    private func openRequested() {
+        guard let name = openable, let spec = startable.first(where: { $0.name == name }) else { return }
+        model.openAction = nil
+        formFor = spec
+    }
+
+    private func finished(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>) {
+        switch r {
+        case .success(let res):
+            outcome = Outcome(ok: res.ok)
+            afterSheet = ResultMessage(title: res.ok ? spec.label : String(localized: "\(spec.label) failed"), text: res.text)
+        case .failure(let e):
+            outcome = Outcome(ok: false)
+            afterSheet = ResultMessage(title: String(localized: "Didn't run"), text: e.message)
         }
     }
 

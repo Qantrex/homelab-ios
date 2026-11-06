@@ -60,7 +60,12 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | A3 | Always | Always → "Run and always allow" with the explanation → result text. Only shown when the server offers it | | |
 | A4 | Deny | Deny → red "Deny", "Drops the proposal. Nothing runs." → result text. Nothing ran on the server | | |
 | A6 | Already handled | Approve the same action on another device (or web), then tap it here: "Didn't work" / "This button is no longer valid (already handled or expired)." | | |
-| A7 | Nothing pending | "Nothing to approve" placeholder | | |
+| A7 | Nothing pending | "Nothing to approve" placeholder; with Start tiles above it, one quiet row instead | | |
+| A8 | Start: tiles | Real server: "Start" shows a tile per action in the agent's `chat/app-actions.json` (icon, label, name in mono). Demo: six tiles | | |
+| A9 | Start: a form | Wake-up: "Wake me" / "No wake-up" switch, day picker starts at tomorrow, time at 07:00, the argument in mono under it (`2026-11-07T07:00`). Add a to-do with an empty To-do: Run → gold "To-do is missing." and a warning haptic, nothing sent. Due switch on → a day; "At a time" on → a time | | |
+| A10 | Start: run | Add a to-do "Test from the app" → confirm shows the fields and "Runs at once on …" → Run now → sheet closes, alert "Add a to-do" with the agent's output, success haptic. The to-do is in HA; the chat shows what I started and the result. Restart a container asks with a red button | | |
+| A11 | Start: refused | Restart a container with a name not on the host's list → alert "Restart a container failed" with the helper's output; error haptic | | |
+| A12 | Start: link | `homelab://actions/wake-set` (Safari or Shortcuts) opens the app on Actions with the Wake-up form | | |
 
 ## Chat
 

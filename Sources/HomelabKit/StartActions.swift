@@ -258,10 +258,24 @@ public struct ActionForm: Sendable, Equatable {
             }
         }
         var f: [String: String] = [:]
-        for field in spec.fields where field.kind == .choice && field.required {
-            f[field.name] = field.options.first?.value
+        for field in spec.fields where field.required {
+            f[field.name] = Self.defaultValue(field, now: now, calendar: calendar)
         }
         fieldValues = f
+    }
+
+    /// What a field starts with when it's required or switched on: tomorrow for a day (also for "day or time"),
+    /// the next full hour for a time, the first option of a choice. Nil for text.
+    public static func defaultValue(_ field: ActionSpec.Field, now: Date = Date(), calendar: Calendar = .current) -> String? {
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        switch field.kind {
+        case .choice: return field.options.first?.value
+        case .date, .dateOrDatetime: return day(tomorrow, calendar: calendar)
+        case .datetime:
+            let hour = calendar.dateInterval(of: .hour, for: now)?.end ?? now
+            return dayTime(hour, calendar: calendar)
+        case .text, .multiline, .number: return nil
+        }
     }
 
     public var parts: [ActionSpec.ArgPart] {

@@ -257,6 +257,12 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         #expect(m.availableTabs.isSuperset(of: [.actions, .chat]))
         m.open(URL(string: "homelab://chat")!)
         #expect(m.tab == .chat)
+        m.open(URL(string: "homelab://actions/wake-set")!)
+        #expect(m.tab == .actions && m.openAction == "wake-set")
+        m.openAction = nil
+        m.open(URL(string: "homelab://actions/..%2Fstate")!)
+        #expect(m.tab == .actions && m.openAction == nil)
+        m.open(URL(string: "homelab://chat")!)
         m.open(URL(string: "https://evil.example/chat")!)
         #expect(m.tab == .chat)                                        // other schemes are ignored
         m.remove(lab.id)
@@ -274,6 +280,10 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         #expect(m.servers.servers.count == 1 && m.selected?.id != old.id && m.selected?.auth == .identity)
         #expect(tokens.token(for: old.id) == nil)                      // the replaced server's token is gone
         #expect(m.tab == .today)                                       // chat isn't known to exist yet
+        let (a, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES", "-HomelabAction", "wake-set"])
+        #expect(a.openAction == "wake-set")
+        let (b, _, _, _) = makeModel(args: ["app", "-HomelabAction", "Bad Name"])
+        #expect(b.openAction == nil)
 
         let (r, _, rs, rt) = makeModel(args: ["app", "-HomelabResetState", "YES", "-HomelabDemo", "YES"],
                                        storage: storage, tokens: tokens)

@@ -18,6 +18,11 @@ App:
   Pine love) and warnings (gold). No blue.
 - Actions: proposed actions with reason and age. Approve, Always and Deny with a confirm step; shows the server's
   answer. Tab badge with the count.
+- Start actions yourself (servers with `run-actions`): tiles under "Start" on the Actions tab open a form built from
+  what the server describes (day and time pickers, choices, text, optional dates behind a switch), checked before it
+  is sent; after a confirm step the server runs it at once and the app shows its answer. Links
+  `homelab://actions/<name>` open a form directly. For the owner's agent: add a to-do, tick one off, add an event,
+  wake-up, bike or U6, living room, restart a container.
 - Chat: chat with a homelab agent. "Working…" state, report tags, inline Markdown, copy, quick commands, 4000-character
   limit with a counter, failed messages can be edited and sent again.
 - Home Assistant with a long-lived token: pin a few lights, switches, fans, toggles, automations, scripts, scenes,

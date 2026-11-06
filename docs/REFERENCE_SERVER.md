@@ -16,6 +16,7 @@ What it shows in the app:
 | Services | The `services` list in the config |
 | Actions | Opt-in. Files in `pending_dir`, approved in the app, run a whitelisted command |
 | Chat | Opt-in. `chat_command` gets the message on stdin and prints the answer |
+| Start (actions the app starts itself, `run-actions`) | Not here (only in fixture mode). The owner's agent has it; [API.md](API.md) describes it for your own server |
 
 It has two modes:
 
@@ -226,6 +227,7 @@ python3 server/reference_server.py --fixtures Sources/HomelabKit/Fixtures --port
 | `GET /api/v1/messages?after=N` | `messages.json` plus what was posted. `busy` is `["chat"]` while an echo is pending |
 | `POST /api/v1/messages` | Stores the message; about 1 s later adds the reply `echo: <text>` |
 | `POST /api/v1/button` | Only button strings in the current state file → `{"text": "approved ab12 (fixture)"}`, else 403 |
+| `GET /api/v1/actions`, `POST /api/v1/actions/<name>` | `actions.json`; a run checks the shape (arg only if the action has one, known and required fields, all text), runs nothing, answers `Done: <name> <arg> (fixture)` and adds both lines to the messages |
 | `GET /__control?state=state-ok.json` | Switches the state file. `&reset=1` resets the messages. No auth |
 
 It binds `127.0.0.1` only. Without `--token` there is no auth.

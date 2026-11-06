@@ -109,6 +109,9 @@ public final class AppModel {
     public private(set) var status: [UUID: ServerStatus] = [:]
     public var settings = AppSettings() { didSet { if settings != oldValue { saveSettings() } } }
     public var tab: AppTab = .today
+    /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
+    /// tab opens it once the server's list is there, and clears it.
+    public var openAction: String?
     public var locked = false
 
     public let storage: Storage
@@ -453,6 +456,10 @@ public final class AppModel {
             saveServers()
         }
         if let tab = args.tab, availableTabs.contains(tab) { self.tab = tab }
+        if let a = args.action {
+            openAction = a
+            if availableTabs.contains(.actions) { tab = .actions }
+        }
         if let d = args.density { settings.todayDensity = d }
         if let p = args.personality { settings.voice = p }
     }
@@ -460,11 +467,14 @@ public final class AppModel {
     public func open(_ url: URL) {
         guard let t = AppTab(url: url) else { return }
         tab = availableTabs.contains(t) ? t : .today
+        // homelab://actions/<name>: that action's form.
+        let path = url.pathComponents.filter { $0 != "/" }
+        if tab == .actions, url.host == "actions", path.count == 1, ActionSpec.isValidName(path[0]) { openAction = path[0] }
     }
 }
 
 /// `-HomelabDemo YES -HomelabServer http://127.0.0.1:8791 -HomelabTab chat -HomelabResetState YES -HomelabDensity overkill
-/// -HomelabPersonality snarky`
+/// -HomelabPersonality snarky -HomelabAction wake-set`
 struct LaunchArguments {
     var demo = false
     var reset = false
@@ -472,6 +482,7 @@ struct LaunchArguments {
     var tab: AppTab?
     var density: Density?
     var personality: Personality?
+    var action: String?
 
     init(_ args: [String]) {
         func value(_ key: String) -> String? {
@@ -485,5 +496,6 @@ struct LaunchArguments {
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }
         density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
         personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
+        action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }
     }
 }

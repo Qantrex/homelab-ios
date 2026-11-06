@@ -48,6 +48,8 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | 16–20 | Live mode against the fixture server: `state-problem.json` today and chat, `state-pending.json` actions, `state-huge.json` lab, `state-ok.json` today |
 | 21 | Offline: the fixture server is stopped and the app relaunched; it should show the cached data with its age and the error bar |
 | 22–23 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini; never a two-screen model like "iPhone Duo"): demo today and actions |
+| 24–25 | Forms of actions the app starts (`-HomelabAction`): Wake-up in dark, Add an event with accessibility extra-large text |
+| 26 | Demo Today in Overkill with the Snarky personality (last: both settings stay set) |
 
 Other failed shots are listed in `summary.txt` but don't fail the step. There is no deep-link shot: `simctl openurl`
 shows an "Open in Homelab?" system prompt; the launch argument `-HomelabTab` covers opening a tab directly.

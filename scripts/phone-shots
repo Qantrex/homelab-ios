@@ -80,6 +80,8 @@ shot demo-today    -HomelabResetState YES -HomelabDemo YES -HomelabTab today
 for tab in actions chat lab settings; do
   shot "demo-$tab" -HomelabDemo YES -HomelabTab "$tab"
 done
+shot demo-form-wake  -HomelabDemo YES -HomelabTab actions -HomelabAction wake-set
+shot demo-form-todo  -HomelabDemo YES -HomelabTab actions -HomelabAction todo-add
 shot demo-today-overkill -HomelabDemo YES -HomelabTab today -HomelabDensity overkill
 shot demo-today-calm     -HomelabDemo YES -HomelabTab today -HomelabDensity calm
 shot demo-today-snarky   -HomelabDemo YES -HomelabTab today -HomelabPersonality snarky
