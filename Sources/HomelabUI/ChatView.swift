@@ -129,7 +129,7 @@ struct ChatView: View {
     private var messages: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     if chat.loadedOnce && chat.timeline.messages.isEmpty && chat.timeline.outgoing.isEmpty {
                         Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right", message: emptyMessage)
                             .padding(.top, 40)
@@ -137,11 +137,12 @@ struct ChatView: View {
                     let days = chat.timeline.dayHeaders()
                     ForEach(chat.timeline.messages) { m in
                         if let day = days[m.id] {
-                            // "TODAY", "YESTERDAY": a message from 23:50 doesn't read as this morning.
-                            Text(day.uppercased()).font(Typo.mono(.caption2, weight: .semibold)).tracking(1.5)
-                                .foregroundStyle(Palette.tertiary)
+                            // "Today", "Yesterday": a message from 23:50 doesn't read as this morning.
+                            Text(day.prefix(1).uppercased() + day.dropFirst())
+                                .font(.footnote).foregroundStyle(Palette.tertiary)
                                 .frame(maxWidth: .infinity)
-                                .padding(.top, 6)
+                                .padding(.top, 16)
+                                .padding(.bottom, 4)
                                 .accessibilityAddTraits(.isHeader)
                         }
                         Bubble(message: m, pending: chat.timeline.openPending(m, in: model.selectedStatus.snapshot), running: model.proposalsSending,
@@ -163,7 +164,6 @@ struct ChatView: View {
                             Text("Working…").font(.subheadline).foregroundStyle(.secondary)
                             Spacer()
                         }
-                        .padding(.horizontal, 4)
                         .id("working")
                         .accessibilityLabel(Text("The agent is working"))
                     }
@@ -197,12 +197,13 @@ struct ChatView: View {
         VStack(spacing: 6) {
             if !quick.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     ForEach(quick, id: \.self) { cmd in
-                        Button(cmd) { submit(cmd) }
+                        Button { submit(cmd) } label: { Text(cmd).font(Typo.data(.footnote)) }
                             .buttonStyle(.bordered)
+                            .buttonBorderShape(.capsule)
                             .controlSize(.small)
-                            .font(.caption.monospaced())
+                            .tint(Palette.accent)
                     }
                 }
                 .padding(.horizontal)
@@ -212,10 +213,9 @@ struct ChatView: View {
                 TextField("Message", text: $draft, axis: .vertical)
                     .lineLimit(1...6)
                     .focused($focused)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Palette.line, lineWidth: 1))
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .submitLabel(.send)
                     .onSubmit { submit(draft) }
                 Button {
@@ -223,18 +223,20 @@ struct ChatView: View {
                 } label: {
                     Image(systemName: "arrow.up.circle.fill").font(.system(size: 32))
                 }
+                .tint(Palette.accent)
                 .disabled(trimmed.isEmpty || trimmed.count > CompanionClient.maxMessageLength)
                 .accessibilityLabel(Text("Send"))
             }
             .padding(.horizontal)
             if trimmed.count > CompanionClient.maxMessageLength - 200 {
                 Text("\(trimmed.count)/\(CompanionClient.maxMessageLength)")
-                    .font(.caption2)
+                    .font(.footnote)
                     .foregroundStyle(trimmed.count > CompanionClient.maxMessageLength ? Palette.love : Palette.secondary)
             }
         }
         .padding(.vertical, 8)
         .background(.bar)
+        .tint(Palette.accent)
     }
 
     private var trimmed: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -263,12 +265,9 @@ struct Bubble: View {
 
     var body: some View {
         HStack {
-            if mine { Spacer(minLength: 40) }
+            if mine { Spacer(minLength: 48) }
             VStack(alignment: mine ? .trailing : .leading, spacing: 4) {
-                if message.isReport, let job = message.job {
-                    Chip(job, color: statusColor(message.status), symbol: "clock")
-                }
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text(markdown(message.text))
                         .font(.body)
                         .textSelection(.enabled)
@@ -279,29 +278,59 @@ struct Bubble: View {
                     ForEach(pending) { proposal($0) }
                     ForEach(message.cards) { CardView(card: $0, compact: true, model: model) }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(mine ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(mine ? Color.clear : Palette.line, lineWidth: 1))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(mine ? Palette.text : Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .foregroundStyle(mine ? Palette.onAccent : Palette.text)
-                if let ts = message.ts {
-                    Text(ts, format: .dateTime.hour().minute()).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
-                }
+                meta
             }
-            if !mine { Spacer(minLength: 40) }
+            if !mine { Spacer(minLength: 48) }
         }
         .modifier(BubbleAccessibility(plain: plain, label: mine ? "You: \(message.text)" : "Agent: \(message.text)"))
+    }
+
+    /// Under the bubble: the report's job (with a dot and the word only for a warning or alert), then the time.
+    @ViewBuilder
+    private var meta: some View {
+        let job = message.isReport ? message.job : nil
+        let level = flagged(message.status)
+        if job != nil || message.ts != nil {
+            HStack(spacing: 4) {
+                if let job {
+                    if let level {
+                        Circle().fill(statusColor(message.status)).frame(width: 6, height: 6).accessibilityHidden(true)
+                        Text("\(job), \(level)")
+                    } else {
+                        Text(job)
+                    }
+                }
+                if job != nil, message.ts != nil { Text("·") }
+                if let ts = message.ts {
+                    Text(ts, format: .dateTime.hour().minute()).font(Typo.data(.footnote))
+                }
+            }
+            .font(.footnote)
+            .foregroundStyle(Palette.tertiary)
+            .padding(.horizontal, 4)
+        }
+    }
+
+    /// "warning" or "alert" for the statuses that get a dot; nil for everything else.
+    private func flagged(_ status: String?) -> String? {
+        switch status?.uppercased() {
+        case "WARN", "WARNING": String(localized: "warning")
+        case "ALERT", "ERROR", "PROBLEM": String(localized: "alert")
+        default: nil
+        }
     }
 
     /// A proposal made in this message: what it would run and its buttons (none without a hub token: then it's
     /// answered in the chat).
     private func proposal(_ p: PendingAction) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Rectangle().fill(Palette.line).frame(height: 1).accessibilityHidden(true)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
-                Text(p.title).font(Typo.mono(.footnote, weight: .semibold))
+                Text(p.title).font(.headline)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(Text("Proposed: \(p.title)"))
@@ -309,7 +338,7 @@ struct Bubble: View {
                 HStack { ProgressView(); Text("Running…").font(.footnote).foregroundStyle(Palette.secondary) }
             } else if p.buttons.isEmpty {
                 Text("The server offers no buttons for this action. Answer it in the chat.")
-                    .font(.caption).foregroundStyle(Palette.secondary)
+                    .font(.footnote).foregroundStyle(Palette.secondary)
             } else {
                 ProposalButtons(action: p, compact: true) { tap(p, $0) }
             }
@@ -336,22 +365,22 @@ struct OutgoingBubble: View {
 
     var body: some View {
         HStack {
-            Spacer(minLength: 40)
+            Spacer(minLength: 48)
             VStack(alignment: .trailing, spacing: 4) {
                 Text(outgoing.text)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Palette.text.opacity(failed ? 0.35 : 0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Palette.text.opacity(failed ? 0.35 : 0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .foregroundStyle(Palette.onAccent)
                 switch outgoing.state {
                 case .sending:
-                    Text("Sending…").font(.caption2).foregroundStyle(.secondary)
+                    Text("Sending…").font(.footnote).foregroundStyle(Palette.tertiary).padding(.horizontal, 4)
                 case .sent:
-                    Text("Sent").font(.caption2).foregroundStyle(.secondary)
+                    Text("Sent").font(.footnote).foregroundStyle(Palette.tertiary).padding(.horizontal, 4)
                 case .failed(let why):
                     Button(action: edit) {
                         Label("Not sent: \(why) Tap to edit.", systemImage: "exclamationmark.circle")
-                            .font(.caption2)
+                            .font(.footnote)
                             .foregroundStyle(Palette.love)
                             .multilineTextAlignment(.trailing)
                     }
