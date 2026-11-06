@@ -293,56 +293,59 @@ struct HostDetailView: View {
     var body: some View {
         let health = HostHealth(host)
         List {
-            Section {
-                LabeledContent("Status") { Text(health.label).foregroundStyle(health.color) }
-                if let checked = host.checked { LabeledContent("Checked", value: Format.age(checked)) }
-                if let kind = host.kind { LabeledContent("Kind", value: kind) }
-            }
-            if host.reachable == true {
-                Section("System") {
-                    LabeledContent("Load (1 min)", value: Format.load(host.load) + (host.cpuCount.map { " / \($0) cores" } ?? ""))
-                    LabeledContent("Memory", value: Format.percent(host.memPct))
-                    if host.temp != nil { LabeledContent("Temperature", value: Format.temperature(host.temp)) }
-                    if host.containersTotal != nil || host.containersUp != nil {
-                        LabeledContent("Containers up", value: Format.containers(up: host.containersUp, total: host.containersTotal))
-                    }
-                }
-                if !host.disks.isEmpty {
-                    Section("Disks") {
-                        ForEach(host.disks.sorted { $0.key < $1.key }, id: \.key) { mount, pct in
-                            VStack(alignment: .leading, spacing: 4) {
-                                LabeledContent(mount, value: "\(pct)%")
-                                Meter(Double(pct) / 100, warns: true)
-                            }
-                            .accessibilityElement(children: .combine)
-                        }
-                    }
-                }
-                if host.upgradable != nil || host.rebootRequired != nil || host.backupResult != nil {
-                    Section("Maintenance") {
-                        if let u = host.upgradable { LabeledContent("Updates waiting", value: "\(u)") }
-                        if host.rebootRequired == true { LabeledContent("Reboot", value: String(localized: "required")) }
-                        if let b = Format.backup(last: host.backupLast, result: host.backupResult) {
-                            LabeledContent("Backup") {
-                                Text(b).foregroundStyle(Format.backupFailed(host.backupResult) ? Palette.love : Palette.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            if !host.flags.isEmpty {
-                Section("Flags") {
-                    ForEach(host.flags, id: \.self) { f in
-                        Label(Format.flag(f), systemImage: Format.isAlarming(flag: f) ? "bolt.trianglebadge.exclamationmark" : "info.circle")
-                            .foregroundStyle(Format.isAlarming(flag: f) ? Palette.love : Palette.text)
-                    }
-                }
-            }
-            if let url = host.url {
+            Group {
                 Section {
-                    Button { openURL(url) } label: { Label("Open web interface", systemImage: "safari") }
+                    LabeledContent("Status") { Text(health.label).foregroundStyle(health.color) }
+                    if let checked = host.checked { LabeledContent("Checked", value: Format.age(checked)) }
+                    if let kind = host.kind { LabeledContent("Kind", value: kind) }
+                }
+                if host.reachable == true {
+                    Section("System") {
+                        LabeledContent("Load (1 min)", value: Format.load(host.load) + (host.cpuCount.map { " / \($0) cores" } ?? ""))
+                        LabeledContent("Memory", value: Format.percent(host.memPct))
+                        if host.temp != nil { LabeledContent("Temperature", value: Format.temperature(host.temp)) }
+                        if host.containersTotal != nil || host.containersUp != nil {
+                            LabeledContent("Containers up", value: Format.containers(up: host.containersUp, total: host.containersTotal))
+                        }
+                    }
+                    if !host.disks.isEmpty {
+                        Section("Disks") {
+                            ForEach(host.disks.sorted { $0.key < $1.key }, id: \.key) { mount, pct in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    LabeledContent(mount, value: "\(pct)%")
+                                    Meter(Double(pct) / 100, warns: true)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
+                    if host.upgradable != nil || host.rebootRequired != nil || host.backupResult != nil {
+                        Section("Maintenance") {
+                            if let u = host.upgradable { LabeledContent("Updates waiting", value: "\(u)") }
+                            if host.rebootRequired == true { LabeledContent("Reboot", value: String(localized: "required")) }
+                            if let b = Format.backup(last: host.backupLast, result: host.backupResult) {
+                                LabeledContent("Backup") {
+                                    Text(b).foregroundStyle(Format.backupFailed(host.backupResult) ? Palette.love : Palette.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+                if !host.flags.isEmpty {
+                    Section("Flags") {
+                        ForEach(host.flags, id: \.self) { f in
+                            Label(Format.flag(f), systemImage: Format.isAlarming(flag: f) ? "bolt.trianglebadge.exclamationmark" : "info.circle")
+                                .foregroundStyle(Format.isAlarming(flag: f) ? Palette.love : Palette.text)
+                        }
+                    }
+                }
+                if let url = host.url {
+                    Section {
+                        Button { openURL(url) } label: { Label("Open web interface", systemImage: "safari") }
+                    }
                 }
             }
+            .surfaceRows()
         }
         .screenBackground()
         .navigationTitle(host.name)

@@ -108,7 +108,12 @@ public final class AppModel {
     public private(set) var servers = ServerList()
     public private(set) var status: [UUID: ServerStatus] = [:]
     public var settings = AppSettings() { didSet { if settings != oldValue { saveSettings() } } }
-    public var tab: AppTab = .today
+    /// The shown tab. Picking one by hand drops a tab request that is still waiting.
+    public var tab: AppTab = .today { didSet { if tab != oldValue { requestedTab = nil } } }
+    /// A tab a launch argument or link asked for before the server's features were known (right after a reset, the
+    /// Chat and Actions tabs only appear once /info has answered). `validateTab` switches to it once it is there, and
+    /// drops it once the info is known without it.
+    public private(set) var requestedTab: AppTab?
     /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
@@ -165,9 +170,29 @@ public final class AppModel {
         return t
     }
 
-    /// Falls back to Today when the shown tab went away (feature list changed, server removed).
+    /// Falls back to Today when the shown tab went away (feature list changed, server removed), and switches to a
+    /// waiting requested tab once it is available.
     public func validateTab() {
+        let wanted = requestedTab
         if !availableTabs.contains(tab) { tab = .today }
+        requestedTab = wanted   // the fallback isn't the user's choice: the request still waits
+        guard let wanted else { return }
+        if availableTabs.contains(wanted) {
+            tab = wanted
+            requestedTab = nil
+        } else if selected == nil || selectedStatus.knownInfo != nil {
+            requestedTab = nil   // no server, or its features are known and don't include the tab
+        }
+    }
+
+    /// Shows `t` now if it is there, else once the server's info shows it (or never, see `validateTab`).
+    func request(_ t: AppTab) {
+        if availableTabs.contains(t) {
+            tab = t
+        } else {
+            requestedTab = t
+            validateTab()
+        }
     }
 
     /// Shows another server. The overview's poll loop restarts for it and fetches; no extra fetch here.
@@ -250,6 +275,7 @@ public final class AppModel {
         demo = nil
         refreshAgain = []
         tab = .today
+        requestedTab = nil
         onWidgetDataChange()
     }
 
@@ -476,7 +502,12 @@ public final class AppModel {
     // MARK: Launch arguments (tests, screenshots, the owner's first run)
 
     func apply(_ args: LaunchArguments) {
-        if args.demo { setDemo(true) }
+        if args.demo {
+            setDemo(true)
+            // -HomelabDemo means "show the demo", also when another server was selected before (CI screenshots run
+            // after live-mode shots that leave the fixture server selected).
+            if let d = servers.servers.first(where: { $0.kind == .demo && $0.speaksCompanionAPI }) { select(d.id) }
+        }
         if let url = args.server {
             for old in servers.servers where old.baseURL == url && old.kind == .companion { remove(old.id) }
             let s = ServerConfig(name: url.host ?? "Server", kind: .companion, baseURL: url, auth: .identity)
@@ -485,10 +516,10 @@ public final class AppModel {
             status[s.id] = ServerStatus()
             saveServers()
         }
-        if let tab = args.tab, availableTabs.contains(tab) { self.tab = tab }
+        if let tab = args.tab { request(tab) }
         if let a = args.action {
             openAction = a
-            if availableTabs.contains(.actions) { tab = .actions }
+            request(.actions)
         }
         if let d = args.density { settings.todayDensity = d }
         if let p = args.personality { settings.voice = p }
@@ -496,10 +527,12 @@ public final class AppModel {
 
     public func open(_ url: URL) {
         guard let t = AppTab(url: url) else { return }
-        tab = availableTabs.contains(t) ? t : .today
-        // homelab://actions/<name>: that action's form.
+        if !availableTabs.contains(t) { tab = .today }
+        request(t)
+        // homelab://actions/<name>: that action's form (it waits like the tab).
         let path = url.pathComponents.filter { $0 != "/" }
-        if tab == .actions, url.host == "actions", path.count == 1, ActionSpec.isValidName(path[0]) { openAction = path[0] }
+        if t == .actions, tab == .actions || requestedTab == .actions, url.host == "actions", path.count == 1,
+           ActionSpec.isValidName(path[0]) { openAction = path[0] }
     }
 }
 

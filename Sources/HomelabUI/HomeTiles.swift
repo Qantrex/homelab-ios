@@ -270,7 +270,9 @@ struct EntityPicker: View {
                         }
                     }
                 }
+                .surfaceRows()
             }
+            .screenBackground()
             .searchable(text: $query)
             .navigationTitle("Tiles on Today")
             .navigationBarTitleDisplayMode(.inline)

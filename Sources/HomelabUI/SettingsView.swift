@@ -14,87 +14,91 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    ForEach(model.servers.servers) { s in
-                        Button { editing = s } label: { ServerRow(server: s, selected: s.id == model.selected?.id) }
-                            .foregroundStyle(.primary)
-                            .swipeActions {
-                                Button("Delete", role: .destructive) { deleting = s }
-                            }
+                Group {
+                    Section {
+                        ForEach(model.servers.servers) { s in
+                            Button { editing = s } label: { ServerRow(server: s, selected: s.id == model.selected?.id) }
+                                .foregroundStyle(.primary)
+                                .swipeActions {
+                                    Button("Delete", role: .destructive) { deleting = s }
+                                }
+                        }
+                        Button { adding = true } label: { Label("Add server", systemImage: "plus") }
+                    } header: {
+                        Text("Servers")
+                    } footer: {
+                        Text("Tap a server to edit it. Today and Lab show the one with the checkmark; swipe to delete.")
                     }
-                    Button { adding = true } label: { Label("Add server", systemImage: "plus") }
-                } header: {
-                    Text("Servers")
-                } footer: {
-                    Text("Tap a server to edit it. Today and Lab show the one with the checkmark; swipe to delete.")
-                }
 
-                if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
-                    Section("Shown server") {
-                        Picker("Today, Lab, actions and chat", selection: Binding(
-                            get: { model.selected?.id ?? UUID() },
-                            set: { model.select($0) })) {
-                            ForEach(model.servers.servers.filter(\.speaksCompanionAPI)) { Text($0.name).tag($0.id) }
+                    if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
+                        Section("Shown server") {
+                            Picker("Today, Lab, actions and chat", selection: Binding(
+                                get: { model.selected?.id ?? UUID() },
+                                set: { model.select($0) })) {
+                                ForEach(model.servers.servers.filter(\.speaksCompanionAPI)) { Text($0.name).tag($0.id) }
+                            }
                         }
                     }
-                }
 
-                Section {
-                    Picker("Detail", selection: Binding(get: { model.settings.todayDensity },
-                                                        set: { model.settings.todayDensity = $0 })) {
-                        ForEach(Density.allCases) { Text($0.title).tag($0) }
+                    Section {
+                        Picker("Detail", selection: Binding(get: { model.settings.todayDensity },
+                                                            set: { model.settings.todayDensity = $0 })) {
+                            ForEach(Density.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        Picker("Personality", selection: Binding(get: { model.settings.voice },
+                                                                 set: { model.settings.voice = $0 })) {
+                            ForEach(Personality.allCases) { Text($0.title).tag($0) }
+                        }
+                        NavigationLink {
+                            TodayLayoutEditor(model: model)
+                        } label: {
+                            LabeledContent("Sections", value: "\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
+                        }
+                    } header: {
+                        Text("Today")
+                    } footer: {
+                        Text("Calm: the headline, the day's numbers and Home. Standard: the sections you choose. Overkill: everything at once, every machine's numbers and exact times. Personality: a line of commentary under the headline, on empty screens and in notifications; the facts stay the same.")
                     }
-                    .pickerStyle(.segmented)
-                    Picker("Personality", selection: Binding(get: { model.settings.voice },
-                                                             set: { model.settings.voice = $0 })) {
-                        ForEach(Personality.allCases) { Text($0.title).tag($0) }
+
+                    Section {
+                        Toggle("New problems", isOn: notifyBinding(\.notifyProblems))
+                        Toggle("New actions to approve", isOn: notifyBinding(\.notifyPending))
+                    } header: {
+                        Text("Notifications")
+                    } footer: {
+                        Text(notificationNote ?? "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off.")
                     }
-                    NavigationLink {
-                        TodayLayoutEditor(model: model)
-                    } label: {
-                        LabeledContent("Sections", value: "\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
+
+                    Section {
+                        Toggle("Lock with Face ID", isOn: Binding(
+                            get: { model.settings.faceIDLock },
+                            set: { on in Task { await setLock(on) } }))
+                            .disabled(!Biometrics.available)
+                    } footer: {
+                        Text("Asks for Face ID or the passcode when the app opens. Tokens are always in the Keychain.")
                     }
-                } header: {
-                    Text("Today")
-                } footer: {
-                    Text("Calm: the headline, the day's numbers and Home. Standard: the sections you choose. Overkill: everything at once, every machine's numbers and exact times. Personality: a line of commentary under the headline, on empty screens and in notifications; the facts stay the same.")
-                }
 
-                Section {
-                    Toggle("New problems", isOn: notifyBinding(\.notifyProblems))
-                    Toggle("New actions to approve", isOn: notifyBinding(\.notifyPending))
-                } header: {
-                    Text("Notifications")
-                } footer: {
-                    Text(notificationNote ?? "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off.")
-                }
+                    Section {
+                        Toggle("Demo servers", isOn: Binding(get: { model.isDemo }, set: { model.setDemo($0) }))
+                    } footer: {
+                        Text("Example data to look around. Your own servers stay.")
+                    }
 
-                Section {
-                    Toggle("Lock with Face ID", isOn: Binding(
-                        get: { model.settings.faceIDLock },
-                        set: { on in Task { await setLock(on) } }))
-                        .disabled(!Biometrics.available)
-                } footer: {
-                    Text("Asks for Face ID or the passcode when the app opens. Tokens are always in the Keychain.")
-                }
+                    Section {
+                        NavigationLink("Diagnostics") { DiagnosticsView(model: model) }
+                        NavigationLink("About") { AboutView() }
+                    }
 
-                Section {
-                    Toggle("Demo servers", isOn: Binding(get: { model.isDemo }, set: { model.setDemo($0) }))
-                } footer: {
-                    Text("Example data to look around. Your own servers stay.")
+                    Section {
+                        Button("Reset everything", role: .destructive) { confirmReset = true }
+                    } footer: {
+                        Text("Deletes all servers, tokens, cached data and settings from this phone.")
+                    }
                 }
-
-                Section {
-                    NavigationLink("Diagnostics") { DiagnosticsView(model: model) }
-                    NavigationLink("About") { AboutView() }
-                }
-
-                Section {
-                    Button("Reset everything", role: .destructive) { confirmReset = true }
-                } footer: {
-                    Text("Deletes all servers, tokens, cached data and settings from this phone.")
-                }
+                .surfaceRows()
             }
+            .screenBackground()
             .navigationTitle("Settings")
             .sheet(item: $editing) { ServerEditor(model: model, server: $0) }
             .sheet(isPresented: $adding) { ServerEditor(model: model, server: nil) }
@@ -204,91 +208,95 @@ struct ServerEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                if isDemo {
-                    Section { Text("Demo servers can't be edited. Turn demo mode off in Settings to remove them.") }
-                } else {
-                    Section {
-                        Picker("Type", selection: $kind) {
-                            Text("Homelab API").tag(ServerConfig.Kind.companion)
-                            Text("Home Assistant").tag(ServerConfig.Kind.homeAssistant)
-                        }
-                        TextField("Name", text: $name, prompt: Text(kind == .homeAssistant ? "Home Assistant" : "My homelab"))
-                        TextField("Address", text: $address, prompt: Text(kind == .homeAssistant ? "https://ha.tailnet.ts.net" : "https://server.tailnet.ts.net:7443"))
-                            .keyboardType(.URL)
-                            .textContentType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        if case .failure(let p) = urlResult, !address.isEmpty {
-                            Text(URLPolicy.message(p)).font(.caption).foregroundStyle(Palette.love)
-                        } else if case .success(let url) = urlResult, url.scheme == "http" {
-                            Text("Plain http: only use this inside your home network or tailnet.").font(.caption).foregroundStyle(Palette.gold)
-                        }
-                    } footer: {
-                        Text(kind == .homeAssistant
-                             ? "Your Home Assistant address, as you open it in a browser."
-                             : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine plus the port you gave `tailscale serve` (for example :7443).")
-                    }
-
-                    Section {
-                        if kind == .companion {
-                            Picker("Login", selection: $auth) {
-                                Text("Tailscale / proxy").tag(ServerConfig.Auth.identity)
-                                Text("Token").tag(ServerConfig.Auth.token)
+                Group {
+                    if isDemo {
+                        Section { Text("Demo servers can't be edited. Turn demo mode off in Settings to remove them.") }
+                    } else {
+                        Section {
+                            Picker("Type", selection: $kind) {
+                                Text("Homelab API").tag(ServerConfig.Kind.companion)
+                                Text("Home Assistant").tag(ServerConfig.Kind.homeAssistant)
                             }
-                        }
-                        if needsToken {
-                            SecureField(storedTokenUsable ? "Token saved (type to replace)" : (kind == .homeAssistant ? "Long-lived access token" : "Token"), text: $token)
+                            TextField("Name", text: $name, prompt: Text(kind == .homeAssistant ? "Home Assistant" : "My homelab"))
+                            TextField("Address", text: $address, prompt: Text(kind == .homeAssistant ? "https://ha.tailnet.ts.net" : "https://server.tailnet.ts.net:7443"))
+                                .keyboardType(.URL)
+                                .textContentType(.URL)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
-                                .textContentType(.password)
-                        }
-                    } footer: {
-                        if tokenStored && !storedTokenUsable && needsToken {
-                            Text("The address or type changed, so the saved token is not used for it. Enter the token for this server.")
-                        } else if kind == .homeAssistant {
-                            Text("In Home Assistant: your profile → Security → Long-lived access tokens → Create token.")
-                        } else if auth == .identity {
-                            Text("For servers behind tailscale serve: Tailscale on this phone proves who you are. No token needed.")
-                        } else {
-                            Text("Stored in the iOS Keychain on this phone only.")
-                        }
-                    }
-
-                    Section {
-                        Button {
-                            Task { await test() }
-                        } label: {
-                            HStack {
-                                Text("Test connection")
-                                Spacer()
-                                if testing { ProgressView() }
+                            if case .failure(let p) = urlResult, !address.isEmpty {
+                                Text(URLPolicy.message(p)).font(.caption).foregroundStyle(Palette.love)
+                            } else if case .success(let url) = urlResult, url.scheme == "http" {
+                                Text("Plain http: only use this inside your home network or tailnet.").font(.caption).foregroundStyle(Palette.gold)
                             }
+                        } footer: {
+                            Text(kind == .homeAssistant
+                                 ? "Your Home Assistant address, as you open it in a browser."
+                                 : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine plus the port you gave `tailscale serve` (for example :7443).")
                         }
-                        .disabled(testing || (try? urlResult.get()) == nil)
-                        if let testResult {
-                            switch testResult {
-                            case .success(let text): Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.text)
-                            case .failure(let e): Label(e.message, systemImage: "xmark.circle.fill").foregroundStyle(Palette.love)
-                            }
-                        }
-                    }
-                    if let saveError { Section { Text(saveError).foregroundStyle(Palette.love) } }
 
-                    if let original {
                         Section {
-                            Button("Delete server", role: .destructive) { confirmDelete = true }
-                                .confirmationDialog("Delete \(original.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                                    Button("Delete server and its token", role: .destructive) {
-                                        model.remove(original.id)
-                                        dismiss()
-                                    }
-                                } message: {
-                                    Text("The address, its saved token and cached data are removed from this phone.")
+                            if kind == .companion {
+                                Picker("Login", selection: $auth) {
+                                    Text("Tailscale / proxy").tag(ServerConfig.Auth.identity)
+                                    Text("Token").tag(ServerConfig.Auth.token)
                                 }
+                            }
+                            if needsToken {
+                                SecureField(storedTokenUsable ? "Token saved (type to replace)" : (kind == .homeAssistant ? "Long-lived access token" : "Token"), text: $token)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .textContentType(.password)
+                            }
+                        } footer: {
+                            if tokenStored && !storedTokenUsable && needsToken {
+                                Text("The address or type changed, so the saved token is not used for it. Enter the token for this server.")
+                            } else if kind == .homeAssistant {
+                                Text("In Home Assistant: your profile → Security → Long-lived access tokens → Create token.")
+                            } else if auth == .identity {
+                                Text("For servers behind tailscale serve: Tailscale on this phone proves who you are. No token needed.")
+                            } else {
+                                Text("Stored in the iOS Keychain on this phone only.")
+                            }
+                        }
+
+                        Section {
+                            Button {
+                                Task { await test() }
+                            } label: {
+                                HStack {
+                                    Text("Test connection")
+                                    Spacer()
+                                    if testing { ProgressView() }
+                                }
+                            }
+                            .disabled(testing || (try? urlResult.get()) == nil)
+                            if let testResult {
+                                switch testResult {
+                                case .success(let text): Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.text)
+                                case .failure(let e): Label(e.message, systemImage: "xmark.circle.fill").foregroundStyle(Palette.love)
+                                }
+                            }
+                        }
+                        if let saveError { Section { Text(saveError).foregroundStyle(Palette.love) } }
+
+                        if let original {
+                            Section {
+                                Button("Delete server", role: .destructive) { confirmDelete = true }
+                                    .confirmationDialog("Delete \(original.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                                        Button("Delete server and its token", role: .destructive) {
+                                            model.remove(original.id)
+                                            dismiss()
+                                        }
+                                    } message: {
+                                        Text("The address, its saved token and cached data are removed from this phone.")
+                                    }
+                            }
                         }
                     }
                 }
+                .surfaceRows()
             }
+            .screenBackground()
             .navigationTitle(original == nil ? "Add server" : "Edit server")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -370,46 +378,50 @@ struct DiagnosticsView: View {
 
     var body: some View {
         List {
-            Section("App") {
-                LabeledContent("Version", value: "\(AppVersion.short) (\(AppVersion.build))")
-                LabeledContent("Bundle ID", value: Bundle.main.bundleIdentifier ?? "?")
-                LabeledContent("iOS", value: UIDeviceInfo.version)
-            }
-            Section("Shared storage") {
-                LabeledContent("App Group", value: AppGroup.current ?? String(localized: "none (widget can't see data)"))
-                ForEach(probes, id: \.group) { p in
-                    LabeledContent(p.group, value: p.writable ? "ok" : p.containerFound ? "read-only" : "–")
-                        .font(.caption)
+            Group {
+                Section("App") {
+                    LabeledContent("Version", value: "\(AppVersion.short) (\(AppVersion.build))")
+                    LabeledContent("Bundle ID", value: Bundle.main.bundleIdentifier ?? "?")
+                    LabeledContent("iOS", value: UIDeviceInfo.version)
                 }
-            }
-            Section("Background") {
-                LabeledContent("Last run", value: Format.age(model.settings.lastBackgroundRun))
-                LabeledContent("Result", value: model.settings.lastBackgroundResult ?? "–")
-            }
-            Section("Servers") {
-                ForEach(model.servers.servers) { s in
-                    let st = model.status[s.id]
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(s.name).font(.subheadline.weight(.medium))
-                        Text("\(s.kind.rawValue), \(s.auth.rawValue), \(s.host)").font(.caption).foregroundStyle(.secondary)
-                        if let snap = st?.snapshot { Text("data \(Format.age(snap.fetched))").font(.caption) }
-                        if let e = st?.error { Text(e.message).font(.caption).foregroundStyle(Palette.love) }
-                        if let info = st?.info {
-                            Text("\(info.server ?? "?") \(info.version ?? ""), API \(info.api), \(info.features.map(\.rawValue).sorted().joined(separator: ", "))")
-                                .font(.caption2).foregroundStyle(.secondary)
+                Section("Shared storage") {
+                    LabeledContent("App Group", value: AppGroup.current ?? String(localized: "none (widget can't see data)"))
+                    ForEach(probes, id: \.group) { p in
+                        LabeledContent(p.group, value: p.writable ? "ok" : p.containerFound ? "read-only" : "–")
+                            .font(.caption)
+                    }
+                }
+                Section("Background") {
+                    LabeledContent("Last run", value: Format.age(model.settings.lastBackgroundRun))
+                    LabeledContent("Result", value: model.settings.lastBackgroundResult ?? "–")
+                }
+                Section("Servers") {
+                    ForEach(model.servers.servers) { s in
+                        let st = model.status[s.id]
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.name).font(.subheadline.weight(.medium))
+                            Text("\(s.kind.rawValue), \(s.auth.rawValue), \(s.host)").font(.caption).foregroundStyle(.secondary)
+                            if let snap = st?.snapshot { Text("data \(Format.age(snap.fetched))").font(.caption) }
+                            if let e = st?.error { Text(e.message).font(.caption).foregroundStyle(Palette.love) }
+                            if let info = st?.info {
+                                Text("\(info.server ?? "?") \(info.version ?? ""), API \(info.api), \(info.features.map(\.rawValue).sorted().joined(separator: ", "))")
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
-            }
-            Section {
-                Button(copied ? "Copied" : "Copy report") {
-                    UIPasteboardBridge.copy(report())
-                    copied = true
+                Section {
+                    Button(copied ? "Copied" : "Copy report") {
+                        UIPasteboardBridge.copy(report())
+                        copied = true
+                    }
+                } footer: {
+                    Text("The report has no tokens. It helps when something doesn't work.")
                 }
-            } footer: {
-                Text("The report has no tokens. It helps when something doesn't work.")
             }
+            .surfaceRows()
         }
+        .screenBackground()
         .navigationTitle("Diagnostics")
         .task { probes = AppGroup.resolve().probes }
     }
@@ -430,18 +442,22 @@ struct DiagnosticsView: View {
 struct AboutView: View {
     var body: some View {
         List {
-            Section {
-                Text("Homelab is an open-source companion app for self-hosted homelabs. It talks only to the servers you add. No accounts, no analytics, no third-party services.")
+            Group {
+                Section {
+                    Text("Homelab is an open-source companion app for self-hosted homelabs. It talks only to the servers you add. No accounts, no analytics, no third-party services.")
+                }
+                Section("Source") {
+                    Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios")!)
+                    LabeledContent("License", value: "MIT")
+                    LabeledContent("Third-party code", value: String(localized: "none"))
+                }
+                Section("Built with") {
+                    Text("SwiftUI and WidgetKit, built with xtool (MIT) and installed with SideStore.").font(.footnote)
+                }
             }
-            Section("Source") {
-                Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios")!)
-                LabeledContent("License", value: "MIT")
-                LabeledContent("Third-party code", value: String(localized: "none"))
-            }
-            Section("Built with") {
-                Text("SwiftUI and WidgetKit, built with xtool (MIT) and installed with SideStore.").font(.footnote)
-            }
+            .surfaceRows()
         }
+        .screenBackground()
         .navigationTitle("About")
     }
 }
@@ -452,21 +468,25 @@ struct TodayLayoutEditor: View {
 
     var body: some View {
         List {
-            Section {
-                ForEach(model.settings.todayLayout.sections) { s in
-                    Toggle(s.title, isOn: Binding(
-                        get: { model.settings.todayLayout.isVisible(s) },
-                        set: { model.settings.todayLayout.setVisible(s, $0) }))
+            Group {
+                Section {
+                    ForEach(model.settings.todayLayout.sections) { s in
+                        Toggle(s.title, isOn: Binding(
+                            get: { model.settings.todayLayout.isVisible(s) },
+                            set: { model.settings.todayLayout.setVisible(s, $0) }))
+                    }
+                    .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
+                } footer: {
+                    Text("The headline with your lab's status always stays on top. Drag the handles to change the order.")
                 }
-                .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
-            } footer: {
-                Text("The headline with your lab's status always stays on top. Drag the handles to change the order.")
+                Section {
+                    Button("Standard layout") { model.settings.todayLayout = .standard }
+                        .disabled(model.settings.todayLayout == .standard)
+                }
             }
-            Section {
-                Button("Standard layout") { model.settings.todayLayout = .standard }
-                    .disabled(model.settings.todayLayout == .standard)
-            }
+            .surfaceRows()
         }
+        .screenBackground()
         .environment(\.editMode, .constant(.active))
         .navigationTitle("Today")
         .navigationBarTitleDisplayMode(.inline)

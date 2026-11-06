@@ -56,11 +56,13 @@ struct ActionFormView: View {
                                 .accessibilityLabel(Text("Sends \(arg)"))
                         }
                     }
+                    .surfaceRows()
                 }
                 if !spec.fields.isEmpty {
                     Section {
                         ForEach(spec.fields) { field in fieldRow(field) }
                     }
+                    .surfaceRows()
                 }
                 if showProblems, !form.problems.isEmpty {
                     Section {
@@ -68,11 +70,13 @@ struct ActionFormView: View {
                             Label(p, systemImage: "exclamationmark.triangle").foregroundStyle(Palette.gold)
                         }
                     }
+                    .surfaceRows()
                 }
                 if let hint = spec.hint {
                     Section { EmptyView() } footer: { Text(hint) }
                 }
             }
+            .screenBackground()
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(spec.label)
             .navigationBarTitleDisplayMode(.inline)
@@ -248,11 +252,12 @@ struct StartGrid: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
-                                                        : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+        LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)]
+                                                        : [GridItem(.flexible(), spacing: 10, alignment: .top),
+                                                           GridItem(.flexible(), spacing: 10, alignment: .top)],
                   spacing: 10) {
             ForEach(actions) { spec in
-                Button { open(spec) } label: { StartTile(spec: spec) }
+                Button { open(spec) } label: { StartTile(spec: spec, evenRows: !typeSize.isAccessibilitySize) }
                     .buttonStyle(.press)
                     .accessibilityLabel(Text(spec.label))
                     .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
@@ -261,8 +266,13 @@ struct StartGrid: View {
     }
 }
 
+/// Every tile in a row is the same height, so their tops and texts line up: the icon row has a fixed height (some
+/// symbols, like calendar.badge.plus, are taller) and the title always takes two lines (`evenRows`: off in the
+/// one-column grid at accessibility sizes, where there is no neighbour to line up with).
 struct StartTile: View {
     let spec: ActionSpec
+    var evenRows = true
+    @ScaledMetric(relativeTo: .title3) private var iconRow: CGFloat = 26
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -271,8 +281,10 @@ struct StartTile: View {
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Palette.tertiary)
             }
+            .frame(height: iconRow)
             VStack(alignment: .leading, spacing: 2) {
-                Text(spec.label).font(.subheadline.weight(.semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                Text(spec.label).font(.subheadline.weight(.semibold)).lineLimit(2, reservesSpace: evenRows)
+                    .multilineTextAlignment(.leading)
                 Text(spec.name.uppercased()).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
             }
         }

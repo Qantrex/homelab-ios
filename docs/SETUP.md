@@ -113,13 +113,13 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 
 | Argument | Effect |
 |---|---|
-| `-HomelabDemo YES` | Turns on the demo servers (a demo homelab and a demo Home Assistant, no network) |
+| `-HomelabDemo YES` | Turns on the demo servers (a demo homelab and a demo Home Assistant, no network) and shows the demo homelab |
 | `-HomelabServer <url>` | Adds a Homelab API server with this address (login: Tailscale / proxy) and shows it. The URL rules below apply |
-| `-HomelabTab <tab>` | Opens a tab: `overview`, `actions`, `chat`, `home` or `settings` |
+| `-HomelabTab <tab>` | Opens a tab: `today`, `actions`, `chat`, `lab` or `settings` (`overview` and `home` mean Today). A tab that depends on a server feature (Actions, Chat) opens once the server's info shows it |
 | `-HomelabResetState YES` | Deletes all servers, tokens, cached data and settings before the start |
 
-`YES`, `true` and `1` all count as yes. The links `homelab://overview`, `homelab://actions`, `homelab://chat`,
-`homelab://home` and `homelab://settings` open a tab too (the widgets use them).
+`YES`, `true` and `1` all count as yes. The links `homelab://today`, `homelab://actions`, `homelab://chat`,
+`homelab://lab` and `homelab://settings` open a tab too (the widgets use them; the older `overview` and `home` open Today).
 
 URL rules (`Sources/HomelabKit/URLPolicy.swift`): `https://` always works. Plain `http://` only works for addresses
 that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`, `192.168.x`), `127.x`, `169.254.x`,

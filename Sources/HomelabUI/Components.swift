@@ -24,33 +24,59 @@ struct PollKey: Hashable {
     var kick = 0          // bumped to wake a sleeping loop at once (after sending a chat message)
 }
 
-/// "Can't reach … Is Tailscale on?" with a retry.
+/// "Can't reach … Is Tailscale on?" with a retry. At accessibility text sizes Retry goes under the text: next to
+/// it the text got one word per line (CI screenshot, 2026-11-06).
 struct ErrorBanner: View {
     let error: APIError
     let snapshotAge: Date?
     let retry: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: error.isTransient ? "wifi.exclamationmark" : "exclamationmark.lock")
-                .font(.title3)
-                .foregroundStyle(Palette.gold)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(error.message).font(.subheadline.weight(.medium))
-                if let snapshotAge {
-                    Text("Showing data from \(Format.age(snapshotAge)).").font(.caption).foregroundStyle(.secondary)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    icon
+                    texts
+                    retryButton
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    icon
+                    texts
+                    Spacer(minLength: 0)
+                    retryButton
                 }
             }
-            Spacer(minLength: 0)
-            Button("Retry", action: retry)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
         }
         .padding(12)
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.gold.opacity(0.5), lineWidth: 1))
         .accessibilityElement(children: .combine)
+    }
+
+    private var icon: some View {
+        Image(systemName: error.isTransient ? "wifi.exclamationmark" : "exclamationmark.lock")
+            .font(.title3)
+            .foregroundStyle(Palette.gold)
+            .accessibilityHidden(true)
+    }
+
+    private var texts: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(error.message).font(.subheadline.weight(.medium))
+            if let snapshotAge {
+                Text("Showing data from \(Format.age(snapshotAge)).").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var retryButton: some View {
+        Button("Retry", action: retry)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
     }
 }
 
@@ -148,6 +174,13 @@ extension View {
     /// The screen background behind scroll views and lists.
     func screenBackground() -> some View {
         scrollContentBackground(.hidden).background(Palette.background.ignoresSafeArea())
+    }
+
+    /// A grouped list or form in the app's look: the screen background around it, rows on `Palette.surface`
+    /// (instead of the system's blue-grey #F2F2F7 / #1C1C1E). Put it on the list's content (a Group around the
+    /// sections), and `screenBackground()` on the list.
+    func surfaceRows() -> some View {
+        listRowBackground(Palette.surface)
     }
 }
 

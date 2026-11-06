@@ -15,6 +15,7 @@ final class FakeServer: @unchecked Sendable {
     private var _stateDelay: TimeInterval = 0
     private var _authHeaders: [String?] = []
     private var _hosts: [String] = []
+    private var _info: Data?
 
     var state: String { get { lock.withLock { _state } } set { lock.withLock { _state = newValue } } }
     var infoStatus: Int { get { lock.withLock { _infoStatus } } set { lock.withLock { _infoStatus = newValue } } }
@@ -24,22 +25,24 @@ final class FakeServer: @unchecked Sendable {
     func calls(_ path: String) -> Int { lock.withLock { _calls[path] ?? 0 } }
     var authHeaders: [String?] { lock.withLock { _authHeaders } }
     var hosts: [String] { lock.withLock { _hosts } }
+    /// Another /info answer than info.json (nil = info.json).
+    var info: Data? { get { lock.withLock { _info } } set { lock.withLock { _info = newValue } } }
 
     // Strong capture on purpose: a test may drop its FakeServer while the model still uses the transport.
     lazy var transport = FakeTransport { r in self.answer(r) }
 
     func answer(_ r: URLRequest) -> FakeTransport.Reply {
         let path = r.url?.path ?? ""
-        let (delay, state, infoStatus): (TimeInterval, String, Int) = lock.withLock {
+        let (delay, state, infoStatus, info): (TimeInterval, String, Int, Data?) = lock.withLock {
             _calls[path, default: 0] += 1
             _authHeaders.append(r.value(forHTTPHeaderField: "Authorization"))
             _hosts.append(r.url?.host ?? "")
-            return (_delay + (path == "/api/v1/state" ? _stateDelay : 0), _state, _infoStatus)
+            return (_delay + (path == "/api/v1/state" ? _stateDelay : 0), _state, _infoStatus, _info)
         }
         if delay > 0 { Thread.sleep(forTimeInterval: delay) }
         switch path {
         case "/api/v1/info":
-            return infoStatus == 200 ? .init(body: Fixtures.data("info.json") ?? Data()) : .init(status: infoStatus)
+            return infoStatus == 200 ? .init(body: info ?? Fixtures.data("info.json") ?? Data()) : .init(status: infoStatus)
         case "/api/v1/state": return .init(body: Fixtures.data(state) ?? Data())
         case "/api/v1/services": return .init(body: Fixtures.data("services.json") ?? Data())
         case "/api/v1/actions": return .init(body: Fixtures.data("actions.json") ?? Data())
@@ -295,7 +298,7 @@ let labURL = URL(string: "https://lab.example.ts.net")!
                                      storage: storage, tokens: tokens)
         #expect(m.servers.servers.count == 1 && m.selected?.id != old.id && m.selected?.auth == .identity)
         #expect(tokens.token(for: old.id) == nil)                      // the replaced server's token is gone
-        #expect(m.tab == .today)                                       // chat isn't known to exist yet
+        #expect(m.tab == .today && m.requestedTab == .chat)            // chat isn't known to exist yet: it waits
         let (a, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES", "-HomelabAction", "wake-set"])
         #expect(a.openAction == "wake-set")
         let (b, _, _, _) = makeModel(args: ["app", "-HomelabAction", "Bad Name"])
@@ -305,6 +308,52 @@ let labURL = URL(string: "https://lab.example.ts.net")!
                                        storage: storage, tokens: tokens)
         #expect(r.isDemo && r.servers.servers.count == 2 && rt.count == 0)
         #expect(rs.read(ServerList.self, ServerList.fileName)?.servers.count == 2)
+    }
+
+    @Test func demoArgumentSelectsTheDemo() throws {
+        // CI: the live-mode shots leave the fixture server selected; -HomelabDemo must still show the demo.
+        let storage = Storage(directory: temporaryDirectory())
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        let demo = ServerConfig.demo()
+        try storage.write(ServerList(servers: [lab, demo, .demoHomeAssistant()], selected: lab.id), ServerList.fileName)
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES", "-HomelabTab", "actions"], storage: storage)
+        #expect(m.selected?.id == demo.id && m.servers.servers.count == 3)
+        #expect(storage.read(ServerList.self, ServerList.fileName)?.selected == demo.id)
+        let (n, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES"])   // fresh: demo added and selected
+        #expect(n.selected?.kind == .demo && n.selected?.isDemoHomeAssistant == false)
+    }
+
+    @Test func requestedTabWaitsForInfo() async throws {
+        let (m, server, _, _) = makeModel(args: ["app", "-HomelabResetState", "YES", "-HomelabServer",
+                                                 "http://127.0.0.1:8791", "-HomelabTab", "actions"])
+        #expect(m.tab == .today && m.requestedTab == .actions)
+        server.infoStatus = 500                                        // no /info yet: still waiting
+        server.state = "state-ok.json"                                 // (no pending actions that show the tab)
+        await m.refresh()
+        #expect(m.tab == .today && m.requestedTab == .actions)
+        server.infoStatus = 200
+        await m.refresh()                                              // /info lists actions: the tab opens
+        #expect(m.tab == .actions && m.requestedTab == nil)
+
+        // Info without the feature drops the request.
+        let (c, cs, _, _) = makeModel(args: ["app", "-HomelabServer", "http://127.0.0.1:8791", "-HomelabTab", "chat"])
+        cs.info = Data(#"{"name": "lab", "api": 1, "features": ["status", "hosts"]}"#.utf8)
+        cs.state = "state-ok.json"
+        await c.refresh()
+        #expect(c.tab == .today && c.requestedTab == nil)
+
+        // Picking a tab by hand drops the request; the action form request waits with its tab.
+        let (h, _, _, _) = makeModel(args: ["app", "-HomelabServer", "http://127.0.0.1:8791", "-HomelabAction", "wake-set"])
+        #expect(h.requestedTab == .actions && h.openAction == "wake-set")
+        h.tab = .lab
+        #expect(h.requestedTab == nil)
+
+        // A deep link before /info waits the same way.
+        let (d, _, _, _) = makeModel(args: ["app", "-HomelabServer", "http://127.0.0.1:8791"])
+        d.open(URL(string: "homelab://actions/wake-set")!)
+        #expect(d.tab == .today && d.requestedTab == .actions && d.openAction == "wake-set")
+        await d.refresh()
+        #expect(d.tab == .actions)
     }
 
     @Test func demoAndReset() async throws {

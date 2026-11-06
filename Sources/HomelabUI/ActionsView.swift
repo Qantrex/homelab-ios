@@ -32,42 +32,51 @@ struct ActionsView: View {
                     ErrorBanner(error: error, snapshotAge: model.selectedStatus.snapshot?.fetched) {
                         Task { await model.refresh() }
                     }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowBackground(Color.clear)
+                    .cardRow()
                 }
                 if !startable.isEmpty {
                     Section {
                         StartGrid(actions: startable) { formFor = $0 }
-                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
-                            .listRowBackground(Color.clear)
+                            .cardRow(top: 4)
                     } header: {
-                        SectionTitle(text: "Start").textCase(nil)
+                        SectionTitle(text: "Start").textCase(nil).sectionHeaderInsets()
                     }
                 }
                 if approves {
                     Section {
-                        if pending.isEmpty, !startable.isEmpty, model.selectedStatus.snapshot != nil {
-                            // With Start tiles above, the empty state is one quiet row, not a full-screen placeholder.
+                        // With Start tiles above or an error banner, the empty state is one quiet row: the full-screen
+                        // placeholder would cover them (it drew over the banner at XXL text, CI 2026-11-06).
+                        if pending.isEmpty, !startable.isEmpty || model.selectedStatus.error != nil,
+                           model.selectedStatus.snapshot != nil {
                             Label { Text(nothingToApprove).font(.subheadline).foregroundStyle(Palette.secondary) }
                                 icon: { Image(systemName: "checkmark.shield").foregroundStyle(Palette.tertiary) }
+                                .card()
+                                .cardRow()
                         }
                         ForEach(pending) { action in
                             ActionRow(action: action, running: running.contains(action.id),
                                       hasChat: model.selectedStatus.features.contains(.chat)) { verb in
                                 confirm = ProposalConfirmation(action: action, verb: verb)
                             }
+                            .card()
+                            .cardRow()
                         }
                     } header: {
                         if !startable.isEmpty {
-                            SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)").textCase(nil)
+                            SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)")
+                                .textCase(nil)
+                                .sectionHeaderInsets()
                         }
                     }
                 }
             }
+            .listSectionSpacing(.compact)
+            .screenBackground()
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startable.isEmpty && model.selectedStatus.snapshot != nil {
+                } else if pending.isEmpty && startable.isEmpty && model.selectedStatus.snapshot != nil
+                            && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
             }
@@ -141,6 +150,20 @@ struct ActionRow: View {
                 ProposalButtons(action: action, tap: tap)
             }
         }
-        .padding(.vertical, 6)
+    }
+}
+
+private extension View {
+    /// A list row that is a panel of its own (like Lab's cards): no system row background or separator, and the
+    /// same side margin for every row, so the Start grid and the cards below line up.
+    func cardRow(top: CGFloat = 5) -> some View {
+        listRowInsets(EdgeInsets(top: top, leading: 0, bottom: 5, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
+
+    /// A section title over card rows: aligned with the cards' edge, like Lab's titles.
+    func sectionHeaderInsets() -> some View {
+        listRowInsets(EdgeInsets(top: 8, leading: 2, bottom: 4, trailing: 2))
     }
 }
