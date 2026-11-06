@@ -796,6 +796,7 @@ public final class AppModel {
     // MARK: Launch arguments (tests, screenshots, the owner's first run)
 
     func apply(_ args: LaunchArguments) {
+        if args.demoOff { setDemo(false) }
         if let scene = args.demoScene {
             demoScene = scene
             demo = nil
@@ -865,6 +866,8 @@ public final class AppModel {
 /// -HomelabPersonality snarky -HomelabAction wake-set -HomelabHost media -HomelabDemoScene problem`
 struct LaunchArguments {
     var demo = false
+    /// `-HomelabDemo NO`: the demo servers go away (phone-shots ends with it, so the owner's daily setup stays clean).
+    var demoOff = false
     /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state.
     var demoScene: DemoBackend.Scene?
     var reset = false
@@ -887,6 +890,7 @@ struct LaunchArguments {
         }
         func yes(_ key: String) -> Bool { ["yes", "true", "1"].contains(value(key)?.lowercased() ?? "") }
         demo = yes("HomelabDemo")
+        demoOff = ["no", "false", "0"].contains(value("HomelabDemo")?.lowercased() ?? "")
         demoScene = value("HomelabDemoScene").flatMap { DemoBackend.Scene(rawValue: $0.lowercased()) }
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }

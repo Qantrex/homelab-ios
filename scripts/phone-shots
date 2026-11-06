@@ -110,4 +110,6 @@ shot demo-today-calm     -HomelabDemo YES -HomelabTab today -HomelabDensity calm
 shot demo-today-snarky   -HomelabDemo YES -HomelabTab today -HomelabPersonality snarky
 # Leave the phone as it was.
 shot demo-today-standard -HomelabDemo YES -HomelabTab today -HomelabDensity standard -HomelabPersonality off
+# Back to the owner's real server: the demo servers go away again (they were added by -HomelabDemo YES).
+pmd developer dvt launch --userspace "$bundle -HomelabDemo NO -HomelabTab today" >/dev/null 2>&1 || true
 echo "== done: $OUT/"

@@ -222,6 +222,9 @@ import Testing
         #expect(LaunchArguments(["-HomelabDemoScene", "problem"]).demoScene == .problem)
         #expect(LaunchArguments(["-HomelabDemoScene", "Calm"]).demoScene == .calm)
         #expect(LaunchArguments(["-HomelabDemoScene", "nope"]).demoScene == nil)
+        // -HomelabDemo NO turns the demo off (phone-shots ends with it); YES and nothing leave demoOff false.
+        #expect(LaunchArguments(["-HomelabDemo", "NO"]).demoOff && !LaunchArguments(["-HomelabDemo", "NO"]).demo)
+        #expect(!LaunchArguments(["-HomelabDemo", "YES"]).demoOff && !LaunchArguments([]).demoOff)
         #expect(LaunchArguments([]).demoScene == nil)
         let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES", "-HomelabDemoScene", "problem"])
         await m.refresh()
