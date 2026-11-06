@@ -1,19 +1,36 @@
+import HomelabDesign
+import HomelabKit
 import HomelabUI
 import SwiftUI
 import UIKit
 
-/// The Home-screen quick action "Scan document" (UIApplicationShortcutItems in App-Info.plist). SwiftUI has no hook
-/// for it, so a small app delegate gives the scene a delegate class that receives the shortcut. It opens the same
-/// place as the link homelab://scan; a launch from the shortcut waits in NotificationRouter until the UI is ready.
+/// The Home-screen quick actions (long-press the app icon). "Scan document" is static (UIApplicationShortcutItems in
+/// App-Info.plist); after it come up to three dynamic ones, the shown server's most used Start actions
+/// (`HomeShortcuts`, `ActionUsage` in the App Group), each opening `homelab://actions/<name>`. SwiftUI has no hook for
+/// them, so a small app delegate gives the scene a delegate class that receives the shortcut. A launch from a
+/// shortcut waits in NotificationRouter until the UI is ready.
 @MainActor
 enum QuickActions {
-    static let scanType = "com.qantrex.homelab.scan"
-
     @discardableResult
     static func handle(_ item: UIApplicationShortcutItem) -> Bool {
-        guard item.type == scanType, let url = URL(string: "homelab://scan") else { return false }
+        guard let url = HomeShortcuts.link(type: item.type, userInfo: item.userInfo?.mapValues { $0 as Any }) else {
+            return false
+        }
         NotificationRouter.shared.route(url)
         return true
+    }
+
+    /// Sets the dynamic quick actions from shared storage: after a refresh (app or background), an action start and
+    /// a server switch.
+    static func update(storage: Storage = .shared()) {
+        let usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
+        let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
+        let items = HomeShortcuts.items(usage, server: list.selectedServer?.id).map { item in
+            UIApplicationShortcutItem(type: item.type, localizedTitle: item.title, localizedSubtitle: nil,
+                                      icon: UIApplicationShortcutIcon(systemImageName: Symbols.safe(item.icon, fallback: "play.circle")),
+                                      userInfo: ["link": item.link.absoluteString as NSString])
+        }
+        UIApplication.shared.shortcutItems = items
     }
 }
 

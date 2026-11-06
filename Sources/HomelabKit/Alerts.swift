@@ -27,6 +27,8 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         public var body: String
         /// For the personality line in the notification's subtitle (none for the summary).
         public var moment: Voice.Moment?
+        /// The proposal of a `pending` alert: its buttons decide the notification's Approve / Deny buttons.
+        public var proposal: PendingAction? = nil
     }
 
     public struct Options: Sendable, Equatable {
@@ -60,7 +62,8 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         if options.pending {
             for a in state.pending where !seenPending.contains(a.id) {
                 alerts.append(Alert(id: "pending-\(a.id)", kind: .pending, title: "\(server): approve \(a.title)?",
-                                    body: a.reason ?? "Proposed by \(a.job ?? "the agent").", moment: .waiting))
+                                    body: a.reason ?? "Proposed by \(a.job ?? "the agent").", moment: .waiting,
+                                    proposal: a))
             }
         }
         if alerts.count > Self.maxPerRun {
