@@ -334,6 +334,13 @@ public final class AppModel {
         validateTab()
     }
 
+    /// Takes the Home tiles from another Home Assistant server.
+    public func selectHome(_ id: UUID) {
+        guard servers.servers.contains(where: { $0.id == id && $0.showsHomeTab }) else { return }
+        servers.home = id
+        saveServers()
+    }
+
     /// `token: nil` keeps the stored token, but only while the server stays the same target (kind + origin).
     /// A new address or type drops it, so a token is never sent to a server it wasn't made for.
     public func save(_ server: ServerConfig, token: String?) throws {

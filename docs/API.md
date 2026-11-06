@@ -205,7 +205,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 | Field | Effect |
 |---|---|
 | `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `search` → the "Find a movie or show" tile on the Actions tab (the tab shows for it alone) and the search link; `share` → the share extension sends links. Missing list = `status` + `hosts` only |
-| `commands` | Quick buttons above the chat input. Only `/word` entries, at most 24 chars, no spaces, the first 8. Empty = no buttons |
+| `commands` | The chat's "/" menu (and the suggestions when the field starts with "/"). Each entry is `"/word"` or `{"command": "/word", "description": "one line"}`; without a description the app uses its own line for the agent's commands (`/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help`, …) or none. Only `/word` entries, at most 24 chars, no spaces, the first 8; descriptions are cut to 80 chars. Empty = no menu. Clearing the chat is the app's own (it hides the messages on the phone); no command is sent for it |
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
 | `api` | Must be `1`. Anything else: an error that asks to update the app |

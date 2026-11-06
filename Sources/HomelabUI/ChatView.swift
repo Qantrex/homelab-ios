@@ -16,13 +16,39 @@ final class ChatModel {
     /// Bumped after a send: restarts the poll loop so the fast "working" polling starts right away.
     var kick = 0
 
-    func reset(for server: ServerConfig?) {
+    func reset(for server: ServerConfig?, storage: Storage) {
         guard server?.target != serverID else { return }
         serverID = server?.target
         timeline.reset()
+        if let target = server?.target {
+            timeline.restore(clearedThrough: (storage.read(ChatClears.self, ChatClears.fileName) ?? ChatClears()).mark(for: target))
+        }
         error = nil
         loadedOnce = false
         failures = 0
+    }
+
+    /// Clear: hides what is shown now on this phone and remembers where (`ChatClears`). Nothing goes to the server:
+    /// it has no command that deletes its chat.
+    func clear(storage: Storage) {
+        generation += 1   // a load that is under way can't bring the cleared messages back
+        timeline.clear()
+        saveMark(storage)
+    }
+
+    /// "Show earlier messages": forgets the clear and loads from the beginning.
+    func unclear(storage: Storage) {
+        generation += 1
+        timeline.unclear()
+        saveMark(storage)
+        kick += 1
+    }
+
+    private func saveMark(_ storage: Storage) {
+        guard let serverID else { return }
+        var clears = storage.read(ChatClears.self, ChatClears.fileName) ?? ChatClears()
+        clears.set(timeline.clearedThrough, for: serverID)
+        try? storage.write(clears, ChatClears.fileName)
     }
 
     func load(_ api: any CompanionAPI, host: String) async {
@@ -68,6 +94,8 @@ final class ChatModel {
 
 /// The agent's messages are plain full-width text (no bubble) with their job as a quiet line above; mine are bubbles
 /// on the right. A time line only after a gap (`ChatTimeline.stamps`), long reports fold after 12 lines (`ChatFold`).
+/// The server's commands are behind the "/" button next to the field (and come up as suggestions when the field
+/// starts with "/"); Clear in the toolbar hides the chat on this phone only (`ChatTimeline.clear`).
 struct ChatView: View {
     let model: AppModel
     @State private var chat = ChatModel()
@@ -84,15 +112,21 @@ struct ChatView: View {
     @State private var confirm: ProposalConfirmation?
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
+    @State private var confirmClear = false
 
     private var emptyMessage: LocalizedStringKey {
-        let hint = quick.contains("/help") ? String(localized: "Ask your homelab anything, or try /help.")
-                                           : String(localized: "Ask your homelab anything.")
+        let hint = commands.isEmpty ? String(localized: "Ask your homelab anything.")
+                                    : String(localized: "Ask your homelab anything, or tap / for its commands.")
         return LocalizedStringKey(Voice.line(.emptyChat, model.settings.voice).map { $0 + " " + hint } ?? hint)
     }
 
-    /// Quick buttons: the commands the server says its chat understands (none = no button row).
-    private var quick: [String] { model.selectedStatus.info?.commands ?? model.selectedStatus.snapshot?.info?.commands ?? [] }
+    /// The commands the server says its chat understands, each with what it does (none = no "/" button).
+    private var commands: [ChatCommands.Command] {
+        ChatCommands.list(model.selectedStatus.info ?? model.selectedStatus.snapshot?.info)
+    }
+
+    /// The commands that fit a "/" typed in the field.
+    private var suggestions: [ChatCommands.Command] { ChatCommands.suggestions(for: draft, in: commands) }
 
     var body: some View {
         NavigationStack {
@@ -109,6 +143,19 @@ struct ChatView: View {
             .background(Palette.background.ignoresSafeArea())
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Clear") { confirmClear = true }
+                        .disabled(!chat.timeline.canClear)
+                        .accessibilityHint(Text("Hides the messages on this iPhone. The server keeps them."))
+                }
+            }
+            // Says exactly what Clear does: no server in this project can delete its chat, so it is this phone only.
+            .confirmationDialog("Clear the chat on this iPhone?", isPresented: $confirmClear, titleVisibility: .visible) {
+                Button("Clear on this iPhone", role: .destructive) { chat.clear(storage: model.storage) }
+            } message: {
+                Text("The messages shown now are hidden on this iPhone only. The server keeps them and nothing is deleted there; \"Show earlier messages\" brings them back.")
+            }
             .sensoryFeedback(.impact(weight: .light), trigger: sent)
             .proposalDialog($confirm, model: model) { pressed, message in
                 outcome = pressed
@@ -117,7 +164,7 @@ struct ChatView: View {
             .actionFeedback(result: $result, outcome: outcome)
             // Restarts on server change and when the app comes back; stops while it's in the background.
             .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active, kick: chat.kick)) {
-                chat.reset(for: model.selected)
+                chat.reset(for: model.selected, storage: model.storage)
                 guard scenePhase == .active else { return }
                 while !Task.isCancelled {
                     await load()
@@ -142,9 +189,25 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
+                    let cleared = chat.timeline.clearedThrough > 0
                     if chat.loadedOnce && chat.timeline.messages.isEmpty && chat.timeline.outgoing.isEmpty {
-                        Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right", message: emptyMessage)
-                            .padding(.top, 40)
+                        if cleared {
+                            Placeholder(title: "Cleared on this iPhone", symbol: "bubble.left.and.bubble.right",
+                                        message: "New messages show up here. The server still has the earlier ones.")
+                                .padding(.top, 40)
+                        } else {
+                            Placeholder(title: "No messages yet", symbol: "bubble.left.and.bubble.right", message: emptyMessage)
+                                .padding(.top, 40)
+                        }
+                    }
+                    if cleared {
+                        Button("Show earlier messages") { chat.unclear(storage: model.storage) }
+                            .font(Typo.secondary.weight(.semibold))
+                            .foregroundStyle(Palette.text)
+                            .buttonStyle(.plain)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                            .padding(.bottom, 8)
                     }
                     let all = chat.timeline.messages
                     let stamps = chat.timeline.stamps()
@@ -223,31 +286,17 @@ struct ChatView: View {
         }
     }
 
-    /// Quick commands as quiet capsules over the field; send is a white circle once there is something to send.
+    /// The "/" button opens the server's commands with what each does; a "/" typed in the field lists the matching
+    /// ones over it. Send is a white circle once there is something to send.
     private var composer: some View {
         VStack(spacing: 8) {
-            if !quick.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(quick, id: \.self) { cmd in
-                            Button { submit(cmd) } label: {
-                                Text(cmd)
-                                    .font(Typo.secondary)
-                                    .foregroundStyle(Palette.secondary)
-                                    .padding(.horizontal, 12)
-                                    .frame(minHeight: 32)
-                                    .background(Palette.raised, in: Capsule())
-                                    .frame(minHeight: 44)   // a 32 pt pill, a 44 pt tap area
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityHint(Text("Sends this command"))
-                        }
-                    }
+            if !suggestions.isEmpty {
+                CommandSuggestions(commands: Array(suggestions.prefix(5)), pick: pick)
                     .padding(.horizontal)
-                }
+                    .transition(.opacity)
             }
             HStack(alignment: .bottom, spacing: 6) {
+                if !commands.isEmpty { commandMenu }
                 TextField("Message", text: $draft, axis: .vertical)
                     .font(Typo.body)
                     .lineLimit(1...6)
@@ -279,7 +328,7 @@ struct ChatView: View {
                 .animation(.easeOut(duration: 0.15), value: canSend)
                 .accessibilityLabel(Text("Send"))
             }
-            .padding(.leading)
+            .padding(.leading, commands.isEmpty ? 16 : 6)
             .padding(.trailing, 10)
             if trimmed.count > CompanionClient.maxMessageLength - 200 {
                 Text("\(trimmed.count)/\(CompanionClient.maxMessageLength)")
@@ -290,6 +339,43 @@ struct ChatView: View {
         .padding(.vertical, 8)
         .background(Palette.background)
         .tint(Palette.accent)
+        .motion(.easeOut(duration: 0.15), value: suggestions.map(\.name))
+    }
+
+    /// "/" in a `raised` circle the size of the send button: a menu of the server's commands, each with one line.
+    /// A command that needs more ("/last <job>") goes into the field; the others are sent at once.
+    private var commandMenu: some View {
+        Menu {
+            Section("Commands") {
+                ForEach(commands) { c in
+                    Button { pick(c) } label: {
+                        Text(verbatim: c.takesArgument ? c.name + " …" : c.name)
+                        if let help = c.help { Text(verbatim: help) }
+                    }
+                }
+            }
+        } label: {
+            Text(verbatim: "/")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Palette.text)
+                .frame(width: sendSize, height: sendSize)
+                .background(Palette.raised, in: Circle())
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(Text("Commands"))
+        .accessibilityHint(Text("Lists what the server's chat understands"))
+    }
+
+    private func pick(_ command: ChatCommands.Command) {
+        switch ChatCommands.pick(command) {
+        case .send(let text):
+            if draft.trimmingCharacters(in: .whitespaces).hasPrefix("/") { draft = "" }   // the typed start of it
+            submit(text)
+        case .fill(let text):
+            draft = text
+            focused = true
+        }
     }
 
     private var trimmed: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -318,6 +404,37 @@ struct StampLine: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// The commands that fit a "/" typed in the field, over it: one panel, a row per command with what it does.
+struct CommandSuggestions: View {
+    let commands: [ChatCommands.Command]
+    let pick: (ChatCommands.Command) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(commands.enumerated()), id: \.element.id) { i, c in
+                if i > 0 { Rectangle().fill(Palette.line).frame(height: 1).padding(.leading, 16) }
+                Button { pick(c) } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: c.takesArgument ? c.name + " …" : c.name)
+                            .font(Typo.headline)
+                            .foregroundStyle(Palette.text)
+                        if let help = c.help {
+                            Text(verbatim: help).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(c.takesArgument ? Text("Puts it in the field to finish") : Text("Sends this command"))
+            }
+        }
+        .rowsPanel()
     }
 }
 

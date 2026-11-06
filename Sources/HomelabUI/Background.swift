@@ -95,21 +95,21 @@ public enum BackgroundRefresh {
 }
 
 enum Notifier {
-    /// `private`: the app lock is on, so the lock screen only says that something happened.
-    /// `voice`: the personality's line as the subtitle (not when private).
-    /// A proposal gets Approve / Deny buttons for the ones the server sent (`ProposalNotice`), never while private.
+    /// `private`: the app lock is on, so the notification only says that something happened, except a proposal with
+    /// Approve / Deny: it names its action and keeps its buttons (they need Face ID; iOS hides the preview on the
+    /// locked lock screen by default). `voice`: the personality's line as the subtitle (not when private).
+    /// What it says and which buttons it gets: `ProposalNotice.content`.
     static func post(_ alert: AlertTracker.Alert, server: UUID, private hidden: Bool, voice: Personality = .off) async {
+        let shown = ProposalNotice.content(for: alert, locked: hidden, voice: voice)
         let content = UNMutableNotificationContent()
-        content.title = hidden ? "Homelab" : alert.title
-        if !hidden, let m = alert.moment, let line = Voice.line(m, voice) { content.subtitle = line }
-        content.body = hidden
-            ? (alert.kind == .pending ? String(localized: "An action is waiting for you.") : String(localized: "Something needs a look."))
-            : alert.body
+        content.title = shown.title
+        if let line = shown.subtitle { content.subtitle = line }
+        content.body = shown.body
         content.sound = alert.kind == .problem ? .default : nil
         content.threadIdentifier = alert.kind.rawValue
         // Same links as the agent's pushes: proposals open Actions, problems open Lab.
         var info: [String: String] = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://lab"]
-        if let proposal = alert.proposal, let category = ProposalNotice.category(for: proposal, hidden: hidden) {
+        if let proposal = alert.proposal, let category = shown.category {
             content.categoryIdentifier = category.rawValue
             info.merge(ProposalNotice.userInfo(server: server, proposal: proposal.id)) { old, _ in old }
         }
@@ -129,8 +129,9 @@ enum Notifier {
         try? await UNUserNotificationCenter.current().add(request)
     }
 
-    /// The Approve / Deny buttons, one category per set of buttons a proposal can have. Both need the phone unlocked
-    /// (`authenticationRequired`); Deny is red. Neither opens the app: the press runs in the background.
+    /// The Approve / Deny buttons, one category per set of buttons a proposal can have. Both need Face ID or the
+    /// passcode first (`authenticationRequired`), also with the app lock on; Deny is red. Neither opens the app: the
+    /// press runs in the background.
     static func registerCategories() {
         let approve = UNNotificationAction(identifier: ProposalNotice.approveAction, title: String(localized: "Approve"),
                                            options: [.authenticationRequired],
@@ -155,11 +156,8 @@ enum ProposalPress {
         let settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
         let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
         let id = "\(request.proposal)-\(request.verb.rawValue)"
-        // The lock was turned on after the notification came: the owner wants Face ID before anything runs.
-        if settings.faceIDLock {
-            await Notifier.postResult(ProposalNotice.lockedMessage, id: id)
-            return
-        }
+        // No check of the app lock here: iOS ran this only after Face ID or the passcode (`authenticationRequired`).
+        // With the lock on, the result below stays vague.
         guard let server = list.servers.first(where: { $0.id == request.server && $0.speaksCompanionAPI }) else {
             await Notifier.postResult(("Homelab", String(localized: "That server is no longer in Homelab.")), id: id)
             return

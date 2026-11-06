@@ -124,7 +124,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | C2 | Working… | "Working…" with a spinner while the agent runs, gone when the reply is in | | |
 | C3 | Report chips | Scheduled reports (`morning`, `watchdog`, …) have a coloured chip with a clock | | |
 | C4 | Copy | Long-press a bubble → Copy → paste in Notes gives the full text | | |
-| C5 | Quick commands | With the agent: `/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help` each send and get an answer. A server without `commands` in /info shows no button row | | |
+| C5 | Commands | With the agent: the "/" button left of the field lists `/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help`, each with one line saying what it does. `/pending` sends at once and gets an answer; `/last …` goes into the field as "/last " to type the job. Typing "/" in the field lists the commands over it, "/me" only `/memory`. A server without `commands` in /info shows no "/" button | | |
+| C5b | Clear | Toolbar → Clear → the dialog says it hides the messages on this iPhone only and the server keeps them → "Clear on this iPhone": the chat is empty ("Cleared on this iPhone"). A new message shows. Quit and reopen the app: still cleared. "Show earlier messages" brings everything back. The web chat still has all messages | | |
 | C6 | Long text limit | Paste 4100 characters: a counter shows, red above 4000, the send button is greyed out | | |
 | C7 | Send while offline | Tailscale off, send: "Not sent: … Tap to edit." Tap puts the text back in the field | | |
 | C9 | Proposal in a bubble | A watchdog message with a proposal shows it under the text with Approve / Always / Deny → the same dialogs as Actions → result alert and haptic; the buttons go away once it is answered (here, in Actions or by /approve) | | |
@@ -189,8 +190,8 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | B6 | New action | A new pending action gives "`<server>`: approve …?". Tapping it opens Actions | | |
 | B7 | Approve on the notification | Lock the phone, wait for a new proposal notification. Long-press it: Approve and Deny (red), no Always. Approve asks for Face ID / the passcode first, then (without opening the app) a second notification "`<server>`: approved …" with the server's answer. The action ran (chat / server log); Actions no longer lists it, the badge and widget follow at the next refresh | | |
 | B8 | Deny on the notification | Same with Deny: "`<server>`: denied …", nothing ran. A proposal with only an approve button shows only Approve; one without buttons none | | |
-| B9 | Already answered | Approve the proposal in the app or chat first, then press Approve on its old notification: "`<server>`: no longer valid" | | |
-| B10 | App lock and buttons | Lock on: a new proposal notification says only "An action is waiting for you." and has no buttons. Press Approve on a notification from before the lock was on: "The app lock is on: open Homelab to answer.", nothing ran | | |
+| B9 | Already answered | Approve the proposal in the app or chat first, then press Approve on its old notification: "`<server>`: no longer valid" (with the app lock on: "That didn't go through. Open the app to see why.") | | |
+| B10 | App lock and buttons | Lock on, iOS Settings → Notifications → Show Previews "When Unlocked" (the default). Lock the phone, wait for a new proposal notification: the locked lock screen shows only "Homelab" with no text. Look at it so Face ID unlocks: it names the action ("`<server>`: approve …?"). Long-press it: Approve and Deny. Approve asks for Face ID / the passcode if the phone isn't unlocked, then runs (no "open Homelab" refusal); the result notification only says "Approved. Open the app for the answer." A problem notification with the lock on still says only "Something needs a look." | | |
 | B11 | Press with the app killed | Swipe the app away, then Approve on a notification: the result notification still comes (iOS starts the app in the background) | | |
 
 ## Face ID lock
@@ -202,14 +203,15 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | L3 | Cancel | Cancel Face ID: stays locked, Unlock tries again. Kill and reopen: locked | | |
 | L4 | Open dialogs close | Actions → Approve (confirm sheet open) → leave the app → come back: the sheet is gone, only the lock shows | | |
 | L5 | App switcher | With the lock on, swipe up to the app switcher: the Homelab card shows a blurred lock, not your data | | |
-| L6 | Notifications stay vague | With the lock on, a background notification says only "Something needs a look" / "An action is waiting" | | |
+| L6 | Notifications stay vague | With the lock on, a problem notification says only "Something needs a look", a proposal without buttons only "An action is waiting for you". A proposal with Approve / Deny names its action (B10) | | |
 
 ## Settings
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| S1 | Several servers | Add a second Homelab API server (for example the reference server): both listed, one has the checkmark | | |
-| S2 | Switch | Shown server picker (or the Lab server menu) switches Today, Lab, Actions, Chat and the widget | | |
+| S1 | Several servers | Add a second Homelab API server (for example the reference server): both under Servers with "Homelab API · <host>", the demo ones with "Demo · example data". No checkmarks in that list | | |
+| S2 | Switch | Settings → Data → "Show data from" lists the Homelab API servers with their kind; picking one switches Today, Lab, Actions, Chat and the widget (so does the Lab server menu). "Home tiles from" lists only Home Assistant servers and switches the Home tiles on Today | | |
+| S2b | Token over plain http | Add a server, Login Token, address `http://192.168.1.10:8080`: a red error under the address ("uses a token over plain http …"), Test connection and Save stay off. `https://…` or Login "Tailscale / proxy": the error goes | | |
 | S3 | Delete removes the token | Swipe → Delete on a token server. Add it again: the token field is empty and Save says "Enter the token first." | | |
 | S4 | Diagnostics | Version, bundle ID with the SideStore team suffix, App Group "ok", each server with "data … ago" | | |
 | S5 | Reset everything | Confirm "Delete all data": welcome screen, no servers, widget shows "Open the app" | | |

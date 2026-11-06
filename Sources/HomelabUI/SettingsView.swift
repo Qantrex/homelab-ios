@@ -15,26 +15,34 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Group {
+                    // Where the data comes from: two explicit choices, then the list to add, edit and delete servers.
+                    Section {
+                        sourceRow("Show data from", servers: model.servers.servers.filter(\.speaksCompanionAPI),
+                                  chosen: model.selected, none: "No server yet",
+                                  footer: "Today, Lab, Actions and Chat show this server's data.") { model.select($0) }
+                        sourceRow("Home tiles from", servers: model.servers.servers.filter(\.showsHomeTab),
+                                  chosen: model.homeAssistant, none: "No Home Assistant server",
+                                  footer: "The Home tiles on Today come from this Home Assistant.") { model.selectHome($0) }
+                    } header: {
+                        Text("Data")
+                    } footer: {
+                        SettingsFooter("Today, Lab, Actions and Chat come from the server under \"Show data from\"; only the Home tiles come from Home Assistant.")
+                    }
+
                     Section {
                         ForEach(model.servers.servers) { s in
-                            Button { editing = s } label: { ServerRow(server: s, selected: s.id == model.selected?.id) }
+                            Button { editing = s } label: { ServerRow(server: s) }
                                 .foregroundStyle(.primary)
+                                .accessibilityHint(Text(s.kind == .demo ? "Demo servers can't be edited" : "Edits this server"))
                                 .swipeActions {
                                     Button("Delete", role: .destructive) { deleting = s }
                                 }
-                        }
-                        if model.servers.servers.filter(\.speaksCompanionAPI).count > 1 {
-                            Picker("Shown", selection: Binding(
-                                get: { model.selected?.id ?? UUID() },
-                                set: { model.select($0) })) {
-                                ForEach(model.servers.servers.filter(\.speaksCompanionAPI)) { Text($0.name).tag($0.id) }
-                            }
                         }
                         Button { adding = true } label: { Label("Add server", systemImage: "plus") }
                     } header: {
                         Text("Servers")
                     } footer: {
-                        SettingsFooter("Tap a server to edit it, swipe to delete. Today, Lab, Actions and Chat show the one with the checkmark.")
+                        SettingsFooter("Tap a server to edit it, swipe to delete it.")
                     }
 
                     Section {
@@ -95,7 +103,7 @@ struct SettingsView: View {
                     } header: {
                         Text("Demo")
                     } footer: {
-                        SettingsFooter("Example data to look around. Your own servers stay.")
+                        SettingsFooter("Two servers with made-up example data, marked Demo in the lists. Your own servers stay.")
                     }
 
                     Section {
@@ -121,6 +129,23 @@ struct SettingsView: View {
             }
             .confirmationDialog("Reset everything?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Delete all data", role: .destructive) { model.resetAll() }
+            }
+        }
+    }
+
+    /// "Show data from  lab ›": opens the list of servers that can be chosen, each with its kind in words. Without any,
+    /// a plain row says so.
+    @ViewBuilder
+    private func sourceRow(_ title: LocalizedStringKey, servers: [ServerConfig], chosen: ServerConfig?,
+                           none: LocalizedStringKey, footer: LocalizedStringKey,
+                           choose: @escaping (UUID) -> Void) -> some View {
+        if servers.isEmpty {
+            LabeledContent(title) { Text(none).foregroundStyle(Palette.secondary) }
+        } else {
+            NavigationLink {
+                ServerChoice(title: title, servers: servers, chosen: chosen?.id, footer: footer, choose: choose)
+            } label: {
+                LabeledContent(title) { Text(verbatim: chosen?.name ?? "–").foregroundStyle(Palette.secondary) }
             }
         }
     }
@@ -220,21 +245,70 @@ struct PersonalityPreview: View {
     }
 }
 
+/// Settings → Data → "Show data from" / "Home tiles from": the servers that can be chosen, the chosen one ticked.
+/// Choosing goes back.
+struct ServerChoice: View {
+    let title: LocalizedStringKey
+    let servers: [ServerConfig]
+    let chosen: UUID?
+    let footer: LocalizedStringKey
+    let choose: (UUID) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(servers) { s in
+                    Button {
+                        choose(s.id)
+                        dismiss()
+                    } label: {
+                        HStack {
+                            ServerRow(server: s)
+                            Spacer()
+                            if s.id == chosen {
+                                Image(systemName: "checkmark").font(.body.weight(.semibold)).foregroundStyle(Palette.text)
+                            }
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(s.id == chosen ? .isSelected : [])
+                }
+            } footer: {
+                SettingsFooter(footer)
+            }
+            .surfaceRows()
+        }
+        .screenBackground()
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// A server in a list: its icon, name, and what kind of server it is in words ("Homelab API · lab.ts.net",
+/// "Demo · example data").
 struct ServerRow: View {
     let server: ServerConfig
-    let selected: Bool
 
     var body: some View {
         HStack {
-            Image(systemName: icon).foregroundStyle(Palette.text).frame(width: 26)
+            Image(systemName: icon).foregroundStyle(Palette.text).frame(width: 26).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(server.name)
-                Text(server.kind == .demo ? String(localized: "Demo") : server.host)
-                    .font(.footnote)
+                Text(verbatim: server.name)
+                Text(verbatim: detail)
+                    .font(Typo.secondary)
                     .foregroundStyle(Palette.secondary)
             }
-            Spacer()
-            if selected { Image(systemName: "checkmark").foregroundStyle(Palette.text).accessibilityLabel(Text("Shown")) }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var detail: String {
+        switch server.kind {
+        case .companion: String(localized: "Homelab API") + " · " + server.host
+        case .homeAssistant: String(localized: "Home Assistant") + " · " + server.host
+        case .demo: server.isDemoHomeAssistant ? String(localized: "Demo Home Assistant · example data")
+                                               : String(localized: "Demo · example data")
         }
     }
 
@@ -275,6 +349,13 @@ struct ServerEditor: View {
     }
 
     private var urlResult: Result<URL, URLPolicy.Problem> { URLPolicy.serverURL(address) }
+    /// A token over plain http to an address outside this phone and the tailnet: an error, Save stays off (the
+    /// clients would refuse the server with the same text).
+    private var tokenProblem: String? {
+        guard case .success(let url) = urlResult else { return nil }
+        return ServerConfig.tokenTransportProblem(kind: kind, auth: kind == .homeAssistant ? .token : auth, url: url)
+    }
+    private var canSave: Bool { (try? urlResult.get()) != nil && tokenProblem == nil }
     private var needsToken: Bool { kind == .homeAssistant || auth == .token }
     private var isDemo: Bool { original?.kind == .demo }
 
@@ -304,6 +385,8 @@ struct ServerEditor: View {
                                 .autocorrectionDisabled()
                             if case .failure(let p) = urlResult, !address.isEmpty {
                                 Label(URLPolicy.message(p), systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(Palette.love)
+                            } else if let tokenProblem {
+                                Label(tokenProblem, systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(Palette.love)
                             } else if case .success(let url) = urlResult, url.scheme == "http" {
                                 Label("Plain http: only use this inside your home network or tailnet.", systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Palette.gold)
                             }
@@ -348,7 +431,7 @@ struct ServerEditor: View {
                                     if testing { ProgressView() }
                                 }
                             }
-                            .disabled(testing || (try? urlResult.get()) == nil)
+                            .disabled(testing || !canSave)
                             if let testResult {
                                 switch testResult {
                                 case .success(let text): Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.text)
@@ -383,7 +466,7 @@ struct ServerEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 if !isDemo {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { save() }.disabled((try? urlResult.get()) == nil)
+                        Button("Save") { save() }.disabled(!canSave)
                     }
                 }
             }
@@ -412,7 +495,7 @@ struct ServerEditor: View {
 
     /// Uses the typed token (or the stored one) without saving anything yet.
     private func test() async {
-        guard let c = config() else { return }
+        guard let c = config(), tokenProblem == nil else { return }
         testing = true
         testResult = nil   // a repeated result is announced again
         defer { testing = false }
@@ -443,7 +526,7 @@ struct ServerEditor: View {
     }
 
     private func save() {
-        guard let c = config() else { return }
+        guard let c = config(), tokenProblem == nil else { return }
         let typed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         if (c.kind == .homeAssistant || c.auth == .token) && typed.isEmpty && !storedTokenUsable {
             saveError = String(localized: "Enter the token first.")
