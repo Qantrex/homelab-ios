@@ -178,7 +178,12 @@ public final class AppModel {
         self.transport = transport
         let args = LaunchArguments(arguments)
         if args.reset { Self.wipe(storage: storage, tokens: tokens) }
+        // No server list at all (first launch, or the app was deleted and installed again): Keychain items outlive
+        // the app, so tokens of servers nobody can see any more would still be there. Wipe them. A list that exists
+        // but can't be read (before the first unlock) is not "missing".
+        if !FileManager.default.fileExists(atPath: storage.url(ServerList.fileName).path) { tokens.removeAll() }
         servers = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
+        Self.removeSharedImages(in: storage.url("images"))
         settings = storage.read(AppSettings.self, AppSettings.fileName) ?? AppSettings()
         for s in servers.servers where s.speaksCompanionAPI {
             status[s.id] = ServerStatus(snapshot: storage.read(Snapshot.self, Snapshot.fileName(s.id)))
@@ -342,6 +347,7 @@ public final class AppModel {
             storage.remove(Snapshot.fileName(server.id))
             status[server.id] = server.speaksCompanionAPI ? ServerStatus() : nil
             restarted[server.id] = nil
+            removeImages(server.id)   // the old server's pictures aren't this one's
         }
         loaders[server.id] = nil   // a new address or token: the loader asks with the old ones
         saveServers()
@@ -355,7 +361,7 @@ public final class AppModel {
         servers.remove(id)
         status[id] = nil
         restarted[id] = nil
-        loaders[id] = nil
+        removeImages(id)
         refreshAgain.remove(id)
         saveServers()
         writeWidgetSnapshot()
@@ -395,6 +401,7 @@ public final class AppModel {
         status = [:]
         settings = AppSettings()
         demo = nil
+        loaders = [:]
         refreshAgain = []
         tab = .today
         dropRequests()
@@ -429,9 +436,27 @@ public final class AppModel {
     /// host, cached in memory and in `images` next to the other app files (30 days, 20 MB).
     public func imageLoader(for server: ServerConfig) -> ImageLoader {
         if let l = loaders[server.id] { return l }
-        let l = ImageLoader(api: companion(for: server), scope: server.id.uuidString, directory: storage.url("images"))
+        let l = ImageLoader(api: companion(for: server), scope: server.id.uuidString, directory: imageDirectory(server.id))
         loaders[server.id] = l
         return l
+    }
+
+    /// One folder per server (`images/<id>`), so removing a server or changing its address removes its pictures.
+    func imageDirectory(_ id: UUID) -> URL {
+        storage.url("images").appendingPathComponent(id.uuidString, isDirectory: true)
+    }
+
+    /// Pictures of the first version with posters lay in `images` itself, for all servers together: removed (they come
+    /// back into the server's own folder when shown again).
+    static func removeSharedImages(in directory: URL) {
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        for f in files where f.pathExtension == "img" { try? FileManager.default.removeItem(at: f) }
+    }
+
+    /// Forgets a server's pictures: the loader (memory) and its folder (disk).
+    func removeImages(_ id: UUID) {
+        loaders[id] = nil
+        try? FileManager.default.removeItem(at: imageDirectory(id))
     }
 
     /// `GET /search?q=` on the selected server (feature `search`).
