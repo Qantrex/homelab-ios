@@ -239,7 +239,7 @@ struct DayView: View {
                     Text(detail(stop, line)).font(.caption).lineLimit(1)
                     Text(rest(line)).font(Typo.data(.caption2)).foregroundStyle(.secondary).lineLimit(1)
                 } else {
-                    Text("Today").font(.headline)
+                    Text(line?.isTomorrow == true ? "Tomorrow" : "Today").font(.headline)
                     Text(empty).font(.caption).lineLimit(2)
                 }
             }
@@ -259,7 +259,7 @@ struct DayView: View {
 
     private var small: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Meta(entry.dateLine)
+            Meta(line?.isTomorrow == true ? String(localized: "Tomorrow") : entry.dateLine)
             Spacer(minLength: 0)
             if let stop = focus, let line {
                 Text(stop.item.title ?? "").font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary).lineLimit(1)
@@ -286,7 +286,7 @@ struct DayView: View {
     private var medium: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(card?.title ?? String(localized: "Today")).font(.headline).foregroundStyle(Palette.text).lineLimit(1)
+                Text(card?.title ?? String(localized: line?.isTomorrow == true ? "Tomorrow" : "Today")).font(.headline).foregroundStyle(Palette.text).lineLimit(1)
                 Meta(entry.dateLine)
                 Spacer(minLength: 4)
                 Meta(entry.age, color: Palette.tertiary)

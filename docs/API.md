@@ -206,6 +206,11 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 | You send | Today shows |
 |---|---|
 | A card with `id: "today"` (else the first `metrics` card) | The day under the headline. Items whose `value` is a clock time (`"06:20"`, `"7:05"`) become stops on a line through the day, in time order (not your order); the line fills up to now, past stops fade, the next one shows a countdown ("in 26 min"). Items without a clock time (`"?"`, `"too late"`, no value) are notes under the line. No clock times at all: the values in big numbers. No items: the card's `text` |
+| `date` on a card (`"2026-11-07"`) | The day the card is about. On the `today` card: when it is the day after the phone's today, the card is **tomorrow's**: the header says "Tomorrow" (the card's `title`), no stop is past, nothing is filled, and the first stop counts down ("in 10 h 20 min"). Same for the Day widget. Missing, not a plain day, today or an old day: the normal day line |
+| `cancelled: true` on an item | Struck through and grey (title, subtitle, value). A lesson that falls out |
+| A `list` card with `id: "lessons"` | A row with a `tint` (`orange`) and not cancelled gets a gold dot in front: a substitution or room change (put the change in the subtitle). The time range goes in `value` |
+| A card with `id: "weather"` | Drawn like any card (use `metrics`). Its `subtitle` (one plain line, "Rain from 15:00, take an umbrella") also shows under the headline's facts line in Standard and Overkill, not in Calm. No location in it |
+| Cards `briefing` (`text`), `grades` (`list`), `deadlines` | Conventions of the reference server, drawn by their style. A `text` card is Markdown |
 | `progress` (0–1) on a `list` item | A ring with the percent in front of the row (a check mark at 1) |
 | `tint` on an item | Warm tints (`orange`, `yellow`) are gold, `red` is love, `purple`/`pink` iris, the rest grey. Use it for status, not decoration |
 | `style: "checklist"` | To-dos: a circle per item (filled when `done: true`), the title, the subtitle and `due` as a short day or time ("today 18:00", "tomorrow", "Mon", "13.11."). Tapping the circle of an item with an `action` asks once ("Tick off Milk?"), then runs it |

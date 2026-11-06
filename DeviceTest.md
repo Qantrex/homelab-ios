@@ -54,6 +54,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | O10 | Checklist card | To-dos: a circle per item, done items struck through and grey, the due day on the right (gold today, love when overdue). Tap a circle → "Tick off Milk?" → Tick off → a spinner in the circle, success haptic, the item is ticked at once and stays ticked (not tappable) until the server's list drops it (HA too, up to 3 min). A to-do with double spaces in its text ticks off too. Items without an action, or a server without `run-actions`: the circle does nothing. With nothing open: "Nothing open." and the Add button | | |
 | O11 | Card button | To-dos "+ ADD" → the Add a to-do form. List: the card's list when the server sends one in the card action's `payload` (`{"list": "todo"}`), else "–" (pick one); both are fine → Run → sheet closes, alert with the agent's answer | | |
 | O12 | Countdown card | Deadlines soonest first, the big value on the right: gold "today" / "5 h", love "3 d ago", grey "4 d" | | |
+| O12b | Lessons card | Cancelled lessons struck through and grey, substitutions / room changes with a gold dot and a gold time, the change in the subtitle. VoiceOver says "cancelled" / "changed" | | |
+| O12c | Weather line | Standard / Overkill: under "Checked 2 min ago" one grey line with the weather card's subtitle ("Rain from 15:00, take an umbrella"); Calm: no such line, only the card | | |
 | O13 | Services | Service buttons are grouped and open the right page in Safari | | |
 | O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
 | O15 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
@@ -133,6 +135,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | W5 | Tap opens the right tab | Status with pending actions → Actions. Status without, day, rectangular → Today. Hosts (medium, large) → Lab | | |
 | W6 | Stale data marked | Tailscale off, wait 15+ min: "Data is old" and a grey question mark, not a green check | | |
 | W7 | Day | "Homelab day" small: next stop big with "in N min", the line as dots; medium: every stop like on Today; lock screen rectangular and inline: next stop and countdown. The countdown moves on its own within a few minutes; after the last stop it says "passed". App lock on: "Open the app" | | |
+| W7b | Tomorrow | After the last lesson (server: the today card has tomorrow's `date`): Today's day card says "Tomorrow", the first stop (wake-up) is bright with "in 10 h 20 min", no stop is grey, the line is empty. Day widget small shows "Tomorrow" and the same countdown; after midnight it is the normal day again | | |
 
 ## Background and notifications
 

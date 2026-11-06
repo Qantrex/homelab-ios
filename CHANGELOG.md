@@ -6,6 +6,9 @@ First release.
 
 App:
 
+- Your whole day: in the evening the "today" card can be tomorrow's (`date`): header "Tomorrow", countdown to the
+  first stop, also in the Day widget. Cancelled lessons (`cancelled`) are struck through, substitutions get a gold dot,
+  the weather card's line sits under the headline's facts.
 - Today: a mood headline on top (calm when all is fine, gold or love with a glow and a haptic when not), the server's
   "today" card as a day line (clock times in order, filled up to now, countdown to the next stop), actions waiting,
   pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Calm,

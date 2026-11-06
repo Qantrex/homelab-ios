@@ -26,15 +26,21 @@ public struct DayTimeline: Equatable, Sendable {
     public var notes: [Card.Item]
     /// The card's text when it has no items ("No school today: autumn holidays.").
     public var text: String?
-    /// Minutes since midnight, now.
+    /// Minutes since midnight, now. In tomorrow mode: negative, the minutes since tomorrow's midnight (-600 = 14:00
+    /// today), so every stop is ahead and the countdown is `minute - now`.
     public var now: Int
+    /// The card is about tomorrow (its `date` is the day after `now`'s day): no stop is past, nothing is filled, the
+    /// countdown runs to the first stop.
+    public var isTomorrow: Bool
 
     /// More stops than this don't fit side by side on a phone; the view lays them out top to bottom instead.
     public static let maxAcross = 4
 
     public init(card: Card, now: Date = Date(), calendar: Calendar = .current) {
         let c = calendar.dateComponents([.hour, .minute], from: now)
-        let nowMinute = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        let today = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        let tomorrow = Self.isTomorrow(card.date, now: now, calendar: calendar)
+        let nowMinute = tomorrow ? today - 24 * 60 : today
         var timed: [(item: Card.Item, minute: Int)] = []
         var notes: [Card.Item] = []
         for item in card.items {
@@ -49,6 +55,14 @@ public struct DayTimeline: Equatable, Sendable {
         self.notes = notes
         text = card.items.isEmpty ? card.text : nil
         self.now = nowMinute
+        isTomorrow = tomorrow
+    }
+
+    /// `date` ('2026-11-07') is the calendar day after `now`'s day. Nil or unreadable: no.
+    public static func isTomorrow(_ date: String?, now: Date, calendar: Calendar = .current) -> Bool {
+        guard let date, Card.Item.isPlainDay(date), let next = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) else { return false }
+        let d = calendar.dateComponents([.year, .month, .day], from: next)
+        return date.trimmingCharacters(in: .whitespaces) == String(format: "%04d-%02d-%02d", d.year ?? 0, d.month ?? 0, d.day ?? 0)
     }
 
     /// "6:20" or "06:20" → 380. Anything else (an empty value, "?", "too late", "25:00") → nil.
@@ -87,10 +101,10 @@ public struct DayTimeline: Equatable, Sendable {
             let line = DayTimeline(card: card, now: now, calendar: calendar)
             let future = line.stops.filter { $0.phase != .past }
             let minute = calendar.dateInterval(of: .minute, for: now)?.start ?? now
-            if let last = future.last {
+            if !line.isTomorrow, let last = future.last {
                 for i in 0..<min(last.minute - line.now, 60) { dates.insert(minute.addingTimeInterval(Double(i + 1) * 60)) }
             }
-            for stop in future {
+            for stop in future where !line.isTomorrow {
                 if let at = calendar.date(bySettingHour: stop.minute / 60, minute: stop.minute % 60, second: 0, of: now) {
                     dates.insert(at.addingTimeInterval(60))
                 }

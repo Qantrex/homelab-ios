@@ -117,6 +117,10 @@ struct TodayView: View {
                         .padding(.top, 8)
                 }
                 Text(facts).font(.footnote).foregroundStyle(Palette.tertiary).padding(.top, 12)
+                // The weather card's one line ("Rain from 15:00, take an umbrella"); Calm shows only the card.
+                if density != .calm, let weather {
+                    Text(weather).font(.footnote).foregroundStyle(Palette.secondary).lineLimit(1).padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 28)
@@ -155,6 +159,11 @@ struct TodayView: View {
 
     private var dateLine: String {
         Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
+    /// The `weather` card's subtitle, when there is one.
+    private var weather: String? {
+        state?.cards.first { $0.id == "weather" }?.subtitle.flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// "DEMO HOMELAB · CHECKED 2 MIN AGO"
@@ -286,6 +295,9 @@ struct DaySection: View {
         TimelineView(.everyMinute) { context in
             let line = DayTimeline(card: card, now: context.date)
             VStack(alignment: .leading, spacing: 16) {
+                if line.isTomorrow {
+                    Text(card.title ?? String(localized: "Tomorrow")).font(.headline).foregroundStyle(Palette.text)
+                }
                 if line.stops.isEmpty {
                     if let text = line.text {
                         Text(markdown(text)).font(.body).foregroundStyle(Palette.text)
@@ -303,7 +315,7 @@ struct DaySection: View {
             .panel()
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(card.title ?? String(localized: "Today")))
+        .accessibilityLabel(Text(card.title ?? String(localized: DayTimeline.isTomorrow(card.date, now: Date()) ? "Tomorrow" : "Today")))
     }
 
     /// Side by side: equal columns, each with its piece of the line on top (shared with the Day widget).

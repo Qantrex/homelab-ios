@@ -1,0 +1,152 @@
+{
+ "time": "2026-11-04T21:30:00",
+ "status": "ok",
+ "checked": "2026-11-04T21:28:00",
+ "problems": [],
+ "hosts": [
+  {
+   "id": "nas",
+   "name": "nas",
+   "kind": "nas",
+   "reachable": true,
+   "checked": "2026-11-04T21:28:00",
+   "load": 0.42,
+   "cpu_count": 4,
+   "mem_pct": 38,
+   "temp": 41.5,
+   "disks": {
+    "/": 31,
+    "/srv/media": 64
+   },
+   "containers": {
+    "up": 12,
+    "total": 12
+   },
+   "updates": {
+    "upgradable": 0,
+    "reboot_required": false
+   },
+   "backup": {
+    "last": "2026-11-04T04:45:10",
+    "result": "success"
+   },
+   "flags": []
+  },
+  {
+   "id": "pi",
+   "name": "pi",
+   "kind": "raspberry-pi",
+   "reachable": true,
+   "checked": "2026-11-04T21:28:00",
+   "load": 0.9,
+   "cpu_count": 4,
+   "mem_pct": 55,
+   "temp": 52.0,
+   "disks": {
+    "/": 47
+   },
+   "containers": {
+    "up": 8,
+    "total": 8
+   },
+   "updates": {
+    "upgradable": 3,
+    "reboot_required": false
+   },
+   "flags": []
+  }
+ ],
+ "pending": [],
+ "cards": [
+  {
+   "id": "today",
+   "title": "Tomorrow",
+   "icon": "sun.max",
+   "tint": "orange",
+   "style": "metrics",
+   "date": "2026-11-05",
+   "items": [
+    {
+     "title": "Wake-up",
+     "value": "06:20",
+     "subtitle": "one-off"
+    },
+    {
+     "title": "Leave by",
+     "value": "07:31",
+     "subtitle": "U6 07:36"
+    },
+    {
+     "title": "First lesson",
+     "value": "08:00"
+    },
+    {
+     "title": "Substitution",
+     "subtitle": "Network systems: Maier",
+     "tint": "orange"
+    }
+   ]
+  },
+  {
+   "id": "lessons",
+   "title": "Lessons",
+   "icon": "book",
+   "tint": "teal",
+   "style": "list",
+   "date": "2026-11-05",
+   "items": [
+    {
+     "title": "Maths",
+     "subtitle": "R 2.14 · Huber",
+     "value": "08:00–08:50"
+    },
+    {
+     "title": "Network systems",
+     "subtitle": "R 3.02 · Maier (for Gruber)",
+     "value": "09:00–09:50",
+     "tint": "orange"
+    },
+    {
+     "title": "English",
+     "subtitle": "R 1.07 · Smith",
+     "value": "10:00–10:50",
+     "cancelled": true
+    }
+   ]
+  },
+  {
+   "id": "weather",
+   "title": "Weather",
+   "icon": "cloud.sun",
+   "tint": "blue",
+   "style": "metrics",
+   "subtitle": "Dry, 3–8°C",
+   "items": [
+    {
+     "title": "Now",
+     "value": "5°C"
+    },
+    {
+     "title": "Tomorrow",
+     "value": "3–8°C"
+    }
+   ]
+  },
+  {
+   "id": "briefing",
+   "title": "Tomorrow at school",
+   "icon": "graduationcap",
+   "style": "text",
+   "text": "Three lessons, one **substitution** and **English is cancelled**."
+  }
+ ],
+ "busy": [],
+ "last_message": {
+  "id": 1762288000000000000,
+  "ts": "2026-11-04T06:00:00",
+  "from": "agent",
+  "job": "digest",
+  "status": "OK",
+  "text": "All hosts fine. Backups ran at 04:45."
+ }
+}
