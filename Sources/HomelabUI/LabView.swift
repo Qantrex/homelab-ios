@@ -209,7 +209,6 @@ struct LabView: View {
 /// in 17 semibold · severity word in 15 secondary · since when at the right in 13 tertiary.
 fileprivate struct ProblemRow: View {
     let problem: Problem
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -218,13 +217,12 @@ fileprivate struct ProblemRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(problem.text).font(Typo.headline).foregroundStyle(Palette.text)
                     .fixedSize(horizontal: false, vertical: true)
+                // The age shares the status line, so the problem's text keeps the row's full width (a right-hand
+                // "since 20 min ago" column squeezed it to three lines on a 5.4" phone).
                 Text(word).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                if typeSize.isAccessibilitySize, let age { Text(age).font(Typo.meta).foregroundStyle(Palette.tertiary) }
+                    + Text(age.map { " · \($0)" } ?? "").font(Typo.secondary).foregroundStyle(Palette.tertiary)
             }
             Spacer(minLength: 0)
-            if !typeSize.isAccessibilitySize, let age {
-                Text(age).font(Typo.meta).foregroundStyle(Palette.tertiary).padding(.top, 3)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

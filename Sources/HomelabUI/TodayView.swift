@@ -135,9 +135,10 @@ struct TodayView: View {
     private func factLine(_ m: TodayMood) -> Text {
         var t = Text(m.detail ?? "")
         if m.warnings > 0 {
-            if m.detail != nil { t = t + Text(" · ") }
+            // No-break spaces keep "⚠ 1 warning" together when the line wraps.
+            if m.detail != nil { t = t + Text(" ·\u{00A0}") }
             t = t + Text(Image(systemName: "exclamationmark.triangle.fill")).foregroundColor(Palette.gold)
-                + Text(m.warnings == 1 ? " 1 warning" : " \(m.warnings) warnings")
+                + Text(m.warnings == 1 ? "\u{00A0}1\u{00A0}warning" : "\u{00A0}\(m.warnings)\u{00A0}warnings")
         }
         return t
     }
