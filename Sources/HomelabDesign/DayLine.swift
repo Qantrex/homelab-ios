@@ -169,15 +169,16 @@ public struct DayStopLabel: View {
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .foregroundStyle(valueColor)
                 .contentTransition(.numericText())
-            Text(stop.item.title ?? "").textCase(.uppercase).font(Typo.mono(.caption2, weight: .medium))
-                .tracking(1).foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.secondary)
+            Text(stop.item.title ?? "")
+                .font(.subheadline.weight(stop.phase == .next ? .semibold : .regular))
+                .foregroundStyle(stop.phase == .past ? Palette.tertiary : stop.phase == .next ? Palette.text : Palette.secondary)
                 .lineLimit(1).minimumScaleFactor(0.8)
             if let s = stop.item.subtitle {
-                Text(s).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
+                Text(s).font(.footnote).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
             }
             if stop.phase == .next, let countdown {
-                Text(Format.countdown(minutes: countdown).uppercased())
-                    .font(Typo.mono(.caption2, weight: .bold)).foregroundStyle(Palette.text).lineLimit(1)
+                Text(Format.countdown(minutes: countdown))
+                    .font(.footnote.weight(.semibold)).foregroundStyle(Palette.text).lineLimit(1)
             }
         }
         .animation(.snappy, value: stop)
