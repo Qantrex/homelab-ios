@@ -36,7 +36,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         // The 24 h history ends now, so its last point is the current value.
         state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); h.history?.end = now; return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
-        func card(_ c: Card) -> Card { Self.shiftDue(c, by: shift, days: days) }
+        func card(_ c: Card) -> Card { Self.clockDepartures(Self.shiftDue(c, by: shift, days: days)) }
         page.messages = page.messages.map { m in
             var m = m
             m.ts = s(m.ts)
@@ -49,6 +49,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             guard c.id == "today" else { return card(c) }
             var day = Self.demoDay(c, now: now); day.date = nil; return day
         }
+        state.commute = state.commute.map { Self.shiftCommute($0, by: shift) }
         // Lab shows the tailnet, ad blocking and backups cards of a server that has them.
         let labCards = Fixtures.decode(HomelabState.self, "state-lab-cards.json")?.cards.filter { $0.place == .lab } ?? []
         state.cards += labCards.filter { lab in !state.cards.contains { $0.id == lab.id } }.map { lab in
@@ -63,6 +64,24 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         self.page = page
         entities = Fixtures.decode([Lossy<HAEntity>].self, "ha-states.json")?.compactMap(\.value) ?? []
         self.delay = delay
+    }
+
+    /// A departures card's clock texts follow its (moved) times.
+    static func clockDepartures(_ card: Card) -> Card {
+        guard card.style == .departures else { return card }
+        var card = card
+        card.items = card.items.map { var i = $0; if let d = i.due { i.value = DepartureBoard.clock(d) }; return i }
+        return card
+    }
+
+    /// The commute moves with the other fixture times and belongs to today (the day of the leave-by time).
+    static func shiftCommute(_ plan: CommutePlan, by interval: TimeInterval, calendar: Calendar = .current) -> CommutePlan {
+        var p = plan
+        func s(_ d: Date?) -> Date? { d?.addingTimeInterval(interval) }
+        p.firstLesson = s(p.firstLesson); p.leaveBy = s(p.leaveBy); p.train = s(p.train); p.next = s(p.next)
+        p.updated = s(p.updated)
+        if let day = p.leaveBy { p.date = CommutePlan.dayString(day, calendar: calendar) }
+        return p
     }
 
     /// Whole calendar days between two times (for moving day-only dues, which must stay on midnight).

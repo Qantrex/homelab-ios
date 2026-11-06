@@ -171,7 +171,83 @@ struct CardView: View {
             TimelineView(.everyMinute) { context in
                 rows(card.sortedForCountdown) { countdownRow($0, now: context.date) }
             }
+        case .departures:
+            departures
         }
+    }
+
+    // MARK: Departures
+
+    /// Per direction a row: the direction and the next time, the stop and the ones after. Trains that have left drop
+    /// out every minute. A disruption is a gold triangle with its words (never colour alone).
+    private var departures: some View {
+        let board = DepartureBoard(card: card)
+        return TimelineView(.everyMinute) { context in
+            let up = board.upcoming(now: context.date)
+            VStack(alignment: .leading, spacing: compact ? 8 : 12) {
+                if up.isEmpty {
+                    Text(card.items.isEmpty ? String(localized: "No departures.") : String(localized: "No more departures soon."))
+                        .font(compact ? .footnote : .body).foregroundStyle(Palette.secondary)
+                }
+                ForEach(Array(up.groups.enumerated()), id: \.offset) { i, group in
+                    if i > 0, !compact { TodaySeparator() }
+                    departureRow(group)
+                }
+                if let text = board.disruption {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold).accessibilityHidden(true)
+                        Text(text).foregroundStyle(Palette.text)
+                    }
+                    .font(compact ? .footnote : .subheadline)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(Text("Disruption: \(text)"))
+                }
+            }
+        }
+    }
+
+    private func departureRow(_ group: DepartureBoard.Group) -> some View {
+        let first = group.departures[0]
+        let later = Array(group.departures.dropFirst().prefix(3))
+        let stop = [group.stop, first.planned ? String(localized: "planned") : nil].compactMap { $0 }.joined(separator: " · ")
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+        return VStack(alignment: .leading, spacing: 2) {
+            layout {
+                Text(group.towards).font(compact ? .footnote : .body).foregroundStyle(Palette.text).lineLimit(2)
+                if !stacked { Spacer(minLength: 8) }
+                departureTime(first, color: Palette.text, weight: .semibold)
+            }
+            layout {
+                Text(stop).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(1)
+                if !stacked { Spacer(minLength: 8) }
+                HStack(spacing: 10) {
+                    ForEach(Array(later.enumerated()), id: \.offset) { _, d in departureTime(d, color: Palette.secondary, weight: .regular) }
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(Self.spoken(group)))
+    }
+
+    /// "20:54" in the data font, with a gold "+3" when it runs late.
+    private func departureTime(_ d: DepartureBoard.Departure, color: Color, weight: Font.Weight) -> some View {
+        HStack(spacing: 3) {
+            Text(DepartureBoard.clock(d.due)).font(Typo.data(compact ? .footnote : .subheadline, weight: weight)).foregroundStyle(color)
+            if d.late {
+                Text(d.delay.map { "+\($0)" } ?? String(localized: "late")).font(Typo.data(.caption, weight: .semibold)).foregroundStyle(Palette.gold)
+            }
+        }
+        .lineLimit(1)
+    }
+
+    /// "Floridsdorf from Erlaaer Straße: 20:54, then 20:59 (3 minutes late), 21:04".
+    static func spoken(_ group: DepartureBoard.Group) -> String {
+        let times = group.departures.prefix(4).enumerated().map { i, d -> String in
+            let late = d.late ? (d.delay.map { String(localized: ", \($0) minutes late") } ?? String(localized: ", late")) : ""
+            return (i == 0 ? "" : String(localized: "then ")) + DepartureBoard.clock(d.due) + late
+        }
+        let from = group.stop.map { String(localized: " from \($0)") } ?? ""
+        return "\(group.towards)\(from): " + times.joined(separator: ", ")
     }
 
     /// The rows of a list-like card; its `text` when it has no items ("Nothing open."). A chat bubble shows the

@@ -27,7 +27,9 @@ above always points at the newest release.
 
 Slots: a free Apple ID allows 3 active sideloaded apps, and SideStore is one of them. The Homelab widget and the
 share extension don't take a slot, so SideStore + Homelab = 2 of 3. Each install also uses **3** of the 10 App IDs a
-free account may create per week (app + widget + share extension). Installing from Linux with `xtool dev` and
+free account may create per week (app + widget + share extension). The U6, deadlines and to-do widgets and the
+"Leave by" Live Activity all live in the existing widget extension, and the Live Activity needs no entitlement, so
+there is **no fourth App ID**. Installing from Linux with `xtool dev` and
 installing with SideStore each register their own set, so switching between the two in one week costs 3 more.
 
 ## 3. The 7-day refresh

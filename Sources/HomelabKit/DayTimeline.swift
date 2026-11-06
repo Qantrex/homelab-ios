@@ -114,6 +114,25 @@ public struct DayTimeline: Equatable, Sendable {
 
     public var next: Stop? { stops.first { $0.phase == .next } }
 
+    /// The countdown as text ("in 26 min"). `coarse`: whole hours while an hour or more is left ("in 10 h"), for
+    /// widgets in tomorrow mode, which can't redraw every minute and must not show minutes that are already gone.
+    public static func countdownText(minutes: Int, coarse: Bool = false) -> String {
+        Format.countdown(minutes: coarse && minutes >= 60 ? minutes / 60 * 60 : minutes)
+    }
+
+    /// The next stop's countdown for a widget: whole hours in tomorrow mode (see `countdownText`).
+    public var widgetCountdown: String? {
+        minutesToNext.map { Self.countdownText(minutes: $0, coarse: isTomorrow) }
+    }
+
+    /// "2026-11-07" as that day (start of day in `calendar`); nil when it isn't a plain day.
+    public static func plainDay(_ text: String?, calendar: Calendar = .current) -> Date? {
+        guard let text, Card.Item.isPlainDay(text) else { return nil }
+        let parts = text.trimmingCharacters(in: .whitespaces).split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+    }
+
     /// Minutes until the next stop; nil once the day's stops are over.
     public var minutesToNext: Int? { next == nil ? nil : toNext }
 
@@ -140,6 +159,12 @@ public struct DayTimeline: Equatable, Sendable {
             let minute = calendar.dateInterval(of: .minute, for: now)?.start ?? now
             if !line.isTomorrow, let last = future.last {
                 for i in 0..<min(last.minute - line.now, 60) { dates.insert(minute.addingTimeInterval(Double(i + 1) * 60)) }
+            }
+            // Tomorrow mode shows whole hours ("in 10 h", `widgetCountdown`): redraw when the hour count drops, and
+            // every minute in the last hour before the first stop.
+            if line.isTomorrow, let m = line.minutesToNext, m > 0 {
+                for k in stride(from: m / 60, through: 1, by: -1) { dates.insert(minute.addingTimeInterval(Double(m - 60 * k) * 60)) }
+                for r in 1..<min(m + 1, 60) { dates.insert(minute.addingTimeInterval(Double(m - r) * 60)) }
             }
             for stop in future where !line.isTomorrow {
                 if let at = calendar.date(bySettingHour: stop.minute / 60, minute: stop.minute % 60, second: 0, of: now) {

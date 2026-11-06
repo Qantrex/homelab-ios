@@ -48,6 +48,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var density: Density?
     /// Off, Dry, Snarky or Ultrakill; nil = Off.
     public var personality: Personality?
+    /// The "Leave by" Live Activity on school mornings; nil = on.
+    public var leaveActivity: Bool?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -55,6 +57,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var todayDensity: Density {
         get { density ?? .standard }
         set { density = newValue == .standard ? nil : newValue }
+    }
+
+    /// The Settings toggle "Leave-by on the lock screen" (default on).
+    public var leaveByOn: Bool {
+        get { leaveActivity ?? true }
+        set { leaveActivity = newValue ? nil : false }
     }
 
     public var voice: Personality {

@@ -43,13 +43,19 @@ public struct URLSessionTransport: HTTPTransport {
     public static let defaultSession: URLSession = makeSession(resourceTimeout: 150)
     public static let uploadSession: URLSession = makeSession(resourceTimeout: 900)
 
-    static func makeSession(resourceTimeout: TimeInterval) -> URLSession {
+    /// For widgets: an extension has a few seconds, and an off tailnet must not hang it. 8 s for the request and the
+    /// whole transfer, answers up to 2 MB (`/state` is about 11 KB), still no redirects, cookies or cache.
+    public static let widget = URLSessionTransport(session: makeSession(resourceTimeout: 8, requestTimeout: 8),
+                                                   uploadSession: makeSession(resourceTimeout: 8, requestTimeout: 8),
+                                                   maxBytes: 2 * 1024 * 1024)
+
+    static func makeSession(resourceTimeout: TimeInterval, requestTimeout: TimeInterval = 20) -> URLSession {
         let c = URLSessionConfiguration.ephemeral
         c.httpCookieAcceptPolicy = .never
         c.httpShouldSetCookies = false
         c.urlCache = nil
         c.requestCachePolicy = .reloadIgnoringLocalCacheData
-        c.timeoutIntervalForRequest = 20
+        c.timeoutIntervalForRequest = requestTimeout
         c.timeoutIntervalForResource = resourceTimeout
         #if canImport(Darwin)
         c.waitsForConnectivity = false   // fail fast: the UI shows "is Tailscale on?"

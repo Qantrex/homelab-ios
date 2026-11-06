@@ -28,6 +28,14 @@ struct HomelabApp: App {
         .onChange(of: scenePhase) { _, phase in
             // Always: the widget and the cached overview profit even when notifications are off.
             if phase == .background, model.selected != nil { BackgroundRefresh.schedule() }
+            // The "Leave by" activity starts only in the foreground (iOS refuses it from the background).
+            if phase == .active { Task { await model.syncLeaveActivity() } }
+        }
+        .onChange(of: model.selectedStatus.snapshot?.fetched) { _, _ in
+            if scenePhase == .active { Task { await model.syncLeaveActivity() } }
+        }
+        .onChange(of: model.settings.leaveByOn) { _, _ in
+            Task { await model.syncLeaveActivity() }
         }
         .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
             await BackgroundRefresh.run()

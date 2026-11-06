@@ -141,7 +141,7 @@ passwords in the URL are refused.
 | `Sources/HomelabDesign` | Colours, symbols and small shared views for app and widget | no |
 | `Sources/HomelabUI` | The SwiftUI screens, `AppModel`, Keychain token store, background refresh, Face ID lock | no |
 | `Sources/Homelab` | The `@main` app: scene, deep links, notification taps, background task | no |
-| `Sources/HomelabWidget` | The WidgetKit extension (status and hosts widgets, static configuration only) | no |
+| `Sources/HomelabWidget` | The WidgetKit extension (status, day, hosts, U6, deadlines and to-do widgets and the Live Activity, static configuration only; no App Intents) | no |
 | `Tests/HomelabKitTests` | Swift Testing tests for HomelabKit, plus integration tests against the fixture server | yes |
 | `server/` | `openapi.yaml` (the API), `reference_server.py`, its tests, `config.example.json` | – |
 | `scripts/` | Build, install, test, lint, screenshot and release helpers | – |

@@ -54,11 +54,14 @@ public struct DayLineAcross: View {
     /// The quiet track under Today's "Leave by" statement: small times, no countdown or subtitle (they are in the
     /// statement above). The widget keeps the full labels.
     let compact: Bool
+    /// Whole hours in tomorrow mode, for widgets that don't redraw every minute.
+    let coarse: Bool
 
-    public init(line: DayTimeline, valueSize: CGFloat? = nil, compact: Bool = false) {
+    public init(line: DayTimeline, valueSize: CGFloat? = nil, compact: Bool = false, coarse: Bool = false) {
         self.line = line
         self.valueSize = valueSize
         self.compact = compact
+        self.coarse = coarse
     }
 
     public var body: some View {
@@ -68,7 +71,8 @@ public struct DayLineAcross: View {
                     DayRail(phase: stop.phase, fill: line.fill(after: i), axis: .horizontal)
                         .frame(height: 18)
                     DayStopLabel(stop: stop, countdown: compact ? nil : line.minutesToNext,
-                                 valueSize: compact ? 15 : valueSize, compact: compact)
+                                 valueSize: compact ? 15 : valueSize, compact: compact,
+                                 coarse: coarse && line.isTomorrow)
                         .padding(.trailing, 8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -153,12 +157,15 @@ public struct DayStopLabel: View {
     let countdown: Int?
     let valueSize: CGFloat?
     let compact: Bool
+    let coarse: Bool
 
-    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat? = nil, compact: Bool = false) {
+    public init(stop: DayTimeline.Stop, countdown: Int?, valueSize: CGFloat? = nil, compact: Bool = false,
+                coarse: Bool = false) {
         self.stop = stop
         self.countdown = countdown
         self.valueSize = valueSize
         self.compact = compact
+        self.coarse = coarse
     }
 
     private var valueColor: Color {
@@ -184,7 +191,7 @@ public struct DayStopLabel: View {
                 Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1).minimumScaleFactor(0.8)
             }
             if stop.phase == .next, let countdown {
-                Text(Format.countdown(minutes: countdown))
+                Text(DayTimeline.countdownText(minutes: countdown, coarse: coarse))
                     .font(.footnote.weight(.semibold)).foregroundStyle(Palette.text).lineLimit(1)
             }
         }

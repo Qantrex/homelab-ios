@@ -390,6 +390,9 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         case checklist
         /// Items count down to their `due` ("2 d", "5 h", "today", "3 d ago"), soonest first (`sortedForCountdown`).
         case countdown
+        /// Public transport: items are departures, `title` the direction, `subtitle` the stop (with "+3 min" or
+        /// "planned"), `due` the time. `DepartureBoard` groups them. Older apps show it as `list`.
+        case departures
     }
 
     public struct Item: Codable, Sendable, Equatable, Hashable {
@@ -642,17 +645,21 @@ public struct HomelabState: Codable, Sendable, Equatable {
     public var cards: [Card]
     public var busy: [String]
     public var lastMessage: ChatMessage?
+    /// The way to school today (step 6c): leave-by, the train, disruptions. Nil when the server sends none, or sends
+    /// something unreadable.
+    public var commute: CommutePlan?
 
     public init(time: Date? = nil, status: OverallStatus = .unknown, checked: Date? = nil, problems: [Problem] = [],
                 hosts: [Host] = [], pending: [PendingAction] = [], cards: [Card] = [], busy: [String] = [],
-                lastMessage: ChatMessage? = nil) {
+                lastMessage: ChatMessage? = nil, commute: CommutePlan? = nil) {
         self.time = time; self.status = status; self.checked = checked; self.problems = problems; self.hosts = hosts
         self.pending = pending; self.cards = cards; self.busy = busy; self.lastMessage = lastMessage
+        self.commute = commute
     }
 
     enum CodingKeys: String, CodingKey {
         case time, status, checked, problems, hosts, pending, cards, busy
-        case lastMessage = "last_message"
+        case lastMessage = "last_message", commute
     }
 
     public init(from decoder: any Decoder) throws {
@@ -673,7 +680,8 @@ public struct HomelabState: Codable, Sendable, Equatable {
             if hosts.isEmpty && problems.isEmpty { status = .unknown }
         }
         self.init(time: c.date(.time), status: status, checked: c.date(.checked), problems: problems, hosts: hosts,
-                  pending: pending, cards: cards, busy: c.strings(.busy), lastMessage: c.lenient(ChatMessage.self, .lastMessage))
+                  pending: pending, cards: cards, busy: c.strings(.busy), lastMessage: c.lenient(ChatMessage.self, .lastMessage),
+                  commute: c.lenient(CommutePlan.self, .commute))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -687,6 +695,7 @@ public struct HomelabState: Codable, Sendable, Equatable {
         try c.encode(cards, forKey: .cards)
         try c.encode(busy, forKey: .busy)
         try c.encodeIfPresent(lastMessage, forKey: .lastMessage)
+        try c.encodeIfPresent(commute, forKey: .commute)
     }
 }
 
