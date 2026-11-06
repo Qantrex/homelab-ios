@@ -32,60 +32,30 @@ struct ActionsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let error = model.selectedStatus.error {
-                    ErrorBanner(error: error, snapshotAge: model.selectedStatus.snapshot?.fetched) {
-                        Task { await model.refresh() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    if let error = model.selectedStatus.error {
+                        ErrorBanner(error: error, snapshotAge: model.selectedStatus.snapshot?.fetched) {
+                            Task { await model.refresh() }
+                        }
                     }
-                    .cardRow()
-                }
-                if !startable.isEmpty || canScan {
-                    Section {
-                        if !startable.isEmpty {
-                            StartGrid(actions: startable) { formFor = $0 }
-                                .cardRow(top: 4)
-                        }
-                        if canScan {
-                            ScanStartRow(waiting: model.outboxCount) { scanning = true }
-                                .cardRow(top: startable.isEmpty ? 4 : 0)
-                        }
-                        if !model.outboxDropped.isEmpty {
-                            NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
-                                .cardRow()
-                        }
-                    } header: {
-                        SectionTitle(text: "Start").textCase(nil).sectionHeaderInsets()
-                    }
-                }
-                if approves {
-                    Section {
-                        // With Start tiles above or an error banner, the empty state is one quiet row: the full-screen
-                        // placeholder would cover them (it drew over the banner at XXL text, CI 2026-11-06).
-                        if pending.isEmpty, !startable.isEmpty || model.selectedStatus.error != nil,
-                           model.selectedStatus.snapshot != nil {
-                            Label { Text(nothingToApprove).font(.subheadline).foregroundStyle(Palette.secondary) }
-                                icon: { Image(systemName: "checkmark.shield").foregroundStyle(Palette.tertiary) }
-                                .card()
-                                .cardRow()
-                        }
-                        ForEach(pending) { action in
-                            ActionRow(action: action, running: model.proposalsSending.contains(action.id),
-                                      hasChat: model.selectedStatus.features.contains(.chat)) { verb in
-                                confirm = ProposalConfirmation(action: action, verb: verb)
+                    if !startable.isEmpty || canScan {
+                        VStack(alignment: .leading, spacing: 12) {
+                            SectionTitle(text: "Start")
+                            StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
+                                      showIds: model.settings.todayDensity == .overkill,
+                                      open: { formFor = $0 }, scan: { scanning = true })
+                            if !model.outboxDropped.isEmpty {
+                                NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
                             }
-                            .card()
-                            .cardRow()
-                        }
-                    } header: {
-                        if !startable.isEmpty {
-                            SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)")
-                                .textCase(nil)
-                                .sectionHeaderInsets()
                         }
                     }
+                    if approves { approveSection }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
             }
-            .listSectionSpacing(.compact)
             .screenBackground()
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
@@ -122,6 +92,37 @@ struct ActionsView: View {
         }
     }
 
+    /// "To approve": a title and one panel; the proposals inside are split by separators.
+    @ViewBuilder private var approveSection: some View {
+        let quiet = pending.isEmpty && (!startable.isEmpty || model.selectedStatus.error != nil)
+            && model.selectedStatus.snapshot != nil
+        // Without Start tiles and without an error the full-screen placeholder says it (it would cover this).
+        if !pending.isEmpty || quiet {
+            VStack(alignment: .leading, spacing: 12) {
+                if !startable.isEmpty {
+                    SectionTitle(text: "To approve", trailing: pending.isEmpty ? nil : "\(pending.count)")
+                }
+                if quiet {
+                    Label { Text(nothingToApprove).font(.subheadline).foregroundStyle(Palette.secondary) }
+                        icon: { Image(systemName: "checkmark.shield").foregroundStyle(Palette.tertiary) }
+                        .panel()
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(pending.enumerated()), id: \.element.id) { i, action in
+                            if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
+                            ActionRow(action: action, running: model.proposalsSending.contains(action.id),
+                                      hasChat: model.selectedStatus.features.contains(.chat)) { verb in
+                                confirm = ProposalConfirmation(action: action, verb: verb)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+        }
+    }
+
     /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
     private var openable: String {
         let s = model.selectedStatus
@@ -155,42 +156,38 @@ struct ActionRow: View {
     let tap: (PendingAction.Verb) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(action.title).font(Typo.mono(.headline, weight: .semibold))
-                Spacer()
-                if let created = action.created { Text(Format.age(created)).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary) }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(action.title).font(.headline).foregroundStyle(Palette.text)
+            if let reason = action.reason {
+                Text(markdown(reason)).font(.subheadline).foregroundStyle(Palette.secondary)
             }
-            if let reason = action.reason { Text(markdown(reason)).font(.subheadline).foregroundStyle(.secondary) }
-            HStack(spacing: 6) {
-                if let job = action.job { Chip(job, symbol: "gearshape.2") }
-                Chip(action.id, symbol: "number")
+            meta
+            Group {
+                if running {
+                    HStack(spacing: 8) { ProgressView(); Text("Running…").font(.subheadline).foregroundStyle(Palette.secondary) }
+                } else if action.buttons.isEmpty {
+                    Text(hasChat ? "The server offers no buttons for this action. Answer it in the chat."
+                                 : "The server offers no buttons for this action.")
+                        .font(.footnote).foregroundStyle(Palette.tertiary)
+                } else {
+                    ProposalButtons(action: action, tap: tap)
+                }
             }
-            if running {
-                HStack { ProgressView(); Text("Running…").font(.subheadline).foregroundStyle(.secondary) }
-            } else if action.buttons.isEmpty {
-                Text(hasChat ? "The server offers no buttons for this action. Answer it in the chat."
-                             : "The server offers no buttons for this action.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                ProposalButtons(action: action, tap: tap)
-            }
+            .padding(.top, 4)
         }
-    }
-}
-
-private extension View {
-    /// A list row that is a panel of its own (like Lab's cards): no system row background or separator, and the
-    /// same side margin for every row, so the Start grid and the cards below line up.
-    func cardRow(top: CGFloat = 5) -> some View {
-        listRowInsets(EdgeInsets(top: top, leading: 0, bottom: 5, trailing: 0))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
     }
 
-    /// A section title over card rows: aligned with the cards' edge, like Lab's titles.
-    func sectionHeaderInsets() -> some View {
-        listRowInsets(EdgeInsets(top: 8, leading: 2, bottom: 4, trailing: 2))
+    /// Job, id and age as one quiet line: ids in the data font, the rest plain.
+    @ViewBuilder private var meta: some View {
+        let parts = [action.job.map { Text($0) },
+                     Text(action.id).font(Typo.data(.footnote)),
+                     action.created.map { Text(Format.age($0)) }].compactMap { $0 }
+        if !parts.isEmpty {
+            parts.dropFirst().reduce(parts[0]) { $0 + Text(" · ") + $1 }
+                .font(.footnote).foregroundStyle(Palette.tertiary)
+        }
     }
 }
 
@@ -201,24 +198,27 @@ struct NotSentRow: View {
     let clear: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Label(items.count == 1 ? "1 item not sent" : "\(items.count) items not sent",
-                      systemImage: "exclamationmark.triangle")
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(Palette.love)
+                Label {
+                    Text(items.count == 1 ? "1 item not sent" : "\(items.count) items not sent")
+                        .font(.headline).foregroundStyle(Palette.text)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.love)
+                }
                 Spacer()
-                Button("Clear", action: clear).font(Typo.mono(.caption, weight: .semibold)).buttonStyle(.plain)
+                Button("Clear", action: clear).font(.subheadline.weight(.semibold)).buttonStyle(.plain)
                     .foregroundStyle(Palette.secondary)
             }
             ForEach(Array(items.suffix(5).enumerated()), id: \.offset) { _, d in
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(d.what).font(.subheadline).lineLimit(1)
-                    Text("\(Format.age(d.when)) · \(d.why)").font(Typo.mono(.caption2)).foregroundStyle(Palette.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(d.what).font(.subheadline).foregroundStyle(Palette.text).lineLimit(1)
+                    Text("\(Format.age(d.when)) · \(d.why)").font(.footnote).foregroundStyle(Palette.tertiary)
                         .lineLimit(2)
                 }
             }
         }
-        .card(accent: Palette.love)
+        .panel()
         .accessibilityElement(children: .combine)
     }
 }
