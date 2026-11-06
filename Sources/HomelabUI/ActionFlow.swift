@@ -134,7 +134,7 @@ struct ProposalButtons: View {
     private func buttons(spacer: Bool) -> some View {
         if action.buttons[.approve] != nil {
             // A filled button keeps white text whatever its colour; ours is white (dark mode), so set the text colour.
-            Button { tap(.approve) } label: { ButtonText(title: "Approve", symbol: "checkmark").foregroundStyle(Palette.onAccent) }
+            Button { tap(.approve) } label: { ButtonText(title: "Approve", symbol: nil).foregroundStyle(Palette.onAccent) }
                 .buttonStyle(.borderedProminent)
                 .fixedSize()
         }
@@ -145,8 +145,9 @@ struct ProposalButtons: View {
         }
         if spacer { Spacer(minLength: 8) }
         if action.buttons[.deny] != nil {
-            Button(role: .destructive) { tap(.deny) } label: { ButtonText(title: "Deny", symbol: "xmark") }
-                .buttonStyle(.bordered)
+            // A destructive text button: no fill, so the two others stay the loud ones.
+            Button(role: .destructive) { tap(.deny) } label: { ButtonText(title: "Deny", symbol: nil) }
+                .buttonStyle(.borderless)
                 .tint(Palette.love)
                 .fixedSize()
         }

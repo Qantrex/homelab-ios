@@ -2,54 +2,6 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-/// The "Scan" tile under the Start grid (only when the server has the feature `documents`). It looks like the Start
-/// tiles; a number in gold says how many scans or shares wait in the outbox.
-struct ScanStartRow: View {
-    let waiting: Int
-    let open: () -> Void
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .title3) private var iconRow: CGFloat = 26
-
-    var body: some View {
-        LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)]
-                                                        : [GridItem(.flexible(), spacing: 10, alignment: .top),
-                                                           GridItem(.flexible(), spacing: 10, alignment: .top)],
-                  spacing: 10) {
-            Button(action: open) { tile }
-                .buttonStyle(.press)
-                .accessibilityLabel(Text("Scan a document"))
-                .accessibilityValue(waiting > 0 ? Text("\(waiting) waiting to be sent") : Text(""))
-                .accessibilityHint(Text("Opens the camera and sends the PDF to Paperless."))
-        }
-    }
-
-    private var tile: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: "doc.viewfinder").font(.title3)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Palette.tertiary)
-            }
-            .frame(height: iconRow)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Scan a document").font(.subheadline.weight(.semibold)).lineLimit(2, reservesSpace: true)
-                    .multilineTextAlignment(.leading)
-                if waiting > 0 {
-                    Text("\(waiting) WAITING").font(Typo.mono(.caption2)).foregroundStyle(Palette.gold).lineLimit(1)
-                } else {
-                    Text("SCAN").font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
-                }
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
-        .foregroundStyle(Palette.text)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        .contentShape(RoundedRectangle(cornerRadius: 14))
-    }
-}
-
 /// Scan a document with the camera, check it, and send it to the server's Paperless inbox (`POST /documents`).
 /// Where the server can't be reached the PDF waits in the outbox and the app sends it later.
 struct ScanView: View {
@@ -83,7 +35,7 @@ struct ScanView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 24) {
                     switch phase {
                     case .idle: idle
                     case .making: progress("Making the PDF…")
@@ -91,7 +43,7 @@ struct ScanView: View {
                     case .sending(let bytes): progress("Sending \(Self.size(bytes))…")
                     }
                 }
-                .padding(20)
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(Palette.background)
@@ -162,16 +114,17 @@ struct ScanView: View {
     private func ready(pdf: Data, pages: Int, id: String) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 24) {
-                stat(String(pages), pages == 1 ? "PAGE" : "PAGES")
-                stat(Self.size(pdf.count), "SIZE")
+                stat(String(pages), pages == 1 ? "Page" : "Pages")
+                stat(Self.size(pdf.count), "Size")
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-            TextField("Title", text: $title)
-                .textFieldStyle(.roundedBorder)
-            Text("To \(server.name), into Paperless.").font(.footnote).foregroundStyle(Palette.secondary)
+            .panel()
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Title").font(.subheadline.weight(.semibold))
+                TextField("Title", text: $title)
+                    .padding(12)
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Text("To \(server.name), into Paperless.").font(.footnote).foregroundStyle(Palette.tertiary)
+            }
             Button {
                 guard !isSending else { return }
                 phase = .sending(pdf.count)   // at once: a second tap in the same frame finds it sending
@@ -189,15 +142,15 @@ struct ScanView: View {
         }
     }
 
-    private func stat(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(Typo.mono(.title2, weight: .semibold))
-            Text(label).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary)
+    private func stat(_ value: String, _ label: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value).font(Typo.data(.title2, weight: .semibold))
+            Text(label).font(.footnote).foregroundStyle(Palette.tertiary)
         }
     }
 
     private func progress(_ text: String) -> some View {
-        HStack(spacing: 10) { ProgressView(); Text(text).font(Typo.mono(.subheadline)) }
+        HStack(spacing: 10) { ProgressView(); Text(text).font(.subheadline).foregroundStyle(Palette.secondary) }
     }
 
     // MARK: Work

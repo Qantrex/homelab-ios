@@ -52,7 +52,7 @@ struct ActionFormView: View {
                         ForEach(inputParts, id: \.index) { item in partRow(item.index, item.part) }
                     } footer: {
                         if let arg = form.arg, !arg.isEmpty {
-                            Text(arg).font(Typo.mono(.caption)).foregroundStyle(Palette.tertiary)
+                            Text(arg).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary)
                                 .accessibilityLabel(Text("Sends \(arg)"))
                         }
                     }
@@ -150,13 +150,13 @@ struct ActionFormView: View {
             .pickerStyle(.menu)
         case .number:
             LabeledContent(label) {
-                TextField(label, text: text).keyboardType(.numberPad).multilineTextAlignment(.trailing).font(Typo.mono(.body))
+                TextField(label, text: text).keyboardType(.numberPad).multilineTextAlignment(.trailing).font(Typo.data(.body))
             }
         case .word:
             LabeledContent(label) {
                 TextField(label, text: text)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .multilineTextAlignment(.trailing).font(Typo.mono(.body))
+                    .multilineTextAlignment(.trailing).font(Typo.data(.body))
             }
         }
     }
@@ -174,13 +174,13 @@ struct ActionFormView: View {
                     .lineLimit(field.kind == .multiline ? 3...8 : 1...1)
                 let count = ActionForm.length(text.wrappedValue)
                 if count > field.max * 4 / 5 {
-                    Text("\(count)/\(field.max)").font(Typo.mono(.caption2))
+                    Text("\(count)/\(field.max)").font(Typo.data(.caption2))
                         .foregroundStyle(count > field.max ? Palette.love : Palette.tertiary)
                 }
             }
         case .number:
             LabeledContent(field.label) {
-                TextField(prompt(field), text: text).keyboardType(.numberPad).multilineTextAlignment(.trailing).font(Typo.mono(.body))
+                TextField(prompt(field), text: text).keyboardType(.numberPad).multilineTextAlignment(.trailing).font(Typo.data(.body))
             }
         case .choice:
             Picker(field.label, selection: text) {
@@ -245,54 +245,77 @@ struct ActionFormView: View {
     }
 }
 
-/// The "Start" tiles: one per action the server lets the app start.
+/// The "Start" tiles (docs/DESIGN.md §2): one per action the server lets the app start, and the Scan tile where the
+/// server takes documents. Every tile has the same height; the grid's edges line up with the panels around it.
 struct StartGrid: View {
     let actions: [ActionSpec]
+    /// Waiting scans and shares in the outbox; nil = no Scan tile.
+    var scanWaiting: Int?
+    /// Overkill density: the action's id as tertiary meta under its label.
+    var showIds = false
     let open: (ActionSpec) -> Void
+    var scan: () -> Void = {}
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible(), alignment: .top)]
-                                                        : [GridItem(.flexible(), spacing: 10, alignment: .top),
-                                                           GridItem(.flexible(), spacing: 10, alignment: .top)],
-                  spacing: 10) {
+        let columns = typeSize.isAccessibilitySize
+            ? [GridItem(.flexible(), alignment: .top)]
+            : [GridItem(.flexible(), spacing: 12, alignment: .top), GridItem(.flexible(), spacing: 12, alignment: .top)]
+        LazyVGrid(columns: columns, spacing: 12) {
             ForEach(actions) { spec in
-                Button { open(spec) } label: { StartTile(spec: spec, evenRows: !typeSize.isAccessibilitySize) }
-                    .buttonStyle(.press)
-                    .accessibilityLabel(Text(spec.label))
-                    .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
+                Button { open(spec) } label: {
+                    StartTile(icon: spec.icon, label: Text(verbatim: spec.label), meta: showIds ? spec.name : nil,
+                              evenRows: !typeSize.isAccessibilitySize)
+                }
+                .buttonStyle(.press)
+                .accessibilityLabel(Text(spec.label))
+                .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
+            }
+            if let waiting = scanWaiting {
+                Button(action: scan) {
+                    StartTile(icon: "doc.viewfinder", label: Text("Scan a document"),
+                              status: waiting > 0 ? "\(waiting) waiting" : nil,
+                              evenRows: !typeSize.isAccessibilitySize)
+                }
+                .buttonStyle(.press)
+                .accessibilityLabel(Text("Scan a document"))
+                .accessibilityValue(waiting > 0 ? Text("\(waiting) waiting to be sent") : Text(""))
+                .accessibilityHint(Text("Opens the camera and sends the PDF to Paperless."))
             }
         }
     }
 }
 
-/// Every tile in a row is the same height, so their tops and texts line up: the icon row has a fixed height (some
-/// symbols, like calendar.badge.plus, are taller) and the title always takes two lines (`evenRows`: off in the
-/// one-column grid at accessibility sizes, where there is no neighbour to line up with).
+/// An icon, a headline label, and at most one line of meta (an id, tertiary, data font) or status (gold, with its
+/// words). Every tile in a row is the same height: the icon row has a fixed height (some symbols, like
+/// calendar.badge.plus, are taller) and the label always takes two lines (`evenRows`: off in the one-column grid at
+/// accessibility sizes, where there is no neighbour to line up with).
 struct StartTile: View {
-    let spec: ActionSpec
+    let icon: String?
+    let label: Text
+    var meta: String?
+    var status: LocalizedStringKey?
     var evenRows = true
     @ScaledMetric(relativeTo: .title3) private var iconRow: CGFloat = 26
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: Symbols.safe(spec.icon, fallback: "play.circle")).font(.title3)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(Palette.tertiary)
-            }
-            .frame(height: iconRow)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(spec.label).font(.subheadline.weight(.semibold)).lineLimit(2, reservesSpace: evenRows)
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: Symbols.safe(icon, fallback: "play.circle")).font(.title3)
+                .frame(height: iconRow, alignment: .leading)
+            VStack(alignment: .leading, spacing: 4) {
+                label.font(.headline).lineLimit(2, reservesSpace: evenRows)
                     .multilineTextAlignment(.leading)
-                Text(spec.name.uppercased()).font(Typo.mono(.caption2)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                if let status {
+                    Text(status).font(.footnote.weight(.semibold)).foregroundStyle(Palette.gold).lineLimit(1)
+                } else if let meta {
+                    Text(meta).font(Typo.data(.footnote)).foregroundStyle(Palette.tertiary).lineLimit(1)
+                }
             }
         }
-        .padding(12)
+        .padding(16)
         .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
         .foregroundStyle(Palette.text)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16))
     }
 }
