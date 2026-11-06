@@ -163,9 +163,12 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         guard let spec = Fixtures.decode(ActionList.self, "actions.json")?.actions.first(where: { $0.name == action }) else {
             throw APIError.notFound
         }
-        let shown = ([arg] + spec.fields.compactMap { payload[$0.name] }).filter { !$0.isEmpty }.joined(separator: " · ")
+        // Hidden fields (a to-do's uid) never show in the chat line, like on the real server.
+        let shown = ([arg] + spec.fields.filter { !$0.hidden }.compactMap { payload[$0.name] }).filter { !$0.isEmpty }
+            .joined(separator: " · ")
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .me, text: shown.isEmpty ? spec.label : "\(spec.label): \(shown)"))
         if action == "todo-done", let item = payload["item"] { tickOff(item) }
+        if action == "parcel-done" { delivered(arg) }
         let text = "Done: \(spec.label). Demo mode, so nothing ran."
         if action == "restart-container" { restarted(arg) }
         page.messages.append(ChatMessage(id: nextID(), ts: Date(), from: .agent, job: "action", status: "OK", text: text))
@@ -192,6 +195,22 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     /// A ticked-off to-do shows as done (a real server would drop it from the open items).
+    /// Demo "Delivered": the parcel row turns into "delivered" without its button, like the real server's card.
+    private func delivered(_ id: String) {
+        current.cards = current.cards.map { card in
+            guard card.id == "parcels" else { return card }
+            var c = card
+            c.items = c.items.map { item in
+                guard item.action?.arg == id else { return item }
+                var i = item
+                i.action = nil
+                i.value = "delivered"
+                return i
+            }
+            return c
+        }
+    }
+
     private func tickOff(_ title: String) {
         current.cards = current.cards.map { card in
             guard card.style == .checklist else { return card }

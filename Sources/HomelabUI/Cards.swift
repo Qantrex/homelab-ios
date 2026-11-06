@@ -232,7 +232,10 @@ struct CardView: View {
             // A row with its own action (a parcel's "Delivered"): the button at the end asks first, like a checklist tick.
             let tick = TickOff(item: item, action: action, spec: spec)
             let busy = running.contains(action)
-            HStack(alignment: .center, spacing: 10) {
+            // At accessibility sizes the button goes under the row, so the title keeps the full width.
+            let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                                 : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+            layout {
                 main
                 Button { ask = tick } label: {
                     Group {

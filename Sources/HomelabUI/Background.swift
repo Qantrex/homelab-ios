@@ -83,7 +83,8 @@ enum Notifier {
             : alert.body
         content.sound = alert.kind == .problem ? .default : nil
         content.threadIdentifier = alert.kind.rawValue
-        content.userInfo = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://today"]
+        // Same links as the agent's pushes: proposals open Actions, problems open Lab.
+        content.userInfo = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://lab"]
         let request = UNNotificationRequest(identifier: alert.id, content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
     }

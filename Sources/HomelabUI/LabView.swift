@@ -395,7 +395,7 @@ struct HostRow: View {
         Group {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 8) {
-                    nameBlock
+                    nameBlock(withMeta: true)
                     if up {
                         HStack(spacing: 16) {
                             labelled("Load", loadText, loadShare)
@@ -405,8 +405,11 @@ struct HostRow: View {
                     }
                 }
             } else {
+                // The second line spans the whole row: squeezed next to the values it broke after every word
+                // ("Under-vol-tage") on a 5.4" phone (2026-11-06).
+                VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .center, spacing: 8) {
-                    nameBlock
+                    nameBlock(withMeta: false)
                     Spacer(minLength: 4)
                     if up, let history = host.history, history.last(.load) != nil {
                         Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"),
@@ -416,6 +419,12 @@ struct HostRow: View {
                     value(loadText, loadShare)
                     value(ramText, ramShare)
                     value(diskText, diskShare)
+                }
+                if let meta {
+                    meta.font(Typo.secondary).foregroundStyle(Palette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, 18)   // under the name, past the status dot
+                }
                 }
             }
         }
@@ -430,13 +439,13 @@ struct HostRow: View {
         .accessibilityAddTraits(.isButton)
     }
 
-    private var nameBlock: some View {
+    private func nameBlock(withMeta: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
             VStack(alignment: .leading, spacing: 2) {
-                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).fixedSize(horizontal: false, vertical: true)
-                if let meta { meta }
+                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(1).minimumScaleFactor(0.8)
+                if withMeta, let meta { meta.font(Typo.secondary).foregroundStyle(Palette.secondary) }
             }
         }
     }

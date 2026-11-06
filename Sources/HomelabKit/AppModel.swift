@@ -550,7 +550,9 @@ public final class AppModel {
     public func takeOpenAction() -> ActionSpec? {
         guard let name = openAction, tab == .actions, !formSheetOpen else { return nil }
         let s = selectedStatus
-        if s.features.contains(.runActions), let spec = s.actions.first(where: { $0.name == name }) {
+        // Only actions offered as Start tiles: a card-only one (tick off, parcel delivered) needs its card's prefill
+        // (the to-do's uid, the parcel id); a link can't give that, so it is dropped below like an unknown name.
+        if s.features.contains(.runActions), let spec = s.actions.first(where: { $0.name == name && $0.start }) {
             openAction = nil
             return spec
         }
