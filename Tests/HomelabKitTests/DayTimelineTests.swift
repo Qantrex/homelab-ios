@@ -26,6 +26,13 @@ import Testing
         DayTimeline(card: card ?? self.card, now: Self.at(h, m), calendar: Self.utc)
     }
 
+    @Test func tomorrowPrefixIsNotRepeated() {
+        #expect(DayTimeline.withoutPrefix("Tomorrow", "Tomorrow: no school") == "No school")
+        #expect(DayTimeline.withoutPrefix("Tomorrow", "tomorrow:day off (sick)") == "Day off (sick)")
+        #expect(DayTimeline.withoutPrefix("Tomorrow", "No school tomorrow") == "No school tomorrow")
+        #expect(DayTimeline.withoutPrefix("Tomorrow", "Tomorrow:") == "Tomorrow:")
+    }
+
     @Test func clockTimes() {
         #expect(DayTimeline.minute("06:20") == 380 && DayTimeline.minute("6:05") == 365 && DayTimeline.minute(" 23:59 ") == 1439)
         #expect(DayTimeline.minute("00:00") == 0)

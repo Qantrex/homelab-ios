@@ -63,7 +63,8 @@ public struct DayTimeline: Equatable, Sendable {
             Stop(item: s.item, minute: s.minute, phase: next.map { i < $0 ? .past : i == $0 ? .next : .later } ?? .past)
         }
         self.notes = notes
-        text = card.items.isEmpty ? card.text : nil
+        // "Tomorrow: no school" under the "Tomorrow" header (live 2026-11-06) reads twice: drop the server's prefix.
+        text = card.items.isEmpty ? card.text.map { tomorrow ? Self.withoutPrefix("Tomorrow", $0) : $0 } : nil
         self.now = nowMinute
         isTomorrow = tomorrow
         staleDays = behind
@@ -96,6 +97,14 @@ public struct DayTimeline: Equatable, Sendable {
     }
 
     /// `date` ('2026-11-07') is the calendar day after `now`'s day. Nil or unreadable: no.
+    /// "Tomorrow: day off (sick)" → "Day off (sick)"; anything else unchanged.
+    static func withoutPrefix(_ word: String, _ text: String) -> String {
+        guard text.lowercased().hasPrefix(word.lowercased() + ":") else { return text }
+        let rest = text.dropFirst(word.count + 1).drop { $0 == " " }
+        guard let first = rest.first else { return text }
+        return first.uppercased() + rest.dropFirst()
+    }
+
     public static func isTomorrow(_ date: String?, now: Date, calendar: Calendar = .current) -> Bool {
         guard let date, Card.Item.isPlainDay(date), let next = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) else { return false }
         let d = calendar.dateComponents([.year, .month, .day], from: next)
