@@ -232,7 +232,7 @@ import Testing
     @Test func withTheLockOnlyAnswerableProposalsNameTheirAction() throws {
         let p = try state().pending
         let proposal = AlertTracker.Alert(id: "pending-pa01", kind: .pending, title: "lab: approve \(p[0].title)?",
-                                          body: "Disk almost full.", moment: .waiting, proposal: p[0])
+                                          body: "Disk almost full.", moment: .notice(.waiting), proposal: p[0])
         let open = ProposalNotice.content(for: proposal, locked: false, voice: .snarky)
         #expect(open.title == proposal.title && open.body == "Disk almost full." && open.category == .approveDeny)
         #expect(open.subtitle != nil)                                    // the personality's line
@@ -242,14 +242,14 @@ import Testing
 
         // Information only (no buttons): nothing to answer on the lock screen, so it stays vague.
         let info = AlertTracker.Alert(id: "pending-pa04", kind: .pending, title: "lab: approve \(p[3].title)?",
-                                      body: "Reboot.", moment: .waiting, proposal: p[3])
+                                      body: "Reboot.", moment: .notice(.waiting), proposal: p[3])
         let lockedInfo = ProposalNotice.content(for: info, locked: true)
         #expect(lockedInfo == .init(title: "Homelab", subtitle: nil, body: "An action is waiting for you.", category: nil))
         #expect(ProposalNotice.content(for: info, locked: false).title == info.title)
 
         // Problems and the summary: vague with the lock on, as before.
         let problem = AlertTracker.Alert(id: "problem-1", kind: .problem, title: "lab: problem", body: "nas: disk 97%",
-                                         moment: .alarm)
+                                         moment: .notice(.problem))
         let lockedProblem = ProposalNotice.content(for: problem, locked: true, voice: .snarky)
         #expect(lockedProblem == .init(title: "Homelab", subtitle: nil, body: "Something needs a look.", category: nil))
         let summary = AlertTracker.Alert(id: "summary-1", kind: .summary, title: "lab", body: "3 more new items.")
