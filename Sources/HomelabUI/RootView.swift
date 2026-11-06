@@ -39,7 +39,7 @@ public struct RootView: View {
             case .background:
                 if model.settings.faceIDLock {
                     Self.dismissPresentedScreens()
-                    model.locked = true
+                    model.lock()   // also forgets the open form sheets: none is open after the lock
                 }
             case .active:
                 model.reloadSettings()
@@ -63,7 +63,9 @@ public struct RootView: View {
     }
 
     private var tabs: some View {
-        TabView(selection: $model.tab) {
+        // The tab bar is the user's own pick: it ends a link's request that still waits (AppModel.pick). Only this
+        // setter, not every change of `tab`: validateTab and links set it too.
+        TabView(selection: Binding(get: { model.tab }, set: { model.pick($0) })) {
             Tab("Today", systemImage: "sun.horizon", value: AppTab.today) {
                 TodayView(model: model)
             }

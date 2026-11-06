@@ -108,8 +108,9 @@ public final class AppModel {
     public private(set) var servers = ServerList()
     public private(set) var status: [UUID: ServerStatus] = [:]
     public var settings = AppSettings() { didSet { if settings != oldValue { saveSettings() } } }
-    /// The shown tab. Picking one by hand drops a tab request that is still waiting.
-    public var tab: AppTab = .today { didSet { if tab != oldValue { requestedTab = nil } } }
+    /// The shown tab. The user's picks go through `pick(_:)`, which also ends a waiting request; `validateTab` and
+    /// `open(_:)` set it directly.
+    public var tab: AppTab = .today
     /// A tab a launch argument or link asked for before the server's features were known (right after a reset, the
     /// Chat and Actions tabs only appear once /info has answered). `validateTab` switches to it once it is there, and
     /// drops it once the info is known without it.
@@ -117,10 +118,10 @@ public final class AppModel {
     /// An action form to open (deep link `homelab://actions/<name>`, launch argument `-HomelabAction`). The Actions
     /// tab opens it once the server's list is there, and clears it.
     public var openAction: String?
-    /// How many action form sheets are open (the Actions tab's, a card's "Add"). A requested form waits until none
-    /// is: a second sheet can't show over the first, and the request would be lost.
-    public private(set) var openForms = 0
-    public var formSheetOpen: Bool { openForms > 0 }
+    /// The action form sheets that are open (the Actions tab's, a card's "Add"), one token per sheet. A requested
+    /// form waits until none is: a second sheet can't show over the first, and the request would be lost.
+    public private(set) var openForms: Set<UUID> = []
+    public var formSheetOpen: Bool { !openForms.isEmpty }
     /// A host's detail to open in Lab (deep link `homelab://lab/<host-id>`, launch argument `-HomelabHost`). Lab opens
     /// it once the state has that host (`takeOpenHost`), and clears it.
     public var openHost: String? { didSet { openHostSince = openHost == nil ? nil : Date() } }
@@ -128,6 +129,9 @@ public final class AppModel {
     @ObservationIgnored private var openHostSince: Date?
     /// Containers restarted from Lab, per server and `<host>:<name>`, until the host's next check (`restartWaiting`).
     public private(set) var restarted: [UUID: [String: Date]] = [:]
+    /// Proposals whose button press is on its way (by proposal id). The Actions tab and the chat share it, so the same
+    /// proposal can't be pressed a second time from the other place meanwhile.
+    public private(set) var proposalsSending: Set<String> = []
     public var locked = false
 
     public let storage: Storage
@@ -196,8 +200,29 @@ public final class AppModel {
         }
     }
 
+    /// The user picked a tab by hand (the tab bar). A link or launch argument's request (its tab, action form and
+    /// host) is one request: picking another tab ends all of it, so nothing opens later on its own.
+    public func pick(_ t: AppTab) {
+        if t != tab { dropRequests() }
+        tab = t
+    }
+
+    /// Forgets a waiting request: tab, action form and host.
+    func dropRequests() {
+        requestedTab = nil
+        openAction = nil
+        openHost = nil
+    }
+
+    /// The app locks (Face ID, in the background): the system closes every sheet, so no form counts as open.
+    public func lock() {
+        locked = true
+        openForms = []
+    }
+
     /// Shows `t` now if it is there, else once the server's info shows it (or never, see `validateTab`).
     func request(_ t: AppTab) {
+        requestedTab = nil   // the newest request counts
         if availableTabs.contains(t) {
             tab = t
         } else {
@@ -234,6 +259,7 @@ public final class AppModel {
             // Different server now: its old data, features and services don't apply.
             storage.remove(Snapshot.fileName(server.id))
             status[server.id] = server.speaksCompanionAPI ? ServerStatus() : nil
+            restarted[server.id] = nil
         }
         saveServers()
         if server.id == selected?.id { writeWidgetSnapshot() }
@@ -245,6 +271,7 @@ public final class AppModel {
         storage.remove(Snapshot.fileName(id))
         servers.remove(id)
         status[id] = nil
+        restarted[id] = nil
         refreshAgain.remove(id)
         saveServers()
         writeWidgetSnapshot()
@@ -286,7 +313,10 @@ public final class AppModel {
         demo = nil
         refreshAgain = []
         tab = .today
-        requestedTab = nil
+        dropRequests()
+        restarted = [:]
+        openForms = []
+        proposalsSending = []
         onWidgetDataChange()
     }
 
@@ -422,6 +452,14 @@ public final class AppModel {
         validateTab()
     }
 
+    /// Presses a proposal's signed button; returns the server's answer, after the list is fresh again. Nil when a
+    /// press of that proposal is already on its way (`proposalsSending`): nothing is sent.
+    public func press(_ button: String, proposal: String, on server: ServerConfig) async -> Result<String, APIError>? {
+        guard proposalsSending.insert(proposal).inserted else { return nil }
+        defer { proposalsSending.remove(proposal) }
+        return await press(button, on: server)
+    }
+
     /// Press a signed action button; returns the server's answer. Returns after the list is fresh again.
     public func press(_ button: String, on server: ServerConfig) async -> Result<String, APIError> {
         let result: Result<String, APIError>
@@ -450,12 +488,12 @@ public final class AppModel {
         return result
     }
 
-    /// The form a link asked for (`openAction`), once the selected server lists it and no other form sheet is open
-    /// (`formSheetOpen`); the request is cleared then. A request the server can't serve (its loaded list lacks the
-    /// name, or it has no `run-actions`) is dropped too, so it doesn't pop up later after a server switch. Nil while
-    /// the list isn't loaded yet or a sheet is open: the request waits.
+    /// The form a link asked for (`openAction`), once the Actions tab shows, the selected server lists it and no
+    /// other form sheet is open (`formSheetOpen`); the request is cleared then. A request the server can't serve (its
+    /// loaded list lacks the name, or it has no `run-actions`) is dropped too, so it doesn't pop up later after a
+    /// server switch. Nil while the list isn't loaded yet, another tab shows or a sheet is open: the request waits.
     public func takeOpenAction() -> ActionSpec? {
-        guard let name = openAction, !formSheetOpen else { return nil }
+        guard let name = openAction, tab == .actions, !formSheetOpen else { return nil }
         let s = selectedStatus
         if s.features.contains(.runActions), let spec = s.actions.first(where: { $0.name == name }) {
             openAction = nil
@@ -465,16 +503,17 @@ public final class AppModel {
         return nil
     }
 
-    /// A form sheet appeared or went away (`formSheetOpen`).
-    public func formSheet(open: Bool) {
-        openForms = max(openForms + (open ? 1 : -1), 0)
+    /// The form sheet with `token` (one per sheet, stable while it lives) appeared or went away (`formSheetOpen`).
+    /// Idempotent: appearing twice or going away twice counts once.
+    public func formSheet(_ token: UUID, open: Bool) {
+        if open { openForms.insert(token) } else { openForms.remove(token) }
     }
 
-    /// The host a link asked for (`openHost`), once the selected snapshot has it; the request is cleared then. A
-    /// snapshot fetched after the request without that host drops it, so it doesn't pop up later (another server, a
-    /// host that is gone). Nil while there is no such snapshot yet: the request waits.
+    /// The host a link asked for (`openHost`), once Lab shows and the selected snapshot has it; the request is cleared
+    /// then. A snapshot fetched after the request without that host drops it, so it doesn't pop up later (another
+    /// server, a host that is gone). Nil while there is no such snapshot yet or another tab shows: the request waits.
     public func takeOpenHost() -> Host? {
-        guard let id = openHost, let snap = selectedStatus.snapshot else { return nil }
+        guard let id = openHost, tab == .lab, let snap = selectedStatus.snapshot else { return nil }
         if let host = snap.state.hosts.first(where: { $0.id == id }) {
             openHost = nil
             return host
@@ -486,11 +525,26 @@ public final class AppModel {
     /// How long a restart waits for the host's next check at most (the watchdog runs every 5–9 min).
     public nonisolated static let restartWait: TimeInterval = 10 * 60
 
-    /// Notes a container restarted from Lab on the selected server: its row says so until the host is checked again.
-    public func noteRestart(host: String, container: String, at date: Date = Date()) {
-        guard let id = selected?.id else { return }
+    /// Notes a container restarted from Lab on `server` (nil: the selected one) at `date`, the time the request was
+    /// sent: its row says so until the host is checked again.
+    public func noteRestart(host: String, container: String, at date: Date, on server: UUID? = nil) {
+        guard let id = server ?? selected?.id, status[id] != nil else { return }
         restarted[id, default: [:]] = restarted[id, default: [:]].filter { date.timeIntervalSince($0.value) < Self.restartWait }
         restarted[id, default: [:]]["\(host):\(container)"] = date
+    }
+
+    /// Restarts `container` on `host` with its ready form (`ServerStatus.restartForm`). The time is taken before the
+    /// request: a check that ran while it was on its way (the demo checks at once) already shows the new state. A
+    /// restart that ran, or may have, is noted (`restartWaiting`).
+    public func restart(_ form: ActionForm, host: String, container: String, on server: ServerConfig) async -> Result<ActionResult, APIError> {
+        let sent = Date()
+        let r = await run(form, on: server)
+        switch r {
+        case .success(let res) where res.ok: noteRestart(host: host, container: container, at: sent, on: server.id)
+        case .failure(let e) where e.mayHaveRun: noteRestart(host: host, container: container, at: sent, on: server.id)
+        default: break
+        }
+        return r
     }
 
     /// When `container` on `host` was restarted from here, while the data still predates it: the host wasn't checked
@@ -587,6 +641,7 @@ public final class AppModel {
 
     public func open(_ url: URL) {
         guard let t = AppTab(url: url) else { return }
+        dropRequests()   // a new link replaces a request that still waits (its tab, form and host)
         if !availableTabs.contains(t) { tab = .today }
         request(t)
         // homelab://actions/<name>: that action's form (it waits like the tab).

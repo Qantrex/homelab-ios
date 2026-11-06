@@ -261,6 +261,11 @@ import Testing
         state.pending = try fixture(HomelabState.self, "state-problem.json").pending
         let stillOpen = Snapshot(serverID: id, serverName: "x", state: state, fetched: got.addingTimeInterval(60))
         #expect(timeline.openPending(m, in: stillOpen).map(\.id) == ["ab12"])
+        // The same id with other buttons is a newer proposal that reuses the id: the old bubble gets no buttons.
+        var reused = state
+        reused.pending = reused.pending.map { var p = $0; p.buttons = [.approve: "HOMELAB_APPROVE_ab12_ffffffffffffffff"]; return p }
+        let reusedID = Snapshot(serverID: id, serverName: "x", state: reused, fetched: got.addingTimeInterval(60))
+        #expect(timeline.openPending(m, in: reusedID).isEmpty)
         // The same message in a later page: the later time counts.
         timeline.merge(MessagePage(messages: [m], busy: []), now: got.addingTimeInterval(120))
         #expect(timeline.openPending(m, in: newer).map(\.id) == ["ab12"])
@@ -392,13 +397,15 @@ import Testing
         let (m, _, _, _) = makeModel()
         try m.save(ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity), token: nil)
         await m.refresh()
-        m.formSheet(open: true)
+        m.pick(.actions)
+        let sheet = UUID(), card = UUID()
+        m.formSheet(sheet, open: true)
         m.openAction = "todo-add"
         #expect(m.formSheetOpen && m.takeOpenAction() == nil && m.openAction == "todo-add")
-        m.formSheet(open: false)
+        m.formSheet(sheet, open: false)
         #expect(!m.formSheetOpen && m.takeOpenAction()?.name == "todo-add" && m.openAction == nil)
-        m.formSheet(open: false)   // never below zero
-        m.formSheet(open: true)
+        m.formSheet(sheet, open: false)   // gone twice: still gone, nothing below zero
+        m.formSheet(card, open: true)
         #expect(m.formSheetOpen)
     }
 }

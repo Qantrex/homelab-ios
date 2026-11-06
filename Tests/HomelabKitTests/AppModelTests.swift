@@ -179,6 +179,7 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let (m, _, _, _) = makeModel()
         let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
         try m.save(lab, token: nil)
+        m.tab = .actions
         // Before the list is there the request waits.
         m.openAction = "todo-add"
         #expect(m.takeOpenAction() == nil && m.openAction == "todo-add")
@@ -345,8 +346,8 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         // Picking a tab by hand drops the request; the action form request waits with its tab.
         let (h, _, _, _) = makeModel(args: ["app", "-HomelabServer", "http://127.0.0.1:8791", "-HomelabAction", "wake-set"])
         #expect(h.requestedTab == .actions && h.openAction == "wake-set")
-        h.tab = .lab
-        #expect(h.requestedTab == nil)
+        h.pick(.lab)
+        #expect(h.requestedTab == nil && h.openAction == nil)
 
         // A deep link before /info waits the same way.
         let (d, _, _, _) = makeModel(args: ["app", "-HomelabServer", "http://127.0.0.1:8791"])
@@ -415,5 +416,180 @@ let labURL = URL(string: "https://lab.example.ts.net")!
         let a = ServerConfig(name: "a", kind: .companion, baseURL: labURL, auth: .token)
         let b = ServerConfig(name: "b", kind: .companion, baseURL: labURL, auth: .identity)
         #expect(a.target != b.target && a.isSameTarget(as: b))
+    }
+}
+
+/// Final integration review: requests end with a manual tab change, sheet tokens, restart time, reused proposal ids,
+/// server 5xx texts, one argument splitter, shared result words.
+@MainActor @Suite(.serialized) struct IntegrationReviewTests {
+    @Test func aManualTabEndsTheWholeRequest() async throws {
+        // A form request waits for its list; the user goes to Lab by hand: tab, form and host requests all end.
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabServer", "http://127.0.0.1:8791", "-HomelabAction", "wake-set"])
+        m.openHost = "media"
+        #expect(m.requestedTab == .actions && m.openAction == "wake-set")
+        m.pick(.today)                                                 // the tab it already shows: nothing ends
+        #expect(m.requestedTab == .actions && m.openAction == "wake-set" && m.openHost == "media")
+        m.pick(.settings)
+        #expect(m.tab == .settings && m.requestedTab == nil && m.openAction == nil && m.openHost == nil)
+        await m.refresh()
+        #expect(m.tab == .settings && m.takeOpenAction() == nil)       // nothing pops up later
+
+        // validateTab and links still set the tab without ending a request.
+        let (d, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES"])
+        await d.refresh()
+        d.open(URL(string: "homelab://actions/wake-set")!)
+        #expect(d.tab == .actions && d.openAction == "wake-set")
+        d.validateTab()
+        #expect(d.openAction == "wake-set")
+        // A newer link replaces the older request as a whole.
+        d.open(URL(string: "homelab://lab/media")!)
+        #expect(d.tab == .lab && d.openHost == "media" && d.openAction == nil && d.requestedTab == nil)
+    }
+
+    @Test func requestsOpenOnlyOnTheirTab() async throws {
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES"])
+        await m.refresh()
+        m.openAction = "wake-set"
+        m.openHost = "media"
+        m.tab = .today
+        #expect(m.takeOpenAction() == nil && m.takeOpenHost() == nil)   // another tab: both wait
+        #expect(m.openAction == "wake-set" && m.openHost == "media")
+        m.tab = .actions
+        #expect(m.takeOpenAction()?.name == "wake-set" && m.takeOpenHost() == nil)
+        m.tab = .lab
+        #expect(m.takeOpenHost()?.id == "media")
+    }
+
+    @Test func lockAndResetForgetSheetsAndRequests() async throws {
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES"])
+        await m.refresh()
+        let sheet = UUID()
+        m.formSheet(sheet, open: true)
+        m.formSheet(sheet, open: true)                                  // appeared twice: one sheet
+        m.formSheet(sheet, open: false)
+        #expect(!m.formSheetOpen)
+        m.formSheet(sheet, open: true)
+        m.lock()                                                        // the lock closes every sheet
+        #expect(m.locked && !m.formSheetOpen)
+
+        m.formSheet(sheet, open: true)
+        m.openAction = "wake-set"
+        m.openHost = "media"
+        m.noteRestart(host: "media", container: "sonarr", at: Date())
+        #expect(!m.restarted.isEmpty)
+        m.resetAll()
+        #expect(!m.formSheetOpen && m.openAction == nil && m.openHost == nil && m.requestedTab == nil)
+        #expect(m.restarted.isEmpty && m.proposalsSending.isEmpty)
+    }
+
+    @Test func removedServersForgetTheirRestarts() throws {
+        let (m, _, _, _) = makeModel()
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        m.noteRestart(host: "media", container: "sonarr", at: Date())
+        #expect(m.restarted[lab.id] != nil)
+        m.remove(lab.id)
+        #expect(m.restarted.isEmpty)
+        m.noteRestart(host: "media", container: "sonarr", at: Date(), on: lab.id)   // a server that's gone: not kept
+        #expect(m.restarted.isEmpty)
+    }
+
+    @Test func aDemoRestartDoesNotWait() async throws {
+        // The demo checks the host while the request runs: the restart's time is when it was sent, so the newer
+        // check already shows the container and the row doesn't say "waiting for the next check".
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES"])
+        await m.refresh()
+        let server = try #require(m.selected)
+        let host = try #require(m.selectedStatus.snapshot?.state.hosts.first { $0.id == "media" })
+        let sonarr = try #require(host.containerList.first { $0.name == "sonarr" })
+        let form = try #require(m.selectedStatus.restartForm(host: host, container: sonarr))
+        let r = await m.restart(form, host: host.id, container: sonarr.name, on: server)
+        #expect((try? r.get())?.ok == true)
+        #expect(m.restarted[server.id]?["media:sonarr"] != nil)
+        let after = try #require(m.selectedStatus.snapshot?.state.hosts.first { $0.id == "media" })
+        #expect(m.restartWaiting(host: after, container: sonarr) == nil)
+        // The same restart judged by a host checked before it was sent still waits.
+        var stale = after
+        stale.checked = Date().addingTimeInterval(-600)
+        #expect(m.restartWaiting(host: stale, container: sonarr) != nil)
+    }
+
+    @Test func aProposalIsPressedOnceAtATime() async throws {
+        let server = FakeServer()
+        server.delay = 0.2
+        let (m, _, _, _) = makeModel(server)
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        async let first = m.press("HOMELAB_APPROVE_ab12_x", proposal: "ab12", on: lab)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(m.proposalsSending == ["ab12"])
+        let second = await m.press("HOMELAB_DENY_ab12_y", proposal: "ab12", on: lab)   // from the chat meanwhile
+        #expect(second == nil)
+        #expect(await first == Result<String, APIError>.success("done"))
+        #expect(m.proposalsSending.isEmpty && server.calls("/api/v1/button") == 1)
+    }
+}
+
+/// The alert words for every place an action runs from (`ActionReport`).
+@Suite struct ActionReportTests {
+    @Test func startedRestartedAndPressed() {
+        #expect(ActionReport.started("Wake", .success(ActionResult(ok: true, text: "Set.")), hasChat: true)
+            == ActionReport(ok: true, title: "Wake", text: "Set."))
+        #expect(ActionReport.started("Wake", .success(ActionResult(ok: false, text: "exit 1")), hasChat: true)
+            == ActionReport(ok: false, title: "Wake failed", text: "exit 1"))
+        #expect(ActionReport.started("Wake", .failure(.serverSaid(status: 503, text: "nothing was run")), hasChat: true)
+            == ActionReport(ok: false, title: "Wake failed", text: "nothing was run"))
+        #expect(ActionReport.started("Wake", .failure(.badRequest("bad day")), hasChat: true)
+            == ActionReport(ok: false, title: "Didn't run", text: "bad day"))
+        #expect(ActionReport.started("Wake", .failure(.timeout), hasChat: false).title == "Not sure it ran")
+
+        #expect(ActionReport.restart("sonarr", .success(ActionResult(ok: true, text: "ok")), hasChat: true).title == "Restarted sonarr")
+        #expect(ActionReport.restart("sonarr", .success(ActionResult(ok: true, text: "…", running: true)), hasChat: true).title
+            == "Restart of sonarr started")
+        #expect(ActionReport.restart("sonarr", .success(ActionResult(ok: false, text: "no")), hasChat: true)
+            == ActionReport(ok: false, title: "Restart of sonarr failed", text: "no"))
+        #expect(ActionReport.restart("sonarr", .failure(.serverSaid(status: 502, text: "docker down")), hasChat: true)
+            == ActionReport(ok: false, title: "Restart of sonarr failed", text: "docker down"))
+
+        #expect(ActionReport.pressed("restart media", .success("done"), hasChat: true)
+            == ActionReport(ok: true, title: "restart media", text: "done"))
+        // A spent or expired button has its own title, distinct from "Didn't run" and "Not sure it ran".
+        let expired = ActionReport.pressed("restart media", .failure(.refused("forged or outdated button")), hasChat: true)
+        #expect(!expired.ok && expired.title == "No longer valid" && expired.text.contains("no longer valid"))
+        #expect(ActionReport.pressed("x", .failure(.forbidden), hasChat: true).title == "No longer valid")
+        #expect(ActionReport.pressed("x", .failure(.notOnTailnet(host: "h")), hasChat: true).title == "Didn't run")
+    }
+}
+
+/// One way to split an argument into form parts, for cards and Lab alike; `word` as the agent checks it.
+@Suite struct ArgumentSplitTests {
+    func spec(_ name: String) throws -> ActionSpec {
+        try #require(try fixture(ActionList.self, "actions.json").actions.first { $0.name == name })
+    }
+
+    @Test func cardPrefillBacktracks() throws {
+        // word ":" word: the first word takes the shortest value that lets the rest fit.
+        let pair = ActionSpec(name: "x", variants: [.init(label: "", parts: [.word(label: "A"), .literal(":"), .word(label: "B")])])
+        #expect(ActionForm.split("a.b:c", into: pair.variants[0].parts) == ["a.b", "", "c"])
+        let form = ActionForm(pair, prefill: ItemAction(name: "x", arg: "a.b:c"))
+        #expect(form.arg == "a.b:c")
+        #expect(ActionForm.prefilled(pair, arg: "a.b:c")?.values == form.values)
+        let restart = ActionForm(try spec("restart-container"), prefill: ItemAction(name: "restart-container", arg: "media:sonarr"))
+        #expect(restart.values[0] == ["media", "", "sonarr"])
+        let unfit = ActionForm(try spec("restart-container"), prefill: ItemAction(name: "restart-container", arg: "gpu:steam"))
+        #expect(unfit.values[0][2] == "")                                // fits no variant: ignored
+    }
+
+    @Test func wordsStartWithALetterOrDigit() throws {
+        var form = ActionForm(try spec("restart-container"))
+        for bad in [".hidden", "_x", "-rf", String(repeating: "a", count: 65)] {
+            form.set(part: 2, bad)
+            #expect(form.arg == nil && form.problems.count == 1, "\(bad)")
+        }
+        for good in ["a", "9", "a.b_c-d", String(repeating: "a", count: 58)] {
+            form.set(part: 2, good)
+            #expect(form.problems.isEmpty, "\(good)")
+        }
+        #expect(ActionForm.prefilled(try spec("restart-container"), arg: "media:.x") == nil)
     }
 }

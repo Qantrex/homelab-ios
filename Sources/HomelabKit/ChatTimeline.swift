@@ -94,13 +94,15 @@ public struct ChatTimeline: Sendable, Equatable {
 
     /// The proposals `message` still offers buttons for. The chat only loads messages newer than the last one, so
     /// an older message keeps proposals answered since (here, in the Actions tab or elsewhere). A state fetched after
-    /// the message's page came in is newer: it decides which are still open.
+    /// the message's page came in is newer: it decides which are still open. A proposal counts as the same one only
+    /// with the same id and the same buttons: servers reuse short ids, and each button is signed over the whole
+    /// pending line, so an old bubble never gets a newer proposal's buttons.
     public func openPending(_ message: ChatMessage, in snapshot: Snapshot?) -> [PendingAction] {
         guard !message.pending.isEmpty, let snapshot, let got = received[message.id], snapshot.fetched >= got else {
             return message.pending
         }
-        let open = Set(snapshot.state.pending.map(\.id))
-        return message.pending.filter { open.contains($0.id) }
+        let open = snapshot.state.pending
+        return message.pending.filter { p in open.contains { $0.id == p.id && $0.buttons == p.buttons } }
     }
 }
 

@@ -94,6 +94,9 @@ public enum APIError: Error, Equatable, Sendable {
     case notFound
     case tooManyRequests
     case server(status: Int)
+    /// A 5xx answer to starting an action with the server's own words (`{"error": "..."}`): it knows what happened
+    /// ("the agent is down, nothing was run"), so the app shows that instead of guessing.
+    case serverSaid(status: Int, text: String)
     case invalidResponse
     case decoding(String)
     case tls
@@ -116,6 +119,7 @@ public enum APIError: Error, Equatable, Sendable {
         case .notFound: "The server doesn't offer this. Is the address right, and does it speak the Homelab API?"
         case .tooManyRequests: "Too many requests. Try again in a minute."
         case .server(let status): "The server had an error (HTTP \(status))."
+        case .serverSaid(_, let text): text
         case .invalidResponse: "The server sent something unexpected."
         case .decoding: "The server's answer couldn't be read. Is it a Homelab API server?"
         case .tls: "The secure connection failed (certificate?)."
@@ -136,28 +140,32 @@ public enum APIError: Error, Equatable, Sendable {
 
     /// After a request that changes something (start an action, press a button): could it have run anyway? False
     /// when the request never reached the server (no connection could be made) or the server refused it (4xx, a
-    /// redirect). True when the connection broke after sending, the answer was unreadable or the server failed
-    /// (5xx): then "didn't run" would be a guess.
+    /// redirect), or it failed and said why in its own words (`serverSaid`: its text tells). True when the connection
+    /// broke after sending, the answer was unreadable or the server failed without a word (5xx): then "didn't run"
+    /// would be a guess.
     public var mayHaveRun: Bool {
         switch self {
         case .notOnTailnet, .cannotFindHost, .tls, .unauthorized, .forbidden, .refused, .notFound, .tooManyRequests,
-             .badRequest, .unsupportedVersion, .redirected:
+             .badRequest, .unsupportedVersion, .redirected, .serverSaid:
             false
         case .offline, .timeout, .cancelled, .server, .invalidResponse, .decoding, .tooLarge, .other:
             true
         }
     }
 
-    /// Title and text for a failed start or button press: "Didn't run" only when it surely didn't.
-    public var actionFailure: (title: String, text: String) {
-        mayHaveRun ? ("Not sure it ran", message + "\n\nIt may have run anyway. Check the chat before trying again.")
-                   : ("Didn't run", message)
+    /// Title and text for a failed start or button press: "Didn't run" only when it surely didn't, "Failed" with
+    /// the server's own words, else "Not sure it ran". `hasChat`: the server has a chat to look in (feature `chat`).
+    public func actionFailure(hasChat: Bool) -> (title: String, text: String) {
+        if case .serverSaid = self { return ("Failed", message) }
+        guard mayHaveRun else { return ("Didn't run", message) }
+        let check = hasChat ? "Check the chat before trying again." : "Check whether it did before trying again."
+        return ("Not sure it ran", message + "\n\nIt may have run anyway. " + check)
     }
 
     /// Worth an automatic retry later (vs. a setup problem the user must fix).
     public var isTransient: Bool {
         switch self {
-        case .offline, .notOnTailnet, .timeout, .tooManyRequests, .server, .cancelled: true
+        case .offline, .notOnTailnet, .timeout, .tooManyRequests, .server, .serverSaid, .cancelled: true
         default: false
         }
     }
@@ -209,13 +217,14 @@ public enum APIError: Error, Equatable, Sendable {
     }
 
     /// The answer to `POST /actions/<name>`: a 404 ("no such action") or 429 ("one at a time") with the server's own
-    /// reason shows that reason; without one, the generic texts.
+    /// reason shows that reason, and so does a 5xx (`serverSaid`); without one, the generic texts.
     public static func fromAction(status: Int, body: Data) -> APIError? {
         if status == 404 || status == 429, let text = serverErrorText(body) { return .badRequest(text) }
+        if (500..<600).contains(status), let text = serverErrorText(body) { return .serverSaid(status: status, text: text) }
         return from(status: status, body: body)
     }
 
-    /// `{"error": "..."}` from the server, shortened, for 4xx messages.
+    /// `{"error": "..."}` from the server, shortened, for 4xx messages and failed starts.
     static func serverErrorText(_ body: Data) -> String? {
         guard let obj = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
               let text = obj["error"] as? String, !text.isEmpty else { return nil }

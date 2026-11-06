@@ -93,7 +93,7 @@ import Testing
         #expect(form.problems == ["Container is missing."])
         form.set(part: 2, "sonarr; rm")
         #expect(form.arg == nil)
-        #expect(form.problems == ["Container: only letters, digits, . _ and -."])
+        #expect(form.problems == ["Container: only letters, digits, . _ and -, starting with a letter or digit."])
         form.set(part: 2, " sonarr ")
         #expect(form.arg == "nas:sonarr")
         form.set(part: 0, "evil")
@@ -149,11 +149,16 @@ import Testing
     @Test func failuresSayWhetherItMayHaveRun() {
         for e: APIError in [.badRequest("x"), .notFound, .tooManyRequests, .forbidden, .refused("x"), .unauthorized,
                             .notOnTailnet(host: "h"), .cannotFindHost(host: "h"), .tls] {
-            #expect(!e.mayHaveRun && e.actionFailure.title == "Didn't run" && e.actionFailure.text == e.message)
+            let f = e.actionFailure(hasChat: true)
+            #expect(!e.mayHaveRun && f.title == "Didn't run" && f.text == e.message)
         }
         for e: APIError in [.offline, .timeout, .cancelled, .other("x"), .decoding("x"), .server(status: 502)] {
-            #expect(e.mayHaveRun && e.actionFailure.title == "Not sure it ran")
-            #expect(e.actionFailure.text.hasPrefix(e.message) && e.actionFailure.text.contains("Check the chat"))
+            let f = e.actionFailure(hasChat: true)
+            #expect(e.mayHaveRun && f.title == "Not sure it ran")
+            #expect(f.text.hasPrefix(e.message) && f.text.contains("Check the chat"))
+            // A server without a chat: no pointer to a chat it doesn't have.
+            let noChat = e.actionFailure(hasChat: false)
+            #expect(noChat.title == "Not sure it ran" && noChat.text.hasPrefix(e.message) && !noChat.text.contains("chat"))
         }
     }
 
@@ -246,6 +251,23 @@ import Testing
         let unknown = FakeTransport(status: 404, json: #"{"error": "unknown action: a"}"#)
         await #expect(throws: APIError.badRequest("unknown action: a")) {
             try await CompanionClient(baseURL: base, token: nil, transport: unknown).run("a", arg: "", payload: [:])
+        }
+        // A 5xx with the server's own words shows them: "nothing was run" must not turn into "Not sure it ran".
+        let down = FakeTransport(status: 503, json: #"{"error": "agent is down, nothing was run"}"#)
+        await #expect(throws: APIError.serverSaid(status: 503, text: "agent is down, nothing was run")) {
+            try await CompanionClient(baseURL: base, token: nil, transport: down).run("a", arg: "", payload: [:])
+        }
+        let said = APIError.serverSaid(status: 503, text: "agent is down, nothing was run")
+        #expect(!said.mayHaveRun && said.isTransient && said.message == "agent is down, nothing was run")
+        #expect(said.actionFailure(hasChat: true).title == "Failed")
+        #expect(said.actionFailure(hasChat: true).text == "agent is down, nothing was run")
+        let silent = FakeTransport(status: 500, json: "{}")                 // no words: the honest guess stays
+        await #expect(throws: APIError.server(status: 500)) {
+            try await CompanionClient(baseURL: base, token: nil, transport: silent).run("a", arg: "", payload: [:])
+        }
+        let state500 = FakeTransport(status: 500, json: #"{"error": "internal error"}"#)   // only for starting actions
+        await #expect(throws: APIError.server(status: 500)) {
+            try await CompanionClient(baseURL: base, token: nil, transport: state500).state()
         }
         let bare = FakeTransport(status: 429, json: "{}")
         await #expect(throws: APIError.tooManyRequests) {

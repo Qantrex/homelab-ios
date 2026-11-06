@@ -23,6 +23,8 @@ struct CardView: View {
     @State private var formFor: ActionSpec?
     /// The form's result, shown once the sheet is gone (an alert can't show over the sheet).
     @State private var afterSheet: ResultMessage?
+    /// This card's form sheet, for `AppModel.formSheetOpen`.
+    @State private var sheetToken = UUID()
     @State private var ask: TickOff?
     @State private var running: Set<ItemAction> = []
     /// Ticked off here; drawn done until the server's list catches up (`TickedItems`).
@@ -56,13 +58,13 @@ struct CardView: View {
         }) { spec in
             if let model, let server = model.selected {
                 ActionFormView(model: model, server: server, spec: spec, prefill: card.action) { r in
-                    let (ok, message) = ResultMessage.started(spec, r)
+                    let (ok, message) = ResultMessage.started(spec, r, model: model)
                     outcome = ActionOutcome(ok: ok)
                     afterSheet = message
                 }
                 // A link to another form waits until this sheet is gone (AppModel.formSheetOpen).
-                .onAppear { model.formSheet(open: true) }
-                .onDisappear { model.formSheet(open: false) }
+                .onAppear { model.formSheet(sheetToken, open: true) }
+                .onDisappear { model.formSheet(sheetToken, open: false) }
             }
         }
         .confirmationDialog(ask.map { String(localized: "\($0.verb) \($0.item.title ?? "")?") } ?? "",
@@ -272,7 +274,7 @@ struct CardView: View {
         running.insert(t.action)
         let r = await model.run(t.action, on: server)
         running.remove(t.action)
-        let (ok, message) = ResultMessage.started(t.spec, r)
+        let (ok, message) = ResultMessage.started(t.spec, r, model: model)
         outcome = ActionOutcome(ok: ok)
         if ok {
             // The server may list the item as open for a moment longer: draw it done until its list catches up.

@@ -12,17 +12,9 @@ public struct Sparkline: View {
     let label: String
     let value: String
 
-    /// `range`: the vertical scale (nil = smallest to largest value). `label` is what VoiceOver says first ("Load, last
-    /// 24 hours"), followed by min, max and now in `format`.
-    public init(_ values: [Double?], range: ClosedRange<Double>? = nil, warning: Double? = nil, problem: Double? = nil,
-                label: String, lineWidth: CGFloat = 1.5, fill: Bool = true, format: (Double) -> String = { String(format: "%.1f", $0) }) {
-        let shape = SparklineShape(values, range: range)
-        self.init(shape: shape, tintValue: shape.lastValue, warning: warning, problem: problem, label: label,
-                  lineWidth: lineWidth, fill: fill, format: format)
-    }
-
     /// A ready shape. The line is gold or love only by `tintValue` (nil: plain), so an hours-old value doesn't colour
-    /// it; VoiceOver says "now" only for that value too.
+    /// it; VoiceOver says "now" only for that value too. `label` is what VoiceOver says first ("Load, last 24 hours"),
+    /// followed by min, max and now in `format`.
     public init(shape: SparklineShape, tintValue: Double?, warning: Double? = nil, problem: Double? = nil, label: String,
                 lineWidth: CGFloat = 1.5, fill: Bool = true, format: (Double) -> String = { String(format: "%.1f", $0) }) {
         self.shape = shape

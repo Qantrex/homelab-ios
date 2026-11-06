@@ -76,7 +76,6 @@ struct ChatView: View {
     @FocusState private var focused: Bool
     /// Approve / Always / Deny in a bubble: the same confirm and press as the Actions tab.
     @State private var confirm: ProposalConfirmation?
-    @State private var running: Set<String> = []
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
 
@@ -104,7 +103,7 @@ struct ChatView: View {
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .sensoryFeedback(.impact(weight: .light), trigger: sent)
-            .proposalDialog($confirm, running: $running, model: model) { ok, message in
+            .proposalDialog($confirm, model: model) { ok, message in
                 outcome = ActionOutcome(ok: ok)
                 result = message
             }
@@ -135,7 +134,7 @@ struct ChatView: View {
                             .padding(.top, 40)
                     }
                     ForEach(chat.timeline.messages) { m in
-                        Bubble(message: m, pending: chat.timeline.openPending(m, in: model.selectedStatus.snapshot), running: running,
+                        Bubble(message: m, pending: chat.timeline.openPending(m, in: model.selectedStatus.snapshot), running: model.proposalsSending,
                                model: model) { p, verb in
                             confirm = ProposalConfirmation(action: p, verb: verb)
                         }

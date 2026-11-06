@@ -298,50 +298,6 @@ public struct ContainerInfo: Codable, Sendable, Equatable, Hashable, Identifiabl
 
 // MARK: Restarting a container from Lab
 
-public extension ActionForm {
-    /// A form for `spec` with its parts filled so that it builds exactly `arg`, or nil when no variant of the spec can
-    /// express it (e.g. a host the server's host choice doesn't list).
-    static func prefilled(_ spec: ActionSpec, arg: String) -> ActionForm? {
-        guard !arg.isEmpty, arg.count <= 64 else { return nil }
-        for (i, variant) in spec.variants.enumerated() {
-            guard let values = match(variant.parts, Substring(arg)) else { continue }
-            var form = ActionForm(spec)
-            form.variant = i
-            form.values[i] = values
-            if form.arg == arg { return form }
-        }
-        return nil
-    }
-
-    /// Values for `parts` that join to exactly `rest` ("" for literals), trying the shortest free values first.
-    private static func match(_ parts: ArraySlice<ActionSpec.ArgPart>, _ rest: Substring) -> [String]? {
-        guard let part = parts.first else { return rest.isEmpty ? [] : nil }
-        let tail = parts.dropFirst()
-        switch part {
-        case .literal(let t):
-            guard rest.hasPrefix(t) else { return nil }
-            return match(tail, rest.dropFirst(t.count)).map { [""] + $0 }
-        case .choice(_, let options):
-            for o in options where !o.value.isEmpty && rest.hasPrefix(o.value) {
-                if let m = match(tail, rest.dropFirst(o.value.count)) { return [o.value] + m }
-            }
-            return nil
-        case .date, .time, .number, .word:
-            guard !rest.isEmpty else { return nil }
-            for k in 1...rest.count {
-                let value = String(rest.prefix(k))
-                guard problem(part, value) == nil else { continue }
-                if let m = match(tail, rest.dropFirst(k)) { return [value] + m }
-            }
-            return nil
-        }
-    }
-
-    private static func match(_ parts: [ActionSpec.ArgPart], _ rest: Substring) -> [String]? {
-        match(parts[...], rest)
-    }
-}
-
 public extension ServerStatus {
     /// The step-2 action that restarts a container; its argument is `<host>:<name>`.
     static let restartAction = "restart-container"

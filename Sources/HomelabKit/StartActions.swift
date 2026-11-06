@@ -80,7 +80,7 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         /// 07:30
         case time(label: String)
         case number(label: String)
-        /// Letters, digits, `.`, `_`, `-`.
+        /// Letters, digits, `.`, `_`, `-`, starting with a letter or digit, at most 64 (`ActionForm.wordPattern`).
         case word(label: String)
         case choice(label: String, options: [Option])
 
@@ -287,28 +287,47 @@ public struct ActionForm: Sendable, Equatable {
         }
     }
 
-    /// Splits an argument back into part values ("" for literals), or nil if it doesn't fit these parts.
-    static func split(_ arg: String, into parts: [ActionSpec.ArgPart]) -> [String]? {
-        func esc(_ t: String) -> String { NSRegularExpression.escapedPattern(for: t) }
-        var pattern = "^"
-        for part in parts {
-            switch part {
-            case .literal(let t): pattern += esc(t)
-            case .date: pattern += "([0-9]{4}-[0-1][0-9]-[0-3][0-9])"
-            case .time: pattern += "([0-2][0-9]:[0-5][0-9])"
-            case .number: pattern += "([0-9]{1,12})"
-            case .word: pattern += "([A-Za-z0-9._-]{1,64})"
-            case .choice(_, let options): pattern += "(" + options.map { esc($0.value) }.joined(separator: "|") + ")"
-            }
+    /// A form for `spec` with its parts filled so that it builds exactly `arg` (Lab's restart), or nil when no variant
+    /// of the spec can express it (e.g. a host the server's host choice doesn't list).
+    public static func prefilled(_ spec: ActionSpec, arg: String) -> ActionForm? {
+        guard !arg.isEmpty, length(arg) <= maxArg else { return nil }
+        for (i, variant) in spec.variants.enumerated() {
+            guard let values = split(arg, into: variant.parts) else { continue }
+            var form = ActionForm(spec)
+            form.variant = i
+            form.values[i] = values
+            if form.arg == arg { return form }
         }
-        pattern += "$"
-        guard let re = try? NSRegularExpression(pattern: pattern),
-              let m = re.firstMatch(in: arg, range: NSRange(arg.startIndex..., in: arg)) else { return nil }
-        var group = 0
-        return parts.map { part in
-            if case .literal = part { return "" }
-            group += 1
-            return Range(m.range(at: group), in: arg).map { String(arg[$0]) } ?? ""
+        return nil
+    }
+
+    /// Splits an argument back into part values ("" for literals), or nil if it doesn't fit these parts. Every part
+    /// value passes the form's own check (`problem`); free parts try the shortest value first and back off when the
+    /// rest doesn't fit ("a.b:c" with word `:` word).
+    static func split(_ arg: String, into parts: [ActionSpec.ArgPart]) -> [String]? {
+        match(parts[...], Substring(arg))
+    }
+
+    private static func match(_ parts: ArraySlice<ActionSpec.ArgPart>, _ rest: Substring) -> [String]? {
+        guard let part = parts.first else { return rest.isEmpty ? [] : nil }
+        let tail = parts.dropFirst()
+        switch part {
+        case .literal(let t):
+            guard rest.hasPrefix(t) else { return nil }
+            return match(tail, rest.dropFirst(t.count)).map { [""] + $0 }
+        case .choice(_, let options):
+            for o in options where !o.value.isEmpty && rest.hasPrefix(o.value) {
+                if let m = match(tail, rest.dropFirst(o.value.count)) { return [o.value] + m }
+            }
+            return nil
+        case .date, .time, .number, .word:
+            guard !rest.isEmpty else { return nil }
+            for k in 1...rest.count {
+                let value = String(rest.prefix(k))
+                guard problem(part, value) == nil else { continue }
+                if let m = match(tail, rest.dropFirst(k)) { return [value] + m }
+            }
+            return nil
         }
     }
 
@@ -439,11 +458,14 @@ public struct ActionForm: Sendable, Equatable {
         case .number: return v.wholeMatch(of: /[0-9]{1,12}/) == nil ? "\(name) must be a whole number." : nil
         case .word:
             if v.isEmpty { return "\(name) is missing." }
-            return v.wholeMatch(of: /[A-Za-z0-9._-]{1,64}/) == nil ? "\(name): only letters, digits, . _ and -." : nil
+            return v.wholeMatch(of: wordPattern) == nil
+                ? "\(name): only letters, digits, . _ and -, starting with a letter or digit." : nil
         case .choice(_, let options): return options.contains { $0.value == v } ? nil : "\(name): pick one of the options."
         }
     }
 
+    /// A `word` part, as the server's agent checks it: `[A-Za-z0-9][A-Za-z0-9._-]{0,63}`.
+    nonisolated(unsafe) static let wordPattern = /[A-Za-z0-9][A-Za-z0-9._-]{0,63}/
     nonisolated(unsafe) static let dayPattern = /[0-9]{4}-[0-1][0-9]-[0-3][0-9]/
     nonisolated(unsafe) static let dayTimePattern = /[0-9]{4}-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]/
 
@@ -521,5 +543,61 @@ public struct TickedItems: Sendable, Equatable {
     public mutating func prune(_ card: Card, now: Date = Date()) {
         let open = Set(card.items.filter { $0.done != true }.compactMap(\.action))
         since = since.filter { open.contains($0.key) && now.timeIntervalSince($0.value) < Self.timeout }
+    }
+}
+
+/// The alert after an action ran from the app: a started action (Actions tab, a card), a container restart (Lab) or
+/// a proposal's button (Actions tab, chat). All the words in one place; the views only show them.
+public struct ActionReport: Sendable, Equatable {
+    public var ok: Bool
+    public var title: String
+    public var text: String
+
+    public init(ok: Bool, title: String, text: String) {
+        self.ok = ok; self.title = title; self.text = text
+    }
+
+    /// A started action: its label and the server's text, or why it didn't run. `hasChat`: the server has a chat.
+    public static func started(_ label: String, _ r: Result<ActionResult, APIError>, hasChat: Bool) -> ActionReport {
+        switch r {
+        case .success(let res):
+            ActionReport(ok: res.ok, title: res.ok ? label : "\(label) failed", text: res.text)
+        case .failure(.serverSaid(_, let text)):
+            ActionReport(ok: false, title: "\(label) failed", text: text)
+        case .failure(let e):
+            failure(e, hasChat: hasChat)
+        }
+    }
+
+    /// A container restarted from Lab: "Restarted sonarr", "Restart of sonarr started" (still running), or failed.
+    public static func restart(_ name: String, _ r: Result<ActionResult, APIError>, hasChat: Bool) -> ActionReport {
+        switch r {
+        case .success(let res):
+            ActionReport(ok: res.ok, title: !res.ok ? "Restart of \(name) failed"
+                                            : res.running ? "Restart of \(name) started" : "Restarted \(name)",
+                         text: res.text)
+        case .failure(.serverSaid(_, let text)):
+            ActionReport(ok: false, title: "Restart of \(name) failed", text: text)
+        case .failure(let e):
+            failure(e, hasChat: hasChat)
+        }
+    }
+
+    /// A proposal's button (`title`: the proposal's). A 403 means the signed button is spent or expired.
+    public static func pressed(_ title: String, _ r: Result<String, APIError>, hasChat: Bool) -> ActionReport {
+        switch r {
+        case .success(let text):
+            ActionReport(ok: true, title: title, text: text)
+        case .failure(let e) where e.isForbidden:
+            ActionReport(ok: false, title: "No longer valid",
+                         text: "This button is no longer valid (already handled or expired).")
+        case .failure(let e):
+            failure(e, hasChat: hasChat)
+        }
+    }
+
+    static func failure(_ e: APIError, hasChat: Bool) -> ActionReport {
+        let f = e.actionFailure(hasChat: hasChat)
+        return ActionReport(ok: false, title: f.title, text: f.text)
     }
 }

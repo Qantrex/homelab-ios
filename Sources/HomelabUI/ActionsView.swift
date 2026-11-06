@@ -10,7 +10,8 @@ struct ActionsView: View {
     @State private var formFor: ActionSpec?
     /// A started action's result, shown once its form sheet is gone (an alert can't show over the sheet).
     @State private var afterSheet: ResultMessage?
-    @State private var running: Set<String> = []
+    /// This view's form sheet, for `AppModel.formSheetOpen`.
+    @State private var sheetToken = UUID()
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
 
@@ -54,7 +55,7 @@ struct ActionsView: View {
                                 .cardRow()
                         }
                         ForEach(pending) { action in
-                            ActionRow(action: action, running: running.contains(action.id),
+                            ActionRow(action: action, running: model.proposalsSending.contains(action.id),
                                       hasChat: model.selectedStatus.features.contains(.chat)) { verb in
                                 confirm = ProposalConfirmation(action: action, verb: verb)
                             }
@@ -86,8 +87,8 @@ struct ActionsView: View {
             }) { spec in
                 if let server = model.selected {
                     ActionFormView(model: model, server: server, spec: spec) { finished(spec, $0) }
-                        .onAppear { model.formSheet(open: true) }
-                        .onDisappear { model.formSheet(open: false) }
+                        .onAppear { model.formSheet(sheetToken, open: true) }
+                        .onDisappear { model.formSheet(sheetToken, open: false) }
                 }
             }
             .onChange(of: openable) { _, _ in openRequested() }
@@ -95,7 +96,7 @@ struct ActionsView: View {
             .animation(.snappy, value: pending.map(\.id))
             .refreshable { await model.refresh() }
             .navigationTitle("Actions")
-            .proposalDialog($confirm, running: $running, model: model) { ok, message in
+            .proposalDialog($confirm, model: model) { ok, message in
                 outcome = ActionOutcome(ok: ok)
                 result = message
             }
@@ -107,20 +108,20 @@ struct ActionsView: View {
     /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
     private var openable: String {
         let s = model.selectedStatus
-        return [model.openAction ?? "", startable.map(\.name).joined(separator: ","),
+        return [model.openAction ?? "", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
                 "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)", "\(model.formSheetOpen)"]
             .joined(separator: "|")
     }
 
-    /// Opens a requested form once the list knows the action. While a form is open (here or a card's) the request
-    /// waits (`AppModel.takeOpenAction`).
+    /// Opens a requested form once this tab shows and the list knows the action. While another tab shows or a form
+    /// is open (here or a card's) the request waits (`AppModel.takeOpenAction`).
     private func openRequested() {
-        guard formFor == nil, let spec = model.takeOpenAction() else { return }
+        guard model.tab == .actions, formFor == nil, let spec = model.takeOpenAction() else { return }
         formFor = spec
     }
 
     private func finished(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>) {
-        let (ok, message) = ResultMessage.started(spec, r)
+        let (ok, message) = ResultMessage.started(spec, r, model: model)
         outcome = ActionOutcome(ok: ok)
         afterSheet = message
     }

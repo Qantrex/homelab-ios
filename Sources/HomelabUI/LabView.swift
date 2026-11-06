@@ -38,14 +38,17 @@ struct LabView: View {
             .navigationDestination(for: Host.self) { HostDetailView(model: model, host: $0) }
             .pollingState(model)
             .onChange(of: model.openHost) { _, _ in openRequestedHost() }
+            .onChange(of: model.tab) { _, _ in openRequestedHost() }
             .onChange(of: status.snapshot?.fetched) { _, _ in openRequestedHost() }
             .onChange(of: model.selected?.id) { _, _ in path = [] }   // another server's hosts
             .onAppear { openRequestedHost() }
         }
     }
 
-    /// A requested host (deep link, launch argument) opens once the state has it (`AppModel.takeOpenHost`).
+    /// A requested host (deep link, launch argument) opens once Lab shows and the state has it
+    /// (`AppModel.takeOpenHost`).
     private func openRequestedHost() {
+        guard model.tab == .lab else { return }
         if let host = model.takeOpenHost() { path = [host] }
     }
 

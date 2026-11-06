@@ -127,22 +127,13 @@ struct HostDetailView: View {
     private func restart(_ c: ContainerInfo) async {
         guard let server = model.selected, let form = model.selectedStatus.restartForm(host: current, container: c) else { return }
         restarting.insert(c.name)
-        let r = await model.run(form, on: server)
+        // The list only changes with the host's next check: until then the row says it was restarted (also after a
+        // broken connection, which may still have restarted it). AppModel.restart notes that.
+        let r = await model.restart(form, host: current.id, container: c.name, on: server)
         restarting.remove(c.name)
-        switch r {
-        case .success(let res):
-            outcome = ActionOutcome(ok: res.ok)
-            // The list only changes with the host's next check: until then the row says it was restarted.
-            if res.ok { model.noteRestart(host: current.id, container: c.name) }
-            let title = !res.ok ? String(localized: "Restart of \(c.name) failed")
-                : res.running ? String(localized: "Restart of \(c.name) started") : String(localized: "Restarted \(c.name)")
-            result = ResultMessage(title: title, text: res.text)
-        case .failure(let e):
-            // A broken connection may still have restarted it: wait for the next check too.
-            if e.mayHaveRun { model.noteRestart(host: current.id, container: c.name) }
-            outcome = ActionOutcome(ok: false)
-            result = ResultMessage(title: e.actionFailure.title, text: e.actionFailure.text)
-        }
+        let (ok, message) = ResultMessage.restart(c.name, r, model: model)
+        outcome = ActionOutcome(ok: ok)
+        result = message
     }
 }
 

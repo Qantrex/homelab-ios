@@ -11,21 +11,41 @@ struct ActionOutcome: Equatable {
     let ok: Bool
 }
 
-/// An answer to show in an alert.
+/// An answer to show in an alert. The words come from `ActionReport` (HomelabKit, tested); these build it for each
+/// place an action runs from.
 struct ResultMessage: Identifiable {
     let id = UUID()
     let title: String
     let text: String
 
-    /// A started action's answer: its title and the server's text, or why it didn't run.
-    static func started(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>) -> (ok: Bool, message: ResultMessage) {
-        switch r {
-        case .success(let res):
-            (res.ok, ResultMessage(title: res.ok ? spec.label : String(localized: "\(spec.label) failed"), text: res.text))
-        case .failure(let e):
-            (false, ResultMessage(title: e.actionFailure.title, text: e.actionFailure.text))
-        }
+    init(_ report: ActionReport) {
+        title = report.title
+        text = report.text
     }
+
+    /// A started action's answer (Actions tab, a card's form or tick-off): its label and the server's text, or why
+    /// it didn't run.
+    @MainActor static func started(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>, model: AppModel) -> (ok: Bool, message: ResultMessage) {
+        let report = ActionReport.started(spec.label, r, hasChat: model.hasChat)
+        return (report.ok, ResultMessage(report))
+    }
+
+    /// A container restart from Lab.
+    @MainActor static func restart(_ container: String, _ r: Result<ActionResult, APIError>, model: AppModel) -> (ok: Bool, message: ResultMessage) {
+        let report = ActionReport.restart(container, r, hasChat: model.hasChat)
+        return (report.ok, ResultMessage(report))
+    }
+
+    /// A proposal's button.
+    @MainActor static func pressed(_ title: String, _ r: Result<String, APIError>, model: AppModel) -> (ok: Bool, message: ResultMessage) {
+        let report = ActionReport.pressed(title, r, hasChat: model.hasChat)
+        return (report.ok, ResultMessage(report))
+    }
+}
+
+extension AppModel {
+    /// The selected server has a chat to look in after an unclear result.
+    var hasChat: Bool { selectedStatus.features.contains(.chat) }
 }
 
 extension View {
@@ -37,11 +57,11 @@ extension View {
             }
     }
 
-    /// The confirm step for a proposal's buttons and the press after it, with the same words everywhere. `running`
-    /// holds the proposals being sent; `done` gets the outcome.
-    func proposalDialog(_ confirm: Binding<ProposalConfirmation?>, running: Binding<Set<String>>, model: AppModel,
+    /// The confirm step for a proposal's buttons and the press after it, with the same words everywhere. The
+    /// proposals being sent are `AppModel.proposalsSending`; `done` gets the outcome.
+    func proposalDialog(_ confirm: Binding<ProposalConfirmation?>, model: AppModel,
                         done: @escaping (_ ok: Bool, _ message: ResultMessage) -> Void) -> some View {
-        modifier(ProposalDialog(confirm: confirm, running: running, model: model, done: done))
+        modifier(ProposalDialog(confirm: confirm, model: model, done: done))
     }
 }
 
@@ -54,7 +74,6 @@ struct ProposalConfirmation: Identifiable {
 
 struct ProposalDialog: ViewModifier {
     @Binding var confirm: ProposalConfirmation?
-    @Binding var running: Set<String>
     let model: AppModel
     let done: (_ ok: Bool, _ message: ResultMessage) -> Void
 
@@ -89,18 +108,10 @@ struct ProposalDialog: ViewModifier {
     }
 
     private func press(_ c: ProposalConfirmation) async {
-        guard let server = model.selected, let button = c.action.buttons[c.verb] else { return }
-        running.insert(c.action.id)
-        let r = await model.press(button, on: server)
-        running.remove(c.action.id)
-        switch r {
-        case .success(let text): done(true, ResultMessage(title: c.action.title, text: text))
-        case .failure(let e) where e.isForbidden:
-            done(false, ResultMessage(title: String(localized: "Didn't work"),
-                                      text: String(localized: "This button is no longer valid (already handled or expired).")))
-        case .failure(let e):
-            done(false, ResultMessage(title: e.actionFailure.title, text: e.actionFailure.text))
-        }
+        guard let server = model.selected, let button = c.action.buttons[c.verb],
+              let r = await model.press(button, proposal: c.action.id, on: server) else { return }
+        let (ok, message) = ResultMessage.pressed(c.action.title, r, model: model)
+        done(ok, message)
     }
 }
 

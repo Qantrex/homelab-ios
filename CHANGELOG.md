@@ -37,9 +37,10 @@ App:
   answer. Tab badge with the count.
 - Start actions yourself (servers with `run-actions`): tiles under "Start" on the Actions tab open a form built from
   what the server describes (day and time pickers, choices, text, optional dates behind a switch), checked before it
-  is sent; after a confirm step the server runs it at once and the app shows its answer ("Not sure it ran" instead of
-  "Didn't run" when the connection breaks after sending). Links
-  `homelab://actions/<name>` open a form directly. For the owner's agent: add a to-do, tick one off, add an event,
+  is sent; after a confirm step the server runs it at once and the app shows its answer (a server error with its own
+  reason shows that reason; "Not sure it ran" instead of "Didn't run" when the connection breaks after sending). Links
+  `homelab://actions/<name>` open a form directly; a form or host a link asked for waits with its tab, and picking
+  another tab by hand drops it. For the owner's agent: add a to-do, tick one off, add an event,
   wake-up, bike or U6, living room, restart a container.
 - Chat: chat with a homelab agent. "Working…" state, report tags, inline Markdown, copy, quick commands, 4000-character
   limit with a counter, failed messages can be edited and sent again. Proposals in a message get Approve, Always
