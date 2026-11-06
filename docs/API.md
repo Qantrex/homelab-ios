@@ -116,7 +116,9 @@ bar for `progress`, and an item `action` as a button at the end (the usual confi
 | `Authorization: Bearer <token>` | The app (token from the Keychain) | Auth "Token" |
 
 The app never sends an `Origin` header or cookies. Plain `http://` only works for LAN names, `.local` and private or
-tailnet IPs (iOS ATS rules); everything else needs `https://`.
+tailnet IPs (iOS ATS rules); everything else needs `https://`. A token never goes over plain `http://`: a token server
+(and Home Assistant) needs `https://`, except `http://localhost`, `127.0.0.1`, `::1` and `*.ts.net` names; the app
+sends nothing to it otherwise (see [SECURITY.md](SECURITY.md)).
 
 ## Tolerant client: rules the app follows
 
