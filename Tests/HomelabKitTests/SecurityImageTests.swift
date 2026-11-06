@@ -49,7 +49,7 @@ struct ImagePixelTests {
         #expect(ImagePixels.fits(width: 4000, height: 6000) && ImagePixels.fits(width: 6000, height: 4000))
         #expect(!ImagePixels.fits(width: 4001, height: 6000) && !ImagePixels.fits(width: 100, height: 6001))
         #expect(!ImagePixels.fits(width: 0, height: 10))
-        #expect(ImagePixels.isAcceptable(Self.png(width: 342, height: 513)))
+        #expect(ImagePixels.isAcceptable(PlaceholderPoster.png(seed: "a")))   // a real PNG: ImageIO checks CRCs on Apple
         #expect(!ImagePixels.isAcceptable(Self.png(width: 30000, height: 30000)))
         #expect(!ImagePixels.isAcceptable(Self.jpeg(width: 65000, height: 65000)))
         #expect(!ImagePixels.isAcceptable(Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])))   // no size: refused
