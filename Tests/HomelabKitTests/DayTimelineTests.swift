@@ -152,7 +152,8 @@ import Testing
     }
 
     @Test func demoStateHasALiveDay() async throws {
-        let now = Date()
+        // A fixed noon (not the real clock): a run just after midnight must not change which day things fall on.
+        let now = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 6, hour: 12))!
         let s = try await DemoBackend(delay: .zero, now: now).state()
         let today = try #require(s.cards.first { $0.id == "today" })
         let t = DayTimeline(card: today, now: now)

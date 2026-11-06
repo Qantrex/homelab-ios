@@ -242,7 +242,8 @@ import Testing
 
 @Suite struct DemoCardsTests {
     @Test func dueTimesFollowTheClock() async throws {
-        let now = Date()
+        // A fixed noon (not the real clock): a run just after midnight must not change which day things fall on.
+        let now = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 6, hour: 12))!
         let demo = DemoBackend(delay: .zero, now: now)
         let state = try await demo.state()
         let todos = try #require(state.cards.first { $0.id == "todos" })
