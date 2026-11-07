@@ -46,7 +46,7 @@ class UptimeKumaSource(unittest.TestCase):
     """Down monitors are problems, pending, slow and expiring certificates warnings, one card, no key."""
 
     def test_normal(self):
-        out, runner, reqs = run_kuma("normal")
+        out, runner, reqs = run_kuma("normal", services=True)
         self.assertIsNone(runner.states["Kuma"].error)
         self.assertEqual([r["path"] for r in reqs], ["/api/status-page/home", "/api/status-page/heartbeat/home"])
         self.assertEqual(problems(out), [
@@ -86,14 +86,14 @@ class UptimeKumaSource(unittest.TestCase):
         self.assertNotIn("Kuma:monitor-6", [p["id"] for p in out["problems"]])
 
     def test_cert_days_and_services_options(self):
-        out, _, _ = run_kuma("normal", cert_days=0, services=False)
+        out, _, _ = run_kuma("normal", cert_days=0)   # services: false by default
         self.assertNotIn("Kuma:cert-6", [p["id"] for p in out["problems"]])
         self.assertEqual(out["services"], [])
         out, _, _ = run_kuma("normal", cert_days=90)
         self.assertIn(("Kuma:cert-2", "warning", "Vaultwarden: certificate expires in 61 d"), problems(out))
 
     def test_version_1(self):
-        out, runner, _ = run_kuma("v1")
+        out, runner, _ = run_kuma("v1", services=True)
         self.assertIsNone(runner.states["Kuma"].error)
         self.assertEqual(problems(out), [("Kuma:monitor-13", "problem", "Printer: down"),
                                          ("Kuma:incident-1", "warning", "Kuma: Slow uplink tonight")])

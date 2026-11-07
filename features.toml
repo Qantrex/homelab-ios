@@ -1245,7 +1245,8 @@ sources = ["server/sources/__init__.py#Runner", "server/sources/__init__.py#Fetc
 tests = ["server/test_sources.py::ConfigRules", "server/test_sources.py::FetchRules", "server/test_sources.py::MergeRules",
          "server/test_sources.py::RunnerRules", "server/test_sources.py::ExampleSource",
          "server/test_sources.py::SourceModuleRules", "server/test_sources.py::BridgeEndToEnd",
-         "server/test_sources.py::FakeUpstreamRules"]
+         "server/test_sources.py::FakeUpstreamRules", "server/test_sources.py::KeyLeakRules",
+         "server/test_sources.py::UpstreamTextRules", "server/test_sources.py::IdentityWithSources"]
 docs = ["docs/REFERENCE_SERVER.md#sources", "docs/BRIDGE.md#homelab-bridge-adding-a-source"]
 not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
 depends_on = ["python3", "reference-server"]
@@ -1257,12 +1258,12 @@ name = "Source status in /info"
 area = "Server"
 status = "partial"
 since = "2026-11-07"
-summary = "A Homelab Bridge lists its sources in GET /info under an optional `sources`: per source its name, type, state (ok, failing, never), the last run (`checked`), the last good run (`last_ok`), the short error while failing (no URLs, no keys) and `insecure: true` when it skips the TLS check, as a warning. A server without sources leaves the field out; `scripts/check-live-api` warns for failing and insecure sources."
+summary = "A Homelab Bridge lists its sources in GET /info under an optional `sources`: per source its name, type, state (ok, failing, never), the last run (`checked`), the last good run (`last_ok`), the short error while failing (no URLs, no keys), `insecure: true` when it skips the TLS check and `plain_http: true` when it sends a key over plain http:// to a host that is not loopback, both as warnings. A server without sources leaves the field out; `scripts/check-live-api` warns for failing, insecure and plain-http sources."
 endpoints = ["GET /info"]
 api_fields = ["info.sources"]
 sources = ["server/sources/__init__.py#status", "server/reference_server.py#info", "server/test_source_status.py"]
 tests = ["server/test_source_status.py::StatusRows", "server/test_source_status.py::InfoSources", "InfoSourcesTests",
-         "server/test_reference_server.py::NoSourcesGolden"]
+         "server/test_reference_server.py::NoSourcesGolden", "server/test_sources.py::PlainHttpRules"]
 docs = ["docs/API.md#source-status-sources-in-info", "docs/REFERENCE_SERVER.md#sources"]
 not_needed = { device_tests = "server side; the app shows it in Diagnostics (feature diagnostics-sources, ST4b)" }
 depends_on = ["server-sources"]
@@ -1354,9 +1355,10 @@ sources = ["server/Dockerfile", "server/.dockerignore", "server/requirements-ima
            "server/docker/serve.json", "server/docker/config.example.json", "server/docker/bridge.env.example",
            "server/docker/tailscale.env.example", "scripts/build-bridge-image"]
 docs = ["docs/SERVER-SETUP.md#docker", "docs/GETTING-STARTED.md#b-homelab-bridge", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
-not_needed = { tests = "scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck", device_tests = "server side; the app sees an ordinary Companion server" }
+tests = ["server/test_reference_server.py::TailscaleModeTest"]
+not_needed = { device_tests = "server side; the app sees an ordinary Companion server" }
 depends_on = ["server-sources", "reference-server", "bridge-base-image", "pyyaml", "tailscale-image", "docker-socket-proxy", "docker", "tailscale", "gha-checkout", "gha-runners"]
-notes = "docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR."
+notes = "docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR. scripts/build-bridge-image --test (CI job bridge-image) runs the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck. Security review 2026-11-07: the image refuses TS_USERSPACE=true with a Tailscale login header (HOMELAB_ALLOW_USERSPACE=1 overrides) and warns without tailscale0; the socket proxy is wollomatic/socket-proxy with GET /containers/json only (tecnativa's CONTAINERS=1 also served container env, logs and files); the bridge image tag defaults to local, never latest."
 unsure = "That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here."
 
 [[feature]]
@@ -1930,12 +1932,12 @@ url = "https://hub.docker.com/r/tailscale/tailscale"
 
 [[dependency]]
 id = "docker-socket-proxy"
-name = "Tecnativa docker-socket-proxy"
+name = "wollomatic socket-proxy"
 kind = "server-side"
-version = "v0.5.0, pinned by digest"
-why = "Optional (compose profile `docker`): read-only container list for the bridge's Docker source, so the Docker socket never goes into the bridge."
-pins = ["server/compose.yaml: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459"]
-url = "https://github.com/Tecnativa/docker-socket-proxy"
+version = "1.13.2, pinned by digest"
+why = "Optional (compose profile `docker`): only GET /containers/json (a regex per method) for the bridge's Docker source, so the Docker socket never goes into the bridge. Replaced Tecnativa's proxy (2026-11-07), whose CONTAINERS=1 also served /containers/<id>/json (env), logs, archive and export."
+pins = ["server/compose.yaml: wollomatic/socket-proxy:1.13.2@sha256:ff95d6ff6c27853005ef85eb8f4ab5923dc3d2f1e055f98fb6aeeaceec3fe848"]
+url = "https://github.com/wollomatic/socket-proxy"
 
 [[dependency]]
 id = "pymobiledevice3"

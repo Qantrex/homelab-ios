@@ -210,8 +210,9 @@ class JsonFeedFromCompanion(unittest.TestCase):
                 self.assertEqual([h["id"] for h in out["hosts"]], ["Pi:" + h for h in dict.fromkeys(hosts)][:100])
                 texts = [p if isinstance(p, str) else p.get("text") if isinstance(p, dict) else None
                          for p in doc.get("problems", [])]
+                # As normalize leaves them: no URLs or keys, at most sources.MAX_TEXT characters.
                 self.assertEqual({p["text"] for p in out["problems"]},
-                                 {t.strip() for t in texts if isinstance(t, str) and t.strip()})
+                                 {sources.safe_text(t.strip()) for t in texts if isinstance(t, str) and t.strip()})
 
 
 class JsonFeedEndToEnd(unittest.TestCase):

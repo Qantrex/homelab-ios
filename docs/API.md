@@ -248,7 +248,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
 | `api` | Must be `1`. Anything else: an error that asks to update the app |
-| `sources` | Settings → Diagnostics gets a "Sources" section: per source its name and type, the state in words (`ok`, red `failing: 401`, `not yet`), when it last worked, and a gold "Certificate not checked (insecure)" for `insecure: true`; Copy report has one line per source (tailnet names masked). Missing, `null` or not a list: no section. Entries without a `name` are dropped; an unknown `state` reads "unknown"; `error` is cut to its first line and 120 characters |
+| `sources` | Settings → Diagnostics gets a "Sources" section: per source its name and type, the state in words (`ok`, red `failing: 401`, `not yet`), when it last worked, a gold "Certificate not checked (insecure)" for `insecure: true` and "Key sent without encryption (http://)" for `plain_http: true`; Copy report has one line per source (tailnet names masked). Missing, `null` or not a list: no section. Entries without a `name` are dropped; an unknown `state` reads "unknown"; `error` is cut to its first line and 120 characters |
 
 ## Source status (`sources` in `/info`)
 
@@ -274,8 +274,9 @@ as it was. Schema: `SourceStatus` in `server/openapi.yaml`.
 | `checked` | When the last run finished, good or not |
 | `last_ok` | When the last good run finished; kept while the source fails, so "failing since" can be shown |
 | `insecure` | Only sent as `true`: the source skips the TLS certificate check (`insecure: true` in its config, for a self-signed Proxmox or TrueNAS). Show it as a warning. `ca_file` is the safer choice |
+| `plain_http` | Only sent as `true`: the source sends its key over plain `http://` to a host that is not loopback, so anyone on that network path can read it. Show it as a warning (Diagnostics: a gold "Key sent without encryption (http://)") |
 
-`scripts/check-live-api` warns for each failing or insecure source. The app lists the sources in Settings →
+`scripts/check-live-api` warns for each failing, insecure or plain-http source. The app lists the sources in Settings →
 Diagnostics ([What `/info` changes in the app](#what-info-changes-in-the-app)).
 
 ## Actions the app starts (`run-actions`)

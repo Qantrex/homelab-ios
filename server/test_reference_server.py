@@ -993,5 +993,73 @@ class CliTest(unittest.TestCase):
         self.assertEqual(cfg.actions, {})
 
 
+class TailscaleModeTest(unittest.TestCase):
+    """The bridge image refuses TS_USERSPACE=true with a trusted Tailscale login header (every tailnet device could
+    reach 127.0.0.1:8791 and fake the header) and warns when the shared namespace has no tailscale0."""
+
+    IMAGE = {"HOMELAB_BRIDGE_IMAGE": "1"}
+
+    def setUp(self):
+        self.logs = []
+        orig = rs.log
+        rs.log = self.logs.append
+        self.addCleanup(setattr, rs, "log", orig)
+        self.tmp = tempfile.mkdtemp(prefix="netdev-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def cfg(self, header=LOGIN_HEADER):
+        raw = {"listen": "127.0.0.1:0", "trust_identity_header": header, "allowed_logins": ["you@example.com"]}
+        return rs.Config(raw, {})
+
+    def net_dev(self, *names):
+        path = os.path.join(self.tmp, "dev")
+        with open(path, "w") as fh:
+            fh.write("Inter-|   Receive\n face |bytes\n")
+            fh.writelines("%6s: 0 0 0 0\n" % n for n in names)
+        return path
+
+    def check(self, env, *names, header=LOGIN_HEADER):
+        thread = rs.check_tailscale_mode(self.cfg(header), env, wait=0.2, step=0.02, net_dev=self.net_dev(*names))
+        if thread:
+            thread.join(5)
+        return thread
+
+    def test_userspace_refused_unless_overridden(self):
+        for value in ("true", "1", "TRUE"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(rs.ConfigError, "HOMELAB_ALLOW_USERSPACE=1"):
+                    self.check(dict(self.IMAGE, TS_USERSPACE=value), "lo", "eth0")
+        self.assertIsNone(self.check(dict(self.IMAGE, TS_USERSPACE="true", HOMELAB_ALLOW_USERSPACE="1"), "lo"))
+        self.assertTrue(any(line.startswith("WARNING: TS_USERSPACE=true") for line in self.logs))
+
+    def test_no_tailscale0_is_a_warning(self):
+        self.assertIsNotNone(self.check(dict(self.IMAGE), "lo", "eth0"))
+        self.assertEqual(len(self.logs), 1)
+        self.assertIn("no tailscale0 interface", self.logs[0])
+        self.assertIn("127.0.0.1 ports", self.logs[0])
+
+    def test_kernel_mode_is_quiet(self):
+        self.check(dict(self.IMAGE, TS_USERSPACE="false"), "lo", "eth0", "tailscale0")
+        self.assertEqual(self.logs, [])
+
+    def test_only_in_the_image_and_with_a_tailscale_header(self):
+        self.assertIsNone(self.check({"TS_USERSPACE": "true"}, "lo"))
+        self.assertIsNone(self.check(dict(self.IMAGE, TS_USERSPACE="true"), "lo", header="X-Forwarded-User"))
+        tokens = rs.Config({"listen": "127.0.0.1:0", "tokens": [TOKEN]}, {})
+        self.assertIsNone(rs.check_tailscale_mode(tokens, dict(self.IMAGE, TS_USERSPACE="true")))
+        self.assertEqual(self.logs, [])
+
+    def test_cli_stops_at_start(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            json.dump({"listen": "127.0.0.1:0", "trust_identity_header": LOGIN_HEADER,
+                       "allowed_logins": ["you@example.com"]}, fh)
+        self.addCleanup(os.remove, fh.name)
+        env = dict(os.environ, HOMELAB_BRIDGE_IMAGE="1", TS_USERSPACE="true")
+        env.pop("HOMELAB_ALLOW_USERSPACE", None)
+        res = subprocess.run([sys.executable, SERVER, "--config", fh.name], capture_output=True, timeout=10, env=env)
+        self.assertEqual(res.returncode, 2)
+        self.assertIn(b"TS_USERSPACE=true with trust_identity_header: refused", res.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

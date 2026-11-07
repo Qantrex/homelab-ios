@@ -27,16 +27,19 @@ public struct SourceStatus: Codable, Sendable, Equatable {
     public var lastOK: Date?
     /// The source skips the TLS certificate check (self-signed Proxmox or TrueNAS): shown as a warning.
     public var insecure: Bool
+    /// The source sends its key over plain http:// to a host that is not loopback: shown as a warning.
+    public var plainHTTP: Bool
 
     public init(name: String, type: String? = nil, state: State, error: String? = nil, checked: Date? = nil,
-                lastOK: Date? = nil, insecure: Bool = false) {
+                lastOK: Date? = nil, insecure: Bool = false, plainHTTP: Bool = false) {
         self.name = name; self.type = type; self.state = state; self.error = error
-        self.checked = checked; self.lastOK = lastOK; self.insecure = insecure
+        self.checked = checked; self.lastOK = lastOK; self.insecure = insecure; self.plainHTTP = plainHTTP
     }
 
     enum CodingKeys: String, CodingKey {
         case name, type, state, error, checked, insecure
         case lastOK = "last_ok"
+        case plainHTTP = "plain_http"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -51,6 +54,7 @@ public struct SourceStatus: Codable, Sendable, Equatable {
         checked = c.date(.checked)
         lastOK = c.date(.lastOK)
         insecure = c.bool(.insecure) ?? false
+        plainHTTP = c.bool(.plainHTTP) ?? false
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -62,6 +66,7 @@ public struct SourceStatus: Codable, Sendable, Equatable {
         try c.encodeIfPresent(checked.map(ServerDate.string), forKey: .checked)
         try c.encodeIfPresent(lastOK.map(ServerDate.string), forKey: .lastOK)
         if insecure { try c.encode(true, forKey: .insecure) }
+        if plainHTTP { try c.encode(true, forKey: .plainHTTP) }
     }
 
     /// The first line, cut to `max` characters: a server's text never makes a row grow without end.
@@ -96,12 +101,16 @@ public struct SourceStatus: Codable, Sendable, Equatable {
     /// What the warning under an insecure source says.
     public static let insecureText = "Certificate not checked (insecure)"
 
+    /// What the warning under a source that sends its key over plain http:// says.
+    public static let plainHTTPText = "Key sent without encryption (http://)"
+
     /// One line of Diagnostics' Copy report: "source Kuma (uptime-kuma): failing: 401, last ok 2 h ago, insecure".
     /// The caller masks host names (`Redact.hosts`) over the whole report.
     public func reportLine(now: Date = Date()) -> String {
         var parts = [stateText]
         if let t = timeText(now: now) { parts.append(t) }
         if insecure { parts.append("insecure") }
+        if plainHTTP { parts.append("plain http") }
         return "source \(name) (\(type ?? "?")): " + parts.joined(separator: ", ")
     }
 }

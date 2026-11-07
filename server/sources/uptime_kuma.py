@@ -19,7 +19,8 @@ Config:
     optional: "slow_ms": 2000   a monitor that is up but answered slower than this is a warning (off by default)
               "cert_days": 14   a certificate that expires within this many days is a warning (needs "Show
                                 Certificate Expiry" on the status page; 0 turns it off)
-              "services": true  monitors with a public link become launcher entries
+              "services": true  monitors with a public link become launcher entries (default false: the
+                                status page shows its links to anyone, but the launcher is yours to fill)
 
 What it gives:
     problems  down monitor: problem "Jellyfin: down"; pending (Kuma retries): warning "Jellyfin: pending";
@@ -27,7 +28,7 @@ What it gives:
               a pinned incident: "danger" a problem, "warning" a warning, other styles nothing.
               Maintenance is not a problem.
     cards     one list card in Lab, "11 of 12 up", a row per monitor with its state and 24 h uptime
-    services  the monitors the status page shows with a link (when "services" is true)
+    services  the monitors the status page shows with a link (only with "services": true)
 """
 
 import re
@@ -52,7 +53,7 @@ def check(cfg):
     for key in ("slow_ms", "cert_days"):
         if key in cfg and (_number(cfg[key]) is None or cfg[key] < 0):
             raise ValueError("%s must be a number, at least 0" % key)
-    if not isinstance(cfg.get("services", True), bool):
+    if not isinstance(cfg.get("services", False), bool):
         raise ValueError("services must be true or false")
 
 
@@ -129,7 +130,7 @@ def collect(cfg, fetch):
                 item["subtitle"] = " · ".join(parts)
             items.append(item)
             url = as_text(mon.get("url"))
-            if cfg.get("services", True) and url.startswith(("http://", "https://")):
+            if cfg.get("services", False) and url.startswith(("http://", "https://")):
                 services.append({"name": name, "url": url, "icon": "globe"})
 
     incidents = as_list(page.get("incidents")) or [page.get("incident")]

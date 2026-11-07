@@ -416,6 +416,16 @@ class HomepageLiteralKeys(TmpFiles, unittest.TestCase):
             "\"{{HOMEPAGE_VAR_GATUS_PASSWORD}}\" as the password in services.yaml instead, or leave this service "
             "out with \"skip\""))
 
+    def test_key_placeholder_in_a_widget_url_path(self):
+        text = ("- M:\n    - Kuma:\n        widget: {type: uptimekuma, "
+                "url: 'http://192.0.2.5:3001/{{HOMEPAGE_VAR_KUMA_TOKEN}}/', slug: home}\n")
+        with self.assertRaises(homepage.ImportFailed) as ctx:
+            self.load(text, env={"HOMEPAGE_VAR_KUMA_TOKEN": LITERAL})
+        self.assertIn("M / Kuma: the widget's url holds", str(ctx.exception))
+        self.assertNotIn(LITERAL, str(ctx.exception) + "\n".join(self.logs))
+        res = self.load(text.replace("KUMA_TOKEN", "KUMA_HOST"), env={"HOMEPAGE_VAR_KUMA_HOST": "kuma"})
+        self.assertEqual([s["url"] for s in res.sources], ["http://192.0.2.5:3001/kuma/"])
+
     def test_skip_lets_it_start(self):
         res = self.load(self.CASES[0], skip=["Gatus"])
         self.assertEqual(res.sources, [])

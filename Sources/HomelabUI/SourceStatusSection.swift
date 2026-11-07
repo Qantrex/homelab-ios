@@ -45,6 +45,10 @@ struct SourceStatusRow: View {
                 Label(SourceStatus.insecureText, systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote).foregroundStyle(Palette.gold)
             }
+            if source.plainHTTP {
+                Label(SourceStatus.plainHTTPText, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote).foregroundStyle(Palette.gold)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: spoken(time)))
@@ -67,6 +71,7 @@ struct SourceStatusRow: View {
     /// "pve1, proxmox, failing: 401, last ok 1 hour ago, Certificate not checked (insecure)".
     private func spoken(_ time: String?) -> String {
         [source.name, source.type, source.stateText, time.map(Format.spoken),
-         source.insecure ? SourceStatus.insecureText : nil].compactMap { $0 }.joined(separator: ", ")
+         source.insecure ? SourceStatus.insecureText : nil,
+         source.plainHTTP ? SourceStatus.plainHTTPText : nil].compactMap { $0 }.joined(separator: ", ")
     }
 }

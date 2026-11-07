@@ -800,6 +800,8 @@ def main():
                 warn("info", "info.sources[%d]" % i, "source %s is failing: %s" % (name, error[:120]))
             if s.get("insecure") is True:
                 warn("info", "info.sources[%d]" % i, "source %s skips the TLS certificate check (insecure: true)" % name)
+            if s.get("plain_http") is True:
+                warn("info", "info.sources[%d]" % i, "source %s sends its key over plain http:// (plain_http: true)" % name)
     has = lambda f: f in features
 
     state = get_json("state", base, "/state", a.token, a.timeout)

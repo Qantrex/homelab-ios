@@ -479,7 +479,9 @@ def convert(data, env, opts, taken_names=(), own_services=()):
         if ctx.missing:
             res.notes.append("%s: widget %s skipped, %s is not set" % (where, kind, ", ".join(sorted(ctx.missing))))
             return
-        if isinstance(cfg.get("url"), str) and _url_holds_key(cfg["url"]):
+        raw_url = widget.get("url") if isinstance(widget.get("url"), str) else ""
+        if isinstance(cfg.get("url"), str) and (_url_holds_key(cfg["url"])
+                                                or any(_secret_var(v) for v in MARKER.findall(raw_url))):
             raise ImportFailed("homepage: %s: the widget's url holds a user, a password or a key. The bridge reads "
                                "keys only from env variables: see docs/SERVER-SETUP.md#import-from-homepage" % where)
         try:

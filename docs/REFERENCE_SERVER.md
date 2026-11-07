@@ -103,7 +103,7 @@ The config is JSON. Keys that start with `_` are comments and are ignored. Unkno
 | `allowed_hosts` | `["localhost", "127.0.0.1", "::1", "*.ts.net"]` | Accepted `Host` headers (`*.` = any subdomain). Blocks DNS rebinding. Add your own name if you use a custom domain |
 | `tokens` | `[]` | Bearer tokens. Env `HOMELAB_TOKENS` (comma-separated) adds more. Use 16+ random characters |
 | `trust_identity_header` | none | Header set by the proxy, e.g. `Tailscale-User-Login`. Only trusted from `127.0.0.1` |
-| `allowed_logins` | `[]` | Logins allowed via the header. Empty = any login the proxy sends |
+| `allowed_logins` | `[]` | Logins allowed via the header. Empty = any login the proxy sends; with `sources` it must not be empty (the server stops at start) |
 | `interval` | `60` | Seconds between check rounds |
 | `this_host.id` | hostname | Host id of this machine |
 | `this_host.name` / `kind` / `url` | id / `server` / none | Shown in the app. `kind`: server, raspberry-pi, laptop, desktop, nas, vm |
@@ -255,8 +255,21 @@ Rules the server enforces for every source:
 - **Keys only in env variables.** The config names the variable (`"key_env": "PVE_TOKEN"`), never the key. A source
   key such as `key`, `api_key`, `token` or `password` in the config, or a key in the URL, stops the server at start.
   Put the variables in the systemd `EnvironmentFile` next to `HOMELAB_TOKENS`. A source sees only the variables its
-  own `*_env` keys name. Their values are replaced by `***` in every answer and log line, and commands from actions
-  and chat don't get them.
+  own `*_env` keys name. Their values are replaced by `***` in every answer and log line (also escaped, `%`-encoded
+  and in base64, as error texts and Basic auth carry them), and commands from actions and chat don't get them. A
+  value is stripped of spaces and line breaks at its ends; one with a line break or another control character inside
+  stops the server at start, with the variable's name and never its value.
+- **Keys over plain `http://`.** A source with a key (any `*_env`) whose `url` is `http://` to a host that is not
+  `localhost` or `127.0.0.1` sends that key in clear text over the network. It still runs, but the log says so at
+  start and `/info` flags it with `plain_http: true` (a gold warning in Diagnostics, like `insecure`). Use `https://`
+  (with `ca_file` for a self-signed certificate), or reach the service over the tailnet.
+- **Identity login needs `allowed_logins`.** With `trust_identity_header` and sources, an empty `allowed_logins` stops
+  the server at start: the bridge holds other services' data and actions, so it names who may use it. Without
+  sources an empty list still lets every login through, as before.
+- **Texts and links from upstream.** A problem's text and a card's or item's `title`, `subtitle` and `value` lose
+  their URLs (`<url>`) and every `key=value` or `token: value` with a secret-like name (`apikey=***`), and are cut
+  to 200 characters (a card's `text` to 1000). A service or item link with a user or password (`user@host`) or a key
+  in its query is dropped.
 - **Read-only by default.** Buttons on a source's cards and items are removed. Only the docker, proxmox, pihole and
   adguard types can act (restart, start, stop, pause), and only for the items their config lists under `actions`:
   see [Source actions](#source-actions).
@@ -266,10 +279,15 @@ Rules the server enforces for every source:
   warning, for example `Kuma: 401` or `Lab: timeout`, and nothing else from that source. The rest answers as usual.
   The status is the worst of all problems.
 - **Limits.** A request may take `timeout` seconds and return at most 8 MB. No redirects, no cookies, no proxy from
-  the environment. At most 100 problems, 100 hosts, 50 cards and 100 services per source.
-- Each source runs in its own thread, so a slow upstream never holds up the host checks or another source.
+  the environment. At most 100 problems, 100 hosts, 50 cards and 100 services per source, 200 items per card and
+  200 containers per host.
+- Each source runs in its own thread, so a slow upstream never holds up the host checks or another source. An
+  upstream that answers very slowly (a byte now and then) shows as `timeout` once the run is past `every + timeout`.
+  `timeout` counts per wait for data, so such a request goes on in its thread until the upstream stops sending or
+  8 MB have come; the source stays `timeout` and is not started again until then. The rest of the server is not
+  held up.
 - **Status in `/info`.** `/info` lists every source under `sources`: `state` (`ok`, `failing`, `never`), the last
-  run, the last good run, the short error while failing, and `insecure: true` as a warning. Without `sources` in the
+  run, the last good run, the short error while failing, and `insecure: true` and `plain_http: true` as warnings. Without `sources` in the
   config the field is left out. Fields: [API.md → Source status](API.md#source-status-sources-in-info). The app
   shows them in Settings → Diagnostics → Sources.
 
@@ -371,17 +389,23 @@ It reads `GET /containers/json?all=1` and gives one host with every container in
 `containers: {up, total}`. Unhealthy, restarting and dead containers are problems; one that exited with a non-zero
 code is a warning (`exited (137)`); exited with 0 is fine.
 
-The read-only socket proxy, in the compose file next to your containers
-([tecnativa/docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy): only GET, only `/containers`):
+The socket proxy, in the compose file next to your containers:
+[wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy), which lets through one regular expression
+per method (it adds `^` and `$`), so exactly the container list and nothing else:
 
 ```yaml
 services:
   socket-proxy:
-    image: tecnativa/docker-socket-proxy:v0.5.0   # pin a version
+    image: wollomatic/socket-proxy:1.13.2@sha256:ff95d6ff6c27853005ef85eb8f4ab5923dc3d2f1e055f98fb6aeeaceec3fe848
     restart: unless-stopped
-    environment:
-      CONTAINERS: 1     # GET /containers/json; everything else is refused
-      POST: 0           # no changes at all
+    user: "0:0"            # uid 0 owns the socket; or "65534:<the docker group id>"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges]
+    command:
+      - -listenip=0.0.0.0
+      - -allowfrom=homelab-bridge          # the bridge's service name (server/compose.yaml: tailscale, its sidecar)
+      - -allowGET=/containers/json         # only the list; every other GET and every POST is refused
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [socket-proxy]
@@ -393,28 +417,17 @@ networks:
     internal: true      # no route out, and no published port
 ```
 
-For Restart the proxy must also pass `POST /containers/<name>/restart`. Tecnativa's proxy can't do only that:
-`POST: 1` with `CONTAINERS: 1` also lets through `POST /containers/create`, which is root on the host again. Use
-[wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy) instead, which allows one regular expression
-per method:
+For Restart add exactly the containers under `actions.restart`, and only then:
 
 ```yaml
-  socket-proxy:
-    image: wollomatic/socket-proxy:1.13.2
-    restart: unless-stopped
-    user: "65534:<the docker group id>"
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges]
-    command:
-      - -listenip=0.0.0.0
-      - -allowfrom=homelab-bridge
-      - -allowGET=/containers/json
-      - -allowPOST=/containers/(sonarr|gluetun)/restart   # exactly the containers under actions.restart
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks: [socket-proxy]
+      - -allowPOST=/containers/(sonarr|gluetun)/restart
 ```
+
+Don't use tecnativa/docker-socket-proxy for the bridge. Its `CONTAINERS=1` allows every GET under `/containers`,
+not only the list: `/containers/<id>/json` holds each container's environment (so the keys of every other service on
+that host), and `/logs`, `/archive` and `/export` give their logs and files. Its `ALLOW_RESTARTS=1` lets through
+stop, restart and kill of every container, not only the ones on your list, and `POST=1` with `CONTAINERS=1` also
+`POST /containers/create`, which is root on the host.
 
 Which to pick: `this_host.docker: true` counts the containers of the machine the server runs on with `docker ps`
 (the server's user needs the docker group, which is root-equivalent). The `docker` source reads any Docker host

@@ -28,7 +28,10 @@ COPY reference_server.py /app/reference_server.py
 COPY sources/ /app/sources/
 
 # HOME is where the server keeps state (chat history in ~/.local/state/homelab-companion); a volume in compose.yaml.
+# HOMELAB_BRIDGE_IMAGE: with a trusted Tailscale-User-Login the server refuses TS_USERSPACE=true and warns when the
+# shared namespace has no tailscale0 (userspace mode would open 127.0.0.1:8791 to the whole tailnet; SERVER-SETUP.md#docker).
 ENV HOME=/var/lib/homelab-bridge \
+    HOMELAB_BRIDGE_IMAGE=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /var/lib/homelab-bridge

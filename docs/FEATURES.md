@@ -172,12 +172,12 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
-| [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
-| [Source status in /info](#source-status) | partial | – | 4 | n/a | 2 |
+| [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 11 | n/a | 2 |
+| [Source status in /info](#source-status) | partial | – | 5 | n/a | 2 |
 | [JSON feed source](#source-json) | partial | `status`, `hosts`, `cards`, `services` | 4 | n/a | 1 |
 | [Bridge source: Uptime Kuma](#source-uptime-kuma) | partial | `status`, `cards`, `services` | 2 | n/a | 2 |
 | [Bridge source: Gatus](#source-gatus) | partial | `status`, `cards` | 1 | n/a | 2 |
-| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | n/a | n/a | 4 |
+| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | 1 | n/a | 4 |
 | [Docker source (socket proxy)](#source-docker) | partial | `hosts` | 2 | n/a | 2 |
 | [Proxmox source](#source-proxmox) | partial | `hosts` | 2 | n/a | 2 |
 | [Bridge source actions (opt-in)](#source-actions) | partial | `run-actions` | 4 | n/a | 2 |
@@ -1537,7 +1537,7 @@ A `sources` list in the reference server's config reads other services' APIs (on
 |---|---|
 | Server | `status`, `hosts`, `cards`, `services`, `GET /state`, `GET /services`, `state.problems`, `state.hosts`, `state.cards`, `services` |
 | Sources | [__init__.py#Runner](../server/sources/__init__.py), [__init__.py#Fetch](../server/sources/__init__.py), [example.py#collect](../server/sources/example.py), [fake_upstream.py#FakeUpstream](../server/fake_upstream.py), [test_sources.py](../server/test_sources.py), [normal.json](../server/recordings/example/normal.json), [odd.json](../server/recordings/example/odd.json), [sources-example.json](../server/examples/sources-example.json) |
-| Tests | `server/test_sources.py::ConfigRules`, `server/test_sources.py::FetchRules`, `server/test_sources.py::MergeRules`, `server/test_sources.py::RunnerRules`, `server/test_sources.py::ExampleSource`, `server/test_sources.py::SourceModuleRules`, `server/test_sources.py::BridgeEndToEnd`, `server/test_sources.py::FakeUpstreamRules` |
+| Tests | `server/test_sources.py::ConfigRules`, `server/test_sources.py::FetchRules`, `server/test_sources.py::MergeRules`, `server/test_sources.py::RunnerRules`, `server/test_sources.py::ExampleSource`, `server/test_sources.py::SourceModuleRules`, `server/test_sources.py::BridgeEndToEnd`, `server/test_sources.py::FakeUpstreamRules`, `server/test_sources.py::KeyLeakRules`, `server/test_sources.py::UpstreamTextRules`, `server/test_sources.py::IdentityWithSources` |
 | Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
 | Docs | [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources), [docs/BRIDGE.md#homelab-bridge-adding-a-source](BRIDGE.md#homelab-bridge-adding-a-source) |
 | Depends on | [python3](#dep-python3), [reference-server](#reference-server) |
@@ -1548,13 +1548,13 @@ A `sources` list in the reference server's config reads other services' APIs (on
 
 **Source status in /info** · Server · partial · since 2026-11-07
 
-A Homelab Bridge lists its sources in GET /info under an optional `sources`: per source its name, type, state (ok, failing, never), the last run (`checked`), the last good run (`last_ok`), the short error while failing (no URLs, no keys) and `insecure: true` when it skips the TLS check, as a warning. A server without sources leaves the field out; `scripts/check-live-api` warns for failing and insecure sources.
+A Homelab Bridge lists its sources in GET /info under an optional `sources`: per source its name, type, state (ok, failing, never), the last run (`checked`), the last good run (`last_ok`), the short error while failing (no URLs, no keys), `insecure: true` when it skips the TLS check and `plain_http: true` when it sends a key over plain http:// to a host that is not loopback, both as warnings. A server without sources leaves the field out; `scripts/check-live-api` warns for failing, insecure and plain-http sources.
 
 | | |
 |---|---|
 | Server | `GET /info`, `info.sources` |
 | Sources | [__init__.py#status](../server/sources/__init__.py), [reference_server.py#info](../server/reference_server.py), [test_source_status.py](../server/test_source_status.py) |
-| Tests | `server/test_source_status.py::StatusRows`, `server/test_source_status.py::InfoSources`, `InfoSourcesTests`, `server/test_reference_server.py::NoSourcesGolden` |
+| Tests | `server/test_source_status.py::StatusRows`, `server/test_source_status.py::InfoSources`, `InfoSourcesTests`, `server/test_reference_server.py::NoSourcesGolden`, `server/test_sources.py::PlainHttpRules` |
 | Phone (DeviceTest.md) | n/a: server side; the app shows it in Diagnostics (feature diagnostics-sources, ST4b) |
 | Docs | [docs/API.md#source-status-sources-in-info](API.md#source-status-sources-in-info), [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources) |
 | Depends on | [server-sources](#server-sources) |
@@ -1622,12 +1622,12 @@ Source type `gatus`: every Gatus endpoint from GET /api/v1/endpoints/statuses. F
 |---|---|
 | Server | `status`, `hosts`, `GET /info`, `GET /state` |
 | Sources | [Dockerfile](../server/Dockerfile), [.dockerignore](../server/.dockerignore), [requirements-image.txt](../server/requirements-image.txt), [compose.yaml](../server/compose.yaml), [serve.json](../server/docker/serve.json), [config.example.json](../server/docker/config.example.json), [bridge.env.example](../server/docker/bridge.env.example), [tailscale.env.example](../server/docker/tailscale.env.example), [build-bridge-image](../scripts/build-bridge-image) |
-| Tests | n/a: scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck |
+| Tests | `server/test_reference_server.py::TailscaleModeTest` |
 | Phone (DeviceTest.md) | n/a: server side; the app sees an ordinary Companion server |
 | Docs | [docs/SERVER-SETUP.md#docker](SERVER-SETUP.md#docker), [docs/GETTING-STARTED.md#b-homelab-bridge](GETTING-STARTED.md#b-homelab-bridge), [docs/RELEASE.md#homelab-bridge-image](RELEASE.md#homelab-bridge-image), [docs/CI.md#workflows](CI.md#workflows) |
 | Depends on | [server-sources](#server-sources), [reference-server](#reference-server), [bridge-base-image](#dep-bridge-base-image), [pyyaml](#dep-pyyaml), [tailscale-image](#dep-tailscale-image), [docker-socket-proxy](#dep-docker-socket-proxy), [docker](#dep-docker), [tailscale](#dep-tailscale), [gha-checkout](#dep-gha-checkout), [gha-runners](#dep-gha-runners) |
 | Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3) |
-| Notes | docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR. |
+| Notes | docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR. scripts/build-bridge-image --test (CI job bridge-image) runs the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck. Security review 2026-11-07: the image refuses TS_USERSPACE=true with a Tailscale login header (HOMELAB_ALLOW_USERSPACE=1 overrides) and warns without tailscale0; the socket proxy is wollomatic/socket-proxy with GET /containers/json only (tecnativa's CONTAINERS=1 also served container env, logs and files); the bridge image tag defaults to local, never latest. |
 | Unsure | That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here. |
 
 ### source-docker
@@ -1924,7 +1924,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-bridge-base-image"></a>**Python 3.14 on Alpine (Homelab Bridge base image)** | server-side | python:3.14.10-alpine3.24, pinned by its multi-arch index digest (amd64, arm64) | [Dockerfile](../server/Dockerfile) | [bridge-docker](#bridge-docker) | 1 |
 | <a id="dep-pyyaml"></a>**PyYAML (Homelab Bridge image only)** | server-side | 6.0.3, musllinux wheels for CPython 3.14 (amd64, arm64) by SHA-256 | [requirements-image.txt](../server/requirements-image.txt) | [bridge-docker](#bridge-docker), [homepage-import](#homepage-import) | 2 |
 | <a id="dep-tailscale-image"></a>**tailscale/tailscale container image** | server-side | v1.104.4, pinned by digest | [compose.yaml](../server/compose.yaml) | [bridge-docker](#bridge-docker) | 1 |
-| <a id="dep-docker-socket-proxy"></a>**Tecnativa docker-socket-proxy** | server-side | v0.5.0, pinned by digest | [compose.yaml](../server/compose.yaml) | [bridge-docker](#bridge-docker) | 1 |
+| <a id="dep-docker-socket-proxy"></a>**wollomatic socket-proxy** | server-side | 1.13.2, pinned by digest | [compose.yaml](../server/compose.yaml) | [bridge-docker](#bridge-docker) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
 | <a id="dep-gha-checkout"></a>**actions/checkout** | ci | v7.0.1, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [bridge-docker](#bridge-docker), [ci-checks](#ci-checks) | 2 |
@@ -1966,7 +1966,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 - **Python 3.14 on Alpine (Homelab Bridge base image)** (`bridge-base-image`): The base of the Homelab Bridge image (server/Dockerfile): small (about 60 MB with the bridge), BusyBox ping works without root. <https://hub.docker.com/_/python>
 - **PyYAML (Homelab Bridge image only)** (`pyyaml`): Only in the image (owner, 2026-11-07), for the Homepage import (M1.8). The single-file server stays stdlib-only. <https://pypi.org/project/PyYAML/>
 - **tailscale/tailscale container image** (`tailscale-image`): The sidecar in server/compose.yaml: the bridge's tailnet machine, `tailscale serve` from docker/serve.json (TS_SERVE_CONFIG), kernel networking. <https://hub.docker.com/r/tailscale/tailscale>
-- **Tecnativa docker-socket-proxy** (`docker-socket-proxy`): Optional (compose profile `docker`): read-only container list for the bridge's Docker source, so the Docker socket never goes into the bridge. <https://github.com/Tecnativa/docker-socket-proxy>
+- **wollomatic socket-proxy** (`docker-socket-proxy`): Optional (compose profile `docker`): only GET /containers/json (a regex per method) for the bridge's Docker source, so the Docker socket never goes into the bridge. Replaced Tecnativa's proxy (2026-11-07), whose CONTAINERS=1 also served /containers/<id>/json (env), logs, archive and export. <https://github.com/wollomatic/socket-proxy>
 - **pymobiledevice3** (`pymobiledevice3`): scripts/phone-shots takes screenshots on the iPhone over USB without root.
 - **GitHub CLI** (`gh`): Releases: check CI on the commit, create the release with the IPA, its SHA-256 and source.json.
 - **actions/checkout** (`gha-checkout`): Checks the repo out in every CI job (persist-credentials off where nothing is pushed).
@@ -2014,7 +2014,7 @@ Features per area that need each dependency, directly or through another feature
 | Python 3.14 on Alpine (Homelab Bridge base image) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
 | PyYAML (Homelab Bridge image only) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |
 | tailscale/tailscale container image |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
-| Tecnativa docker-socket-proxy |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
+| wollomatic socket-proxy |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | actions/checkout |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 1 |
