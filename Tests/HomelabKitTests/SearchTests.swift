@@ -110,6 +110,10 @@ import Testing
         #expect(SearchQuery.clean("a\u{0}b") == "a b")
         #expect(SearchQuery.prefill(String(repeating: "x", count: 150)).count == 100)
         #expect(SearchQuery.prefill("  a ") == "a")
+        let cut = SearchQuery.prefill(String(repeating: "a", count: 99) + " x")   // the cut falls right after the space
+        #expect(cut == String(repeating: "a", count: 99))
+        #expect(!SearchQuery.runsOnItsOwn(String(repeating: "a", count: 99) + " x", held: cut) == false)  // edited text: runs
+        #expect(!SearchQuery.runsOnItsOwn(cut, held: cut))
     }
 
     @Test func textFromALinkWaitsForTheUser() {

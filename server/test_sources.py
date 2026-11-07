@@ -763,8 +763,8 @@ class UpstreamTextRules(unittest.TestCase):
                               {"K": "made-up-sonarr-key"})[0]
             runner = run(s)
         texts = [p["text"] for p in runner.merged()["problems"] if p["id"].startswith("Sonarr:health")]
-        self.assertEqual(texts, ["Sonarr: Search failed: <url>",
-                                 "Sonarr: RSS sync failed (apikey=***&t=search, token: ***)"])
+        self.assertEqual(texts, ["Sonarr: Search failed: \\<url>",
+                                 "Sonarr: RSS sync failed (apikey=\\*\\*\\*&t=search, token: \\*\\*\\*)"])
         self.assertNotIn("0a1b2c3d4e5f", json.dumps(runner.merged()))
 
     def test_card_and_item_texts(self):
@@ -773,10 +773,10 @@ class UpstreamTextRules(unittest.TestCase):
                                        "items": [{"title": "password=hunter22", "value": "v" * 300,
                                                   "url": "https://nas.example/"}]}]})
         card = out["cards"][0]
-        self.assertEqual(card["title"], "see <url>")
+        self.assertEqual(card["title"], "see \\<url>")
         self.assertEqual(len(card["subtitle"]), sources.MAX_TEXT)
         self.assertEqual(len(card["text"]), sources.MAX_LONG_TEXT)
-        self.assertEqual(card["items"][0]["title"], "password=***")
+        self.assertEqual(card["items"][0]["title"], "password=\\*\\*\\*")
         self.assertEqual(len(card["items"][0]["value"]), sources.MAX_TEXT)
         self.assertEqual(card["items"][0]["url"], "https://nas.example/")
         out, _ = self.norm({"problems": [{"text": "x" * 1000}]})

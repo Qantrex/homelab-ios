@@ -329,6 +329,120 @@ class MinecraftSource(unittest.TestCase):
         self.assertLess(took, gameserver.TIMEOUT + 2)
 
 
+class MarkdownText(unittest.TestCase):
+    """Upstream text reaches the app's Markdown renderer: no link, autolink, HTML or entity form survives."""
+
+    EVIL = ["[a](https&#58;//e.co)", "[a](https\\://e.co)", "[a](<javascript:x>)", "<https://e.co>", "<b>x</b>",
+            "&#104;ttp&#58;//e.co", "**bold** _it_ `code` ~~s~~", "![i](tel:123)"]
+
+    def check_plain(self, text):
+        import re
+        # no unescaped link opener `](`, `<` + tag start, entity, emphasis or code mark
+        self.assertIsNone(re.search(r"(?<!\\)(?:\\\\)*(\]\(|<[A-Za-z/!?]|&#?\w+;|[*`~])", text), text)
+
+    def test_player_names_and_motd(self):
+        sample = [{"name": n} for n in self.EVIL]
+        obj = paper(players={"online": 8, "max": 10, "sample": sample}, description="sleeping " + self.EVIL[0])
+        with FakeMinecraft(lambda _d: mc_packet(obj)) as fake:
+            out, _ = run_games(mc("S [x](y&#58;//z)", fake.port))
+        row = rows(out)
+        self.assertEqual(len(row), 1)
+        item = out["cards"][0]["items"][0]
+        for field in ("title", "subtitle"):
+            self.check_plain(item[field])
+        self.assertIn("[a\\](https\\&#58;//e.co)", item["subtitle"])
+
+    def test_ordinary_text_is_left_alone(self):
+        self.assertEqual(sources.safe_text("2/10 · Paper 26.3 · C&C [STATUS] (502) a < b snake_case"),
+                         "2/10 · Paper 26.3 · C&C [STATUS] (502) a < b snake_case")
+
+    def test_cut_never_ends_on_an_open_escape(self):
+        out = sources.safe_text("*" * 50, 11)
+        self.assertEqual(len(out), 11)
+        self.assertEqual(out, "\\*" * 5 + "…")
+
+    def test_another_source_goes_through_the_same_filter(self):
+        out = sources.normalize("X", {"problems": [{"text": "down [a](https&#58;//e.co) <https://e.co> <b>"}],
+                                      "cards": [{"id": "c", "title": "&amp; \\[x\\](y)", "items": [
+                                          {"title": "[a](https&#58;//e.co)"}]}]})
+        self.check_plain(out["problems"][0]["text"])
+        self.check_plain(out["cards"][0]["title"])
+        self.check_plain(out["cards"][0]["items"][0]["title"])
+
+
+class ConnectDeadline(unittest.TestCase):
+    def test_total_stays_within_the_deadline_over_many_addresses(self):
+        class Dead:
+            def settimeout(self, t):
+                self.t = t
+
+            def connect(self, addr):
+                time.sleep(self.t)
+                raise socket.timeout("timed out")
+
+            def close(self):
+                pass
+
+        class Shim:
+            timeout = socket.timeout
+            error = socket.error
+            SOCK_STREAM = socket.SOCK_STREAM
+            AF_INET = socket.AF_INET
+
+            @staticmethod
+            def getaddrinfo(host, port, type=0):
+                return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.%d" % i, port)) for i in range(1, 5)]
+
+            @staticmethod
+            def socket(*a):
+                return Dead()
+
+        orig = gameserver.socket
+        gameserver.socket = Shim
+        self.addCleanup(setattr, gameserver, "socket", orig)
+        started = time.monotonic()
+        with self.assertRaises((OSError, sources.SourceError)):
+            gameserver._connect("multi.test", 1234, time.monotonic() + 0.6)
+        self.assertLess(time.monotonic() - started, 0.9)
+
+    def test_bracketed_ipv6_is_bare_for_connect(self):
+        self.assertEqual(gameserver._bare("[fd00::1]"), "fd00::1")
+        self.assertEqual(gameserver._bare("mc.example.com"), "mc.example.com")
+        self.assertEqual(gameserver._bare("[::1]"), "::1")
+        # a real connect to [::1] (skipped where IPv6 loopback is missing)
+        try:
+            probe = socket.socket(socket.AF_INET6)
+            probe.bind(("::1", 0))
+        except OSError:
+            self.skipTest("no IPv6 loopback")
+        port = probe.getsockname()[1]
+        probe.listen(1)
+        self.addCleanup(probe.close)
+        sock = gameserver._connect(gameserver._bare("[::1]"), port, time.monotonic() + 2)
+        sock.close()
+
+    def test_source_timeout_can_only_shorten(self):
+        seen = []
+        orig = gameserver._probe
+        gameserver._probe = lambda s, timeout=gameserver.TIMEOUT: seen.append(timeout) or {
+            "online": 0, "max": 1, "names": [], "version": "", "motd": ""}
+        self.addCleanup(setattr, gameserver, "_probe", orig)
+        srv = [{"name": "A", "type": "minecraft", "host": "h"}]
+        gameserver.collect({"name": "G", "servers": srv, "timeout": 0.5}, None)
+        gameserver.collect({"name": "G", "servers": srv, "timeout": 99}, None)
+        gameserver.collect({"name": "G", "servers": srv}, None)
+        self.assertEqual(seen, [0.5, gameserver.TIMEOUT, gameserver.TIMEOUT])
+
+    def test_row_and_count_come_from_one_snapshot(self):
+        info = {"online": 1, "max": 2, "names": [], "version": "", "motd": ""}
+        orig = gameserver._run
+        gameserver._run = lambda s, out, timeout=1: out.update(info=info)
+        self.addCleanup(setattr, gameserver, "_run", orig)
+        card = gameserver.collect({"name": "G", "servers": [{"name": "A", "type": "minecraft", "host": "h"}]},
+                                  None)["cards"][0]
+        self.assertEqual((card["subtitle"], card["items"][0]["subtitle"].split(" ")[0]), ("1 of 1 up", "Running"))
+
+
 class A2SSource(unittest.TestCase):
     def test_normal_with_challenge(self):
         with FakeA2S() as fake:

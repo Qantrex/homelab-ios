@@ -283,14 +283,26 @@ public enum Redact {
         for h in knownHosts.map({ $0.trimmingCharacters(in: .whitespaces) })
             .filter({ !$0.isEmpty && !$0.lowercased().hasSuffix(".ts.net") })
             .sorted(by: { $0.count > $1.count }) {
-            out = out.replacingOccurrences(of: h, with: "<host>", options: .caseInsensitive)
+            // Whole names only: a host "nas" or "pi" must not garble "api" or "Homelab".
+            out = replace("(?<![A-Za-z0-9-])" + NSRegularExpression.escapedPattern(for: h) + "(?![A-Za-z0-9-]|\\.[A-Za-z0-9])", in: out, with: "<host>")
         }
+        // Names that only exist on a home network, known or not.
+        out = replace("(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\\.)+(?:lan|local|internal|home\\.arpa)(?![A-Za-z0-9-])", in: out, with: "<host>")
         out = out.replacing(/\.[A-Za-z0-9-]+\.ts\.net/) { _ in ".<tailnet>.ts.net" }
         out = out.replacing(/\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "100.x.x.x" }
         out = out.replacing(/\b(10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|192\.168|169\.254)\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "<lan-ip>" }
         out = out.replacing(/\b(fe[89ab][0-9a-fA-F]|f[cd][0-9a-fA-F]{2}):[0-9a-fA-F:]*[0-9a-fA-F]/) { _ in "<lan-ip6>" }
+        // Global IPv6: eight groups, or a "::" form with a group in front (a time such as 12:30:45 has neither).
+        out = replace("(?<![0-9a-fA-F:])(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(?![0-9a-fA-F:])", in: out, with: "<ip6>")
+        out = replace("(?<![0-9a-fA-F:])(?:[0-9a-fA-F]{1,4}:){1,7}:(?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?(?![0-9a-fA-F:])", in: out, with: "<ip6>")
         out = out.replacing(/\b(?!127\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "<ip>" }
         return out
+    }
+
+    /// NSRegularExpression, because Swift's own Regex has no lookbehind. Case-insensitive.
+    private static func replace(_ pattern: String, in text: String, with template: String) -> String {
+        guard let re = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return text }
+        return re.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: template)
     }
 
     /// The host of a server for the report: `.ts.net` names keep their machine name, anything else is left out.

@@ -26,7 +26,9 @@ Config (one source, many servers):
 What it gives: one list card in Lab, a row per server: "Running · 2/10 · Paper 26.3 · alice, bob +1", "Sleeping" when
 the MOTD says the server sleeps (a router answers for it), "Offline" when it does not answer. Problems only for
 `expect_up` servers that do not answer. One bad server (silence, junk, a huge or endless answer) is Offline and never
-touches the others. Each server gets at most TIMEOUT seconds in all, and answers are capped in size.
+touches the others. Each server gets at most TIMEOUT seconds in all (the source's own `timeout` can only make that
+shorter), over all the addresses its name resolves to, and answers are capped in size. A host may be written as a
+bracketed IPv6 address ("[fd00::1]"); the brackets are dropped before connecting.
 """
 
 import json
@@ -37,7 +39,7 @@ import threading
 import time
 import unicodedata
 
-from . import SourceError, as_dict, as_list, as_text, safe_text, short_error
+from . import SourceError, as_dict, as_list, as_text, plain_text, short_error
 
 TIMEOUT = 4.0              # seconds for one server, DNS and all
 MAX_SERVERS = 30
@@ -147,11 +149,11 @@ def _packet(body):
 
 def _text(value, limit):
     """One line of display text from anything a server sent: formatting codes, control and invisible characters
-    are gone, URLs become <url> (safe_text), at most `limit` characters."""
+    are gone, URLs become <url> (plain_text; normalize() escapes Markdown), at most `limit` characters."""
     value = re.sub("§.?", "", as_text(value)[:MAX_TEXT_IN], flags=re.S)
     value = "".join(" " if unicodedata.category(c) in ("Cc", "Zl", "Zp") else
                     ("" if unicodedata.category(c) in ("Cf", "Cs", "Co", "Cn") else c) for c in value)
-    return safe_text(" ".join(value.split()), limit)
+    return plain_text(" ".join(value.split()), limit)
 
 
 def _chat(node, depth=0):
@@ -171,6 +173,36 @@ def _count(value):
     return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 10_000_000 else None
 
 
+MAX_ADDRESSES = 8          # addresses tried for one name
+
+
+def _bare(host):
+    """"[fd00::1]" -> "fd00::1" (getaddrinfo and connect want the bare address)."""
+    return host[1:-1] if len(host) > 2 and host[0] == "[" and host[-1] == "]" else host
+
+
+def _connect(host, port, deadline):
+    """A TCP connection to host:port, trying the resolved addresses one after the other, each with what is left of
+    `deadline` (so the total stays within it, not `left` per address)."""
+    if deadline - time.monotonic() <= 0:
+        raise SourceError("timeout")
+    infos = [i for i in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)][:MAX_ADDRESSES]
+    error = None
+    for family, kind, proto, _c, addr in infos:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise SourceError("timeout")
+        sock = socket.socket(family, kind, proto)
+        try:
+            sock.settimeout(left)
+            sock.connect(addr)
+            return sock
+        except OSError as exc:
+            sock.close()
+            error = exc
+    raise error or OSError("no address")
+
+
 def ping_minecraft(host, port, handshake_host, deadline):
     """Minecraft Java Server List Ping. Status only: never the login state, never the ping packet."""
     left = deadline - time.monotonic()
@@ -178,7 +210,7 @@ def ping_minecraft(host, port, handshake_host, deadline):
         raise SourceError("timeout")
     addr = handshake_host.encode("utf-8")
     handshake = b"\x00" + _varint(47) + _varint(len(addr)) + addr + struct.pack(">H", port) + _varint(1)
-    with socket.create_connection((host, port), timeout=left) as sock:
+    with _connect(_bare(host), port, deadline) as sock:
         sock.sendall(_packet(handshake) + _packet(b"\x00"))
         r = _Reader(sock, deadline)
         length = r.varint()
@@ -324,7 +356,7 @@ def ping_a2s(host, port, want_players, deadline):
     left = deadline - time.monotonic()
     if left <= 0:
         raise SourceError("timeout")
-    family, _t, _p, _c, addr = socket.getaddrinfo(host, port, type=socket.SOCK_DGRAM)[0]
+    family, _t, _p, _c, addr = socket.getaddrinfo(_bare(host), port, type=socket.SOCK_DGRAM)[0]
     with socket.socket(family, socket.SOCK_DGRAM) as sock:
         sock.connect(addr)   # a connected UDP socket only takes answers from the server's own address
         info = _info(sock, deadline)
@@ -339,17 +371,17 @@ def ping_a2s(host, port, want_players, deadline):
 
 # --------------------------------------------------------------------------------------------- card
 
-def _probe(s):
-    deadline = time.monotonic() + TIMEOUT
+def _probe(s, timeout=TIMEOUT):
+    deadline = time.monotonic() + timeout
     if s["type"] == "minecraft":
         return ping_minecraft(s["host"], s.get("port", DEFAULTS["minecraft"]),
-                              s.get("handshake_host") or s["host"], deadline)
+                              s.get("handshake_host") or _bare(s["host"]), deadline)
     return ping_a2s(s["host"], s.get("port", DEFAULTS["a2s"]), bool(s.get("players")), deadline)
 
 
-def _run(s, out):
+def _run(s, out, timeout=TIMEOUT):
     try:
-        out["info"] = _probe(s)
+        out["info"] = _probe(s, timeout)
     except SourceError as exc:
         out["why"] = str(exc) if str(exc) not in ("timeout", "connection closed") else ""
     except socket.gaierror as exc:
@@ -399,16 +431,19 @@ def _row(s, out):
 def collect(cfg, fetch):
     servers = [s for s in as_list(cfg.get("servers")) if isinstance(s, dict)]
     outs = [{} for _ in servers]
-    threads = [threading.Thread(target=_run, args=(s, o), daemon=True, name="gameserver " + s["name"])
+    timeout = TIMEOUT
+    if isinstance(cfg.get("timeout"), (int, float)) and not isinstance(cfg.get("timeout"), bool):
+        timeout = max(0.1, min(float(cfg["timeout"]), TIMEOUT))
+    threads = [threading.Thread(target=_run, args=(s, o, timeout), daemon=True, name="gameserver " + s["name"])
                for s, o in zip(servers, outs)]
     for t in threads:
         t.start()
-    end = time.monotonic() + TIMEOUT + 1   # DNS is not bounded by the socket deadline: a stuck lookup is left behind
+    end = time.monotonic() + timeout + 1   # DNS is not bounded by the socket deadline: a stuck lookup is left behind
     for t in threads:
         t.join(max(end - time.monotonic(), 0))
     items, problems, up = [], [], 0
-    for s, o in zip(servers, outs):
-        item, problem = _row(s, dict(o))
+    for s, o in zip(servers, [dict(o) for o in outs]):   # one snapshot: a late thread cannot split row and count
+        item, problem = _row(s, o)
         up += 1 if "info" in o else 0
         items.append(item)
         if problem:
