@@ -497,6 +497,13 @@ public struct ActionForm: Sendable, Equatable {
 
     public var isReady: Bool { problems.isEmpty && arg != nil }
 
+    /// Nothing to fill in or choose (one way to build the argument, no inputs, no visible fields) and ready to send:
+    /// the Start tile asks "Run?" right away instead of opening an empty form.
+    public var needsNoInput: Bool {
+        spec.variants.count <= 1 && visibleFields.isEmpty && isReady
+            && parts.allSatisfy { if case .literal = $0 { true } else { false } }
+    }
+
     /// Label and value lines for the confirm step ("Day: 2026-11-07", "What: Lamps on"), option labels instead of values.
     public var summary: [(label: String, value: String)] {
         var out: [(String, String)] = []

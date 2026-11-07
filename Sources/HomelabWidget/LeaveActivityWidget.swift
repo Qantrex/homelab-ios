@@ -67,8 +67,10 @@ struct LeaveLockScreen: View {
                     .font(Typo.data(.title3, weight: .semibold)).multilineTextAlignment(.trailing)
                     .foregroundStyle(state.leaveBy.timeIntervalSinceNow < 300 ? Palette.gold : Palette.text)
             }
+            .accessibilityElement(children: .combine)   // "Leave by 07:26, 12 minutes": one stop, not three
             HStack(spacing: 6) {
                 Image(systemName: state.bike ? "motorcycle" : "tram.fill").foregroundStyle(Palette.secondary)
+                    .accessibilityHidden(true)
                 Text(Self.trainLine(state)).foregroundStyle(Palette.secondary).lineLimit(1)
                     .accessibilityLabel(Format.spoken(Self.trainLine(state)))
             }
@@ -77,7 +79,7 @@ struct LeaveLockScreen: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold)
                         .accessibilityLabel(Text("Disruption"))
-                    Text(state.moreDisruptions > 0 ? "\(d) +\(state.moreDisruptions)" : d).foregroundStyle(Palette.text).lineLimit(1)
+                    Text(state.moreDisruptions > 0 ? "\(d) +\(state.moreDisruptions)" : d).foregroundStyle(Palette.text).lineLimit(2)
                 }
                 .font(.footnote)
             }

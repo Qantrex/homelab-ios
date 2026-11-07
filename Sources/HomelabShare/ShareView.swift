@@ -107,6 +107,7 @@ struct ShareView: View {
             }
         }
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
     }
 
     private func progress(_ text: String) -> some View {

@@ -15,7 +15,7 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
     public var title: String {
         switch self {
         case .day: "The day in numbers"
-        case .waiting: "Waiting for you"
+        case .waiting: "To approve"
         case .deals: "Deals"
         case .home: "Home tiles"
         case .cards: "Cards"

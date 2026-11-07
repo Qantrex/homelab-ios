@@ -32,6 +32,24 @@ App:
   music, TV and so on; filled while the tile is on). Unpinning drops the icon; older saved settings still load.
   Launch argument `-HomelabTileIcons "light.a=lamp.floor,script.b=moon.stars"`.
 - A bike day shows a motorcycle (the Live Activity and the demo's commute action), not a bicycle.
+- App review of 2026-11-07 (functional, intuitiveness, accessibility, Settings):
+  - Fixed: editing the Home Assistant server (a new token or name) dropped the tiles' names and icons; Reset
+    everything could bring deleted servers back from the copy made before the App Group; a swiped-away demo server
+    couldn't come back (demo servers now only go with the Demo switch); the "New deals to act on" and Face ID switches
+    could hide or lock while on; Test connection without a token showed the 401 text; a deals push on a cold launch
+    lost the link on a server whose only Actions feature is deals; a running poll undid a pull to refresh on Deals; a
+    deal with a time far in the future stayed "new"; duplicate ids in `-HomelabPins`.
+  - Clearer: a new server without a typed name is called by its short host name ("pi-utility", older saved ones
+    too); Today → Edit has an "On Today" section with the pinned tiles in order (Order to move them), a visible "Name
+    on the tile" label and the icon menu; the approve confirm uses the row's words (Approve, Always allow, Deny) and
+    Deny isn't red there; "To approve" everywhere (Today's section, Lab, the empty state); a Start tile with nothing
+    to fill in asks "Run now?" right away; Today shows "Lab ›" next to the date; Lab ends with a Diagnostics link;
+    the leave-by switch only shows for a server that sends a commute; http and token messages say what works.
+  - Accessibility: at the accessibility text sizes label and value stack instead of breaking words; the voice line,
+    numbers' titles, tile states and not-sent reasons wrap instead of being cut; tertiary and light-mode gold pass
+    4.5:1 on raised panels; VoiceOver hears which tile a name field or icon menu belongs to, which proposal Approve
+    or Deny is for, and that a tile tap worked; sensor tiles read as text; the Live Activity reads "Leave by" in one
+    stop; Chat's Show more is 44 pt; checklist links are buttons for Full Keyboard Access; ⌘↩ sends in Chat.
 - `scripts/phone-shots` keeps your servers, Home Assistant token and pins: it no longer starts with
   `-HomelabResetState YES` (now `--reset`, opt-in, with `HOMELAB_SERVER`/`HOMELAB_PINS` to set them back at the end).
 - Deals (feature `deals`, optional endpoint `GET /api/v1/deals`): used-market ads the server found clearly below their

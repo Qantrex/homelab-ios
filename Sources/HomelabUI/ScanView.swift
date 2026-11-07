@@ -76,6 +76,7 @@ struct ScanView: View {
             .onDisappear { model.formSheet(sheetToken, open: false) }
         }
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
         .interactiveDismissDisabled(isSending)
     }
 

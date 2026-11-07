@@ -121,6 +121,16 @@ struct TodayView: View {
                             .accessibilityHidden(true)
                     }
                     Text(dateLine).font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary)
+                    // Shows that the headline opens Lab (a tap there was invisible before; VoiceOver has the hint).
+                    if model.availableTabs.contains(.lab) {
+                        Spacer(minLength: 8)
+                        HStack(spacing: 2) {
+                            Text("Lab")
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                        }
+                        .font(.footnote.weight(.medium)).foregroundStyle(Palette.tertiary)
+                        .accessibilityHidden(true)
+                    }
                 }
                 .accessibilityElement(children: .combine)
                 Text(m.headline)
@@ -143,7 +153,7 @@ struct TodayView: View {
                 }
                 // The voice: what it thinks of the facts above, in words (DESIGN.md §4). Tap the line for another.
                 if let take = take(m) {
-                    Text(take).font(Typo.body).foregroundStyle(Palette.secondary).lineLimit(2)
+                    Text(take).font(Typo.body).foregroundStyle(Palette.secondary).lineLimitAtStandardSizes(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 6)
@@ -277,7 +287,7 @@ struct TodayView: View {
         let ageBelow = density.exactTimes || typeSize.isAccessibilitySize
         let shown = Array(pending.prefix(density == .overkill ? pending.count : 3))
         return VStack(alignment: .leading, spacing: Space.titleToPanel) {
-            SectionTitle(text: "Waiting for you", trailing: "\(pending.count)")
+            SectionTitle(text: "To approve", trailing: "\(pending.count)")
             Button {
                 model.tab = .actions
             } label: {
@@ -324,7 +334,7 @@ struct TodayView: View {
     }
 
     /// Only while the server has an "act now" deal from the last day, so the section is gone when there is nothing to do
-    /// (and for a server without deals). Tap opens the Deals screen. Rows as in "Waiting for you"; at accessibility
+    /// (and for a server without deals). Tap opens the Deals screen. Rows as in "To approve"; at accessibility
     /// sizes the figures go under the title.
     private func dealsCard(_ fresh: [Deal]) -> some View {
         let stacked = typeSize.isAccessibilitySize
@@ -558,9 +568,9 @@ struct DayNumbers: View {
                             .minimumScaleFactor(0.6).lineLimit(1)
                             .foregroundStyle(item.tint?.color ?? Palette.text)
                             .numberMotion(item.value)
-                        Text(item.title ?? "").font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(1)
+                        Text(item.title ?? "").font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimitAtStandardSizes(1)
                         if let s = item.subtitle {
-                            Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
+                            Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimitAtStandardSizes(1)
                         }
                     }
                     .accessibilityElement(children: .combine)

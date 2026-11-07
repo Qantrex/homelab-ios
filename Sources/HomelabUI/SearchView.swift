@@ -80,6 +80,7 @@ struct SearchView: View {
             .task(id: query) { await run(wait: true) }
         }
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
     }
 
     @ViewBuilder private var results: some View {

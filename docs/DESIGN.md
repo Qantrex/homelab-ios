@@ -17,7 +17,7 @@ roles in `Typo`; no screen picks a size by hand.
 |---|---|---|
 | Hero | `Typo.hero` via `.heroFont()` (SF Pro, heavy, 48 pt, scales like `.largeTitle`) | Today's headline only |
 | Display | `Typo.display` 28 semibold; `Typo.displayData` the same with fixed-width digits | The one big number in a card: a chart's current value, the next stop |
-| Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("Waiting for you", "Machines"), sheet titles |
+| Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("To approve", "Machines"), sheet titles |
 | Headline | `Typo.headline` (17 semibold) | The name of a row or card ("restart media sonarr", "Living room"), the fact line |
 | Body | `Typo.body` (17 regular) | Text people read: chat, the voice line |
 | Secondary | `Typo.secondary` (15), `Palette.secondary` | What explains a row: reason, subtitle, the status line of a screen |
@@ -69,7 +69,7 @@ colour alone.
   `Meter.valueColor`) for the row, the tile, the dot and the detail chart: gold from / love from: load 1x / 2x the core
   count, RAM 90 / 95 %, fullest disk 75 / 90 %, temperature 80 / 90 C. Reaching the limit counts. A value over its limit
   also says "high" to VoiceOver.
-- Text colours keep 4.5:1 on the panel: tertiary #808080 (dark) / #6E6E6E (light), light-mode gold #9A6100, love
+- Text colours keep 4.5:1 on the panel: tertiary #8A8A8A (dark) / #666666 (light), light-mode gold #8F5A00 (also on raised panels), love
   #9E4A63, iris #735C8C (also on `raised`). Min and max numbers are secondary, not tertiary.
 - Increase Contrast: `Palette` switches to stronger twins: surface #262626, raised #333333, line #5A5A5A, secondary and
   tertiary #B3B3B3 on black; surface #E8E8E8, raised #D9D9D9, line #8C8C8C, secondary and tertiary #3D3D3D and darker

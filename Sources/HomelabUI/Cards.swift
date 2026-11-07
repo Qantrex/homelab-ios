@@ -640,6 +640,8 @@ struct CardView: View {
         .contentShape(Rectangle())
         .onTapGesture { if let url = item.url { openURL(url) } }
         .accessibilityElement(children: .ignore)
+        // A button for Full Keyboard Access and Switch Control too (the tap gesture alone isn't one).
+        .accessibilityAddTraits(item.url != nil || tick != nil ? .isButton : [])
         .accessibilityLabel(Text(Self.spoken(item, due: due.map { ($0.spoken, $0.level) }, busy: busy)))
         // VoiceOver's double tap ticks the item off (after the confirm), or opens its link.
         .accessibilityAction {

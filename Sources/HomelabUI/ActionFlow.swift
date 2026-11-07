@@ -87,7 +87,9 @@ struct ProposalDialog: ViewModifier {
         content.confirmationDialog(confirm?.action.title ?? "",
                                    isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
                                    titleVisibility: .visible, presenting: confirm) { c in
-            Button(buttonTitle(c.verb), role: c.verb == .deny ? .destructive : nil) { Task { await press(c) } }
+            // The same words as the row's buttons, so the confirm reads as "yes, that one". Deny is the safe choice
+            // (nothing runs), so it isn't drawn as a red, destructive one here.
+            Button(buttonTitle(c.verb)) { Task { await press(c) } }
             Button("Cancel", role: .cancel) {}
         } message: { c in
             Text(message(c))
@@ -96,8 +98,8 @@ struct ProposalDialog: ViewModifier {
 
     private func buttonTitle(_ verb: PendingAction.Verb) -> String {
         switch verb {
-        case .approve: String(localized: "Run once")
-        case .always: String(localized: "Run and always allow")
+        case .approve: String(localized: "Approve")
+        case .always: String(localized: "Always allow")
         case .deny: String(localized: "Deny")
         }
     }
@@ -232,16 +234,22 @@ struct ProposalButtons: View {
         if action.buttons[.approve] != nil {
             Button("Approve") { tap(.approve) }
                 .buttonStyle(CapsuleButtonStyle(kind: .filled))
+                .accessibilityLabel(Text("Approve: \(action.title)"))
+                .accessibilityInputLabels([Text("Approve")])
         }
         if action.buttons[.always] != nil {
             Button("Always") { tap(.always) }
                 .buttonStyle(CapsuleButtonStyle(kind: .raised))
+                .accessibilityLabel(Text("Always allow: \(action.title)"))
+                .accessibilityInputLabels([Text("Always")])
         }
         if spacer { Spacer(minLength: 8) }
         if action.buttons[.deny] != nil {
             // Destructive for VoiceOver and the confirm; drawn as quiet text, so the two others stay the loud ones.
             Button("Deny", role: .destructive) { tap(.deny) }
                 .buttonStyle(CapsuleButtonStyle(kind: .text))
+                .accessibilityLabel(Text("Deny: \(action.title)"))
+                .accessibilityInputLabels([Text("Deny")])
         }
     }
 }

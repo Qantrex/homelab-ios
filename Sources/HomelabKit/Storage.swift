@@ -4,6 +4,9 @@ import Foundation
 /// own Application Support. Only non-secret data: tokens are in the Keychain.
 public struct Storage: Sendable {
     public let directory: URL
+    /// The app's own folder that `adoptFiles` copied from, when this is the App Group: Reset empties it too, or the
+    /// next start would copy the deleted servers back.
+    public var adoptedFrom: URL?
 
     public init(directory: URL) {
         self.directory = directory
@@ -13,8 +16,9 @@ public struct Storage: Sendable {
     /// The shared location for app + widget.
     public static func shared(group: String? = AppGroup.current) -> Storage {
         if let group, let url = AppGroup.containerURL(group) {
-            let storage = Storage(directory: url.appendingPathComponent("Homelab", isDirectory: true))
+            var storage = Storage(directory: url.appendingPathComponent("Homelab", isDirectory: true))
             storage.adoptFiles(from: localDirectory)
+            storage.adoptedFrom = localDirectory
             return storage
         }
         return Storage(directory: localDirectory)
@@ -70,7 +74,12 @@ public struct Storage: Sendable {
     }
 
     public func removeAll() {
-        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        Self.empty(directory)
+        if let adoptedFrom, adoptedFrom.standardizedFileURL != directory.standardizedFileURL { Self.empty(adoptedFrom) }
+    }
+
+    private static func empty(_ dir: URL) {
+        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         for f in files { try? FileManager.default.removeItem(at: f) }
     }
 

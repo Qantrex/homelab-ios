@@ -360,7 +360,7 @@ enum VoiceLines {
              "Fixable. By you. Today, ideally."]
 
         case .emptyApprovals:
-            ["Nothing to approve. The agent is behaving.", "No requests. The robot is napping.",
+            ["Nothing to approve. The agent is behaving.", "Nothing to approve. The robot is napping.",
              "Nothing to approve. Enjoy the power while it lasts."]
         case .emptyTodos:
             ["No to-dos. Who are you and what have you done?", "Empty. You'll find something to put off."]
@@ -474,9 +474,9 @@ enum VoiceLines {
              "The market will fix it. It won't."]
 
         case .emptyApprovals:
-            ["Nothing to approve. Go be productive. Or don't.", "No requests. The bot gave up on you.",
+            ["Nothing to approve. Go be productive. Or don't.", "Nothing to approve. The bot gave up on you.",
              "Nothing to approve. Parliament calls that a productive week.",
-             "No requests. The AI is following the AI Act. Probably."]
+             "Nothing to approve. The AI is following the AI Act. Probably."]
         case .emptyTodos:
             ["No to-dos. Enjoy it before the next reform adds some.",
              "Nothing to do. Ideal qualifications for a supervisory board.",

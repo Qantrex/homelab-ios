@@ -120,7 +120,7 @@ public enum URLPolicy {
     }
 
     public static let tokenOverHTTPMessage =
-        "This server uses a token over plain http. Use https (tailscale serve) or its .ts.net name."
+        "This server uses a token over plain http. Use its https://….ts.net address (tailscale serve)."
 
     /// A name without dots that DNS (or mDNS) resolves on the LAN. A label of digits or `0x` hex is not one: it is
     /// an IPv4 address in another notation.
@@ -177,7 +177,7 @@ public enum URLPolicy {
         case .unsupportedScheme: "Only http:// and https:// addresses work."
         case .noHost: "The address has no host name."
         case .credentialsInURL: "Don't put a user name or password in the address. Use a token instead."
-        case .insecureRemote: "http:// is only allowed for addresses in your home network or tailnet. Use https://."
+        case .insecureRemote: "http:// is only allowed for private addresses (home network, 100.x). Use https://, also for .ts.net names."
         }
     }
 }

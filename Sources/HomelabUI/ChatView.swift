@@ -325,6 +325,7 @@ struct ChatView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSend)
+                .keyboardShortcut(.return, modifiers: .command)
                 .animation(.easeOut(duration: 0.15), value: canSend)
                 .accessibilityLabel(Text("Send"))
             }
@@ -339,6 +340,7 @@ struct ChatView: View {
         .padding(.vertical, 8)
         .background(Palette.background)
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
         .motion(.easeOut(duration: 0.15), value: suggestions.map(\.name))
     }
 
@@ -522,7 +524,7 @@ struct AgentMessage: View {
                 .font(Typo.secondary.weight(.semibold))
                 .foregroundStyle(Palette.text)
                 .buttonStyle(.plain)
-                .frame(minHeight: 32)
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
         }

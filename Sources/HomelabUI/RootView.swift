@@ -52,6 +52,7 @@ public struct RootView: View {
         .onChange(of: model.availableTabs) { _, _ in model.validateTab() }
         .task { await model.drainOutbox() }
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
     }
 
     /// Sheets, alerts and confirmation dialogs live above the root view; close them all before locking.
@@ -120,7 +121,7 @@ struct WelcomeView: View {
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         point("checkmark.shield", "Status of every host, problems first")
-                        point("hand.thumbsup", "Approve or deny proposed actions (if offered)")
+                        point("hand.thumbsup", "Approve or deny actions your server asks about (if offered)")
                         point("bubble.left.and.bubble.right", "Chat with your homelab agent (if offered)")
                         point("lock.shield", "No account, no cloud, no tracking")
                     }

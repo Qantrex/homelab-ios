@@ -8,6 +8,8 @@ struct ActionsView: View {
     let model: AppModel
     @State private var confirm: ProposalConfirmation?
     @State private var formFor: ActionSpec?
+    /// A Start tile with nothing to fill in: its confirm, without a form sheet.
+    @State private var quickRun: ActionSpec?
     /// What a link filled in for `formFor` (`homelab://actions/<name>?…`); nil for a Start tile.
     @State private var formPrefill: ItemAction?
     /// A started action's result, shown once its form sheet is gone (an alert can't show over the sheet).
@@ -56,7 +58,10 @@ struct ActionsView: View {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
-                                      open: { formPrefill = nil; formFor = $0 }, scan: { scanning = true },
+                                      open: { spec in
+                                          formPrefill = nil
+                                          if ActionForm(spec).needsNoInput { quickRun = spec } else { formFor = spec }
+                                      }, scan: { scanning = true },
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil,
                                       deals: canDeals ? { showingDeals = true } : nil,
                                       dealsToAct: model.selectedStatus.deals?.freshAct().count ?? 0)
@@ -81,6 +86,14 @@ struct ActionsView: View {
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
+            }
+            .confirmationDialog(quickRun?.label ?? "", isPresented: Binding(get: { quickRun != nil }, set: { if !$0 { quickRun = nil } }),
+                                titleVisibility: .visible, presenting: quickRun) { spec in
+                Button(spec.destructive ? String(localized: "Run it") : String(localized: "Run now"),
+                       role: spec.destructive ? .destructive : nil) { Task { await runQuick(spec) } }
+                Button("Cancel", role: .cancel) {}
+            } message: { spec in
+                Text(confirmText(ActionForm(spec), server: model.selected?.name ?? ""))
             }
             .sheet(item: $formFor, onDismiss: {
                 if let r = afterSheet { result = r; afterSheet = nil }
@@ -185,6 +198,15 @@ struct ActionsView: View {
         formFor = request.spec
     }
 
+    /// Runs a Start tile that has nothing to fill in, after its confirm; the result shows as for a form.
+    private func runQuick(_ spec: ActionSpec) async {
+        guard let server = model.selected else { return }
+        let r = await model.run(ActionForm(spec), on: server)
+        let (ok, message) = ResultMessage.started(spec, r, model: model)
+        outcome = ActionOutcome(ok: ok)
+        result = message
+    }
+
     private func finished(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>) {
         let (ok, message) = ResultMessage.started(spec, r, model: model)
         outcome = ActionOutcome(ok: ok)
@@ -216,8 +238,8 @@ struct NotSentRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     glyph.hidden()   // keeps the names on one leading edge with the first row's
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(d.what).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(1)
-                        Text(d.why).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(2)
+                        Text(d.what).font(Typo.headline).foregroundStyle(Palette.text).lineLimitAtStandardSizes(1)
+                        Text(d.why).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimitAtStandardSizes(2)
                     }
                     Spacer(minLength: 8)
                     Text(Format.age(d.when)).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)

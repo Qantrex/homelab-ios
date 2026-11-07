@@ -44,6 +44,8 @@ final class HomeModel {
         do {
             let changed = try await api.call(entity)
             guard sid == loadedFor else { return }
+            // VoiceOver hears that it worked; a failure gets the alert below.
+            announce(entity.control == .toggle ? String(localized: "\(entity.name): switched") : String(localized: "\(entity.name): ran"))
             for c in changed {
                 if let i = entities.firstIndex(where: { $0.entityID == c.entityID }) { entities[i] = c }
             }
@@ -162,7 +164,7 @@ struct HomeTile: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(TileName.shown(custom: customName, haName: entity.name)).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
                         .lineLimit(2).multilineTextAlignment(.leading)
-                    Text(stateText).font(Typo.meta).foregroundStyle(on ? Palette.text : Palette.tertiary).lineLimit(1)
+                    Text(stateText).font(Typo.meta).foregroundStyle(on ? Palette.text : Palette.tertiary).lineLimitAtStandardSizes(1)
                 }
                 Spacer(minLength: 0)
                 if busy { ProgressView().controlSize(.small).tint(Palette.text) }
@@ -180,7 +182,8 @@ struct HomeTile: View {
         .accessibilityLabel(Text(TileName.spoken(custom: customName, haName: entity.name)))
         .accessibilityValue(Text(spokenState))
         .accessibilityHint(hint)
-        .accessibilityAddTraits(entity.control == .toggle ? [.isButton, .isToggle] : .isButton)
+        // A sensor can't be tapped: plain text for VoiceOver, not a "dimmed button".
+        .accessibilityAddTraits(entity.control == .toggle ? [.isButton, .isToggle] : entity.control == .run ? .isButton : .isStaticText)
     }
 
     /// What the tile shows, in words ("On", "ran 3 hours ago"), and "busy" while a tap is on its way.
@@ -250,7 +253,8 @@ func entitySymbol(_ e: HAEntity) -> String {
     }
 }
 
-/// Choose which entities Today shows as tiles.
+/// Choose which entities Today shows as tiles. "On Today" at the top holds the pinned ones in tile order, each with
+/// its name and icon, and can be reordered; the sections below list everything by kind to pin or unpin.
 struct EntityPicker: View {
     let entities: [HAEntity]
     @State var selected: [String]
@@ -261,6 +265,7 @@ struct EntityPicker: View {
     let save: ([String], [String: String], [String: String]) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var editMode: EditMode = .inactive
 
     init(entities: [HAEntity], selected: [String], names: [String: String] = [:], icons: [String: String] = [:],
          save: @escaping ([String], [String: String], [String: String]) -> Void) {
@@ -270,6 +275,8 @@ struct EntityPicker: View {
         _icons = State(initialValue: icons)
         self.save = save
     }
+
+    private var byID: [String: HAEntity] { Dictionary(entities.map { ($0.entityID, $0) }, uniquingKeysWith: { a, _ in a }) }
 
     private var useful: [HAEntity] {
         let domains: Set<String> = ["light", "switch", "fan", "input_boolean", "scene", "script", "button", "input_button",
@@ -285,39 +292,39 @@ struct EntityPicker: View {
                 set: { names[id] = String($0.replacingOccurrences(of: "\n", with: " ").prefix(TileName.maxLength)) })
     }
 
-    /// "Icon on the tile": Automatic (by Home Assistant domain) or one of `TileIcon.choices`.
-    private func iconMenu(_ e: HAEntity) -> some View {
-        let current = icons[e.entityID].flatMap(TileIcon.choice)
-        return Menu {
-            Picker("Icon on the tile", selection: Binding(get: { icons[e.entityID] ?? "" },
-                                                          set: { icons[e.entityID] = $0.isEmpty ? nil : $0 })) {
-                Label("Automatic", systemImage: entitySymbol(e)).tag("")
-                ForEach(TileIcon.choices) { c in
-                    Label(LocalizedStringKey(c.label), systemImage: c.symbol).tag(c.symbol)
-                }
-            }
-        } label: {
-            HStack {
-                Text("Icon on the tile").foregroundStyle(Palette.text)
-                Spacer()
-                Image(systemName: current?.symbol ?? entitySymbol(e)).foregroundStyle(Palette.secondary)
-                Text(current.map { LocalizedStringKey($0.label) } ?? "Automatic").foregroundStyle(Palette.secondary)
-            }
-            .font(Typo.secondary)
-        }
-        .accessibilityHint(Text("Optional. Automatic shows the icon for the kind of entity."))
+    private func toggle(_ id: String) {
+        if let i = selected.firstIndex(of: id) { selected.remove(at: i) } else { selected.append(id) }
     }
 
     var body: some View {
         NavigationStack {
             List {
+                if query.isEmpty && !selected.isEmpty {
+                    Section {
+                        ForEach(selected, id: \.self) { id in
+                            if let e = byID[id] { pinnedRow(e) }
+                        }
+                        .onMove { selected.move(fromOffsets: $0, toOffset: $1) }
+                        .onDelete { selected.remove(atOffsets: $0) }
+                    } header: {
+                        HStack {
+                            Text("On Today")
+                            Spacer()
+                            Button(editMode.isEditing ? "Done ordering" : "Order") {
+                                withAnimation { editMode = editMode.isEditing ? .inactive : .active }
+                            }
+                            .font(Typo.secondary)
+                            .textCase(nil)
+                        }
+                    } footer: {
+                        SettingsFooter("Tiles show in this order, two per row. Empty name: Home Assistant's name. Automatic icon: the one for the kind of entity.")
+                    }
+                }
                 let groups = Dictionary(grouping: useful, by: \.domain)
                 ForEach(groups.keys.sorted(), id: \.self) { domain in
                     Section(domainTitle(domain)) {
                         ForEach(groups[domain] ?? []) { e in
-                            Button {
-                                if let i = selected.firstIndex(of: e.entityID) { selected.remove(at: i) } else { selected.append(e.entityID) }
-                            } label: {
+                            Button { toggle(e.entityID) } label: {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(e.name).foregroundStyle(.primary)
@@ -327,21 +334,16 @@ struct EntityPicker: View {
                                     if selected.contains(e.entityID) { Image(systemName: "checkmark").foregroundStyle(.tint) }
                                 }
                             }
-                            .accessibilityAddTraits(selected.contains(e.entityID) ? .isSelected : [])
-                            if selected.contains(e.entityID) {
-                                TextField("Name on the tile", text: nameBinding(e.entityID),
-                                          prompt: Text(e.name).foregroundStyle(Palette.tertiary))
-                                    .font(Typo.secondary)
-                                    .textInputAutocapitalization(.sentences)
-                                    .submitLabel(.done)
-                                    .accessibilityHint(Text("Optional. Empty shows Home Assistant's name."))
-                                iconMenu(e)
-                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(Text(e.name))
+                            .accessibilityHint(Text(selected.contains(e.entityID) ? "On Today. Removes the tile" : "Adds a tile to Today"))
+                            .accessibilityAddTraits(selected.contains(e.entityID) ? [.isButton, .isSelected] : .isButton)
                         }
                     }
                 }
                 .surfaceRows()
             }
+            .environment(\.editMode, $editMode)
             .screenBackground()
             .searchable(text: $query)
             .navigationTitle("Tiles on Today")
@@ -356,5 +358,62 @@ struct EntityPicker: View {
                 }
             }
         }
+    }
+
+    /// A pinned entity: its name, then "Name on the tile" (a visible label above the field) and "Icon on the tile".
+    private func pinnedRow(_ e: HAEntity) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Image(systemName: icons[e.entityID].flatMap { TileIcon.shown($0, on: false) } ?? entitySymbol(e))
+                    .foregroundStyle(Palette.secondary).frame(width: 26).accessibilityHidden(true)
+                Text(e.name).foregroundStyle(Palette.text)
+            }
+            if !editMode.isEditing {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Name on the tile").font(Typo.meta).foregroundStyle(Palette.tertiary).accessibilityHidden(true)
+                    TextField("Name on the tile", text: nameBinding(e.entityID),
+                              prompt: Text(e.name).foregroundStyle(Palette.tertiary))
+                        .font(Typo.secondary)
+                        .textInputAutocapitalization(.sentences)
+                        .submitLabel(.done)
+                        .padding(.vertical, 6).padding(.horizontal, 8)
+                        .background(Palette.raised, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .accessibilityLabel(Text("Name on the tile for \(e.name)"))
+                        .accessibilityHint(Text("Optional. Empty shows Home Assistant's name."))
+                }
+                iconMenu(e)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// "Icon on the tile": Automatic (by Home Assistant domain) or one of `TileIcon.choices`.
+    private func iconMenu(_ e: HAEntity) -> some View {
+        let current = icons[e.entityID].flatMap(TileIcon.choice)
+        return Menu {
+            Picker("Icon on the tile", selection: Binding(get: { icons[e.entityID] ?? "" },
+                                                          set: { icons[e.entityID] = $0.isEmpty ? nil : $0 })) {
+                Label("Automatic", systemImage: entitySymbol(e)).tag("")
+                ForEach(TileIcon.choices) { c in
+                    Label(LocalizedStringKey(c.label), systemImage: c.symbol).tag(c.symbol)
+                }
+            }
+        } label: {
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Text("Icon on the tile").foregroundStyle(Palette.text)
+                    Spacer()
+                    Text(current.map { LocalizedStringKey($0.label) } ?? "Automatic").foregroundStyle(Palette.secondary)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(Palette.tertiary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Icon on the tile").foregroundStyle(Palette.text)
+                    Text(current.map { LocalizedStringKey($0.label) } ?? "Automatic").foregroundStyle(Palette.secondary)
+                }
+            }
+            .font(Typo.secondary)
+        }
+        .accessibilityLabel(Text("Icon on the tile for \(e.name)"))
+        .accessibilityValue(Text(current.map { LocalizedStringKey($0.label) } ?? "Automatic"))
     }
 }

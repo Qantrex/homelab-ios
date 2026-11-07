@@ -48,6 +48,7 @@ struct DealsView: View {
             }
         }
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
     }
 
     @ViewBuilder private var content: some View {

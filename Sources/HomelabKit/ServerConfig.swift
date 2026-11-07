@@ -38,13 +38,32 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
-        name = try c.decode(String.self, forKey: .name)
+        let savedName = try c.decode(String.self, forKey: .name)
         kind = try c.decode(Kind.self, forKey: .kind)
         baseURL = try c.decode(URL.self, forKey: .baseURL)
+        // Servers added before the short default name was saved with the whole host as their name
+        // ("pi-utility.tail01cd5f.ts.net" twice in the list, cut mid-word): they get the short one.
+        name = savedName == baseURL.host ? Self.defaultName(for: baseURL) : savedName
         auth = try c.decode(Auth.self, forKey: .auth)
         pinnedEntities = try c.decodeIfPresent([String].self, forKey: .pinnedEntities) ?? []
         tileNames = TileName.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileNames) ?? [:], pinned: pinnedEntities)
         tileIcons = TileIcon.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileIcons) ?? [:], pinned: pinnedEntities)
+    }
+
+    /// The server as the editor saves it: the edited fields over `original`, so everything else (pins, the tiles'
+    /// names and icons, and whatever comes next) stays. Nil `original` = a new server.
+    public static func edited(_ original: ServerConfig?, name: String, kind: Kind, baseURL: URL, auth: Auth) -> ServerConfig {
+        var c = original ?? ServerConfig(name: name, kind: kind, baseURL: baseURL, auth: auth)
+        c.name = name; c.kind = kind; c.baseURL = baseURL; c.auth = auth
+        return c
+    }
+
+    /// The name a server gets when none is typed: the first part of a DNS name ("pi-utility" for
+    /// "pi-utility.tail01cd5f.ts.net"). An IP address or a one-word host stays whole.
+    public static func defaultName(for url: URL) -> String {
+        guard let host = url.host, !host.isEmpty else { return "Homelab" }
+        guard !host.contains(":"), let first = host.split(separator: ".").first, first.contains(where: \.isLetter) else { return host }
+        return String(first)
     }
 
     /// The tile's custom name for an entity, or nil (then the tile shows HA's friendly name).

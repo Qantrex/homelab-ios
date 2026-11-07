@@ -125,6 +125,7 @@ struct HostDetailView: View {
         .navigationTitle(host.name)
         .navigationBarTitleDisplayMode(.inline)
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
         .confirmationDialog(confirmTitle, isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
                             titleVisibility: .visible, presenting: confirm) { c in
             Button("Restart", role: .destructive) { Task { await restart(c) } }

@@ -108,6 +108,7 @@ struct ActionFormView: View {
             .motion(.snappy, value: showProblems)
         }
         .tint(Palette.accent)
+        .labeledContentStyle(.adaptive)
     }
 
     private var confirmMessage: String { confirmText(form, server: server.name) }

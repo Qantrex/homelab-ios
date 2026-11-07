@@ -35,14 +35,15 @@ struct SettingsView: View {
                                 .foregroundStyle(.primary)
                                 .accessibilityHint(Text(s.kind == .demo ? "Demo servers can't be edited" : "Edits this server"))
                                 .swipeActions {
-                                    Button("Delete", role: .destructive) { deleting = s }
+                                    // Demo servers come and go with the Demo switch below (a swiped one couldn't come back).
+                                    if s.kind != .demo { Button("Delete", role: .destructive) { deleting = s } }
                                 }
                         }
                         Button { adding = true } label: { Label("Add server", systemImage: "plus") }
                     } header: {
                         Text("Servers")
                     } footer: {
-                        SettingsFooter("Tap a server to edit it, swipe to delete it.")
+                        SettingsFooter("Tap a server to edit it, swipe to delete it. Demo servers go with the Demo switch.")
                     }
 
                     Section {
@@ -73,7 +74,8 @@ struct SettingsView: View {
                     Section {
                         Toggle("New problems", isOn: notifyBinding(\.notifyProblems))
                         Toggle("New actions to approve", isOn: notifyBinding(\.notifyPending))
-                        if model.selectedStatus.hasDeals {
+                        // Also while it's on and the server's deals aren't loaded yet (offline, just switched), so it can be turned off.
+                        if model.selectedStatus.hasDeals || model.settings.notifyDeals {
                             Toggle("New deals to act on", isOn: notifyBinding(\.notifyDeals))
                         }
                     } header: {
@@ -82,18 +84,22 @@ struct SettingsView: View {
                         SettingsFooter(verbatim: notificationNote ?? String(localized: "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off. Deals: the server already pushes the strong ones."))
                     }
 
-                    Section {
-                        Toggle("Leave-by on the lock screen", isOn: Binding(
-                            get: { model.settings.leaveByOn }, set: { model.settings.leaveByOn = $0 }))
-                    } footer: {
-                        SettingsFooter("On a school morning, opening the app puts \"Leave by 07:26 · U6 07:31\" on the lock screen until the first lesson. It only starts while the app is open, and needs Live Activities allowed for Homelab in iOS Settings.")
+                    // Only for a server that sends a commute (or while on, so it can be turned off).
+                    if model.selectedStatus.snapshot?.state.commute != nil || model.settings.leaveByOn {
+                        Section {
+                            Toggle("Leave-by on the lock screen", isOn: Binding(
+                                get: { model.settings.leaveByOn }, set: { model.settings.leaveByOn = $0 }))
+                        } footer: {
+                            SettingsFooter("When the server sends a leave-by time for the morning, opening the app puts it on the lock screen (for example \"Leave by 07:26 · U6 07:31\") until you're there. It only starts while the app is open, and needs Live Activities allowed for Homelab in iOS Settings.")
+                        }
                     }
 
                     Section {
                         Toggle("Lock with Face ID", isOn: Binding(
                             get: { model.settings.faceIDLock },
                             set: { on in Task { await setLock(on) } }))
-                            .disabled(!Biometrics.available)
+                            // Stays usable while on: without a passcode any more, it can still be turned off.
+                            .disabled(!Biometrics.available && !model.settings.faceIDLock)
                         Button("Reset everything", role: .destructive) { confirmReset = true }
                     } header: {
                         Text("Privacy")
@@ -127,11 +133,14 @@ struct SettingsView: View {
             .confirmationDialog("Delete \(deleting?.name ?? "server")?", isPresented: Binding(
                 get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { s in
                 Button("Delete server and its token", role: .destructive) { model.remove(s.id) }
-            } message: { _ in
-                Text("The address, its saved token and cached data are removed from this phone.")
+            } message: { s in
+                Text(s.kind == .homeAssistant ? "The address, its saved token, the Home tiles with their names and icons, and cached data are removed from this phone."
+                                              : "The address, its saved token and cached data are removed from this phone.")
             }
             .confirmationDialog("Reset everything?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Delete all data", role: .destructive) { model.resetAll() }
+            } message: {
+                Text("All servers, tokens, Home tiles, cached data and settings are deleted from this phone. Your servers keep their data.")
             }
         }
     }
@@ -148,7 +157,9 @@ struct SettingsView: View {
             NavigationLink {
                 ServerChoice(title: title, servers: servers, chosen: chosen?.id, footer: footer, choose: choose)
             } label: {
-                LabeledContent(title) { Text(verbatim: chosen?.name ?? "–").foregroundStyle(Palette.secondary) }
+                LabeledContent(title) {
+                    Text(verbatim: chosen?.name ?? "–").foregroundStyle(Palette.secondary).lineLimitAtStandardSizes(1).truncationMode(.middle)
+                }
             }
         }
     }
@@ -468,6 +479,7 @@ struct ServerEditor: View {
             .screenBackground()
             .navigationTitle(original == nil ? "Add server" : "Edit server")
             .navigationBarTitleDisplayMode(.inline)
+            .labeledContentStyle(.adaptive)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 if !isDemo {
@@ -493,15 +505,21 @@ struct ServerEditor: View {
 
     private func config() -> ServerConfig? {
         guard case .success(let url) = urlResult else { return nil }
-        let fallbackName = kind == .homeAssistant ? "Home Assistant" : (url.host ?? "Homelab")
-        return ServerConfig(id: original?.id ?? UUID(), name: name.trimmingCharacters(in: .whitespaces).nonEmptyOr(fallbackName),
-                            kind: kind, baseURL: url, auth: kind == .homeAssistant ? .token : auth,
-                            pinnedEntities: original?.pinnedEntities ?? [])
+        let fallbackName = kind == .homeAssistant ? "Home Assistant" : ServerConfig.defaultName(for: url)
+        // Over the original: editing the token or the name keeps the pins and the tiles' names and icons.
+        return ServerConfig.edited(original, name: name.trimmingCharacters(in: .whitespaces).nonEmptyOr(fallbackName),
+                                   kind: kind, baseURL: url, auth: kind == .homeAssistant ? .token : auth)
     }
 
     /// Uses the typed token (or the stored one) without saving anything yet.
     private func test() async {
         guard let c = config(), tokenProblem == nil else { return }
+        if (c.kind == .homeAssistant || c.auth == .token) && token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !storedTokenUsable {
+            testResult = nil
+            saveError = String(localized: "Enter the token first.")
+            return
+        }
+        saveError = nil
         testing = true
         testResult = nil   // a repeated result is announced again
         defer { testing = false }

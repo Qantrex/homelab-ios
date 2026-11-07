@@ -26,15 +26,15 @@ public enum Palette {
     public static let secondary = dynamic(dark: 0x9A9A9A, light: 0x5C5C5C, darkHigh: 0xB3B3B3, lightHigh: 0x3D3D3D)
     /// Meta text (ages, footers, column headers): 4.5:1 or more on the panel in both modes. The same as secondary
     /// with Increase Contrast.
-    public static let tertiary = dynamic(dark: 0x808080, light: 0x6E6E6E, darkHigh: 0xB3B3B3, lightHigh: 0x3D3D3D)
+    public static let tertiary = dynamic(dark: 0x8A8A8A, light: 0x666666, darkHigh: 0xB3B3B3, lightHigh: 0x3D3D3D)
     /// Text on an accent-coloured button.
     public static let onAccent = dynamic(dark: 0x000000, light: 0xFFFFFF)
     public static let accent = text
 
     /// Rosé Pine Moon (dark); light mode darker than Rosé Pine Dawn, so it is 4.5:1 or more on raised (#E6E6E6).
     public static let love = dynamic(dark: 0xEB6F92, light: 0x9E4A63, darkHigh: 0xF28BA8, lightHigh: 0x8A3A52)
-    /// Light gold is dark enough for text: about 4.5:1 on #F2F2F2.
-    public static let gold = dynamic(dark: 0xF6C177, light: 0x9A6100, lightHigh: 0x7A4D00)
+    /// Light gold is dark enough for text: 4.6:1 on raised (#E6E6E6).
+    public static let gold = dynamic(dark: 0xF6C177, light: 0x8F5A00, lightHigh: 0x7A4D00)
     public static let iris = dynamic(dark: 0xC4A7E7, light: 0x735C8C, lightHigh: 0x5E4A75)
 
     /// `darkHigh` / `lightHigh`: the colour with Increase Contrast (`accessibilityContrast == .high`); the normal

@@ -238,8 +238,9 @@ public final class AppModel {
         if selected != nil {
             let f = selectedStatus.features
             t.insert(.lab)
+            // .deals counts too, not only a loaded list: a deals push on a cold launch opens Actions before /deals answered.
             if f.contains(.actions) || f.contains(.runActions) || f.contains(.documents) || f.contains(.search)
-                || selectedStatus.hasDeals { t.insert(.actions) }
+                || f.contains(.deals) || selectedStatus.hasDeals { t.insert(.actions) }
             if f.contains(.chat) { t.insert(.chat) }
         }
         return t
@@ -689,6 +690,11 @@ public final class AppModel {
             }
             return
         }
+        // A pull to refresh on the Deals screen may have stored a newer list while this poll waited: keep that one.
+        if let current = status[server.id], let newer = current.dealsFetched, newer > (s.dealsFetched ?? .distantPast) {
+            s.deals = current.deals
+            s.dealsFetched = newer
+        }
         status[server.id] = s
         if let snapshot { try? storage.write(snapshot, Snapshot.fileName(server.id)) }
         if server.id == selected?.id { writeWidgetSnapshot() }
@@ -1021,7 +1027,7 @@ struct LaunchArguments {
         func yes(_ key: String) -> Bool { ["yes", "true", "1"].contains(value(key)?.lowercased() ?? "") }
         demo = yes("HomelabDemo")
         demoOff = ["no", "false", "0"].contains(value("HomelabDemo")?.lowercased() ?? "")
-        pins = value("HomelabPins").map { $0.split(separator: ",").map(String.init) }.flatMap { ids in
+        pins = value("HomelabPins").map { $0.split(separator: ",").map(String.init).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } } }.flatMap { ids in
             ids.count <= 12 && ids.allSatisfy({ $0.wholeMatch(of: /[a-z_]{1,32}\.[a-z0-9_]{1,96}/) != nil }) ? ids : nil
         }
         tileNames = value("HomelabTileNames").flatMap(TileName.parse)

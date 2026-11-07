@@ -317,7 +317,7 @@ public struct DealList: Codable, Sendable, Equatable {
     public func freshAct(now: Date = Date()) -> [Deal] {
         ordered.filter { d in
             guard d.verdict == .act, let at = d.seen ?? updated else { return false }
-            return now.timeIntervalSince(at) <= Self.freshFor
+            return DealList.isRecent(at, now: now, within: Self.freshFor)
         }
     }
 
@@ -384,7 +384,14 @@ extension DealList {
             guard d.verdict == .act else { return false }
             // A deal with no time can't be called new, and an old one was seen long ago (an offline day).
             guard let at = d.seen else { return false }
-            return now.timeIntervalSince(at) <= maxAge
+            return isRecent(at, now: now, within: maxAge)
         }
+    }
+
+    /// Seen within `within` before now. Up to an hour ahead counts as now (a server clock running a bit fast);
+    /// further ahead is a wrong time, not a new deal, or it would stay "new" until a day after that time.
+    static func isRecent(_ at: Date, now: Date, within: TimeInterval) -> Bool {
+        let age = now.timeIntervalSince(at)
+        return age >= -3600 && age <= within
     }
 }

@@ -190,6 +190,24 @@ struct LabView: View {
         if !status.services.isEmpty {
             ServicesSection(services: status.services)
         }
+
+        // Where to look when something doesn't load: also here, not only under Settings → About.
+        NavigationLink {
+            DiagnosticsView(model: model)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "stethoscope").foregroundStyle(Palette.secondary).accessibilityHidden(true)
+                Text("Diagnostics").font(Typo.headline).foregroundStyle(Palette.text)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle(scale: 1))
+        .rowsPanel()
+        .accessibilityHint(Text("Connection, storage and background details for a bug report"))
     }
 
     private func pendingRow(_ count: Int) -> some View {
@@ -198,7 +216,7 @@ struct LabView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
-                Text(count == 1 ? "1 action is waiting for you" : "\(count) actions are waiting for you")
+                Text(count == 1 ? "1 action to approve" : "\(count) actions to approve")
                     .font(Typo.headline)
                     .foregroundStyle(Palette.text)
                 Spacer(minLength: 0)
