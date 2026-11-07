@@ -11,7 +11,7 @@ account, no TestFlight.
 
 ## 1. Install SideStore
 
-Follow the official guide: https://docs.sidestore.io. In short, you need a computer once to install SideStore and
+Follow the official guide: <https://docs.sidestore.io>. In short, you need a computer once to install SideStore and
 create its pairing file. After that, SideStore works on the phone alone.
 
 You need iOS 18 or newer for Homelab.

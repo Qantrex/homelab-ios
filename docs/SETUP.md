@@ -25,7 +25,7 @@ yay -S swift-bin        # or the Swift 6.4 tarball from https://www.swift.org/in
 sudo apt install usbmuxd libimobiledevice-utils libfuse2   # Ubuntu 24.04 and newer: libfuse2t64
 ```
 
-Install Swift 6.4 with swiftly, as described on https://www.swift.org/install/linux/:
+Install Swift 6.4 with swiftly, as described on <https://www.swift.org/install/linux/>:
 
 ```bash
 curl -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
@@ -49,7 +49,7 @@ install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 
 Record the checksum the first time (with the version and the date), so a later download can be compared with it.
 
-Download **Xcode 27.1** in the browser (Apple login) from https://developer.apple.com/download/all/?q=Xcode, then:
+Download **Xcode 27.1** in the browser (Apple login) from <https://developer.apple.com/download/all/?q=Xcode>, then:
 
 ```bash
 xtool sdk install ~/Downloads/Xcode_27.1.xip

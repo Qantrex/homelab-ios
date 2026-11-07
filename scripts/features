@@ -455,6 +455,11 @@ def analyse(reg, feats, deps):
 
 def md_link(target, label=None, base="docs"):
     rel = os.path.relpath(ROOT / target.split("#")[0], ROOT / base)
+    if any(part.startswith(("_", ".")) for part in Path(rel).parts if part != ".."):
+        # Not published on the docs site (Jekyll skips _ and . paths): go through ../, which the site's layout
+        # points at the file on GitHub (docs/CI.md#docs-site); on GitHub itself it is the same file.
+        rel = os.path.relpath(ROOT / target.split("#")[0], ROOT / base / "..")
+        rel = os.path.join("..", rel)
     anchor = "#" + target.split("#", 1)[1] if "#" in target else ""
     return f"[{label or target}]({rel}{anchor})"
 
