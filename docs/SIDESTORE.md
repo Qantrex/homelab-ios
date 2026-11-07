@@ -1,9 +1,8 @@
 # Installing with SideStore
 
-> **Not verified yet (2026-11-07).** SideStore has not installed Homelab on a real phone so far: its Apple ID
-> sign-in failed on the test iPhone with error -80045. The way that works today is xtool from Linux or a Mac
-> ([INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md)). This page describes how SideStore should work with Homelab; treat
-> it as a plan until a device test passes. There is also no release yet: build the IPA yourself
+> **Tested 2026-11-07** on an iPhone 12 mini (iOS 18.7.3) with SideStore 0.7.0 (nightly): Homelab installed, widgets
+> and share sheet work. The sign-in first failed with error -80045; the fix is in
+> [Sign-in error -80045](#sign-in-error--80045) below. There is no release yet: build the IPA yourself
 > ([SETUP.md](SETUP.md)).
 
 [SideStore](https://sidestore.io) installs apps on an iPhone with a free Apple ID, without a computer after the first
@@ -35,14 +34,35 @@ free account may create per week (app + widget + share extension). The U6, deadl
 there is **no fourth App ID**. Installing from Linux with `xtool dev` and
 installing with SideStore each register their own set, so switching between the two in one week costs 3 more.
 
+When SideStore asks about the app's extensions, either "Keep App Extensions" option works: "Use Main Profile" (1 App
+ID) was tested with widgets on 2026-11-07; "Register App ID for Each Extension" uses 3.
+
+## Sign-in error -80045
+
+Since October 2026 Apple refuses sign-ins whose device data (from SideStore's "anisette" server) doesn't match.
+SideStore then says "This action cannot be completed at this time. (-80045)". What fixed it on the test phone:
+
+1. SideStore → Settings → User Customizations: turn off **On-Device Anisette**.
+2. Settings → Anisette Servers: tick **SideStore (New)** (`new.ani.sidestore.io`) and turn off **Enable Auto
+   Rotation** at the bottom. If it still fails later, try another server here (for example jkcoxson).
+3. User Customizations → Anisette Client Configuration → Remote Server Sync: **Fetch** (it must show the server from
+   step 2), then **Save as Overrides**.
+4. User Customizations → **Reset adi.pb**.
+5. Connect **LocalDevVPN**, then sign in with your Apple ID and its real password (an app-specific password doesn't
+   work). Without the VPN the sign-in ends with "could not determine this device's UDID".
+6. Confirm the code on a trusted Apple device (it may say "MacBook Pro": that's how SideStore signs in).
+
 ## 3. The 7-day refresh
 
 Apps signed with a free Apple ID stop opening after 7 days. SideStore refreshes them in the background over Wi-Fi.
 To be safe, open SideStore every few days, or tap My Apps → Refresh All. Homelab warns on Today 2 days before its
 install stops opening, and Settings → Diagnostics → Install expires shows the date.
 
-- SideStore needs its own VPN helper while it refreshes (see the SideStore docs). iOS runs only one VPN at a time, so
-  turn Tailscale back on afterwards, or Homelab can't reach your servers.
+- SideStore needs its own VPN helper (LocalDevVPN) while it refreshes. iOS runs only one VPN at a time, so with
+  Tailscale always on, background refresh never runs. A Shortcuts automation does it instead (Shortcuts →
+  Automation → + → Time of Day, daily, Run Immediately): **Set VPN** LocalDevVPN → Connect; **Wait** 5 s; **Open App**
+  SideStore; SideStore's **Refresh All Apps**; **Wait** 60 s; **Set VPN** Tailscale → Connect (or Tailscale's own
+  Connect action).
 - A refresh keeps everything: servers, tokens (Keychain), cached data and the widget. `DeviceTest.md` checks this.
 - If the app expired anyway, it doesn't open. Refresh it in SideStore; the data is still there.
 - Deleting the app, or installing it with a different Apple ID, starts from zero.

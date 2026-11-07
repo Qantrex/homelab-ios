@@ -6,7 +6,7 @@ entitlements, the icon and the widget extension.
 
 There is no release yet, so for now you build and install it yourself: from Linux see
 [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md). After the first release you can take the release IPA instead
-([SIDESTORE.md](SIDESTORE.md); SideStore is not verified yet).
+([SIDESTORE.md](SIDESTORE.md), tested 2026-11-07).
 
 ## Linux
 

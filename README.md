@@ -5,7 +5,7 @@ approval. It can chat with your homelab agent and switch Home Assistant devices.
 cloud.
 
 It is built with SwiftPM and [xtool](https://github.com/xtool-org/xtool), so you don't need a Mac or a paid Apple
-developer account. You install it with a free Apple ID: from a Linux PC or a Mac with xtool, or (not verified yet)
+developer account. You install it with a free Apple ID: from a Linux PC or a Mac with xtool, or
 with [SideStore](https://sidestore.io).
 
 ## What it does
@@ -82,10 +82,10 @@ look around without any server.
 
 ## Install
 
-> **Status (2026-11-07): no release yet.** Tested daily on an iPhone 12 mini (iOS 18), installed from Linux with
-> xtool 1.24.0 plus the one-line App Group patch
-> ([docs/SETUP.md, "Known xtool bug: no App Group"](docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older)).
-> SideStore is not verified yet: its sign-in failed on that phone (error -80045).
+> **Status (2026-11-07): no release yet.** Used daily on an iPhone 12 mini (iOS 18), installed through SideStore
+> (after the [-80045 sign-in fix](docs/SIDESTORE.md#sign-in-error--80045)); xtool 1.24.0 plus the one-line App Group
+> patch ([docs/SETUP.md](docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older)) works
+> too.
 > Until the first release, build and install it yourself. Releases are built by hand, never by CI
 > ([docs/RELEASE.md](docs/RELEASE.md)).
 
@@ -133,7 +133,7 @@ Honest list. Most come from the free Apple ID and from building without Xcode.
 |---|---|
 | No Siri or Shortcuts actions of its own, no buttons in widgets, no Control Center | These need App Intents, and xtool can't build them yet. Shortcuts can still open `homelab://` links that fill in a form ([docs/SHORTCUTS.md](docs/SHORTCUTS.md)) |
 | No Apple push notifications | APNs needs a paid developer account. The app can check in the background and send a local notification, but iOS decides when that runs (often every 15–60 minutes, sometimes much less) |
-| Reinstall every 7 days | Apps signed with a free Apple ID stop opening after 7 days. Today warns 2 days before, and Settings → Diagnostics shows the date. Reinstall over USB (`scripts/install-dev`); your data stays. SideStore would refresh over Wi-Fi (not verified yet) |
+| Reinstall every 7 days | Apps signed with a free Apple ID stop opening after 7 days. Today warns 2 days before, and Settings → Diagnostics shows the date. Reinstall over USB (`scripts/install-dev`); your data stays. SideStore refreshes it (a Shortcut swaps its VPN and Tailscale) |
 | 3 active apps | A free Apple ID allows 3 sideloaded apps (with SideStore, SideStore is one). The widget and the share extension don't count, so Homelab uses one slot (but 3 of the 10 new App IDs a week) |
 | One Home Assistant at a time | The Home tiles on Today come from one Home Assistant: the one under Settings → "Home tiles from" |
 | iPhone only, portrait | No iPad layout |
@@ -153,7 +153,7 @@ More: [docs/SECURITY.md](docs/SECURITY.md).
 | Doc | For |
 |---|---|
 | [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) | Installing from a Linux PC over USB (no Mac) |
-| [docs/SIDESTORE.md](docs/SIDESTORE.md) | SideStore (not verified yet), the 7-day refresh, App Group, troubleshooting |
+| [docs/SIDESTORE.md](docs/SIDESTORE.md) | SideStore (and the -80045 fix), the 7-day refresh, App Group, troubleshooting |
 | [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md) | Connecting a homelab: reference server, Home Assistant, your own server |
 | [docs/REFERENCE_SERVER.md](docs/REFERENCE_SERVER.md) | All options of the reference server |
 | [server/openapi.yaml](server/openapi.yaml) | The Homelab Companion API v1 |

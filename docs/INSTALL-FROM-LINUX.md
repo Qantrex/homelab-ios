@@ -78,7 +78,7 @@ git clone https://github.com/Qantrex/homelab-ios ~/Projects/homelab-ios && cd ~/
 
 | Thing | What to do |
 |---|---|
-| The app stops opening after 7 days | Free Apple ID certificates last 7 days. Today warns 2 days before ("This install stops opening in 2 days …"), and Settings → Diagnostics → Install expires shows the date. Plug the phone in and run the install again (A, or `xtool dev` / `scripts/install-dev` for B) before then: servers, tokens, settings and widgets stay. SideStore refreshes by itself, but it is not verified with this app yet ([SIDESTORE.md](SIDESTORE.md)) |
+| The app stops opening after 7 days | Free Apple ID certificates last 7 days. Today warns 2 days before ("This install stops opening in 2 days …"), and Settings → Diagnostics → Install expires shows the date. Plug the phone in and run the install again (A, or `xtool dev` / `scripts/install-dev` for B) before then: servers, tokens, settings and widgets stay. SideStore refreshes by itself ([SIDESTORE.md](SIDESTORE.md)) |
 | `xtool devices` is empty | Unlock the phone, re-plug, tap Trust. Check `systemctl status usbmuxd` (udev starts it when the phone is plugged in) |
 | `Error: … maximum number of apps` | A free Apple ID allows 3 sideloaded apps and 10 new App IDs per week. Each install registers **3** App IDs (app, widget, share extension), so about three fresh installs a week. Remove an old test app |
 | "Homelab" is missing in the share sheet | Share sheet → scroll the app row to the end → More → switch Homelab on. Open the app once first |

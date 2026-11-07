@@ -92,13 +92,13 @@ People add this source in SideStore once, and it always points at the newest rel
 
 ## Open decision (owner)
 
-SideStore is not verified with Homelab yet (its sign-in failed on the test iPhone with error -80045, see
-[SIDESTORE.md](SIDESTORE.md)). For the first release, choose one:
+SideStore was tested with Homelab on 2026-11-07 (after the -80045 fix in [SIDESTORE.md](SIDESTORE.md)); the source
+(`source.json`) itself is not tested yet. For the first release, choose one:
 
 | Option | For | Against |
 |---|---|---|
-| Publish `source.json` too (steps 3 and 5 as written) | SideStore users get updates from the start | It points people at a way no device test has passed |
-| Publish only the IPA and its SHA-256 (leave `dist/source.json` out of `gh release create`) | Only what was tested: `xtool install` of that IPA | No SideStore source until SideStore is verified; the source URL above stays empty |
+| Publish `source.json` too (steps 3 and 5 as written) | SideStore users get updates from the start | Adding the source URL in SideStore is not tested yet (installing the IPA is) |
+| Publish only the IPA and its SHA-256 (leave `dist/source.json` out of `gh release create`) | Only what was tested: the IPA, installed with xtool or imported in SideStore | No updates through a SideStore source; the source URL above stays empty |
 
 Not decided yet. Note the choice here once it is made.
 

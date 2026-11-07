@@ -942,7 +942,7 @@ public final class AppModel {
         }
         if let url = args.server {
             for old in servers.servers where old.baseURL == url && old.kind == .companion { remove(old.id) }
-            let s = ServerConfig(name: url.host ?? "Server", kind: .companion, baseURL: url, auth: .identity)
+            let s = ServerConfig(name: ServerConfig.defaultName(for: url), kind: .companion, baseURL: url, auth: .identity)
             servers.upsert(s)
             servers.selected = s.id
             status[s.id] = ServerStatus()
