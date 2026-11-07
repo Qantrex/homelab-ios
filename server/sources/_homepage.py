@@ -23,7 +23,8 @@ of the file that HOMEPAGE_FILE_X names, in the raw text before it parses the YAM
     replaced from the bridge's env; a service whose href would hold a key (a user, a password or a key in the query,
     or a placeholder named like a key) is left out.
   - a widget whose `type` is in WIDGETS (uptimekuma, gatus, proxmox, pihole v6, adguard, sonarr, radarr,
-    qbittorrent) becomes a source of that type, never with `actions`. Its keys must be placeholders: the source gets
+    qbittorrent) becomes a source of that type, never with `actions` (`minecraft` becomes a `gameserver` source with
+    that one server; `gamedig` is not mapped: its server types are Gamedig's own names). Its keys must be placeholders: the source gets
     the variable's name (`password_env: HOMEPAGE_VAR_GATUS_PASSWORD`), never the value. A key written in
     services.yaml itself stops the start with a ConfigError that says how to move it to the env; the key is never
     printed. A Pi-hole v5 widget is logged as not supported; other widget types as not yet supported.
@@ -150,6 +151,21 @@ def _adguard(widget, ctx):
     return out
 
 
+def _minecraft(widget, ctx):
+    # Homepage's minecraft widget: `url: udp://host:port`. The bridge sends the same Server List Ping over TCP
+    # (status only, never a login). The service's name is the server's name.
+    raw = ctx.public(widget, "url")
+    try:
+        u = urllib.parse.urlsplit(raw) if isinstance(raw, str) else None
+        host, port = (u.hostname, u.port) if u else (None, None)
+    except ValueError:
+        u = host = port = None
+    if not host or u.username or u.password:
+        raise Unsupported("the widget's url is not udp://host:port")
+    return {"type": "gameserver", "servers": [{"name": ctx.service, "type": "minecraft", "host": host,
+                                               "port": port or 25565}]}
+
+
 def _arr(kind):
     def translate(widget, ctx):
         # Homepage sends `key` as X-Api-Key, as the bridge does; enableQueue only changes Homepage's own view.
@@ -183,6 +199,7 @@ WIDGETS = {
     "sonarr": ("sonarr", _arr("sonarr")),
     "radarr": ("radarr", _arr("radarr")),
     "qbittorrent": ("qbittorrent", _qbittorrent),
+    "minecraft": ("gameserver", _minecraft),
 }
 
 

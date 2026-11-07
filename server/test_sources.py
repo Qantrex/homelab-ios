@@ -505,15 +505,20 @@ class SourceModuleRules(unittest.TestCase):
     FORBIDDEN_IMPORTS = ("os", "subprocess", "urllib", "http", "socket", "ssl", "requests", "shutil", "ctypes",
                          "reference_server")
     FORBIDDEN_NAMES = ("open", "eval", "exec", "__import__", "environ", "getenv", "reference_server")
+    # Types that don't speak HTTP: they open their own sockets (game servers: Minecraft's Server List Ping over TCP,
+    # Valve's A2S over UDP), so `socket` is allowed for them and only them, and their tests use fake servers on
+    # localhost (test_source_gameserver.py) instead of a recording.
+    OWN_SOCKETS = ("gameserver",)
 
-    def forbidden(self, text):
+    def forbidden(self, text, allow=()):
         """What a module uses that it must not (read from its syntax tree, so docstrings and comments don't count)."""
         hits = []
         for node in ast.walk(ast.parse(text)):
             if isinstance(node, ast.Import):
-                hits += [a.name for a in node.names if a.name.split(".")[0] in self.FORBIDDEN_IMPORTS]
+                hits += [a.name for a in node.names
+                         if a.name.split(".")[0] in self.FORBIDDEN_IMPORTS and a.name not in allow]
             elif isinstance(node, ast.ImportFrom) and node.level == 0:
-                if (node.module or "").split(".")[0] in self.FORBIDDEN_IMPORTS:
+                if (node.module or "").split(".")[0] in self.FORBIDDEN_IMPORTS and node.module not in allow:
                     hits.append(node.module)
             elif isinstance(node, ast.Name) and node.id in self.FORBIDDEN_NAMES:
                 hits.append(node.id)
@@ -526,6 +531,8 @@ class SourceModuleRules(unittest.TestCase):
         self.assertEqual(self.forbidden(harmless), [])
         bad = "import os\nfrom urllib import request\nopen('f')\nimport sys\nsys.modules['os'].environ"
         self.assertEqual(sorted(self.forbidden(bad)), ["environ", "open", "os", "urllib"])
+        self.assertEqual(self.forbidden("import socket\nimport os"), ["socket", "os"])
+        self.assertEqual(self.forbidden("import socket\nimport os", allow=("socket",)), ["os"])
 
     def test_every_module(self):
         folder = os.path.join(HERE, "sources")
@@ -536,10 +543,11 @@ class SourceModuleRules(unittest.TestCase):
                 with open(os.path.join(folder, m + ".py"), encoding="utf-8") as fh:
                     text = fh.read()
                 self.assertTrue(ast.get_docstring(ast.parse(text)), "a docstring: upstream, keys, tested version")
-                self.assertEqual(self.forbidden(text), [], "use fetch and fetch.secret() only")
+                own = ("socket",) if m in self.OWN_SOCKETS else ()
+                self.assertEqual(self.forbidden(text, allow=own), [], "use fetch and fetch.secret() only")
                 kind = m.replace("_", "-")
                 self.assertTrue(callable(sources.load_type(kind).collect))
-                for case in ("normal", "odd"):
+                for case in () if m in self.OWN_SOCKETS else ("normal", "odd"):
                     self.assertTrue(os.path.isfile(recording(kind, case)),
                                     "server/recordings/%s/%s.json" % (kind, case))
 

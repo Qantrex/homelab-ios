@@ -137,6 +137,41 @@ class TmpFiles:
 
 
 @needs_yaml
+class HomepageMinecraft(TmpFiles, unittest.TestCase):
+    """A minecraft widget (url: udp://host:port) becomes a gameserver source with that one server; gamedig is not
+    mapped."""
+
+    YAML = """
+- Games:
+    - Survival:
+        href: https://mc.example.com
+        widget: {type: minecraft, url: "udp://mc.example.com:25570"}
+    - Creative:
+        widget: {type: minecraft, url: "udp://nas.tail1234.ts.net"}
+    - Broken:
+        widget: {type: minecraft, url: "not a url"}
+    - Login:
+        widget: {type: minecraft, url: "udp://user:pw@mc.example.com:25565"}
+    - Counter:
+        widget: {type: gamedig, url: "udp://mc.example.com:27015", serverType: csgo}
+"""
+
+    def test_minecraft_widget(self):
+        res = self.load(self.YAML)
+        self.assertEqual(res.sources, [
+            {"name": "Survival", "every": 60, "type": "gameserver",
+             "servers": [{"name": "Survival", "type": "minecraft", "host": "mc.example.com", "port": 25570}]},
+            {"name": "Creative", "every": 60, "type": "gameserver",
+             "servers": [{"name": "Creative", "type": "minecraft", "host": "nas.tail1234.ts.net", "port": 25565}]}])
+        self.assertIn("homepage: Games / Survival: widget minecraft is the source 'Survival' (gameserver)", self.logs)
+        self.assertIn("homepage: Games / Broken: widget minecraft is not supported by the Homelab Bridge: "
+                      "the widget's url is not udp://host:port", self.logs)
+        self.assertIn("homepage: Games / Counter: widget gamedig is not yet supported by the Homelab Bridge",
+                      self.logs)
+        self.assertEqual([s["name"] for s in res.sources if "actions" in s or "expect_up" in str(s)], [])
+
+
+@needs_yaml
 class HomepageNormal(TmpFiles, unittest.TestCase):
     """server/examples/homepage-services.yaml: every service a launcher entry, every supported widget a source."""
 
