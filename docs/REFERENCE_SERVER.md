@@ -103,7 +103,7 @@ The config is JSON. Keys that start with `_` are comments and are ignored. Unkno
 | `allowed_hosts` | `["localhost", "127.0.0.1", "::1", "*.ts.net"]` | Accepted `Host` headers (`*.` = any subdomain). Blocks DNS rebinding. Add your own name if you use a custom domain |
 | `tokens` | `[]` | Bearer tokens. Env `HOMELAB_TOKENS` (comma-separated) adds more. Use 16+ random characters |
 | `trust_identity_header` | none | Header set by the proxy, e.g. `Tailscale-User-Login`. Only trusted from `127.0.0.1` |
-| `allowed_logins` | `[]` | Logins allowed via the header. Empty = any login the proxy sends; with `sources` it must not be empty (the server stops at start) |
+| `allowed_logins` | `[]` | Logins allowed via the header. Empty = any login the proxy sends; with `sources`, `chat_command`, `actions` or `pending_dir` it must not be empty (the server stops at start) |
 | `interval` | `60` | Seconds between check rounds |
 | `this_host.id` | hostname | Host id of this machine |
 | `this_host.name` / `kind` / `url` | id / `server` / none | Shown in the app. `kind`: server, raspberry-pi, laptop, desktop, nas, vm |
@@ -263,9 +263,9 @@ Rules the server enforces for every source:
   `localhost` or `127.0.0.1` sends that key in clear text over the network. It still runs, but the log says so at
   start and `/info` flags it with `plain_http: true` (a gold warning in Diagnostics, like `insecure`). Use `https://`
   (with `ca_file` for a self-signed certificate), or reach the service over the tailnet.
-- **Identity login needs `allowed_logins`.** With `trust_identity_header` and sources, an empty `allowed_logins` stops
-  the server at start: the bridge holds other services' data and actions, so it names who may use it. Without
-  sources an empty list still lets every login through, as before.
+- **Identity login needs `allowed_logins`.** With `trust_identity_header` and sources, `chat_command`, `actions` or `pending_dir`, an empty
+  `allowed_logins` stops the server at start: the bridge holds other services' data or runs commands, so it names
+  who may use it. Without any of them an empty list still lets every login through, as before.
 - **Texts and links from upstream.** A problem's text and a card's or item's `title`, `subtitle` and `value` lose
   their URLs (`<url>`) and every `key=value` or `token: value` with a secret-like name (`apikey=***`), and are cut
   to 200 characters (a card's `text` to 1000). A service or item link with a user or password (`user@host`) or a key

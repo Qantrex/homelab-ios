@@ -154,9 +154,12 @@ Notes:
   (`TS_USERSPACE=false`). In userspace mode, tailscaled hands tailnet connections to the namespace's `127.0.0.1`
   ports, so any tailnet device could reach the bridge on `:8791` past `tailscale serve` and fake the login header.
   The image guards against it: with `trust_identity_header: Tailscale-User-Login` it refuses to start when
-  `TS_USERSPACE=true` is in its env, and logs a `WARNING` when the shared namespace has no `tailscale0` interface a
-  minute after the start (userspace mode has none). `HOMELAB_ALLOW_USERSPACE=1` in `docker/bridge.env` starts it
-  anyway; do that only with the ACL below, and with tokens instead of the login header if you can.
+  `TS_USERSPACE=true` is in its own env (the compose file sets that variable only on the `tailscale` service, so
+  this catches an override in `docker/bridge.env`, not the sidecar's setting). The check that covers the sidecar
+  is the interface: if the shared namespace has no `tailscale0` interface 60 seconds after the start (userspace mode
+  has none, and neither has a sidecar that is not up), the bridge logs an `ERROR` and exits with code 3; Docker
+  restarts it and it tries again. `HOMELAB_TAILSCALE_WAIT=<seconds>` changes the 60. `HOMELAB_ALLOW_USERSPACE=1` in
+  `docker/bridge.env` turns both into a `WARNING` and starts it anyway; do that only with the ACL below, and with tokens instead of the login header if you can.
 - **Tokens** for tagged devices or `curl`: `HOMELAB_TOKENS` in `docker/bridge.env`. Devices with tags get no login
   header from `tailscale serve`.
 - **ACLs.** Let your devices reach only port 443 of the bridge machine. Tag it `tag:bridge` (add the tag below to

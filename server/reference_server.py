@@ -424,12 +424,15 @@ class Config:
             except ValueError as exc:
                 raise ConfigError(str(exc))
             SOURCE_SECRET_ENV.update(bridge_sources.env_names(self.sources))
-            if self.identity_header and not self.allowed_logins:
-                # Without sources an empty list still lets every login in (as it always did); with them the server
-                # holds other services' data and actions, so it names its users.
-                raise ConfigError("allowed_logins is empty: with sources, list the logins that may use this server "
+        if self.identity_header and not self.allowed_logins:
+            # Without sources and command features an empty list still lets every login in (as it always did); with
+            # them the server holds other services' data or runs commands, so it names its users.
+            what = [n for n, on in (("sources", self.sources), ("chat_command", self.chat_command),
+                                    ("actions", self.actions), ("pending_dir", self.pending_dir)) if on]
+            if what:
+                raise ConfigError("allowed_logins is empty: with %s, list the logins that may use this server "
                                   "(your Tailscale login, e.g. you@example.com), or drop trust_identity_header and "
-                                  "use tokens")
+                                  "use tokens" % ", ".join(what))
 
     @classmethod
     def load(cls, path, env=None):
@@ -1593,11 +1596,12 @@ def _has_tailscale_interface(net_dev="/proc/net/dev"):
     return any(n.startswith("tailscale") for n in names)
 
 
-def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev"):
+def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev", exit_fn=None):
     """The bridge image (HOMELAB_BRIDGE_IMAGE=1) behind a Tailscale sidecar with a trusted Tailscale-User-Login: refuse
-    to start with TS_USERSPACE=true unless HOMELAB_ALLOW_USERSPACE=1 (USERSPACE_RISK), and warn loudly when no
-    tailscale0 interface shows up in the shared namespace within `wait` seconds. Returns the watching thread or None;
-    ConfigError to refuse."""
+    to start with TS_USERSPACE=true unless HOMELAB_ALLOW_USERSPACE=1 (USERSPACE_RISK). The bridge does not see the
+    sidecar's env, so it also fails closed: when no tailscale0 interface shows up in the shared namespace within
+    `wait` seconds, it logs the error and stops (exit_fn(3), default os._exit) unless HOMELAB_ALLOW_USERSPACE=1.
+    Returns the watching thread or None; ConfigError to refuse."""
     header = (cfg.identity_header or "").lower()
     if env.get("HOMELAB_BRIDGE_IMAGE") != "1" or not header.startswith("tailscale-"):
         return None
@@ -1609,6 +1613,9 @@ def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev")
         log("WARNING: TS_USERSPACE=true and HOMELAB_ALLOW_USERSPACE=1: " + USERSPACE_RISK)
         return None
 
+    allow = env.get("HOMELAB_ALLOW_USERSPACE") == "1"
+    stop = exit_fn or os._exit
+
     def watch():
         deadline = time.monotonic() + wait
         while True:
@@ -1618,13 +1625,25 @@ def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev")
             if time.monotonic() >= deadline:
                 break
             time.sleep(step)
-        log("WARNING: no tailscale0 interface in this network namespace %d s after the start. If the Tailscale "
-            "sidecar runs in userspace mode (TS_USERSPACE=true), this server is open to your whole tailnet: %s"
-            % (int(wait), USERSPACE_RISK))
+        if allow:
+            log("WARNING: no tailscale0 interface in this network namespace %d s after the start, and "
+                "HOMELAB_ALLOW_USERSPACE=1 keeps the server running: %s" % (int(wait), USERSPACE_RISK))
+            return
+        log("ERROR: no tailscale0 interface in this network namespace %d s after the start. Either the Tailscale "
+            "sidecar is not up yet or it runs in userspace mode (TS_USERSPACE=true); stopping, because %s. "
+            "HOMELAB_ALLOW_USERSPACE=1 keeps it running anyway." % (int(wait), USERSPACE_RISK))
+        stop(3)
 
     thread = threading.Thread(target=watch, name="tailscale-mode", daemon=True)
     thread.start()
     return thread
+
+
+def _env_float(env, name, default):
+    try:
+        return max(1.0, float(env.get(name) or default))
+    except ValueError:
+        return default
 
 
 def main(argv=None):
@@ -1640,7 +1659,7 @@ def main(argv=None):
     try:
         if args.config:
             cfg = Config.load(args.config)
-            check_tailscale_mode(cfg, os.environ)
+            check_tailscale_mode(cfg, os.environ, wait=_env_float(os.environ, "HOMELAB_TAILSCALE_WAIT", 60.0))
             app = RealApp(cfg)
             httpd = build_server(app, cfg.host, cfg.port if args.port is None else args.port, cfg.allow_remote)
         else:

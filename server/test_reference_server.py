@@ -995,7 +995,7 @@ class CliTest(unittest.TestCase):
 
 class TailscaleModeTest(unittest.TestCase):
     """The bridge image refuses TS_USERSPACE=true with a trusted Tailscale login header (every tailnet device could
-    reach 127.0.0.1:8791 and fake the header) and warns when the shared namespace has no tailscale0."""
+    reach 127.0.0.1:8791 and fake the header) and stops when the shared namespace has no tailscale0."""
 
     IMAGE = {"HOMELAB_BRIDGE_IMAGE": "1"}
 
@@ -1019,7 +1019,9 @@ class TailscaleModeTest(unittest.TestCase):
         return path
 
     def check(self, env, *names, header=LOGIN_HEADER):
-        thread = rs.check_tailscale_mode(self.cfg(header), env, wait=0.2, step=0.02, net_dev=self.net_dev(*names))
+        self.exits = []
+        thread = rs.check_tailscale_mode(self.cfg(header), env, wait=0.2, step=0.02, net_dev=self.net_dev(*names),
+                                         exit_fn=self.exits.append)
         if thread:
             thread.join(5)
         return thread
@@ -1032,15 +1034,22 @@ class TailscaleModeTest(unittest.TestCase):
         self.assertIsNone(self.check(dict(self.IMAGE, TS_USERSPACE="true", HOMELAB_ALLOW_USERSPACE="1"), "lo"))
         self.assertTrue(any(line.startswith("WARNING: TS_USERSPACE=true") for line in self.logs))
 
-    def test_no_tailscale0_is_a_warning(self):
+    def test_no_tailscale0_fails_closed(self):
         self.assertIsNotNone(self.check(dict(self.IMAGE), "lo", "eth0"))
+        self.assertEqual(self.exits, [3])
         self.assertEqual(len(self.logs), 1)
-        self.assertIn("no tailscale0 interface", self.logs[0])
+        self.assertTrue(self.logs[0].startswith("ERROR: no tailscale0 interface"))
         self.assertIn("127.0.0.1 ports", self.logs[0])
+
+    def test_no_tailscale0_with_override_only_warns(self):
+        self.check(dict(self.IMAGE, HOMELAB_ALLOW_USERSPACE="1"), "lo", "eth0")
+        self.assertEqual(self.exits, [])
+        self.assertTrue(self.logs[0].startswith("WARNING: no tailscale0 interface"))
 
     def test_kernel_mode_is_quiet(self):
         self.check(dict(self.IMAGE, TS_USERSPACE="false"), "lo", "eth0", "tailscale0")
         self.assertEqual(self.logs, [])
+        self.assertEqual(self.exits, [])
 
     def test_only_in_the_image_and_with_a_tailscale_header(self):
         self.assertIsNone(self.check({"TS_USERSPACE": "true"}, "lo"))
