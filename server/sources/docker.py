@@ -2,8 +2,8 @@
 
 Upstream: the Docker Engine API, tested against the shapes of Docker Engine 29 (API 1.52, which adds `Health` to
 the list) and older engines that only have the health in the `Status` text (recordings/docker/). Behind a socket
-proxy that allows GET /containers only (tecnativa/docker-socket-proxy with CONTAINERS=1, or
-wollomatic/socket-proxy; docs/REFERENCE_SERVER.md#docker):
+proxy that allows GET /containers/json only (wollomatic/socket-proxy with -allowGET=/containers/json; not
+tecnativa's CONTAINERS=1, which also serves every container's env, logs and files; docs/REFERENCE_SERVER.md#docker):
     GET <url>/containers/json?all=1
     POST <url>/containers/<name>/restart?t=10      only for containers listed under actions.restart
 

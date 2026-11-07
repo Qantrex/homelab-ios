@@ -424,6 +424,12 @@ class Config:
             except ValueError as exc:
                 raise ConfigError(str(exc))
             SOURCE_SECRET_ENV.update(bridge_sources.env_names(self.sources))
+            if self.identity_header and not self.allowed_logins:
+                # Without sources an empty list still lets every login in (as it always did); with them the server
+                # holds other services' data and actions, so it names its users.
+                raise ConfigError("allowed_logins is empty: with sources, list the logins that may use this server "
+                                  "(your Tailscale login, e.g. you@example.com), or drop trust_identity_header and "
+                                  "use tokens")
 
     @classmethod
     def load(cls, path, env=None):
@@ -1571,6 +1577,56 @@ def serve(httpd):
         log("stopped")
 
 
+USERSPACE_RISK = ("in Tailscale's userspace mode tailscaled hands tailnet connections to this network namespace's "
+                  "127.0.0.1 ports, so every device in your tailnet could reach this server on its port directly, "
+                  "past `tailscale serve`, and send any login header it likes. Run the sidecar with "
+                  "TS_USERSPACE=false (server/compose.yaml does), see docs/SERVER-SETUP.md#docker")
+
+
+def _has_tailscale_interface(net_dev="/proc/net/dev"):
+    """A tailscale0 (kernel mode) interface in this process's network namespace."""
+    try:
+        with open(net_dev, "r", encoding="utf-8", errors="replace") as fh:
+            names = [line.split(":", 1)[0].strip() for line in fh if ":" in line]
+    except OSError:
+        return None
+    return any(n.startswith("tailscale") for n in names)
+
+
+def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev"):
+    """The bridge image (HOMELAB_BRIDGE_IMAGE=1) behind a Tailscale sidecar with a trusted Tailscale-User-Login: refuse
+    to start with TS_USERSPACE=true unless HOMELAB_ALLOW_USERSPACE=1 (USERSPACE_RISK), and warn loudly when no
+    tailscale0 interface shows up in the shared namespace within `wait` seconds. Returns the watching thread or None;
+    ConfigError to refuse."""
+    header = (cfg.identity_header or "").lower()
+    if env.get("HOMELAB_BRIDGE_IMAGE") != "1" or not header.startswith("tailscale-"):
+        return None
+    if env.get("TS_USERSPACE", "").strip().lower() in ("1", "true", "yes", "on"):
+        if env.get("HOMELAB_ALLOW_USERSPACE") != "1":
+            raise ConfigError("TS_USERSPACE=true with trust_identity_header: refused, " + USERSPACE_RISK +
+                              ". HOMELAB_ALLOW_USERSPACE=1 starts it anyway (only with a tailnet ACL that allows "
+                              "nothing but port 443 to this machine)")
+        log("WARNING: TS_USERSPACE=true and HOMELAB_ALLOW_USERSPACE=1: " + USERSPACE_RISK)
+        return None
+
+    def watch():
+        deadline = time.monotonic() + wait
+        while True:
+            found = _has_tailscale_interface(net_dev)
+            if found or found is None:
+                return
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(step)
+        log("WARNING: no tailscale0 interface in this network namespace %d s after the start. If the Tailscale "
+            "sidecar runs in userspace mode (TS_USERSPACE=true), this server is open to your whole tailnet: %s"
+            % (int(wait), USERSPACE_RISK))
+
+    thread = threading.Thread(target=watch, name="tailscale-mode", daemon=True)
+    thread.start()
+    return thread
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Homelab Companion API v1 reference server.")
     mode = ap.add_mutually_exclusive_group(required=True)
@@ -1584,6 +1640,7 @@ def main(argv=None):
     try:
         if args.config:
             cfg = Config.load(args.config)
+            check_tailscale_mode(cfg, os.environ)
             app = RealApp(cfg)
             httpd = build_server(app, cfg.host, cfg.port if args.port is None else args.port, cfg.allow_remote)
         else:

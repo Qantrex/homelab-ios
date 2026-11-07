@@ -44,7 +44,10 @@ services:
     restart: unless-stopped
 
   bridge:
-    image: ghcr.io/qantrex/homelab-bridge:${BRIDGE_TAG:-latest}
+    # Never `latest`: "local" is the image built from this checkout. The published image only with a pinned version,
+    # BRIDGE_TAG=<date>-<sha> in server/.env (scripts/build-bridge-image tags each push so, e.g. 2026.11.07-1a2b3c4;
+    # add @sha256:<digest> to pin its content too). docs/SERVER-SETUP.md#docker
+    image: ghcr.io/qantrex/homelab-bridge:${BRIDGE_TAG:-local}
     build: .                          # `docker compose up --build` builds it from this checkout (server/Dockerfile)
     network_mode: service:tailscale
     depends_on:
@@ -65,14 +68,26 @@ services:
     # Healthcheck: the image's (GET /api/v1/info on 127.0.0.1:8791 once a minute; a 401 counts as up).
     restart: unless-stopped
 
-  # Only with `docker compose --profile docker up -d`: read-only access to the container list for the bridge's
-  # Docker source, at http://socket-proxy:2375. Never mount the Docker socket into the bridge itself.
+  # Only with `docker compose --profile docker up -d`: the container list for the bridge's Docker source, at
+  # http://socket-proxy:2375, and nothing else: not /containers/<id>/json (it holds every container's env, so its
+  # keys), not logs, archive or export. Never mount the Docker socket into the bridge itself.
   socket-proxy:
     profiles: ["docker"]
-    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
-    environment:
-      CONTAINERS: "1"   # GET /containers/...; everything else and every POST stays refused
-      POST: "0"
+    # Pinned by digest; bump on purpose (and features.toml, dependency docker-socket-proxy).
+    image: wollomatic/socket-proxy:1.13.2@sha256:ff95d6ff6c27853005ef85eb8f4ab5923dc3d2f1e055f98fb6aeeaceec3fe848
+    # uid 0 owns the socket, so no capability is needed. Or "65534:<the docker group id>" (getent group docker).
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - -listenip=0.0.0.0
+      - -allowfrom=tailscale          # the bridge shares the sidecar's network namespace, so it comes from there
+      - -allowGET=/containers/json    # the whole path (the proxy adds ^ and $): no other GET, no POST at all
+      # Restart (only with "actions": {"restart": [...]} in docker/config.json), exactly those containers:
+      # - -allowPOST=/containers/(sonarr|gluetun)/restart
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
