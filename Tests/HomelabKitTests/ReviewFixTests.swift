@@ -139,6 +139,15 @@ import Testing
     @Test func reportMasksTheTailnet() {
         let r = Redact.hosts("server companion/identity nas.tail1234.ts.net: error Can't reach nas.tail1234.ts.net. via 100.101.102.103, LAN 192.168.1.5")
         #expect(!r.contains("tail1234") && !r.contains("100.101.102.103"))
-        #expect(r.contains("nas.<tailnet>.ts.net") && r.contains("100.x.x.x") && r.contains("192.168.1.5"))
+        #expect(r.contains("nas.<tailnet>.ts.net") && r.contains("100.x.x.x") && !r.contains("192.168.1.5") && r.contains("<lan-ip>"))
+    }
+
+    @Test func reportMasksLocalAddressesAndOtherHosts() {
+        let r = Redact.hosts("a 10.0.0.2 b 172.20.1.1 c 169.254.3.4 d fd12:3456::1 e fe80::1ff:fe23 f 8.8.8.8 g nas.example.lan:7443 refused (1.2.3, iOS 17.2)",
+                             knownHosts: ["nas.example.lan"])
+        for leak in ["10.0.0.2", "172.20.1.1", "169.254.3.4", "fd12", "fe80", "8.8.8.8", "example.lan"] { #expect(!r.contains(leak), "\(leak)") }
+        #expect(r.contains("<host>:7443") && r.contains("(1.2.3, iOS 17.2)"))
+        #expect(Redact.host("nas.example.lan") == "<host>" && Redact.host("192.168.1.5") == "<lan-ip>")
+        #expect(Redact.host("nas.tail1234.ts.net") == "nas.<tailnet>.ts.net" && Redact.host("172.32.0.1") == "<ip>")
     }
 }

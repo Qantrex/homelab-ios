@@ -658,7 +658,7 @@ struct DiagnosticsView: View {
                         copied = true
                     }
                 } footer: {
-                    SettingsFooter("The report has no tokens, and the tailnet part of host names is masked. It helps when something doesn't work.")
+                    SettingsFooter("The report has no tokens, and the tailnet part of host names, other host names and local addresses (LAN IPv4, IPv6 ULA and link-local) are masked. It helps when something doesn't work.")
                 }
             }
             .surfaceRows()
@@ -698,11 +698,11 @@ struct DiagnosticsView: View {
         lines.append("live activities: \(LeaveActivityController.allowed ? "allowed" : "off"), leave-by \(logText(RunLog.leaveActivity)), widget fetch \(logText(RunLog.widgetFetch))")
         for s in model.servers.servers {
             let st = model.status[s.id]
-            lines.append("server \(s.kind.rawValue)/\(s.auth.rawValue) \(s.host): data \(Format.age(st?.snapshot?.fetched)), error \(st?.error?.message ?? "none")")
+            lines.append("server \(s.kind.rawValue)/\(s.auth.rawValue) \(Redact.host(s.host)): data \(Format.age(st?.snapshot?.fetched)), error \(st?.error?.message ?? "none")")
             // Only a Homelab Bridge sends sources; masked with the rest below.
             lines += (st?.knownInfo?.sources ?? []).map { "  " + $0.reportLine() }
         }
-        return Redact.hosts(lines.joined(separator: "\n"))
+        return Redact.hosts(lines.joined(separator: "\n"), knownHosts: model.servers.servers.map(\.host))
     }
 }
 
