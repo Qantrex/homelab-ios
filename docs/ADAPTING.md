@@ -71,7 +71,16 @@ Then mark the feature `removed` in `features.toml` (or delete its entry), run `s
 
 ## Add a module
 
-In this order. The contract comes first; the app only follows it.
+There are three ways to add something, from the most work to the least:
+
+| Way | App change | When |
+|---|---|---|
+| A new module in the app | Yes: the steps below | The app has no screen or section that can show it |
+| A card or an action the app already knows | No, or a small one: [A new card style](#a-new-card-style), [A new action the app can start](#a-new-action-the-app-can-start) | A list, numbers or text, or a form with known fields |
+| A [Homelab Bridge](GETTING-STARTED.md#b-homelab-bridge) source | No: one Python file on the server ([BRIDGE.md](BRIDGE.md)) | Another service (Uptime Kuma, Proxmox, ...) has an API, and its problems, hosts and cards are enough. The app sees ordinary Companion data |
+
+Try the last two first. For a new module in the app, in this order. The contract comes first; the app only follows
+it.
 
 | # | Step | Files |
 |---|---|---|

@@ -1,5 +1,8 @@
 # Connecting your homelab
 
+New here? [GETTING-STARTED.md](GETTING-STARTED.md) picks one of the three setups with you and walks through it from
+installing the app to a working Today. This page has every detail.
+
 The app talks to two kinds of server. You can add several of each in Settings → Add server.
 
 | Type in the app | Speaks | What it fills |
@@ -180,6 +183,21 @@ With a `sources` list the reference server is the Homelab Bridge: it reads other
 they report on Today and in Lab. Copy the `server/sources/` folder next to `reference_server.py`. The common keys
 (`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources);
 each module's docstring has the details.
+
+#### Pick your sources
+
+Start with what tells you something is wrong, then add more. One source per service instance; two Kuma status pages
+are two sources with different names.
+
+| You run | Type | Gives you |
+|---|---|---|
+| Uptime Kuma | `uptime-kuma` | Down monitors as problems, a card "11 of 12 up" |
+| Gatus | `gatus` | Failing endpoints as problems, a card |
+| A script or another server that writes JSON | `json` ([REFERENCE_SERVER.md → JSON feed](REFERENCE_SERVER.md#json-feed)) | Whatever it sends: problems, hosts, cards, services. On the bridge's own machine, `cards_dir` is simpler |
+| Docker, Proxmox | coming (plan M1.5) | Containers, hosts with 24 h history |
+| Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | coming (plan M1.6) | DNS card, health problems, a download queue |
+
+Each source, its keys and the access it needs:
 
 | Type | What it reads | Keys | Access it needs | Tested with |
 |---|---|---|---|---|
