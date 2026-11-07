@@ -357,6 +357,37 @@ components:
         standing_approvals:
           type: boolean
           description: The server remembers an "always" approval and runs that action by itself later.
+        sources:
+          type: array
+          items: { $ref: "#/components/schemas/SourceStatus" }
+          description: |
+            Optional. Only a Homelab Bridge (the reference server with a `sources` config) sends it: one entry per
+            source, in config order. A server without sources leaves the field out. Shown in Diagnostics.
+    SourceStatus:
+      type: object
+      required: [name, type, state]
+      description: |
+        How one Homelab Bridge source is doing. A failing source is also one warning problem in `/state`
+        (`<name>: <error>`, id `<name>:source`).
+      properties:
+        name: { type: string, example: Kuma, description: The source's name; its ids in /state start with `<name>:`. }
+        type: { type: string, example: uptime-kuma, description: The module in server/sources/. }
+        state:
+          type: string
+          enum: [ok, failing, never]
+          description: "`ok`: the last run worked. `failing`: it failed (see `error`). `never`: no run has finished yet."
+        error:
+          type: string
+          maxLength: 120
+          example: "401"
+          description: Only while `failing`. Short, one line, without URLs or keys ("401", "timeout").
+        checked: { type: string, format: date-time, description: When the last run finished, good or not. }
+        last_ok: { type: string, format: date-time, description: When the last good run finished. Kept while failing. }
+        insecure:
+          type: boolean
+          description: >-
+            Only sent as `true`: the source skips the TLS certificate check (`insecure: true` in its config, for a
+            self-signed Proxmox or TrueNAS). Clients show it as a warning.
     State:
       type: object
       properties:

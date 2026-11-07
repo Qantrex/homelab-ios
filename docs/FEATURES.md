@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 82 | 70 | 11 | 1 | 37 | 3 |
+| 83 | 70 | 12 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -165,13 +165,14 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (5)
+### Server (6)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
+| [Source status in /info](#source-status) | partial | – | 4 | n/a | 2 |
 | [JSON feed source](#source-json) | partial | `status`, `hosts`, `cards`, `services` | 4 | n/a | 1 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
@@ -269,7 +270,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
 | Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
-| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [first-run](#first-run), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
+| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [first-run](#first-run), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [source-status](#source-status) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
@@ -1510,7 +1511,24 @@ A `sources` list in the reference server's config reads other services' APIs (on
 | Docs | [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources), [docs/BRIDGE.md#homelab-bridge-adding-a-source](BRIDGE.md#homelab-bridge-adding-a-source) |
 | Depends on | [python3](#dep-python3), [reference-server](#reference-server) |
 | Through those | [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale) |
-| Notes | docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet. |
+| Notes | docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is served in /info by source-status (M1.2). |
+
+### source-status
+
+**Source status in /info** · Server · partial · since 2026-11-07
+
+A Homelab Bridge lists its sources in GET /info under an optional `sources`: per source its name, type, state (ok, failing, never), the last run (`checked`), the last good run (`last_ok`), the short error while failing (no URLs, no keys) and `insecure: true` when it skips the TLS check, as a warning. A server without sources leaves the field out; `scripts/check-live-api` warns for failing and insecure sources.
+
+| | |
+|---|---|
+| Server | `GET /info`, `info.sources` |
+| Sources | [__init__.py#status](../server/sources/__init__.py), [reference_server.py#info](../server/reference_server.py), [test_source_status.py](../server/test_source_status.py) |
+| Tests | `server/test_source_status.py::StatusRows`, `server/test_source_status.py::InfoSources`, `InfoSourcesTests`, `server/test_reference_server.py::NoSourcesGolden` |
+| Phone (DeviceTest.md) | n/a: server side; the app doesn't show it yet (Diagnostics, MODULAR.md M2.4) |
+| Docs | [docs/API.md#source-status-sources-in-info](API.md#source-status-sources-in-info), [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.2. The app ignores the field for now (InfoSourcesTests checks any shape of it leaves ServerInfo unchanged); M2.4 shows it in Diagnostics. Owner decision 5: insecure sources carry the flag here and in Diagnostics. |
 
 ### source-json
 
@@ -1646,8 +1664,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 14 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 30 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 15 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 31 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -1665,7 +1683,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 7 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 8 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
@@ -1728,8 +1746,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 3 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 5 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 4 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 6 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1747,7 +1765,7 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 4 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 5 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |

@@ -534,6 +534,7 @@ class _State:
         self.result = None       # normalized contribution of the last good run
         self.error = None        # short text of the last failed run
         self.checked = None      # ISO time of the last finished run
+        self.last_ok = None      # ISO time of the last good run (kept while the source fails)
         self.running_since = None
         self.next_due = 0.0
         self.since = {}          # problem id -> since
@@ -619,7 +620,7 @@ class Runner:
             st.checked = stamp
             st.runs += 1
             if error is None:
-                st.result, st.error, st.logged = result, None, None
+                st.result, st.error, st.logged, st.last_ok = result, None, None, stamp
                 since = {}
                 for p in result["problems"]:
                     since[p["id"]] = st.since.get(p["id"], stamp)
@@ -658,7 +659,12 @@ class Runner:
         return out
 
     def status(self):
-        """Per source: name, type, ok, error, checked (and insecure). For /info and Diagnostics (MODULAR.md M1.2)."""
+        """Per source, in config order: what /info lists under `sources` (MODULAR.md M1.2; Diagnostics in the app, M2.4).
+
+        {"name", "type", "state": "ok" | "failing" | "never", "error" (only while failing: the warning's short,
+        scrubbed text), "checked" (the last finished run), "last_ok" (the last good run, kept while failing),
+        "insecure" (only when true: TLS certificates are not checked; clients show it as a warning)}. "never": no run
+        has finished yet. A run that hangs past `every + timeout` is "failing" with "timeout", the first one too."""
         rows = []
         now = time.monotonic()
         with self.lock:
@@ -667,11 +673,13 @@ class Runner:
                 stuck = st.running_since is not None and now - st.running_since > spec["every"] + spec["timeout"]
                 error = "timeout" if stuck else st.error
                 row = {"name": spec["name"], "type": spec["type"],
-                       "ok": None if st.checked is None and not stuck else error is None}
+                       "state": "failing" if error else ("never" if st.checked is None else "ok")}
                 if error:
                     row["error"] = error
                 if st.checked:
                     row["checked"] = st.checked
+                if st.last_ok:
+                    row["last_ok"] = st.last_ok
                 if spec["cfg"].get("insecure"):
                     row["insecure"] = True
                 rows.append(row)

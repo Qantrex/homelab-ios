@@ -9,7 +9,7 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 
 | Method + path | Body | Reply | The app uses it for |
 |---|---|---|---|
-| `GET /info` | – | `{api, name, server, version, features, auth, commands, standing_approvals}` | "Test connection", which tabs to show |
+| `GET /info` | – | `{api, name, server, version, features, auth, commands, standing_approvals, sources}` | "Test connection", which tabs to show. `sources` only from a [Homelab Bridge](#source-status-sources-in-info) |
 | `GET /state` | – | `{time, status, checked, problems, hosts, pending, cards, busy, last_message}` | Today, Lab, Actions, widgets, background refresh |
 | `GET /messages?after=<id>` | – | `{messages: [...], busy: [...]}` | Chat (polls; `after` is the last id it has). A message may carry `pending` and `cards` |
 | `POST /messages` | `{text}` (1–4000 chars) | `{ok, id}` | Sending a chat message or slash command |
@@ -247,6 +247,34 @@ non-list values are ignored (the field stays visible). The server still refuses 
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
 | `api` | Must be `1`. Anything else: an error that asks to update the app |
+| `sources` | Nothing yet (ignored like any unknown field). Diagnostics will list it ([MODULAR.md M2.4](plans/MODULAR.md#m2-app-side)) |
+
+## Source status (`sources` in `/info`)
+
+A [Homelab Bridge](BRIDGE.md) (the reference server with a `sources` config) adds an optional `sources` list to
+`/info`: one entry per source, in config order. A server without sources leaves the field out, so its `/info` stays
+as it was. Schema: `SourceStatus` in `server/openapi.yaml`.
+
+```json
+"sources": [
+  {"name": "Kuma", "type": "uptime-kuma", "state": "ok",
+   "checked": "2026-11-07T10:00:00+01:00", "last_ok": "2026-11-07T10:00:00+01:00"},
+  {"name": "pve1", "type": "proxmox", "state": "failing", "error": "401",
+   "checked": "2026-11-07T10:00:05+01:00", "last_ok": "2026-11-07T08:12:40+01:00", "insecure": true},
+  {"name": "Lab", "type": "example", "state": "never"}
+]
+```
+
+| Field | Meaning |
+|---|---|
+| `name`, `type` | The source's name (its ids in `/state` start with `<name>:`) and its module in `server/sources/`. Always sent |
+| `state` | `ok`: the last run worked. `failing`: it failed; the source is then also one warning problem `<name>: <error>` (id `<name>:source`) in `/state`. `never`: no run has finished yet (just started). Always sent |
+| `error` | Only while `failing`: the short text of that warning (`401`, `timeout`, `KUMA_KEY is not set`). One line, at most 120 characters; URLs become `<url>` and keys `***` |
+| `checked` | When the last run finished, good or not |
+| `last_ok` | When the last good run finished; kept while the source fails, so "failing since" can be shown |
+| `insecure` | Only sent as `true`: the source skips the TLS certificate check (`insecure: true` in its config, for a self-signed Proxmox or TrueNAS). Show it as a warning. `ca_file` is the safer choice |
+
+`scripts/check-live-api` warns for each failing or insecure source.
 
 ## Actions the app starts (`run-actions`)
 

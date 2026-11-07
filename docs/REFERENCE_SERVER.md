@@ -241,7 +241,7 @@ against a fake upstream.
 | `every` | `60` | Seconds between two reads of this source. Each source has its own |
 | `timeout` | `10` | Seconds per request |
 | `key_env` | none | The **name** of the env variable that holds the key. Other `*_env` keys work the same (`password_env`) |
-| `insecure` | `false` | Skip the TLS certificate check (self-signed Proxmox or TrueNAS). Logged as a warning |
+| `insecure` | `false` | Skip the TLS certificate check (self-signed Proxmox or TrueNAS). Logged as a warning and flagged in `/info` |
 | `ca_file` | none | A PEM file with the CA that signed the upstream's certificate (better than `insecure`) |
 | other keys | | Per type, in the module's docstring |
 
@@ -261,6 +261,9 @@ Rules the server enforces for every source:
 - **Limits.** A request may take `timeout` seconds and return at most 8 MB. No redirects, no cookies, no proxy from
   the environment. At most 100 problems, 100 hosts, 50 cards and 100 services per source.
 - Each source runs in its own thread, so a slow upstream never holds up the host checks or another source.
+- **Status in `/info`.** `/info` lists every source under `sources`: `state` (`ok`, `failing`, `never`), the last
+  run, the last good run, the short error while failing, and `insecure: true` as a warning. Without `sources` in the
+  config the field is left out. Fields: [API.md → Source status](API.md#source-status-sources-in-info).
 
 Writing a new source: [BRIDGE.md](BRIDGE.md).
 
