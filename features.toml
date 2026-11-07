@@ -1,0 +1,1483 @@
+# Feature registry of the Homelab iOS app: every feature, where it lives, how it is tested, what it needs, where it
+# is documented, and every dependency with its pinned version. One source of truth for the owner and for agents.
+#
+#   scripts/features            check it against the repo (part of scripts/lint, so CI runs it too)
+#   scripts/features render     write docs/FEATURES.md from it (check fails while FEATURES.md is out of date)
+#   scripts/features show X     which feature is X (an id, a file, a DeviceTest row, a test suite, a server feature)
+#   scripts/features gaps       shipped features without tests, a phone row or docs
+#   scripts/features json       everything as JSON (for the vault and other tools)
+#
+# Adding a feature = one [[feature]] entry. Fields (lists may be empty or left out):
+#   id              lower-kebab, unique, never reused
+#   name, area      area is one of the AREAS in scripts/features (Today, Cards, Actions, ...)
+#   status          shipped | partial (works, but something is missing or unverified) | planned | removed
+#   since           YYYY-MM-DD of the first commit with it (all are in 1.0.0, not released yet)
+#   summary         one or two sentences, what the user gets
+#   server_features `features` in GET /api/v1/info it needs (cases of ServerInfo.Feature); [] = any server
+#   endpoints       "GET /state" ... as in server/openapi.yaml (without /api/v1)
+#   api_fields      fields it reads (free text, not checked)
+#   sources         files; "path#Symbol" also checks that Symbol is in that file
+#   fixtures        Sources/HomelabKit/Fixtures/... it is demoed and tested with
+#   tests           Swift Testing "Suite" or "Suite/function"; Python "file.py::Class[.method]"
+#   device_tests    row ids of DeviceTest.md
+#   screenshots     names of the CI shots in scripts/sim-smoke
+#   docs            "file.md#anchor" (GitHub heading slugs)
+#   launch_args, links, widgets, today_sections, card_styles: entries the code offers (checked against it)
+#   settings        where the user switches it (free text)
+#   depends_on      dependency ids below, or other feature ids
+#   not_needed      {tests = "why"} / {device_tests = "why"} / {docs = "why"}: a gap on purpose
+#   known_gaps      things found missing or out of date (listed under Gaps until fixed; delete the line then)
+#   notes, unsure   free text; `unsure` marks what nobody verified yet (rendered as "(?)")
+
+[shared]
+# Files many features use, owned by none. Every file under Sources/, scripts/ and server/ must be claimed by a
+# feature's `sources` (or `fixtures`) or be listed here.
+sources = [
+  "Sources/HomelabKit/AppModel.swift",
+  "Sources/HomelabKit/Models.swift",
+  "Sources/HomelabUI/AppModel.swift",
+  "Sources/HomelabUI/Components.swift",
+  "Sources/HomelabKit/Fixtures/info.json",
+]
+
+# ==================================================================================================== Today
+
+[[feature]]
+id = "today-hero"
+name = "Today headline (mood)"
+area = "Today"
+status = "shipped"
+since = "2026-11-06"
+summary = "The lab's state in two words on top of Today (\"All quiet.\", \"1 problem.\"), calm when fine, gold or love with a glow and a haptic when not; \"Checking…\" until the first answer, \"No signal.\" only after a failed fetch. Tap it (or \"Lab ›\") for Lab."
+server_features = ["status", "hosts"]
+endpoints = ["GET /state"]
+api_fields = ["state.status", "state.problems", "state.hosts"]
+sources = ["Sources/HomelabKit/Mood.swift", "Sources/HomelabUI/TodayView.swift#TodayView", "Sources/HomelabDesign/DayLine.swift#MoodGlow", "Sources/HomelabDesign/Motion.swift"]
+tests = ["MoodTests", "HeroLinesTests/freshnessLineOnlyWhenWorthSaying", "FixtureDecoding/statusWords"]
+device_tests = ["T1", "T8"]
+screenshots = ["demo-today-light", "live-today-problem", "live-today-ok"]
+docs = ["README.md#what-it-does", "docs/ADAPTING.md#the-modules", "docs/DESIGN.md#3-colour-is-information"]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "today-day-line"
+name = "Day line with countdown"
+area = "Today"
+status = "shipped"
+since = "2026-11-06"
+summary = "The server's `today` card as a line through the day: clock times in order, filled up to now, countdown to the next stop. In the evening the card can be tomorrow's (`date`): header \"Tomorrow\", countdown to the first stop."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["card id \"today\" (metrics or text), card.date"]
+sources = ["Sources/HomelabKit/DayTimeline.swift", "Sources/HomelabUI/TodayView.swift#DaySection", "Sources/HomelabDesign/DayLine.swift#DayRail"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-tomorrow.json"]
+tests = ["DayTimelineTests"]
+device_tests = ["T2", "W7b"]
+screenshots = ["live-today-tomorrow"]
+docs = ["docs/ADAPTING.md#the-modules", "docs/API.md#how-the-app-shows-cards"]
+today_sections = ["day"]
+settings = ["Settings → Today → \"The day in numbers\""]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "today-layout"
+name = "Today sections and detail (Calm, Standard, Overkill)"
+area = "Today"
+status = "shipped"
+since = "2026-11-06"
+summary = "Today's sections can be reordered and hidden; Calm, Standard or Overkill picks how much shows (Overkill adds every machine's numbers, exact times and busy jobs). Refreshes every 30 s while open."
+sources = ["Sources/HomelabKit/TodayLayout.swift", "Sources/HomelabUI/SettingsView.swift#TodayLayoutEditor", "Sources/HomelabUI/TodayView.swift#TodayView"]
+tests = ["TodayLayoutTests", "DensityTests", "DensityArgumentTests"]
+device_tests = ["T2"]
+screenshots = ["demo-today-light", "demo-today-dark", "demo-today-xxl"]
+docs = ["README.md#what-it-does", "docs/ADAPTING.md#turn-a-module-off", "docs/SETUP.md#launch-arguments"]
+launch_args = ["-HomelabDensity"]
+settings = ["Settings → Today: order, hide, detail"]
+
+[[feature]]
+id = "overkill-machines"
+name = "Machines list (Overkill)"
+area = "Today"
+status = "shipped"
+since = "2026-11-06"
+summary = "In Overkill, Today lists every host's numbers in one dense list with a 24 h load sparkline under each."
+server_features = ["hosts"]
+endpoints = ["GET /state"]
+api_fields = ["hosts[].history.load"]
+sources = ["Sources/HomelabUI/TodayView.swift#MachineList", "Sources/HomelabDesign/Sparkline.swift"]
+tests = ["DensityTests/whatEachDensityShows", "HostHistoryTests/sparklineShape"]
+device_tests = ["O8"]
+screenshots = ["demo-today-overkill-snarky"]
+docs = ["docs/ADAPTING.md#the-modules"]
+today_sections = ["machines"]
+settings = ["Settings → Today → Detail → Overkill"]
+depends_on = ["today-layout"]
+
+[[feature]]
+id = "last-report"
+name = "Last report on Today"
+area = "Today"
+status = "shipped"
+since = "2026-11-04"
+summary = "The agent's last chat report (morning, watchdog, …) at the end of Today; tap opens Chat."
+server_features = ["status"]
+endpoints = ["GET /state"]
+api_fields = ["state.last_message"]
+sources = ["Sources/HomelabUI/TodayView.swift#lastReport"]
+tests = ["FixtureDecoding/stateProblem"]
+device_tests = ["T2"]
+docs = ["docs/ADAPTING.md#the-modules"]
+today_sections = ["report"]
+settings = ["Settings → Today → \"Last report\""]
+unsure = "No test checks the last_message section itself; FixtureDecoding only decodes it."
+
+[[feature]]
+id = "weather-line"
+name = "Weather line under the headline"
+area = "Today"
+status = "shipped"
+since = "2026-11-06"
+summary = "Standard and Overkill show the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["card id \"weather\""]
+sources = ["Sources/HomelabKit/HeroLines.swift"]
+tests = ["HeroLinesTests/weatherSentenceAddsTheTemperatureNowWhenMissing", "DayTimelineTests/dayCardIgnoresTheWeatherCard"]
+device_tests = ["O12c"]
+docs = ["CHANGELOG.md#100-unreleased"]
+notes = "Only in the changelog; README and API.md don't describe the weather card."
+
+[[feature]]
+id = "expiry-warning"
+name = "Install expiry warning"
+area = "Today"
+status = "shipped"
+since = "2026-11-07"
+summary = "Two days before a free-Apple-ID install stops opening, Today says so (\"This install stops opening in 2 days … reinstall; your data stays\"); Diagnostics shows the date. Read from the app's own embedded.mobileprovision."
+sources = ["Sources/HomelabKit/AppExpiry.swift"]
+tests = ["AppExpiryTests"]
+device_tests = ["X2"]
+docs = ["README.md#limits", "docs/SETUP.md#build", "docs/SIDESTORE.md#3-the-7-day-refresh"]
+depends_on = ["free-apple-id"]
+
+[[feature]]
+id = "personality"
+name = "Personality (Off, Dry, Snarky, Ultrakill)"
+area = "Today"
+status = "partial"
+since = "2026-11-06"
+summary = "A line of commentary under Today's headline, on empty screens, after actions and as a notification's subtitle. Changes once a day; the facts never change with it. Off by default."
+sources = ["Sources/HomelabKit/Voice.swift", "Sources/HomelabKit/Takes.swift", "Sources/HomelabKit/VoiceLines.swift", "Sources/HomelabUI/SettingsView.swift#PersonalityPreview"]
+tests = ["VoiceTests", "TakeTests", "VoiceSpotTests", "ChatLayoutTests/previewSampleFollowsThePersonality"]
+device_tests = ["DL10"]
+screenshots = ["demo-today-overkill-snarky"]
+docs = ["README.md#what-it-does", "docs/DESIGN.md#4-the-voice", "docs/SETUP.md#launch-arguments"]
+launch_args = ["-HomelabPersonality"]
+settings = ["Settings → Today → Personality"]
+notes = "Status partial only because the docs lag behind: the code and Settings offer a fourth level, Ultrakill (2026-11-06, rude on purpose)."
+known_gaps = ["Ultrakill missing from README, CHANGELOG and the -HomelabPersonality row in docs/SETUP.md (they say off, dry or snarky)", "no DeviceTest row for the personality itself (DL10 only touches it)"]
+
+# ==================================================================================================== Cards
+
+[[feature]]
+id = "cards"
+name = "Server cards (list, metrics, text, progress rings)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-04"
+summary = "Cards the server sends show on Today (and compact in chat): list, metrics and text, with icons, tints, links and progress rings (downloads, now playing). Unknown styles fall back to a list."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.cards[]"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabDesign/Theme.swift#ProgressRing"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-ok.json"]
+tests = ["CardsTests/fixtureCards", "CardsTests/roundTripsThroughTheCache", "HeroLinesTests/longListsFoldToThreeRows", "ExtraFixtureTests/hugeCardsCoverEveryStyle"]
+device_tests = ["O9"]
+docs = ["docs/API.md#how-the-app-shows-cards", "docs/ADAPTING.md#a-new-card-style", "docs/REFERENCE_SERVER.md#cards-from-your-own-scripts"]
+today_sections = ["cards"]
+card_styles = ["list", "metrics", "text"]
+settings = ["Settings → Today → \"Cards\""]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "checklist-card"
+name = "To-dos (checklist card)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-06"
+summary = "A circle per to-do, done ones struck through, the due day gold today and love when overdue. Tap the circle to tick one off (one confirm, then it runs; it stays ticked until the server's list catches up)."
+server_features = ["cards", "run-actions"]
+endpoints = ["POST /actions/{name}"]
+api_fields = ["card style checklist", "item.action todo-done with hidden uid"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView"]
+tests = ["CardsReviewTests/tickedItemsStayDoneUntilTheServerCatchesUp", "CardsReviewTests/prefilledTextIsSentExactly", "DemoCardsTests/tickingOffInTheDemo"]
+device_tests = ["O10", "AX2"]
+docs = ["docs/API.md#how-the-app-shows-cards", "docs/API.md#actions-the-app-starts-run-actions"]
+card_styles = ["checklist"]
+depends_on = ["card-actions"]
+
+[[feature]]
+id = "countdown-card"
+name = "Deadlines (countdown card)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-06"
+summary = "Items count down to their due (\"2 d\", \"5 h\", \"today\", \"3 d ago\"), soonest first. A due sent as a plain day counts whole days and keeps its day across time zones."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["card style countdown", "item.due"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView"]
+tests = ["CardsTests/countdownValues", "CardsTests/dueValues", "CardsTests/countdownOrder", "CardsReviewTests/dayOnlyDuesAreMarkedWhenRead", "CardsReviewTests/timedMidnightIsATime", "CardsReviewTests/cachedDaysKeepTheirDayAcrossTimeZones", "DemoCardsTests/dueTimesFollowTheClock"]
+device_tests = ["O12"]
+docs = ["docs/API.md#how-the-app-shows-cards"]
+card_styles = ["countdown"]
+
+[[feature]]
+id = "parcels"
+name = "Parcels (Delivered button, tracking link)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-06"
+summary = "Each parcel row in a list card can carry a trailing \"Delivered\" button (`parcel-done`, with a confirm) and a tracking link opened in Safari."
+server_features = ["cards", "run-actions"]
+endpoints = ["POST /actions/{name}"]
+api_fields = ["item.action parcel-done", "item.url"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView"]
+tests = ["CardsTests/parcelsOfferDeliveredAndATrackingLink"]
+device_tests = ["O9b"]
+docs = ["docs/API.md#actions-the-app-starts-run-actions"]
+depends_on = ["card-actions"]
+
+[[feature]]
+id = "lessons-card"
+name = "Lessons (cancelled and changed)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-06"
+summary = "Cancelled lessons are struck through and grey, substitutions and room changes get a gold dot and a gold time; VoiceOver says \"cancelled\" / \"changed\"."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["item.cancelled", "item tint for changes"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabKit/DayTimeline.swift"]
+tests = ["DayTimelineTests/cancelledAndDateDecode"]
+device_tests = ["O12b"]
+docs = ["CHANGELOG.md#100-unreleased"]
+notes = "Documented only in the changelog."
+
+[[feature]]
+id = "lab-cards"
+name = "Cards in Lab (place: lab)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-06"
+summary = "`place: \"lab\"` puts a card in Lab (between Hosts and Services) as rows with a status dot, the reason in grey and the value in the data font: tailnet nodes, ad blocking with \"Pause 5 min\", backups."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["card.place"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabKit/HeroLines.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-lab-cards.json"]
+tests = ["SearchTests/placeIsLenient", "SearchTests/labCardsFixture", "SearchTests/demoPausesBlocking", "HeroLinesTests/tailnetSaysNothingForOnlineAndWarnsForAway", "HeroLinesTests/labSubtitleFallsBackToTheText"]
+device_tests = ["O12d", "O12e"]
+docs = ["docs/API.md#cards-for-lab-place"]
+depends_on = ["cards"]
+
+[[feature]]
+id = "card-actions"
+name = "Card and item actions (header button, one-tap items)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-06"
+summary = "A card's header button (\"+ Add\") opens its action's form prefilled; an item's action sends exactly the argument the server gave it, and is refused when it no longer fits the server's action. Hidden fields (a to-do's uid) only come from cards."
+server_features = ["run-actions"]
+endpoints = ["GET /actions", "POST /actions/{name}"]
+api_fields = ["card.action", "item.action {name, label, arg, payload}"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabUI/ActionFlow.swift"]
+tests = ["ItemActionModelTests", "StrictItemActionTests", "ArgumentSplitTests", "CardsTests/prefillFromPayload", "CardsTests/prefilledHiddenFieldsAreSent", "CardsTests/prefillSplitsTheArgument", "CardsTests/oddItemActionsAreReadLeniently", "CardsReviewTests/requestedFormWaitsForAnOpenSheet"]
+device_tests = ["O11"]
+docs = ["docs/API.md#actions-the-app-starts-run-actions", "docs/SECURITY.md#what-the-app-does"]
+depends_on = ["start-actions"]
+
+# ==================================================================================================== Actions
+
+[[feature]]
+id = "approvals"
+name = "Approve, Always, Deny (proposed actions)"
+area = "Actions"
+status = "shipped"
+since = "2026-11-04"
+summary = "Actions the homelab proposes, with reason and age, under \"To approve\" on the Actions tab and on Today. Approve, Always (only when offered) and Deny, each with a confirm; shows the server's answer. Tab badge with the count."
+server_features = ["actions"]
+endpoints = ["GET /state", "POST /button"]
+api_fields = ["state.pending[] with signed buttons", "info.standing_approvals"]
+sources = ["Sources/HomelabUI/ActionsView.swift", "Sources/HomelabUI/ActionFlow.swift#ProposalRow", "Sources/HomelabUI/Haptics.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-pending.json"]
+tests = ["AppModelTests/pressWaitsForFreshState", "IntegrationReviewTests/aProposalIsPressedOnceAtATime", "CompanionClientTests/pressReturnsTheServerText", "IntegrationTests/buttons", "ExtraFixtureTests/pendingButtonVariants", "ActionReportTests", "FixtureDecoding/pendingDashArgMeansNone"]
+device_tests = ["A1", "A2", "A3", "A4", "A6", "A7", "O16"]
+screenshots = ["demo-actions-light", "live-actions-pending"]
+docs = ["README.md#what-it-does", "docs/API.md#endpoints", "docs/ADAPTING.md#the-modules"]
+today_sections = ["waiting"]
+links = ["homelab://actions"]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "start-actions"
+name = "Start actions (forms)"
+area = "Actions"
+status = "shipped"
+since = "2026-11-06"
+summary = "Tiles under \"Start\" for the actions the server lets the app start; each opens a form built from the server's description (day and time pickers, choices, text, optional dates behind a switch), checked before sending; a tile with nothing to fill in asks \"Run now?\". The server runs it at once and the app shows its answer."
+server_features = ["run-actions"]
+endpoints = ["GET /actions", "POST /actions/{name}"]
+api_fields = ["actions[].arg variants and parts", "actions[].fields", "destructive, hint, start"]
+sources = ["Sources/HomelabKit/StartActions.swift", "Sources/HomelabUI/ActionFormView.swift", "Sources/HomelabUI/ActionsView.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/actions.json"]
+tests = ["StartActionsTests", "NoInputActionTests", "ActionReportTests", "AppModelTests/startedActionsLoadAndRefresh", "AppModelTests/requestedFormsOpenOnceListed"]
+device_tests = ["A8", "A9", "A10", "A11", "A13", "A14", "A18"]
+screenshots = ["demo-form-wake-dark", "demo-form-event-xxl"]
+docs = ["docs/API.md#actions-the-app-starts-run-actions", "docs/ADAPTING.md#a-new-action-the-app-can-start", "docs/REFERENCE_SERVER.md#actions-opt-in-dangerous"]
+launch_args = ["-HomelabAction"]
+depends_on = ["companion-api", "agent-chat"]
+
+[[feature]]
+id = "action-links"
+name = "Links that fill in a form (Shortcuts)"
+area = "Actions"
+status = "shipped"
+since = "2026-11-06"
+summary = "`homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form filled in, for Shortcuts \"Open URL\", NFC tags or pushes. Never a hidden field, never a card-only action, nothing runs without the confirm."
+server_features = ["run-actions"]
+sources = ["Sources/HomelabKit/ActionLink.swift"]
+tests = ["ActionLinkTests", "ActionLinkModelTests/linkPrefillReachesTheRequestedForm"]
+device_tests = ["A12", "A15", "A16", "A17"]
+docs = ["docs/SHORTCUTS.md#filling-in-a-form", "docs/SHORTCUTS.md#shortcuts-recipes", "docs/SECURITY.md#what-the-app-does"]
+links = ["homelab://actions/<name>?arg=…&<field>=…"]
+depends_on = ["start-actions", "deep-links"]
+
+[[feature]]
+id = "quick-actions"
+name = "Home-screen quick actions"
+area = "Actions"
+status = "shipped"
+since = "2026-11-06"
+summary = "Long-press the app icon: Scan document plus the three Start actions you use most on the shown server (counted per server in the App Group, so the background refresh can update them)."
+server_features = ["run-actions"]
+sources = ["Sources/Homelab/QuickActions.swift", "Sources/HomelabKit/ActionUsage.swift"]
+tests = ["ActionUsageTests", "ActionLinkModelTests/startsAndStartListsFeedTheQuickActions"]
+device_tests = ["SC4", "SC4b"]
+docs = ["docs/SHORTCUTS.md#home-screen-quick-actions"]
+depends_on = ["start-actions", "app-group"]
+
+# ==================================================================================================== Scan and share
+
+[[feature]]
+id = "scan"
+name = "Scan a document to Paperless"
+area = "Scan and share"
+status = "shipped"
+since = "2026-11-06"
+summary = "A Scan tile on Actions (also a quick action and `homelab://scan`) opens the document camera, shows pages and size, takes a title and sends one PDF to the server's document inbox. Without a camera it offers a sample page."
+server_features = ["documents"]
+endpoints = ["POST /documents"]
+sources = ["Sources/HomelabUI/ScanView.swift", "Sources/HomelabUI/DocumentScanner.swift", "Sources/HomelabKit/PDFWriter.swift", "Sources/HomelabKit/PageEncoder.swift"]
+tests = ["PDFWriterTests", "ScanLinkTests", "ShareRequestTests/uploadIsRawPDFWithHeaders", "ShareRequestTests/uploadWithoutTitleSendsNoTitleHeader"]
+device_tests = ["SC1", "SC2", "SC3", "SC5"]
+docs = ["README.md#what-it-does", "docs/API.md#documents-and-shares-documents-share", "docs/SECURITY.md#if-your-server-takes-documents-and-shares"]
+links = ["homelab://scan"]
+depends_on = ["visionkit", "paperless", "outbox", "agent-chat"]
+
+[[feature]]
+id = "share-extension"
+name = "Share extension \"Homelab\""
+area = "Scan and share"
+status = "shipped"
+since = "2026-11-06"
+summary = "The iOS share sheet sends a link (a willhaben ad gets a price check, other links a read-later list), a PDF, or photos (one downsampled PDF, at most 20) to the server. Sends directly on an identity server; on a token server or offline it uses the outbox."
+server_features = ["share", "documents"]
+endpoints = ["POST /share", "POST /documents"]
+sources = ["Sources/HomelabShare/ShareViewController.swift", "Sources/HomelabShare/ShareView.swift", "Sources/HomelabShare/ShareLoader.swift", "Sources/HomelabKit/Share.swift"]
+tests = ["ShareRouterTests", "ShareSenderTests", "ShareRequestTests"]
+device_tests = ["SC6", "SC7", "SC8", "SC9", "SC10", "SC13", "SC14"]
+docs = ["docs/API.md#documents-and-shares-documents-share", "docs/SECURITY.md#what-the-app-does", "docs/ADAPTING.md#the-modules"]
+depends_on = ["share-extension-target", "app-group", "outbox", "willhaben", "agent-chat"]
+known_gaps = ["the project layout table in docs/SETUP.md doesn't list Sources/HomelabShare, Share-Info.plist or Share.entitlements"]
+
+[[feature]]
+id = "outbox"
+name = "Outbox (send later)"
+area = "Scan and share"
+status = "shipped"
+since = "2026-11-06"
+summary = "Shares and scans that can't go now (offline, token server, server error) wait in an outbox in the App Group (at most 10 items, 100 MB, 7 days) and are sent when the app opens and from the background refresh; the Scan tile shows \"N WAITING\"."
+server_features = ["documents", "share"]
+sources = ["Sources/HomelabKit/Outbox.swift"]
+tests = ["OutboxTests", "ScanLinkTests/manualTabChangeEndsTheRequestAndOutboxIsCounted", "ShareSenderTests/offlineGoesToTheOutbox"]
+device_tests = ["SC11", "SC12"]
+docs = ["docs/API.md#documents-and-shares-documents-share", "docs/SECURITY.md#what-the-app-does"]
+depends_on = ["app-group", "background-refresh"]
+
+# ==================================================================================================== Find
+
+[[feature]]
+id = "find"
+name = "Find and request (movies and shows)"
+area = "Find"
+status = "shipped"
+since = "2026-11-06"
+summary = "A \"Find a movie or show\" tile on Actions (and `homelab://search?q=`): the server answers a text search with a poster grid, a Request button per title. Posters only from the server itself, size-checked, cached in memory and a 20 MB disk cache."
+server_features = ["search", "run-actions"]
+endpoints = ["GET /search", "GET /poster/{size}/{file}", "POST /actions/{name}"]
+api_fields = ["card style poster-grid", "item.image"]
+sources = ["Sources/HomelabKit/Search.swift", "Sources/HomelabKit/ImagePixels.swift", "Sources/HomelabUI/SearchView.swift", "Sources/HomelabUI/Cards.swift#CardView"]
+fixtures = ["Sources/HomelabKit/Fixtures/search.json"]
+tests = ["SearchTests", "ImagePixelTests", "ImageURLBaseTests", "LeftoverTests/removingAServerRemovesItsPictures", "LeftoverTests/sharedPicturesOfTheFirstVersionAreRemoved", "HeroLinesTests/posterDropsTheRequestStateOnceRequested"]
+device_tests = ["FR1", "FR2", "FR3", "FR4", "FR5", "FR6"]
+docs = ["docs/API.md#search-and-pictures-search", "README.md#what-it-does"]
+links = ["homelab://search?q=…"]
+card_styles = ["poster-grid"]
+depends_on = ["seerr", "agent-chat"]
+
+# ==================================================================================================== Deals
+
+[[feature]]
+id = "deals"
+name = "Deals (used-market ads below value)"
+area = "Deals"
+status = "shipped"
+since = "2026-11-07"
+summary = "Ads the server found clearly below market value and judged: a Deals tile on Actions (\"N to act on\"), a list (Act now, Worth a look, Skipped) with price, discount, confidence and gold warnings, a detail with comparable ads, Open the ad and Copy link. Today shows \"Deals to act on\" while a strong one is fresh. A 404 hides everything quietly."
+server_features = ["deals"]
+endpoints = ["GET /deals"]
+sources = ["Sources/HomelabKit/Deals.swift", "Sources/HomelabUI/DealsView.swift", "Sources/HomelabUI/ActionFormView.swift#StartGrid"]
+fixtures = ["Sources/HomelabKit/Fixtures/deals.json", "Sources/HomelabKit/Fixtures/deals-odd.json"]
+tests = ["DealsTests", "DealsModelTests", "IntegrationTests/dealsOverRealHTTP", "AppReviewFixTests/coldLaunchDealsLinkOnADealsOnlyServer", "AppReviewFixTests/reloadDealsIsNotUndoneByARunningPoll", "AppReviewFixTests/aFutureSeenDealIsNotFreshForever"]
+device_tests = ["DL1", "DL2", "DL3", "DL4", "DL5", "DL6", "DL7", "DL9", "DL10"]
+docs = ["docs/API.md#deals-deals", "README.md#what-it-does"]
+links = ["homelab://deals"]
+launch_args = ["-HomelabDeals"]
+today_sections = ["deals"]
+depends_on = ["willhaben", "ntfy", "agent-chat"]
+
+[[feature]]
+id = "deal-notifications"
+name = "New-deal notification"
+area = "Deals"
+status = "shipped"
+since = "2026-11-07"
+summary = "Settings → Notifications → \"New deals to act on\" (off by default): a local notification for a new strong deal from the background refresh; never older than 6 hours or seen before, the first list only learned, at most 3 per run, vague while the app lock is on."
+server_features = ["deals"]
+endpoints = ["GET /deals"]
+sources = ["Sources/HomelabKit/Alerts.swift"]
+tests = ["DealAlertTests"]
+device_tests = ["DL8"]
+docs = ["docs/API.md#deals-deals", "docs/SECURITY.md#what-the-app-does"]
+settings = ["Settings → Notifications → \"New deals to act on\""]
+depends_on = ["deals", "notifications"]
+
+# ==================================================================================================== Lab
+
+[[feature]]
+id = "lab-hosts"
+name = "Lab: problems and host tiles"
+area = "Lab"
+status = "shipped"
+since = "2026-11-04"
+summary = "Overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags); \"No problems · 2 hosts with a warning\"; a sleeping machine is grey with when it was last seen. Pull to refresh, refresh every 30 s while open."
+server_features = ["hosts", "status"]
+endpoints = ["GET /state"]
+api_fields = ["state.hosts[]", "state.problems[]"]
+sources = ["Sources/HomelabUI/LabView.swift", "Sources/HomelabKit/Format.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-ok.json"]
+tests = ["FormatTests", "FixtureDecoding/stateOK", "FixtureDecoding/stateProblem", "FixtureDecoding/percentagesAreClamped", "MoodTests/calmStillCountsHostsWithAWarning"]
+device_tests = ["O1", "O2", "O3", "O14"]
+screenshots = ["demo-lab-light", "demo-lab-dark", "demo-lab-xxl", "live-lab-huge"]
+docs = ["README.md#what-it-does", "docs/ADAPTING.md#the-modules"]
+links = ["homelab://lab", "homelab://overview"]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "host-detail"
+name = "Host details and 24 h history"
+area = "Lab"
+status = "shipped"
+since = "2026-11-06"
+summary = "Tap a host: status, system, disks, maintenance, flags, and 24 h sparklines for load, memory, temperature and the fullest disk (min, max, now; gold or love only when the newest value is over a limit; gaps where it was down)."
+server_features = ["hosts"]
+endpoints = ["GET /state"]
+api_fields = ["hosts[].history {step, end, load, mem_pct, temp, disk_pct}"]
+sources = ["Sources/HomelabKit/HostHistory.swift", "Sources/HomelabUI/HostDetailView.swift", "Sources/HomelabDesign/Sparkline.swift"]
+tests = ["HostHistoryTests"]
+device_tests = ["O4", "O5"]
+screenshots = ["demo-host-media-dark"]
+docs = ["docs/API.md#host-history-and-containers-lab"]
+links = ["homelab://lab/<host-id>"]
+launch_args = ["-HomelabHost"]
+depends_on = ["lab-hosts"]
+
+[[feature]]
+id = "container-restart"
+name = "Containers with Restart"
+area = "Lab"
+status = "shipped"
+since = "2026-11-06"
+summary = "A host's containers, problems first (exited, dead, unhealthy in love, restarting in gold). Containers on the host's restart list get Restart: a red confirm, then the server's `restart-container` action; the row waits for the host's next check."
+server_features = ["hosts", "run-actions"]
+endpoints = ["GET /state", "POST /actions/{name}"]
+api_fields = ["hosts[].container_list[] {name, state, health, restarts, restartable}"]
+sources = ["Sources/HomelabKit/HostHistory.swift", "Sources/HomelabUI/HostDetailView.swift#ContainerRow"]
+tests = ["HostHistoryTests/restartOnlyWhenTheServerOffersIt", "HostHistoryTests/restartWaitsForTheNextCheck", "HostHistoryTests/restartedContainersWaitPerServer", "HostHistoryTests/demoRestartChecksTheHost", "IntegrationReviewTests/removedServersForgetTheirRestarts", "IntegrationReviewTests/aDemoRestartDoesNotWait", "ActionReportTests"]
+device_tests = ["O6", "O7"]
+screenshots = ["demo-host-media-dark"]
+docs = ["docs/API.md#host-history-and-containers-lab", "docs/SERVER-SETUP.md#containers-without-the-docker-group"]
+depends_on = ["host-detail", "start-actions"]
+
+[[feature]]
+id = "service-launcher"
+name = "Service launcher (web UIs)"
+area = "Lab"
+status = "shipped"
+since = "2026-11-04"
+summary = "Your web UIs, grouped, at the end of Lab; a tap opens Safari."
+server_features = ["services"]
+endpoints = ["GET /services"]
+sources = ["Sources/HomelabUI/LabView.swift#ServicesSection"]
+fixtures = ["Sources/HomelabKit/Fixtures/services.json"]
+tests = ["CompanionClientTests/services", "IntegrationTests/services", "FixtureDecoding/servicesAcceptBareArray"]
+device_tests = ["O13"]
+docs = ["docs/ADAPTING.md#the-modules", "docs/API.md#endpoints"]
+
+# ==================================================================================================== Chat
+
+[[feature]]
+id = "chat"
+name = "Chat with the homelab agent"
+area = "Chat"
+status = "shipped"
+since = "2026-11-04"
+summary = "Chat with the agent: messages show at once, \"Working…\" while it runs, report tags (morning, watchdog, …), inline Markdown, copy, a 4000-character limit with a counter, failed messages can be edited and sent again, a day line above each day's first message."
+server_features = ["chat"]
+endpoints = ["GET /messages", "POST /messages"]
+api_fields = ["messages[]", "busy[]"]
+sources = ["Sources/HomelabKit/ChatTimeline.swift", "Sources/HomelabUI/ChatView.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/messages.json", "Sources/HomelabKit/Fixtures/messages-demo.json"]
+tests = ["ChatTimelineTests", "ChatLayoutTests", "ChatConfirmTests", "ChatWorkingTimeoutTests", "IntegrationTests/chatRoundTrip", "CompanionClientTests/messagesUseTheCursor", "CompanionClientTests/sendPostsJSON", "CompanionClientTests/sendValidatesLocally", "FixtureDecoding/messagesSortAndSkipBadOnes"]
+device_tests = ["C1", "C2", "C3", "C4", "C6", "C7", "C8"]
+screenshots = ["demo-chat-light", "demo-chat-dark", "live-chat"]
+docs = ["README.md#what-it-does", "docs/ADAPTING.md#the-modules", "docs/REFERENCE_SERVER.md#chat-opt-in"]
+links = ["homelab://chat"]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "chat-commands"
+name = "Slash commands and Clear"
+area = "Chat"
+status = "shipped"
+since = "2026-11-06"
+summary = "A \"/\" button with the commands the server lists in /info, each with one line saying what it does, and suggestions while typing \"/\". Clear hides the chat on this phone only (the server keeps it)."
+server_features = ["chat"]
+endpoints = ["GET /info"]
+api_fields = ["info.commands"]
+sources = ["Sources/HomelabKit/ChatCommands.swift", "Sources/HomelabUI/ChatView.swift#CommandSuggestions"]
+tests = ["ChatCommandsTests", "InfoCommandsTests"]
+device_tests = ["C5", "C5b"]
+docs = ["docs/API.md#what-info-changes-in-the-app"]
+depends_on = ["chat"]
+
+[[feature]]
+id = "chat-proposals-cards"
+name = "Proposals and cards in chat bubbles"
+area = "Chat"
+status = "shipped"
+since = "2026-11-06"
+summary = "A message's proposals get Approve, Always and Deny in the bubble (same confirm as the Actions tab) and disappear once answered; cards in a message show small under its text."
+server_features = ["chat", "actions"]
+endpoints = ["GET /messages", "POST /button"]
+api_fields = ["message.pending[]", "message.cards[]"]
+sources = ["Sources/HomelabUI/ChatView.swift#AgentMessage", "Sources/HomelabUI/ActionFlow.swift#ProposalButtons"]
+tests = ["CardsTests/fixtureMessages", "CardsTests/oddMessageExtrasAreReadLeniently", "DemoCardsTests/answeringAProposalClearsTheBubble", "DemoCardsTests/openPendingFollowsANewerState"]
+device_tests = ["C9", "C10"]
+docs = ["docs/API.md#chat-messages-with-proposals-and-cards"]
+depends_on = ["chat", "approvals", "cards"]
+
+# ==================================================================================================== Home
+
+[[feature]]
+id = "home-tiles"
+name = "Home Assistant tiles on Today"
+area = "Home"
+status = "shipped"
+since = "2026-11-04"
+summary = "Add Home Assistant with a long-lived token, pin lights, switches, fans, toggles, automations, scripts, scenes, buttons or sensors as tiles on Today; tap to toggle or run. Order them under \"On Today\". No separate Home tab."
+endpoints = []
+api_fields = ["Home Assistant GET /api/states, POST /api/services/<domain>/<service>"]
+sources = ["Sources/HomelabKit/HomeAssistant.swift", "Sources/HomelabUI/HomeTiles.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/ha-states.json"]
+tests = ["HomeAssistantTests", "ServerListTests", "DemoBackendTests/toggles", "AppReviewFixTests/duplicatePinsAreDropped"]
+device_tests = ["H1", "H2", "H3", "H4", "H5", "H6", "T7"]
+docs = ["docs/SERVER-SETUP.md#b-home-assistant", "README.md#limits", "docs/ADAPTING.md#the-modules"]
+launch_args = ["-HomelabPins"]
+links = ["homelab://home"]
+today_sections = ["home"]
+settings = ["Settings → \"Home tiles from\"", "Today → Home → Edit"]
+depends_on = ["home-assistant-api", "token-security"]
+
+
+[[feature]]
+id = "tile-names"
+name = "Tile names of your own"
+area = "Home"
+status = "shipped"
+since = "2026-11-07"
+summary = "Today → Edit has a \"Name on the tile\" field per pinned entity (empty = Home Assistant's name; one line, at most 24 characters). Set in the app only; VoiceOver says both names when they differ."
+sources = ["Sources/HomelabKit/TileName.swift", "Sources/HomelabUI/HomeTiles.swift#EntityPicker"]
+tests = ["TileNameTests", "AppReviewFixTests/editingTheHAServerKeepsTileNamesAndIcons"]
+device_tests = ["T4", "T5", "T7"]
+docs = ["docs/SETUP.md#launch-arguments", "CHANGELOG.md#100-unreleased"]
+launch_args = ["-HomelabTileNames"]
+depends_on = ["home-tiles"]
+
+[[feature]]
+id = "tile-icons"
+name = "Tile icons of your own"
+area = "Home"
+status = "shipped"
+since = "2026-11-07"
+summary = "\"Icon on the tile\" menu per pinned entity: Automatic or one of 16 symbols (filled while on). Only symbols from the app's list can show."
+sources = ["Sources/HomelabKit/TileIcon.swift", "Sources/HomelabUI/HomeTiles.swift#HomeTile"]
+tests = ["TileIconTests"]
+device_tests = ["T6"]
+docs = ["docs/SETUP.md#launch-arguments", "CHANGELOG.md#100-unreleased"]
+launch_args = ["-HomelabTileIcons"]
+depends_on = ["home-tiles"]
+
+# ==================================================================================================== Widgets
+
+[[feature]]
+id = "widget-status"
+name = "Widget: Homelab status"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-04"
+summary = "Small and lock screen (circular, rectangular, inline): the headline in its colour with the glow, the first problem, actions to approve. Tap opens Actions when something waits, else Today."
+server_features = ["status"]
+sources = ["Sources/HomelabWidget/HomelabWidget.swift#StatusWidget"]
+tests = ["MoodTests/demoFixture"]
+device_tests = ["W1", "W4", "W5"]
+docs = ["README.md#what-it-does", "docs/API.md#widgets"]
+widgets = ["StatusWidget"]
+depends_on = ["widget-data", "widgetkit"]
+unsure = "Widget views are not unit-tested (WidgetKit doesn't build on Linux); only the data rules are."
+
+[[feature]]
+id = "widget-day"
+name = "Widget: Homelab day"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-06"
+summary = "Small, medium and lock screen: the day line, the next stop big with its countdown; redraws every minute while a stop is less than an hour away; tomorrow's countdown in whole hours."
+server_features = ["cards"]
+sources = ["Sources/HomelabWidget/HomelabWidget.swift#DayWidget", "Sources/HomelabDesign/DayLine.swift#DayLineAcross"]
+tests = ["DayTimelineTests/widgetRedraws", "DayTimelineTests/tomorrowWidgetRedraws", "DayTimelineTests/tomorrowCountdownIsWholeHoursInWidgets", "DayTimelineTests/plainDayForTheWidgetHeader"]
+device_tests = ["W7", "W7b"]
+docs = ["README.md#what-it-does"]
+widgets = ["DayWidget"]
+depends_on = ["widget-data", "today-day-line", "widgetkit"]
+
+[[feature]]
+id = "widget-hosts"
+name = "Widget: Homelab hosts"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-04"
+summary = "Medium (4 hosts) and large (8 hosts and problems): the headline, then each host with load, RAM and disk (\"Disk 93%\" in gold or love). Tap opens Lab."
+server_features = ["hosts"]
+sources = ["Sources/HomelabWidget/HomelabWidget.swift#HostsWidget"]
+tests = ["HostHistoryTests/widgetCopyLeavesOutHistory", "FormatTests/hostHealth"]
+device_tests = ["W2", "W3"]
+docs = ["README.md#what-it-does"]
+widgets = ["HostsWidget"]
+depends_on = ["widget-data", "widgetkit"]
+
+[[feature]]
+id = "widget-departures"
+name = "Widget: U6 departures (departures card)"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-06"
+summary = "The next trains from your stop with delays (gold \"+3\") and disruptions, from the server's `departures` card; small (StandBy) and lock screen. Trains drop off at their time without opening the app. On Today the same card shows as a departures board."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+api_fields = ["card id \"departures\", style departures"]
+sources = ["Sources/HomelabKit/Departures.swift", "Sources/HomelabWidget/DeparturesWidget.swift", "Sources/HomelabUI/Cards.swift#CardView"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-departures.json"]
+tests = ["GlanceTests/departuresFixtureDecodes", "GlanceTests/boardGroupsInTheServersOrder", "GlanceTests/boardDropsPastTrainsAndEmptyDirections", "GlanceTests/plannedAndNoteParsing", "GlanceTests/timelineEntriesAtEachDeparture"]
+device_tests = ["W8"]
+docs = ["README.md#what-it-does", "docs/ADAPTING.md#the-modules"]
+widgets = ["DeparturesWidget"]
+card_styles = ["departures"]
+depends_on = ["widget-data", "widgetkit"]
+notes = "The gallery name \"U6 departures\" is fixed in DeparturesWidget.swift; the line itself comes from the card's title."
+
+[[feature]]
+id = "widget-deadlines"
+name = "Widget: Deadlines"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-06"
+summary = "What is due next, counting down (small, medium, lock screen circular, rectangular, inline), from the countdown card. Counts only while the app lock is on."
+server_features = ["cards"]
+sources = ["Sources/HomelabKit/Glance.swift", "Sources/HomelabWidget/ListWidgets.swift#DeadlinesWidget"]
+tests = ["GlanceTests/deadlinesAndTodos", "GlanceTests/dayOnlyDeadlinesCountFromTheirMidnight"]
+device_tests = ["W9"]
+docs = ["README.md#what-it-does", "docs/API.md#widgets"]
+widgets = ["DeadlinesWidget"]
+depends_on = ["widget-data", "countdown-card", "widgetkit"]
+
+[[feature]]
+id = "widget-todos"
+name = "Widget: To-dos"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-06"
+summary = "Your open to-dos (small, medium, lock screen circular and rectangular), from the checklist card. Counts only while the app lock is on."
+server_features = ["cards"]
+sources = ["Sources/HomelabKit/Glance.swift", "Sources/HomelabWidget/ListWidgets.swift#TodosWidget"]
+tests = ["GlanceTests/deadlinesAndTodos"]
+device_tests = ["W10"]
+docs = ["README.md#what-it-does", "docs/API.md#widgets"]
+widgets = ["TodosWidget"]
+depends_on = ["widget-data", "checklist-card", "widgetkit"]
+
+[[feature]]
+id = "widget-data"
+name = "Widget data: snapshot, self-fetch, stale marks, lock redaction"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-06"
+summary = "Widgets read the app's last snapshot from the App Group. For an identity (Tailscale) server they GET /state themselves when it is older than 5 minutes (8 s, no token, no redirects). Data older than 2 hours shows its age with a clock. With the app lock on they show counts only."
+server_features = ["status"]
+endpoints = ["GET /state"]
+sources = ["Sources/HomelabWidget/WidgetData.swift", "Sources/HomelabKit/WidgetPolicy.swift", "Sources/HomelabWidget/HomelabWidget.swift#Provider"]
+tests = ["GlanceTests/mayFetchOnlyIdentityCompanion", "GlanceTests/fiveMinuteRule", "GlanceTests/writeRule", "GlanceTests/redactionRule", "GlanceTests/widgetTransportConfig", "AppModelTests/refreshStoresSnapshotAndWidgetCopy", "HeroLinesTests/clockUnderTheAge"]
+device_tests = ["W6", "W11", "W12"]
+docs = ["docs/API.md#widgets", "docs/SECURITY.md#what-the-app-does", "docs/SIDESTORE.md#troubleshooting"]
+depends_on = ["app-group", "widget-extension-target", "tailscale"]
+
+[[feature]]
+id = "live-activity"
+name = "\"Leave by\" Live Activity"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-06"
+summary = "\"Leave by 07:26 · U6 07:31\" on the lock screen, as a banner and in StandBy, from the server's `commute`: starts only when the app is open on a school morning, counts down by itself, updates and ends from the app and the background refresh. Bike days show a motorcycle."
+server_features = ["status"]
+endpoints = ["GET /state"]
+api_fields = ["state.commute {date, mode, line, first_lesson, leave_by, train, next, disruptions, ride}"]
+sources = ["Sources/HomelabKit/Commute.swift", "Sources/HomelabUI/LeaveActivityController.swift", "Sources/HomelabDesign/LeaveActivity.swift", "Sources/HomelabWidget/LeaveActivityWidget.swift"]
+tests = ["GlanceTests/commuteMissingOrBrokenIsNil", "GlanceTests/errorAndInactiveShapes", "GlanceTests/startWindow", "GlanceTests/startsOnlyInTheForeground", "GlanceTests/changedPickUpdatesUnchangedDoesNot", "GlanceTests/endsAtFirstLessonOtherDayErrorInactiveAndWhenOff", "GlanceTests/bikeDay", "HeroLinesTests/calmCommuteFollowsTheDay"]
+device_tests = ["LA1", "LA2", "LA3", "LA4"]
+docs = ["docs/API.md#commute-live-activity-leave-by", "docs/DESIGN.md#lock-screen-and-live-activity"]
+widgets = ["LeaveActivityWidget"]
+settings = ["Settings → \"Leave-by on the lock screen\" (on by default)"]
+depends_on = ["activitykit", "widget-extension-target", "background-refresh", "agent-chat"]
+notes = "The commute is not a server feature flag: the app shows it whenever state.commute is there for today."
+
+# ==================================================================================================== Notifications
+
+[[feature]]
+id = "background-refresh"
+name = "Background refresh"
+area = "Notifications"
+status = "shipped"
+since = "2026-11-04"
+summary = "A BGAppRefreshTask (`com.qantrex.homelab.refresh`) fetches the shown server's state, writes the widget snapshot, sends notifications, drains the outbox, updates the Live Activity and the quick actions. iOS decides when (often every 15–60 minutes)."
+endpoints = ["GET /state"]
+sources = ["Sources/HomelabUI/Background.swift#BackgroundRefresh", "Sources/Homelab/HomelabApp.swift"]
+tests = ["OutboxTests/backgroundDrainLeavesBigPDFs"]
+device_tests = ["B1", "B3"]
+docs = ["README.md#limits", "docs/SIDESTORE.md#troubleshooting"]
+depends_on = ["backgroundtasks"]
+unsure = "The BGTask itself only runs on a device; no test covers BackgroundRefresh.run (HomelabUI doesn't build on Linux)."
+
+[[feature]]
+id = "notifications"
+name = "Local notifications for new problems and actions"
+area = "Notifications"
+status = "shipped"
+since = "2026-11-04"
+summary = "Optional, off by default: one notification per new problem or new action to approve, no repeats, no storm after being offline, a summary over the cap; tapping opens the right tab. Vague while the app lock is on."
+server_features = ["status", "actions"]
+sources = ["Sources/HomelabKit/Alerts.swift", "Sources/HomelabUI/Background.swift#Notifier", "Sources/HomelabUI/SettingsView.swift#notifyBinding"]
+tests = ["AlertTrackerTests", "ReviewFixTests/alertsLearnAgainForAnotherServer", "VoiceTests/alertsCarryTheirMoment"]
+device_tests = ["B2", "B4", "B5", "B6"]
+docs = ["docs/SECURITY.md#what-the-app-does", "docs/ADAPTING.md#the-modules"]
+settings = ["Settings → Notifications → \"New problems\", \"New actions to approve\""]
+depends_on = ["background-refresh", "usernotifications"]
+
+[[feature]]
+id = "notification-actions"
+name = "Approve and Deny on the notification"
+area = "Notifications"
+status = "shipped"
+since = "2026-11-06"
+summary = "A \"waiting for you\" notification has Approve and Deny (not Always), both behind Face ID or the passcode; the press looks the signed button up in the last /state (or a fresh one) and posts a short result notification."
+server_features = ["actions"]
+endpoints = ["POST /button", "GET /state"]
+sources = ["Sources/HomelabKit/ProposalNotice.swift", "Sources/HomelabUI/Background.swift#ProposalPress", "Sources/HomelabUI/Background.swift#NotificationRouter"]
+tests = ["ProposalNoticeTests"]
+device_tests = ["B7", "B8", "B9", "B10", "B11"]
+docs = ["docs/SHORTCUTS.md#approve-and-deny-on-notifications", "docs/SECURITY.md#what-the-app-does"]
+depends_on = ["notifications", "approvals", "usernotifications"]
+
+# ==================================================================================================== Links
+
+[[feature]]
+id = "deep-links"
+name = "homelab:// links to tabs and hosts"
+area = "Links"
+status = "shipped"
+since = "2026-11-04"
+summary = "`homelab://today|actions|chat|lab|settings` open a tab (older `overview` and `home` open Today), `homelab://lab/<host-id>` a host. A requested tab, form or host waits until the data is there; picking another tab by hand drops it, a newer link replaces it. Widgets and pushes use them."
+sources = ["Sources/HomelabKit/AppModel.swift#open", "Sources/Homelab/HomelabApp.swift"]
+tests = ["AppModelTests/tabsAndDeepLinks", "AppModelTests/requestedTabWaitsForInfo", "IntegrationReviewTests/aManualTabEndsTheWholeRequest", "IntegrationReviewTests/requestsOpenOnlyOnTheirTab", "HostHistoryTests/hostLinksAndLaunchArgument", "HostHistoryTests/requestedHostOpensOrIsDropped", "HostHistoryTests/hostLinkWithoutLab"]
+device_tests = ["B3b"]
+docs = ["docs/SHORTCUTS.md#links", "docs/SETUP.md#launch-arguments"]
+links = ["homelab://today", "homelab://settings", "homelab://lab/<host-id>"]
+depends_on = ["url-scheme"]
+
+[[feature]]
+id = "launch-arguments"
+name = "Launch arguments (tests, screenshots, first run over USB)"
+area = "Links"
+status = "shipped"
+since = "2026-11-04"
+summary = "`-HomelabDemo`, `-HomelabServer`, `-HomelabTab`, `-HomelabResetState`, `-HomelabDemoScene` and the feature-specific ones set the app up at launch (simulator, `scripts/sim-smoke`, `scripts/phone-shots`, the owner's first run)."
+sources = ["Sources/HomelabKit/AppModel.swift#LaunchArguments"]
+tests = ["AppModelTests/launchArguments", "AppModelTests/demoArgumentSelectsTheDemo", "HeroLinesTests/launchArgumentPicksTheScene"]
+docs = ["docs/SETUP.md#launch-arguments"]
+launch_args = ["-HomelabDemo", "-HomelabServer", "-HomelabTab", "-HomelabResetState", "-HomelabDemoScene"]
+not_needed = { device_tests = "a developer tool: scripts/sim-smoke and scripts/phone-shots use every argument on each run" }
+
+# ==================================================================================================== Settings
+
+[[feature]]
+id = "onboarding"
+name = "Welcome screen"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "Until a server exists: \"Your homelab, in your pocket\", four points, Add a server, Try the demo and a link to the server setup."
+sources = ["Sources/HomelabUI/RootView.swift#WelcomeView"]
+tests = ["AppModelTests/demoAndReset"]
+device_tests = ["FS1"]
+docs = ["README.md#who-it-is-for"]
+
+[[feature]]
+id = "demo-mode"
+name = "Demo mode"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene) or the stress scene for screenshots; chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch."
+sources = ["Sources/HomelabKit/Demo.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/state-problem.json"]
+tests = ["DemoBackendTests", "DemoCardsTests", "HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow", "HeroLinesTests/calmDemoLooksLikeACurrentDay", "HeroLinesTests/cardAgesMoveWithTheClock", "HeroLinesTests/problemSceneStaysForScreenshots", "GlanceTests/demoMovesDeparturesAndCommuteToNow", "StorageTests/demoServers", "DealsModelTests/demoHasDeals"]
+device_tests = ["FS2", "FS3", "FS4"]
+screenshots = ["demo-today-light", "demo-settings-light"]
+docs = ["README.md#who-it-is-for", "docs/ADAPTING.md#the-modules", "docs/SETUP.md#launch-arguments"]
+launch_args = ["-HomelabDemo", "-HomelabDemoScene"]
+settings = ["Settings → Demo servers"]
+
+[[feature]]
+id = "servers"
+name = "Servers: add, edit, test, switch"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "Several servers (Homelab API or Home Assistant), Tailscale identity or token login, Test connection with the features in words, \"Show data from\" and \"Home tiles from\"; a server without a typed name is called by its short host name. URL rules: https always, plain http only to local and tailnet addresses. A setup error has \"Edit server\" next to Retry."
+endpoints = ["GET /info"]
+sources = ["Sources/HomelabKit/ServerConfig.swift", "Sources/HomelabKit/URLPolicy.swift", "Sources/HomelabKit/Storage.swift", "Sources/HomelabUI/SettingsView.swift#ServerEditor", "Sources/HomelabUI/SettingsView.swift#ServerChoice", "Sources/HomelabUI/RootView.swift"]
+tests = ["URLRules", "StorageTests/serverListRoundTripAndSelection", "AppModelTests/savingAndTokens", "AppModelTests/selectIgnoresUnknownOrHomeAssistantServers", "AppReviewFixTests/defaultServerNameIsTheShortHostName", "ServerListTests"]
+device_tests = ["R1", "R2", "R3", "R6", "R8", "ST1", "ST2"]
+screenshots = ["demo-settings-light", "demo-settings-dark", "demo-settings-xxl"]
+docs = ["docs/SERVER-SETUP.md#connecting-your-homelab", "docs/SETUP.md#launch-arguments", "docs/SIDESTORE.md#troubleshooting"]
+links = ["homelab://settings"]
+depends_on = ["companion-api", "tailscale"]
+
+[[feature]]
+id = "tabs-by-features"
+name = "Tabs follow the server's features"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "Actions shows for actions, run-actions, documents, search or deals; Chat for chat; Lab whenever a server is selected. Until /info answered only what the data shows; an `api` other than 1 asks to update the app."
+endpoints = ["GET /info"]
+api_fields = ["info.features", "info.api"]
+sources = ["Sources/HomelabKit/AppModel.swift#availableTabs", "Sources/HomelabUI/RootView.swift#RootView"]
+tests = ["AppModelTests/failedInfoKeepsCachedFeatures", "AppModelTests/requestedTabWaitsForInfo", "SearchTests/actionsTabShowsForSearchAlone", "FixtureDecoding/infoWithoutFeaturesAssumesBasics", "ReviewFixTests/versionMismatchHasItsOwnError"]
+device_tests = ["FS2", "T8"]
+docs = ["docs/API.md#what-info-changes-in-the-app", "docs/ADAPTING.md#what-a-module-is"]
+server_features = ["status"]
+depends_on = ["companion-api"]
+
+[[feature]]
+id = "refresh-and-cache"
+name = "Refresh, cache and offline view"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "Polling every 30 s while a screen is open, pull to refresh, one fetch for simultaneous refreshes; the last snapshot per server is cached, so offline the data stays with \"Showing data from … ago\" and a clear error (\"Is Tailscale on?\") with Retry."
+endpoints = ["GET /state", "GET /info"]
+sources = ["Sources/HomelabKit/Storage.swift", "Sources/HomelabUI/LabView.swift#StatePolling", "Sources/HomelabUI/Components.swift#ErrorBanner"]
+tests = ["AppModelTests/simultaneousRefreshesCostOneFetch", "AppModelTests/aRefreshDuringTheStateRequestQueuesOneMore", "AppModelTests/errorsKeepTheLastSnapshot", "AppModelTests/refreshAfterEditUsesTheNewAddress", "AppModelTests/removedServerIsNotRevivedByALateAnswer", "StorageTests/snapshotAge", "CompanionClientTests/networkErrorsAreExplained"]
+device_tests = ["R4", "O14", "O15"]
+screenshots = ["live-offline-cached"]
+docs = ["docs/SIDESTORE.md#troubleshooting", "docs/API.md#tolerant-client-rules-the-app-follows"]
+depends_on = ["companion-api", "tailscale"]
+
+[[feature]]
+id = "diagnostics"
+name = "Diagnostics and copyable report"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "Version and build, bundle ID, Install expires, App Group candidates, background runs, widget fetch, Leave-by state, each server's data age; Copy report masks the tailnet part of host names and never has tokens. Also reachable from the end of Lab."
+sources = ["Sources/HomelabUI/SettingsView.swift#DiagnosticsView", "Sources/HomelabKit/Format.swift#Redact"]
+tests = ["RedactTests"]
+device_tests = ["ST4", "O17"]
+docs = ["docs/SECURITY.md#what-the-app-does", "docs/SIDESTORE.md#app-group-why-the-widget-and-the-share-extension-work-after-sidestore"]
+
+[[feature]]
+id = "reset-everything"
+name = "Reset everything"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "Deletes all servers, tokens, cached data (pictures and outbox included) and settings, and doesn't bring servers back from the copy made before the App Group."
+sources = ["Sources/HomelabKit/AppModel.swift#resetAll", "Sources/HomelabKit/Storage.swift"]
+tests = ["AppModelTests/demoAndReset", "AppReviewFixTests/resetEverythingDoesNotComeBackFromTheLocalCopy", "StorageTests/removeAll"]
+device_tests = ["ST5"]
+docs = ["README.md#privacy"]
+launch_args = ["-HomelabResetState"]
+
+[[feature]]
+id = "app-group"
+name = "App Group found at runtime"
+area = "Settings"
+status = "shipped"
+since = "2026-11-04"
+summary = "App, widget and share extension find their shared App Group at runtime (profile groups, the declared group with the team ID, the declared group), so they keep working after SideStore renames it; data from before the group is adopted once."
+sources = ["Sources/HomelabKit/AppGroup.swift", "Sources/HomelabKit/Storage.swift"]
+tests = ["AppGroupTests", "StorageTests/adoptsFilesFromTheLocalFolderOnce"]
+device_tests = ["X3", "D3"]
+docs = ["docs/SIDESTORE.md#app-group-why-the-widget-and-the-share-extension-work-after-sidestore", "docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older"]
+depends_on = ["app-group-entitlement", "xtool-app-group-patch"]
+
+# ==================================================================================================== Security
+
+[[feature]]
+id = "app-lock"
+name = "Face ID lock"
+area = "Security"
+status = "shipped"
+since = "2026-11-04"
+summary = "Optional: Face ID or the passcode when the app starts and comes back; while locked no screen exists behind the lock, the app switcher shows a blur, notifications and widgets stay vague. Tested once before it turns on; fails open without a passcode."
+sources = ["Sources/HomelabUI/Components.swift#Biometrics", "Sources/HomelabUI/Components.swift#LockView", "Sources/HomelabUI/Components.swift#PrivacyCover", "Sources/HomelabUI/RootView.swift#dismissPresentedScreens"]
+tests = ["IntegrationReviewTests/lockAndResetForgetSheetsAndRequests", "ProposalNoticeTests/withTheLockOnlyAnswerableProposalsNameTheirAction", "DealAlertTests/theAppLockHidesTheDeal", "GlanceTests/redactionRule"]
+device_tests = ["L1", "L2", "L3", "L4", "L5", "L6"]
+docs = ["docs/SECURITY.md#what-the-app-does"]
+settings = ["Settings → Lock with Face ID"]
+depends_on = ["localauthentication"]
+
+[[feature]]
+id = "token-security"
+name = "Tokens: Keychain and transport rules"
+area = "Security"
+status = "shipped"
+since = "2026-11-04"
+summary = "Tokens only in the Keychain (this device, after first unlock), one per server target; editing the address drops it; orphaned tokens are wiped on first launch. A token never goes over plain http except to this device; the editor says why."
+sources = ["Sources/HomelabUI/Keychain.swift", "Sources/HomelabKit/URLPolicy.swift", "Sources/HomelabKit/ServerConfig.swift"]
+tests = ["TokenTransportTests", "PlainHTTPHostTests", "LeftoverTests/firstLaunchWipesOrphanedTokens", "StorageTests/tokenStore", "ReviewFixTests/sameTargetGuardsTokens", "ReviewFixTests/plainHTTPOnlyWhereATSAllowsIt", "CompanionClientTests/identityAuthSendsNoToken", "CompanionClientTests/tokenAuthFromTheStore", "CompanionClientTests/messagesNeverContainTheToken"]
+device_tests = ["R1b", "R7", "ST2b", "ST3", "D5"]
+docs = ["docs/SECURITY.md#what-the-app-does", "docs/SECURITY.md#threat-model", "README.md#privacy"]
+depends_on = ["keychain"]
+
+[[feature]]
+id = "transport-hardening"
+name = "Network hardening and tolerant decoding"
+area = "Security"
+status = "shipped"
+since = "2026-11-04"
+summary = "An ephemeral URLSession (no cookies, no cache), no redirects, answers stop at 8 MB (Home Assistant 32 MB); every field is optional, unknown values fall back, bad items are dropped, server numbers are clamped (Int only through Int(clamping:), a lint check)."
+sources = ["Sources/HomelabKit/Transport.swift", "Sources/HomelabKit/Lenient.swift", "Sources/HomelabKit/Numbers.swift", "Sources/HomelabKit/CompanionClient.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-empty.json", "Sources/HomelabKit/Fixtures/state-legacy.json", "Sources/HomelabKit/Fixtures/state-unknown-fields.json", "Sources/HomelabKit/Fixtures/state-huge.json"]
+tests = ["HardeningTests", "FixtureDecoding", "ExtraFixtureTests", "DateParsing", "ServerNumberTests", "CompanionClientTests", "IntegrationTests/infoAndState", "IntegrationTests/unknownPathIsNotFound"]
+docs = ["docs/API.md#tolerant-client-rules-the-app-follows", "docs/SECURITY.md#what-the-app-does", "CONTRIBUTING.md#code-rules"]
+not_needed = { device_tests = "Linux tests against fixtures and the fixture server cover it; nothing phone-specific" }
+depends_on = ["companion-api"]
+
+# ==================================================================================================== Look
+
+[[feature]]
+id = "look"
+name = "Look: true black, monochrome, motion, haptics"
+area = "Look"
+status = "shipped"
+since = "2026-11-04"
+summary = "True black (white in light mode), monochrome, thin borders, mono numbers; colour only for problems (Rosé Pine love) and warnings (gold), links iris. No blue. Tiles give way under the finger, numbers roll, haptics on results. App icon and name."
+sources = ["Sources/HomelabDesign/Theme.swift", "Sources/HomelabDesign/Motion.swift", "Sources/HomelabUI/Haptics.swift"]
+tests = ["TileIconTests/symbolsExist"]
+device_tests = ["T3", "I3"]
+screenshots = ["demo-today-dark"]
+docs = ["docs/DESIGN.md#design-rules", "docs/ADAPTING.md#rules-to-keep"]
+
+[[feature]]
+id = "accessibility"
+name = "Accessibility (Dynamic Type, VoiceOver, contrast)"
+area = "Look"
+status = "shipped"
+since = "2026-11-06"
+summary = "Label and value stack at accessibility sizes, nothing cut; VoiceOver reads ages and countdowns in words, values over their limit say \"high\"; Increase Contrast and Reduce Motion are honoured; 4.5:1 colours on raised panels."
+sources = ["Sources/HomelabDesign/A11y.swift", "Sources/HomelabKit/Format.swift"]
+tests = ["SpokenFormatTests", "DealsTests/spokenSentence"]
+device_tests = ["AX1", "AX2", "AX3"]
+screenshots = ["demo-today-xxl", "demo-actions-xxl", "demo-chat-xxl"]
+docs = ["docs/DESIGN.md#5-platform-patterns", "CHANGELOG.md#100-unreleased"]
+
+# ==================================================================================================== Install
+
+[[feature]]
+id = "install-xtool"
+name = "Build and install with xtool (Linux or Mac)"
+area = "Install"
+status = "shipped"
+since = "2026-11-04"
+summary = "`scripts/build-ipa` builds and verifies the IPA (widget and share extension inside, App Group in all three); `scripts/install-dev` builds, signs and installs over USB with a free Apple ID. Reinstall every 7 days; data stays."
+sources = ["scripts/build-ipa", "scripts/install-dev", "scripts/verify-ipa"]
+tests = []
+device_tests = ["X1", "X3"]
+docs = ["docs/INSTALL-FROM-LINUX.md#b-build-on-the-pc", "docs/SETUP.md#build", "docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older"]
+not_needed = { tests = "shell scripts that need xtool and an iPhone; verify-ipa checks every build" }
+depends_on = ["xtool", "xtool-app-group-patch", "ios-sdk", "swift", "usbmuxd", "free-apple-id", "ios-18"]
+
+[[feature]]
+id = "install-sidestore"
+name = "Install and refresh with SideStore"
+area = "Install"
+status = "partial"
+since = "2026-11-07"
+summary = "Import the IPA (or, after the first release, add the source) in SideStore; it signs with a free Apple ID and refreshes over Wi-Fi. A Shortcuts automation swaps LocalDevVPN and Tailscale for the daily refresh."
+sources = ["scripts/make-source"]
+device_tests = ["I1", "I2", "D1", "D2", "D3", "D4", "D5"]
+docs = ["docs/SIDESTORE.md#installing-with-sidestore", "docs/SIDESTORE.md#sign-in-error--80045", "docs/SIDESTORE.md#3-the-7-day-refresh"]
+not_needed = { tests = "needs SideStore on a phone" }
+depends_on = ["sidestore", "sidestore-anisette", "localdevvpn", "tailscale", "free-apple-id", "ios-18"]
+unsure = "Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release."
+known_gaps = ["DeviceTest.md (header, I1, SideStore refresh) and the README install table still say SideStore is not verified (error -80045); docs/SIDESTORE.md and the README status say it was tested 2026-11-07"]
+
+[[feature]]
+id = "release-process"
+name = "Releases by hand (IPA, SHA-256, SideStore source)"
+area = "Install"
+status = "planned"
+since = "2026-11-04"
+summary = "Bump the version in the three Info.plists, CI green, build locally, `scripts/make-source` writes source.json, install and run the release-blocking DeviceTest rows, then tag and `gh release create`. No release yet."
+sources = ["scripts/make-source"]
+docs = ["docs/RELEASE.md#releasing-by-hand-from-your-own-build", "docs/RELEASE.md#release-channel-decided-2026-11-07"]
+depends_on = ["gh", "install-xtool", "python3"]
+
+# ==================================================================================================== Server
+
+[[feature]]
+id = "companion-api"
+name = "Companion API v1 contract"
+area = "Server"
+status = "shipped"
+since = "2026-11-04"
+summary = "The JSON API every Homelab server speaks (`server/openapi.yaml`, explained in docs/API.md): /info, /state and the optional endpoints per feature; additions never break the app, removals need /api/v2."
+endpoints = ["GET /info", "GET /state"]
+sources = ["server/openapi.yaml", "Sources/HomelabKit/CompanionClient.swift"]
+tests = ["CompanionClientTests", "IntegrationTests/infoAndState", "FixtureDecoding/info"]
+docs = ["docs/API.md#companion-api-v1", "docs/API.md#versioning", "docs/SERVER-SETUP.md#c-your-own-server"]
+not_needed = { device_tests = "a contract; scripts/check-live-api checks a real server" }
+depends_on = ["companion-api-v1"]
+
+[[feature]]
+id = "reference-server"
+name = "Reference server (stdlib Python)"
+area = "Server"
+status = "shipped"
+since = "2026-11-04"
+summary = "One Python file for any homelab: host and web checks, cards (also from your own scripts), services, opt-in actions and chat, and a fixture mode that the integration tests and the CI screenshots use."
+server_features = ["status", "hosts", "actions", "chat", "cards", "services"]
+sources = ["server/reference_server.py", "server/test_reference_server.py", "server/config.example.json", "server/examples/card-containers"]
+tests = ["server/test_reference_server.py::RealModeTest", "server/test_reference_server.py::FixtureModeTest", "server/test_reference_server.py::CliTest", "IntegrationTests"]
+docs = ["docs/REFERENCE_SERVER.md#reference-server", "docs/SERVER-SETUP.md#a-reference-server", "README.md#quick-start-a-homelab-with-nothing-yet"]
+not_needed = { device_tests = "R1 to R8 run against any server; the reference server has its own Python tests" }
+depends_on = ["python3", "tailscale", "companion-api"]
+notes = "Real mode offers status and hosts, plus actions, chat, cards and services when configured. Fixture mode (--fixtures Sources/HomelabKit/Fixtures) serves the demo's /info, so every feature, with run-actions, documents, share, search and deals answered in memory."
+
+[[feature]]
+id = "live-api-check"
+name = "Live API check"
+area = "Server"
+status = "shipped"
+since = "2026-11-06"
+summary = "`scripts/check-live-api` sends only GETs to a real server and checks every answer against openapi.yaml and the app's tolerance rules and invariants (unique ids, readable times, actions that fit, no secrets)."
+sources = ["scripts/check-live-api"]
+docs = ["docs/API.md#checking-a-live-server"]
+not_needed = { tests = "a check tool itself; run against the reference server", device_tests = "runs from a computer" }
+depends_on = ["python3", "companion-api"]
+
+# ==================================================================================================== Tooling
+
+[[feature]]
+id = "ci-checks"
+name = "CI and local checks"
+area = "Tooling"
+status = "shipped"
+since = "2026-11-04"
+summary = "CI (free runners only): Linux job with lint, HomelabKit tests against the fixture server and the reference server's tests; macOS jobs (macos-26, xcode-27) with a simulator build, screenshots, Kit tests on the simulator and a no-warnings check. `scripts/test-linux` runs the Linux job locally in Docker."
+sources = ["scripts/lint", "scripts/test-linux"]
+docs = ["docs/CI.md#workflows", "docs/SETUP.md#tests", "CONTRIBUTING.md#build-and-test"]
+not_needed = { tests = "it is the test runner", device_tests = "runs on a computer" }
+depends_on = ["swift", "docker", "python3", "gha-checkout", "gha-runners", "xtool"]
+
+[[feature]]
+id = "screenshots"
+name = "Screenshots (simulator in CI, phone over USB)"
+area = "Tooling"
+status = "shipped"
+since = "2026-11-04"
+summary = "`scripts/sim-smoke` takes 28 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes."
+sources = ["scripts/sim-smoke", "scripts/phone-shots"]
+docs = ["docs/CI.md#screenshots"]
+not_needed = { tests = "it is a test tool", device_tests = "phone-shots is the device run" }
+depends_on = ["pymobiledevice3", "xtool", "gha-artifacts", "gha-runners"]
+
+[[feature]]
+id = "feature-registry"
+name = "This feature registry"
+area = "Tooling"
+status = "shipped"
+since = "2026-11-07"
+summary = "`features.toml` plus `scripts/features`: checks every reference against the repo, renders docs/FEATURES.md, answers \"which feature is this file / row / test?\"."
+sources = ["scripts/features"]
+docs = ["docs/FEATURES.md#features"]
+not_needed = { tests = "it checks itself on every scripts/lint run", device_tests = "runs on a computer" }
+depends_on = ["python3"]
+
+# ==================================================================================================== dependencies
+# kind: toolchain | sdk | account | install | runtime | ios-framework | server-side | ci | tooling
+# pins: "file: text" that must still be in that file (a version, a digest, a SHA). A bump without a registry update
+# fails `scripts/features check`, so the registry can't silently drift from the build.
+
+[[dependency]]
+id = "swift"
+name = "Swift 6.4 toolchain"
+kind = "toolchain"
+version = "6.4 (tools-version 6.0; CI image swift:6.4-noble pinned by digest)"
+why = "Builds the package; Swift 6 strict concurrency, Swift Testing. Linux builds only HomelabKit (KIT_ONLY=1)."
+pins = [
+  "Package.swift: swift-tools-version: 6.0",
+  ".github/workflows/ci.yml: swift:6.4-noble@sha256:bca121f6eb59fd80340d1296887b2698ed8f3eb9eca7d80c181f8af769dc7ee0",
+  "scripts/test-linux: swift:6.4-noble",
+  "docs/SETUP.md: Swift 6.4",
+]
+url = "https://www.swift.org/install/linux/"
+unsure = "scripts/test-linux uses the tag swift:6.4-noble without the digest that CI pins, so local runs can drift from CI."
+
+[[dependency]]
+id = "ios-18"
+name = "iOS 18 or newer"
+kind = "runtime"
+version = "iOS 18 (deployment target); tested on 18.7.3"
+why = "Minimum OS of app, widget and extension. The noSwiftUICore linker flag keeps iOS 18 working with the iOS 26/27 SDK."
+pins = ["Package.swift: .iOS(.v18)", "README.md: Needs iOS 18 or newer."]
+
+[[dependency]]
+id = "ios-sdk"
+name = "iOS SDK from Xcode 27.1"
+kind = "sdk"
+version = "Xcode 27.1 (.xip on Linux, installed Xcode on macOS)"
+why = "xtool takes the iOS SDK from it (`xtool sdk install`). CI's xcode-27 runner is the closest match. Linux builds record the wrong SDK version (xtool issue #351), harmless outside the App Store."
+pins = ["docs/SETUP.md: Xcode_27.1.xip", "scripts/build-ipa: Xcode_27.1.xip", ".github/workflows/ci.yml: xcode-27"]
+
+[[dependency]]
+id = "xtool"
+name = "xtool"
+kind = "toolchain"
+version = "1.24.0 (CI: release zip with SHA-256)"
+why = "Turns the SwiftPM package into an app with a widget and a share extension and signs it with a free Apple ID, without Xcode."
+pins = [
+  ".github/workflows/ci.yml: XTOOL_VERSION: \"1.24.0\"",
+  ".github/workflows/ci.yml: XTOOL_SHA256: a56e98d69dea02a97a17e609f0ae8771c57ffaab23f1d62513fd9ada222026b3",
+  "docs/SETUP.md: XTOOL_VERSION=1.24.0",
+  "docs/INSTALL-FROM-LINUX.md: XTOOL_VERSION=1.24.0",
+  "scripts/install-dev: 1.24.0",
+  "xtool.yml: product: Homelab",
+]
+url = "https://github.com/xtool-org/xtool"
+unsure = "The AppImage's SHA-256 for Linux is not recorded in the repo (docs/SETUP.md asks you to record it yourself)."
+
+[[dependency]]
+id = "xtool-app-group-patch"
+name = "xtool 1.24.0 App Group patch"
+kind = "toolchain"
+version = "commit 70e1568f + one line from xtool PR #284"
+why = "xtool 1.24.0 drops the App Group for a free Apple ID, so widgets and the share extension never see the app's data. Patched local build until a release after 1.24.0."
+pins = ["docs/SETUP.md: XTOOL_COMMIT=70e1568fdfcb20b560774057cd783f02361293b9", "docs/SETUP.md: (.appGroups, isFree: true)"]
+url = "https://github.com/xtool-org/xtool/pull/284"
+
+[[dependency]]
+id = "usbmuxd"
+name = "usbmuxd and libimobiledevice"
+kind = "install"
+version = "distro packages"
+why = "xtool talks to the iPhone over USB through usbmuxd (Linux)."
+pins = ["docs/INSTALL-FROM-LINUX.md: usbmuxd libimobiledevice"]
+
+[[dependency]]
+id = "free-apple-id"
+name = "Free Apple ID"
+kind = "account"
+version = "–"
+why = "Signs the app: it stops opening after 7 days, 3 active sideloaded apps, 10 new App IDs a week (Homelab uses 3: app, widget, share extension)."
+pins = ["README.md: Apps signed with a free Apple ID stop opening after 7 days", "docs/SIDESTORE.md: a free Apple ID allows 3 active sideloaded apps"]
+
+[[dependency]]
+id = "sidestore"
+name = "SideStore"
+kind = "install"
+version = "0.7.0 (nightly), tested 2026-11-07"
+why = "Installs and refreshes the app on the phone without a computer; renames bundle IDs and the App Group."
+pins = ["docs/SIDESTORE.md: SideStore 0.7.0 (nightly)"]
+url = "https://sidestore.io"
+
+[[dependency]]
+id = "sidestore-anisette"
+name = "SideStore anisette server"
+kind = "install"
+version = "new.ani.sidestore.io"
+why = "The fix for sign-in error -80045: a remote anisette server instead of on-device anisette."
+pins = ["docs/SIDESTORE.md: new.ani.sidestore.io"]
+
+[[dependency]]
+id = "localdevvpn"
+name = "LocalDevVPN"
+kind = "install"
+version = "–"
+why = "SideStore's VPN helper for sign-in and refresh; only one VPN at a time, so a Shortcut swaps it with Tailscale."
+pins = ["docs/SIDESTORE.md: Enable LocalDevVPN"]
+
+[[dependency]]
+id = "tailscale"
+name = "Tailscale (tailscale serve, MagicDNS, HTTPS certificates)"
+kind = "runtime"
+version = "–"
+why = "The phone reaches the server through the tailnet; `tailscale serve` adds HTTPS and the Tailscale-User-Login identity header the app relies on for token-less servers (and the widgets' own fetch)."
+pins = ["README.md: tailscale serve --bg --https=7443", "server/openapi.yaml: Tailscale-User-Login"]
+url = "https://tailscale.com"
+
+[[dependency]]
+id = "companion-api-v1"
+name = "Homelab Companion API v1"
+kind = "runtime"
+version = "api 1, /api/v1/"
+why = "The contract between app and server (server/openapi.yaml). Additions are compatible; a breaking change is /api/v2 and the app shows an update error."
+pins = ["server/openapi.yaml: version: \"1\"", "docs/API.md: `api: 1` and the `/api/v1/` prefix"]
+
+[[dependency]]
+id = "home-assistant-api"
+name = "Home Assistant REST API"
+kind = "runtime"
+version = "long-lived token; /api/states, /api/services"
+why = "The Home tiles read entities and call services directly on Home Assistant (no Homelab server needed)."
+pins = ["Sources/HomelabKit/HomeAssistant.swift: api/states", "Sources/HomelabKit/HomeAssistant.swift: api/services/"]
+
+[[dependency]]
+id = "agent-chat"
+name = "The owner's homelab agent (agent-chat, private)"
+kind = "server-side"
+version = "–"
+why = "The real server behind the app: implements every feature flag (documents, search and deals only when their backends are set up), the cards (today, todos, deadlines, parcels, lessons, weather, departures, lab cards) and the Start actions. Lives in a private repo; this repo only has the contract and the reference server."
+pins = ["server/openapi.yaml: agent-chat"]
+
+[[dependency]]
+id = "paperless"
+name = "Paperless (server side)"
+kind = "server-side"
+version = "–"
+why = "Where scans and shared PDFs end up; the server files them (OCR) in the background and reports to the chat."
+pins = ["docs/API.md: Paperless"]
+
+[[dependency]]
+id = "seerr"
+name = "Seerr (server side)"
+kind = "server-side"
+version = "–"
+why = "Answers the owner's server's /search and posters, and runs the Request action."
+pins = ["docs/API.md: Seerr"]
+unsure = "Only the owner's server uses it; another server can answer /search from anything."
+
+[[dependency]]
+id = "willhaben"
+name = "willhaben (server side)"
+kind = "server-side"
+version = "–"
+why = "The used market the server watches for deals; a shared willhaben ad link starts a price check."
+pins = ["docs/API.md: willhaben"]
+
+[[dependency]]
+id = "ntfy"
+name = "ntfy push (server side)"
+kind = "server-side"
+version = "–"
+why = "The server's push for a strong deal opens `homelab://deals`; the app itself has no APNs (free Apple ID)."
+pins = ["docs/SHORTCUTS.md: ntfy"]
+
+[[dependency]]
+id = "widgetkit"
+name = "WidgetKit"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "The widgets (static configuration only; App Intents can't be built with xtool yet)."
+pins = ["Sources/HomelabWidget/HomelabWidget.swift: import WidgetKit"]
+
+[[dependency]]
+id = "activitykit"
+name = "ActivityKit"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "The \"Leave by\" Live Activity; needs NSSupportsLiveActivities, no entitlement and no extra App ID."
+pins = ["Sources/HomelabUI/LeaveActivityController.swift: import ActivityKit", "App-Info.plist: NSSupportsLiveActivities"]
+
+[[dependency]]
+id = "visionkit"
+name = "VisionKit document camera"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "The Scan screen; importing it autolinks SwiftUICore, hence the noSwiftUICore flag in Package.swift."
+pins = ["Sources/HomelabUI/DocumentScanner.swift: import VisionKit", "App-Info.plist: NSCameraUsageDescription", "Package.swift: disable-autolink-framework"]
+
+[[dependency]]
+id = "backgroundtasks"
+name = "BackgroundTasks"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "The background refresh (BGAppRefreshTask)."
+pins = ["Sources/HomelabUI/Background.swift: import BackgroundTasks", "App-Info.plist: com.qantrex.homelab.refresh"]
+
+[[dependency]]
+id = "usernotifications"
+name = "UserNotifications"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "Local notifications and their Approve / Deny actions."
+pins = ["Sources/HomelabUI/Background.swift: import UserNotifications"]
+
+[[dependency]]
+id = "localauthentication"
+name = "LocalAuthentication (Face ID)"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "The app lock."
+pins = ["Sources/HomelabUI/Components.swift: import LocalAuthentication", "App-Info.plist: NSFaceIDUsageDescription"]
+
+[[dependency]]
+id = "keychain"
+name = "Keychain (Security framework)"
+kind = "ios-framework"
+version = "iOS 18 SDK"
+why = "Tokens, this device only, after first unlock (so the background refresh can read them)."
+pins = ["Sources/HomelabUI/Keychain.swift: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly"]
+
+[[dependency]]
+id = "app-group-entitlement"
+name = "App Group entitlement"
+kind = "runtime"
+version = "group.com.qantrex.homelab (renamed by SideStore and xtool)"
+why = "Shares the server list, settings, the widget snapshot, the outbox and the quick-action counts between app, widget and share extension."
+pins = ["App.entitlements: group.com.qantrex.homelab", "Widget.entitlements: group.com.qantrex.homelab", "Share.entitlements: group.com.qantrex.homelab"]
+
+[[dependency]]
+id = "widget-extension-target"
+name = "Widget extension target"
+kind = "runtime"
+version = "HomelabWidget.appex"
+why = "Hosts every widget and the Live Activity (one App ID); `-u _main` keeps it from being dead-stripped."
+pins = ["xtool.yml: product: HomelabWidget", "Widget-Info.plist: com.apple.widgetkit-extension", "Package.swift: \"-u\", \"-Xlinker\", \"_main\""]
+
+[[dependency]]
+id = "share-extension-target"
+name = "Share extension target"
+kind = "runtime"
+version = "HomelabShare.appex"
+why = "The share sheet entry (one App ID); its principal class is kept from dead-stripping by a linker flag."
+pins = ["xtool.yml: product: HomelabShare", "Share-Info.plist: com.apple.share-services", "Package.swift: _OBJC_CLASS_$_ShareViewController"]
+
+[[dependency]]
+id = "url-scheme"
+name = "homelab:// URL scheme and the scan quick action"
+kind = "runtime"
+version = "–"
+why = "Links from widgets, pushes, Shortcuts and the static Scan quick action."
+pins = ["App-Info.plist: <string>homelab</string>", "App-Info.plist: com.qantrex.homelab.scan"]
+
+[[dependency]]
+id = "python3"
+name = "Python 3"
+kind = "tooling"
+version = "3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only"
+why = "The reference server, its tests, check-live-api, make-source and this registry."
+pins = ["server/reference_server.py: Python 3.9+", "scripts/features: import tomllib"]
+
+[[dependency]]
+id = "docker"
+name = "Docker"
+kind = "tooling"
+version = "–"
+why = "scripts/test-linux runs the Swift tests in the CI image; the patched xtool is built in Docker."
+pins = ["scripts/test-linux: docker run", "docs/SETUP.md: docker build --target build-xtool"]
+
+[[dependency]]
+id = "pymobiledevice3"
+name = "pymobiledevice3"
+kind = "tooling"
+version = "11.50.0 (in .venv/)"
+why = "scripts/phone-shots takes screenshots on the iPhone over USB without root."
+pins = ["scripts/phone-shots: PMD_VERSION=11.50.0"]
+
+[[dependency]]
+id = "gh"
+name = "GitHub CLI"
+kind = "tooling"
+version = "unpinned"
+why = "Releases: check CI on the commit, create the release with the IPA, its SHA-256 and source.json."
+pins = ["docs/RELEASE.md: gh run list", "docs/RELEASE.md: gh release create"]
+
+[[dependency]]
+id = "gha-checkout"
+name = "actions/checkout"
+kind = "ci"
+version = "v7.0.1, pinned by SHA"
+why = "Checks the repo out in every CI job (persist-credentials off where nothing is pushed)."
+pins = [".github/workflows/ci.yml: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"]
+
+[[dependency]]
+id = "gha-artifacts"
+name = "actions/upload-artifact and download-artifact"
+kind = "ci"
+version = "upload v7.0.2, download v8.0.2, pinned by SHA"
+why = "Screenshots and xcodebuild logs as artifacts; the screenshots job publishes them to the ci-screenshots branch."
+pins = [
+  ".github/workflows/ci.yml: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
+  ".github/workflows/ci.yml: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2",
+]
+
+[[dependency]]
+id = "gha-runners"
+name = "GitHub-hosted runners"
+kind = "ci"
+version = "ubuntu-latest (job runs in the pinned Swift container), macos-26, xcode-27"
+why = "Free standard runners only (public repo); both macOS runners are required."
+pins = [".github/workflows/ci.yml: runs-on: ubuntu-latest", ".github/workflows/ci.yml: runner: [macos-26, xcode-27]"]
