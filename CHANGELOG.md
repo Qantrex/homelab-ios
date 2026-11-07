@@ -10,6 +10,11 @@ Highlights:
   and the server's cards.
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
   "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
+- Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 48
+  hours, a departure disruption, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more";
+  deals, recent downloads, grades and departures are one-line rows in an "Also" panel that open in place; the weather
+  card is left to the hero line; the Machines section moved to Lab only. Overkill adds detail per line instead of
+  opening everything. What you open folds again on each launch. The demo shows a busy day to match.
 - Show rules: Settings → Today → Sections says under each section when it shows, and a tap picks Always, When it
   needs me, a time (Mornings, Daytime, Evenings, Weekdays, Weekends) or Custom (from, to, days). While a rule hides
   something, Today ends with "Hidden now: Deals (evenings) · Show". Without rules Today is as before.
@@ -179,7 +184,7 @@ App:
 - Settings: several servers (Homelab API or Home Assistant), Tailscale identity or token login, test connection,
   shown server, Today's sections and detail, personality, notifications, Face ID lock, demo mode, Diagnostics with
   a copyable report, reset everything.
-- Personality: Off (default), Dry or Snarky. One line of commentary under Today's headline, on empty screens and as
+- Personality: Off (default), Dry, Snarky or Ultrakill. One line of commentary under Today's headline, on empty screens and as
   a notification's subtitle; it changes once a day, and the facts never change with it.
 - Motion: tiles and panels give way under the finger (only dim with Reduce Motion), numbers roll when they change,
   panels slide in and out, rings and meters fill smoothly. Haptics on toggles, approve/deny results and sending.

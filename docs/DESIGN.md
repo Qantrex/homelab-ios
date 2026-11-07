@@ -17,7 +17,7 @@ roles in `Typo`; no screen picks a size by hand.
 |---|---|---|
 | Hero | `Typo.hero` via `.heroFont()` (SF Pro, heavy, 48 pt, scales like `.largeTitle`) | Today's headline only |
 | Display | `Typo.display` 28 semibold; `Typo.displayData` the same with fixed-width digits | The one big number in a card: a chart's current value, the next stop |
-| Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("To approve", "Machines"), sheet titles |
+| Title | `Typo.sectionTitle` (`.title3.bold()`, 20) | Section titles ("To approve", "Deals"), sheet titles |
 | Headline | `Typo.headline` (17 semibold) | The name of a row or card ("restart media sonarr", "Living room"), the fact line |
 | Body | `Typo.body` (17 regular) | Text people read: chat, the voice line |
 | Secondary | `Typo.secondary` (15), `Palette.secondary` | What explains a row: reason, subtitle, the status line of a screen |
@@ -129,9 +129,9 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 ## 6. Row grammar
 
 One row, everywhere (problems, hosts, containers): status glyph or dot (the only colour) · name 17 semibold · reason
-15 secondary · right column: values 15 medium (fixed-width digits), or an age 13 tertiary. Hosts (Lab, Standard): dot · name ·
+15 secondary · right column: values 15 medium (fixed-width digits), or an age 13 tertiary. Hosts (Lab): dot · name ·
 sparkline 56x20 · Load, RAM, Disk in three right-aligned columns under a 13 header; a meta line under the name only
-when there is something to say. Overkill density keeps the host tiles. At accessibility sizes the values go under
+when there is something to say. Today has no machine list (see 8). At accessibility sizes the values go under
 the name with their labels.
 
 Cards use it too (to-dos, parcels, deadlines, lessons, downloads): the leading glyph at 17, the reason on at most two
@@ -154,3 +154,39 @@ inline; on the right the age with the clock time under it ("18 min ago" / "21:03
   swaps. With Reduce Motion all of them turn off; no view checks it by hand.
 - Haptics (`Haptics.swift`): success when an Approve or a started action ran, a selection tick for a tick-off,
   toggle or Deny, an error buzz when it didn't run, a warning when a refresh brings a new problem (once, app-wide).
+
+## 8. Today: short by design
+
+Today is read in a few seconds, so it is short by default and long only when you ask (owner, 2026-11-08). Targets at
+the default text size with typical data on an iPhone 12 mini:
+
+| Detail | Length |
+|---|---|
+| Calm | One screen: the day card and the Home tiles. Unchanged |
+| Standard | Two screens at most. The first screen has the hero, Tomorrow, the approvals and every urgent row |
+| Overkill | Three screens at most |
+
+- **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue,
+  due today or due within 48 hours; a departure disruption; a to-do past its time; a proposal. Warm tints belong to
+  urgent rows only, and colour is never the only sign (the row says why in words).
+- **Standard folds the rest.**
+  - The hero stays. The weather card is not drawn on Today: the hero line says it.
+  - The short "today" text is one plain line. Tomorrow's "No school" is a caption without a panel.
+  - To approve shows 2 proposals and "and N more", which opens Actions.
+  - To-dos and parcels fold after 3 rows. Deadlines show the urgent ones topped up to 3, then "Show N more · next Fri".
+    The briefing shows 3 lines and "Show more".
+  - A small list card (a game server: "Mira is playing") is one line. An unknown card folds after 3 rows or 3 lines.
+- **The "Also" panel** holds what is nice to know: deals, recent downloads, grades and departures, each as a one-line
+  summary row that expands in place: "2 deals · best −50 %", "Latest: <title> · +7 more", "3 new grades · latest
+  <subject> <grade>", "U6 <direction> 00:03 · 00:10". Departures show the full board instead when Leave by is within
+  60 minutes or when there is a disruption.
+- **Overkill is the same design with more detail per line, not everything open.** "4 deals · best −70 % · GPU €140,
+  RAM kit €100", "Latest: A, B · +6 more", grades with their subjects, a few more rows before a fold (5 deadlines),
+  about 6 briefing lines.
+- **Machines are in Lab only**, in every detail level. The hero line ("3 of 3 machines up") stays. The saved layout
+  keeps the `machines` case so old settings still load.
+- **Expanding lasts for the session.** Everything folds again on each app launch; nothing is saved.
+- **Accessibility.** A fold row says what it hides and its state: "Deadlines, 9 more, collapsed"; it is at least 44 pt
+  high, and expanding announces itself. Each Also row is one VoiceOver element. At accessibility text sizes the
+  summaries wrap and Today may be longer than the budget; the budget is for the default size.
+- Colours as in 3: white and grey, never blue.

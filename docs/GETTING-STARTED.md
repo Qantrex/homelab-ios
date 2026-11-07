@@ -169,6 +169,20 @@ What you see depends on `features` in `/info`: `status` and `hosts` give Today a
 tab, `chat` the Chat tab, `cards` the cards. A feature you leave out is a tab or section the app doesn't show. To
 change the app itself: [ADAPTING.md](ADAPTING.md).
 
+## How long Today is
+
+Today is short by design. Settings → Today → **Detail** picks how much it shows, for the default text size:
+
+- **Calm**: one screen, your day and the Home tiles.
+- **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")
+  and every row that needs you come first: a deadline that is overdue, due today or within 48 hours, a delay, a
+  to-do past its time. Longer lists show 3 rows and a "Show N more" row. Deals, recent downloads, new grades and
+  departures sit in the **Also** panel, one line each; tap a line to open it in place.
+- **Overkill**: three screens at most, with more detail in every line ("4 deals · best −70 % · GPU €140, RAM kit
+  €100") and a few more rows before a fold.
+
+What you open folds again the next time you start the app. The machines are not on Today: open Lab for them.
+
 ## Show rules
 
 Every section of Today can have a rule for when it shows. Settings → Today → **Sections**: each row says its rule in

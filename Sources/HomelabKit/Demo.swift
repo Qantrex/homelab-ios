@@ -52,6 +52,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         // The 24 h history ends now, so its last point is the current value.
         state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); h.history?.end = now; return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
+        if scene != .problem { state.cards = Self.withTodayCards(state.cards) }
         let fixtureChecked = state.checked
         func card(_ c: Card) -> Card {
             var c = Self.clockDepartures(Self.shiftDue(c, by: shift, days: days))
@@ -97,6 +98,22 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         self.page = page
         entities = Fixtures.decode([Lossy<HAEntity>].self, "ha-states.json")?.compactMap(\.value) ?? []
         self.delay = delay
+    }
+
+    /// The calm demo's Today cards of a busy day (demo-today.json: ten deadlines with two urgent ones, eight downloads,
+    /// three grades, one to-do, a long briefing, a small game-server card), so the folded Today has something to fold.
+    /// A card with the id of one in `cards` replaces it in place; a new one comes after the parcels.
+    static func withTodayCards(_ cards: [Card]) -> [Card] {
+        guard let extra = Fixtures.decode(HomelabState.self, "demo-today.json")?.cards else { return cards }
+        var cards = cards
+        for card in extra {
+            if let i = cards.firstIndex(where: { $0.id == card.id }) {
+                cards[i] = card
+            } else {
+                cards.insert(card, at: (cards.firstIndex { $0.id == "parcels" }.map { $0 + 1 }) ?? cards.endIndex)
+            }
+        }
+        return cards
     }
 
     /// A departures card's clock texts follow its (moved) times.

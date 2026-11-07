@@ -44,7 +44,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 
 | # | Shots |
 |---|---|
-| 01–05 | Demo mode (its calm day, `state-demo.json`), every tab (today, actions, chat, lab, settings), light. **Core**: sim-smoke fails without them |
+| 01–05 | Demo mode (its calm day, `state-demo.json`), every tab (today, actions, chat, lab, settings), light; Today shows the busy day of `demo-today.json` folded (ten deadlines with two urgent, eight downloads, three grades, a game-server line), so it is the check that Today stays short. **Core**: sim-smoke fails without them |
 | 06–10 | The same, dark |
 | 11–15 | The same, accessibility extra-large text (`-xxl`) |
 | 16–21 | Live mode against the fixture server: `state-problem.json` today and chat (a proposal with its buttons and a card inside the bubbles), `state-pending.json` actions, `state-huge.json` lab, `state-ok.json` today (and `state-tomorrow.json` today with its dates moved to tomorrow, as 17) |
