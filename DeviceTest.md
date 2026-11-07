@@ -16,7 +16,7 @@ other rows are nice-to-have: run them when the area changed, and note what you s
 | Area | Rows |
 |---|---|
 | Install with xtool | X1, X2, X3 |
-| First start and demo | FS1 to FS4 |
+| First start and demo | FS1 to FS6, FS9 |
 | Real server | R1, R2, R4, R7, R8 |
 | Today | T1, T2, T7 |
 | Lab | O1, O3, O4 |
@@ -50,10 +50,16 @@ How the owner installs it (docs/INSTALL-FROM-LINUX.md). Set up servers, a token 
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| FS1 | Welcome screen | "Your homelab, in your pocket", a short text, four points, **Add a server**, **Try the demo** and a link to the server setup. No tabs yet | | |
+| FS1 | Welcome screen | After Settings → Reset everything (or a fresh install): "Your homelab, in your pocket", a short text, four points, **Add Home Assistant**, **Add a Homelab server**, **Try the demo** and a link to the server setup. No tabs yet | | |
 | FS2 | Try the demo | Today with the date, a status line, the "today" numbers, actions waiting and Home tiles. Tabs: Today, Actions (with badge), Chat, Lab, Settings | | |
 | FS3 | Demo is alive | Demo chat answers a message. A demo Home tile on Today flips. A demo Approve shows an answer | | |
 | FS4 | Demo off | Settings → Demo servers off → back to the welcome screen (when no own server exists) | | |
+| FS5 | First run with Home Assistant | From the welcome: **Add Home Assistant** → the editor opens with Type Home Assistant → address and token → **Save**. "Found" shows the Home Assistant with its tiles in words ("12 lights, 4 switches and 3 scenes"), and "Start with" Home, Watch and Everything, one line each, **Home** checked and marked Suggested → **Start** → the tile picker opens → tap one light → **Done**: Today with that tile (Calm), and at the bottom "Change what Today shows in Settings → Today". At most 5 taps after typing the token | | |
+| FS6 | First run with a Homelab server | From the welcome: **Add a Homelab server** → Homelab API, address → **Save**. Found shows "Asking `<host>`…", then what the server offers in words (Status and problems, Machines, …); the reference server suggests **Watch**. Tap **Everything** (the checkmark moves) → **Start**: Today in Overkill (Settings → Today shows Overkill). No tile picker without Home Assistant | | |
+| FS7 | Second server in the run | FS6 up to Found → **Add Home Assistant too** → the editor (Home Assistant) → **Cancel**: back to Found. Again with **Save**: Found lists both servers; Start → the tile picker opens | | |
+| FS8 | Skip and cancel | From the welcome: Add Home Assistant → **Cancel**: the welcome again. Add it and Save → **Skip** on Found → the tile picker → **Cancel**: Today with the standard sections and density (Settings → Today: Standard), no tiles, and the line at the bottom | | |
+| FS9 | The owner sees none of it | With servers already saved (an update over a set-up install, or the owner's phone): the app opens on the tabs as before. No welcome, no Found, no line at the bottom of Today | | |
+| FS10 | Found with VoiceOver and large text | In FS5 with VoiceOver on: each preset reads its name, "suggested" for the suggested one, its line, and "selected" for the checked one; Skip and Start say what they do. At the largest accessibility text size nothing is cut off. After the run, the line at the bottom of Today opens Settings and is gone afterwards; after quitting the app it doesn't come back | | |
 
 ## Real server
 

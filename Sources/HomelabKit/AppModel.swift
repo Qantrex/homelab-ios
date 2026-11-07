@@ -189,6 +189,10 @@ public final class AppModel {
     /// Actions (by name) whose run is on its way: a second tap waits for the first, so nothing starts twice.
     public private(set) var actionsRunning: Set<String> = []
     public var locked = false
+    /// The first run while it lasts (`FirstRun`): it only starts with no server saved. In memory only.
+    public internal(set) var firstRun: FirstRun?
+    /// After a first run, Today ends with a line pointing to Settings → Today, until the app quits. In memory only.
+    public internal(set) var showsStartTip = false
 
     public let storage: Storage
     public let tokens: any TokenStore
@@ -484,6 +488,8 @@ public final class AppModel {
         restarted = [:]
         openForms = []
         proposalsSending = []
+        firstRun = nil
+        showsStartTip = false
         onWidgetDataChange()
     }
 
@@ -963,6 +969,10 @@ public final class AppModel {
         }
         if let d = args.density { settings.todayDensity = d }
         if let p = args.personality { settings.voice = p }
+        // Found and "Start with" over the demo (screenshots). Only when every server is a demo one: never over real ones.
+        if args.firstRun, hasServers, firstRun == nil, servers.servers.allSatisfy({ $0.kind == .demo }) {
+            firstRun = FirstRun(found: servers.servers.map(\.id))
+        }
     }
 
     public func open(_ url: URL) {
@@ -1029,6 +1039,8 @@ struct LaunchArguments {
     var host: String?
     /// `-HomelabDeals list|detail`: the Deals screen, with the first deal's detail for `detail` (screenshots).
     var deals: String?
+    /// `-HomelabFirstRun YES` with `-HomelabDemo YES`: the first run's Found step over the demo servers (screenshots).
+    var firstRun = false
 
     /// A host id as servers send them: letters, digits, `.`, `_`, `-`, at most 64.
     static func isHostID(_ s: String) -> Bool {
@@ -1057,5 +1069,6 @@ struct LaunchArguments {
         action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }
         deals = value("HomelabDeals").flatMap { ["list", "detail"].contains($0) ? $0 : nil }
         host = value("HomelabHost").flatMap { Self.isHostID($0) ? $0 : nil }
+        firstRun = yes("HomelabFirstRun")
     }
 }

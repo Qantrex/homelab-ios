@@ -50,7 +50,8 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | 23–24 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini; never a two-screen model like "iPhone Duo"): demo today and actions |
 | 25–26 | Forms of actions the app starts (`-HomelabAction`): Wake-up in dark, Add an event with accessibility extra-large text |
 | 27 | A host's details (`-HomelabHost media`, the demo's problem scene `-HomelabDemoScene problem`), dark: 24 h sparklines, containers with problems first and Restart buttons |
-| 28 | Demo Today (problem scene) in Overkill with the Snarky personality (last: both settings stay set) |
+| 28 | Demo Today (problem scene) in Overkill with the Snarky personality |
+| 29–34 | The first run (from a reset): the welcome, and Found with "Start with" over the demo servers (`-HomelabFirstRun YES`), each in light, dark and accessibility extra-large text |
 
 The demo shots from 25 on start from a reset (`-HomelabResetState YES -HomelabDemo YES`): a clean demo, without the
 fixture server and its cache from 16–22.

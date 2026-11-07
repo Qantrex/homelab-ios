@@ -11,12 +11,14 @@
 #   23-24  the smallest iPhone available (SE / "e" model / smallest screen): demo today + actions
 #   25-26  action forms (demo, reset first): Wake-up in dark, Add an event with accessibility-XL text (-HomelabAction)
 #   27     demo host detail (reset first, problem scene) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
-#   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality (last: both settings stay set afterwards)
+#   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality
+#   29-34  first run (reset first): the welcome, and Found with "Start with" over the demo (-HomelabFirstRun), in light,
+#          dark and accessibility-XL text
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
 
-usage() { sed -n '2,15p' "$0"; exit 2; }
+usage() { sed -n '2,17p' "$0"; exit 2; }
 [ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
 
 # pick_udid main|small [EXCLUDE_UDID]
@@ -268,6 +270,21 @@ xcrun simctl ui "$dev" appearance light || true
 
 # 28: everything at once, with a personality
 scene demo-today-overkill-snarky "${FRESH_DEMO[@]}" "${PROBLEM[@]}" -HomelabTab today -HomelabDensity overkill -HomelabPersonality snarky
+
+# 29-34: the first run (docs/plans/MODULAR.md, M2.3). The welcome after a reset; Found with "Start with" over the demo
+# servers (-HomelabFirstRun only works when every server is a demo one).
+FIRST_RUN=(-HomelabResetState YES -HomelabDemo YES -HomelabFirstRun YES)
+xcrun simctl ui "$dev" appearance light || true
+scene first-run-welcome-light -HomelabResetState YES
+scene first-run-found-light "${FIRST_RUN[@]}"
+xcrun simctl ui "$dev" appearance dark || true
+scene first-run-welcome-dark -HomelabResetState YES
+scene first-run-found-dark "${FIRST_RUN[@]}"
+xcrun simctl ui "$dev" appearance light || true
+xcrun simctl ui "$dev" content_size accessibility-extra-large || true
+scene first-run-welcome-xxl -HomelabResetState YES
+scene first-run-found-xxl "${FIRST_RUN[@]}"
+xcrun simctl ui "$dev" content_size large || true
 
 # App log for this run (Logger subsystem com.qantrex.homelab), from the main simulator
 xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \
