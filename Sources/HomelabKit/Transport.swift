@@ -150,7 +150,7 @@ public enum APIError: Error, Equatable, Sendable {
         case .notOnTailnet(let host): "Can't reach \(host). Is Tailscale (or your VPN) on?"
         case .cannotFindHost(let host): "Can't find \(host). Check the address."
         case .timeout: "The server took too long to answer."
-        case .unauthorized: "No login reached the server. With Tailscale: is it behind `tailscale serve`, and is this phone logged in (tagged devices get no login)? With a token: check it in Settings."
+        case .unauthorized: "No login reached the server. Tailscale: is the server behind tailscale serve, and is this phone logged in? Token: check it in Settings."
         case .homeAssistantToken: "Home Assistant refused the token. Create a new long-lived token (your profile → Security) and paste it under Edit server."
         case .forbidden: "The server refused access. Is this login or token allowed?"
         case .refused(let why): "The server refused access: \(why)"

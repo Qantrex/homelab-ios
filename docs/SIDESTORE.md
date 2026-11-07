@@ -2,7 +2,7 @@
 
 > **Tested 2026-11-07** on an iPhone 12 mini (iOS 18.7.3) with SideStore 0.7.0 (nightly): Homelab installed, widgets
 > and share sheet work. The sign-in first failed with error -80045; the fix is in
-> [Sign-in error -80045](#sign-in-error--80045) below. There is no release yet: build the IPA yourself
+> [Sign-in error -80045](#sign-in-error--80045) below. Until the first release, build the IPA yourself
 > ([SETUP.md](SETUP.md)).
 
 [SideStore](https://sidestore.io) installs apps on an iPhone with a free Apple ID, without a computer after the first
@@ -107,7 +107,7 @@ and open an issue.
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Tailscale is off (often after a SideStore refresh), the server is down, or `tailscale serve` doesn't serve that port | Turn Tailscale on. On the server: `tailscale serve status` and `curl https://<machine>.<tailnet>.ts.net:<port>/api/v1/info` from another tailnet device |
 | "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off (a `.ts.net` name that can't be found says "Can't reach … Is Tailscale on?" instead, the row above) | Check the name in the Tailscale app, and that MagicDNS is on (Tailscale app → Settings, and the admin console → DNS). The `100.x` address won't work with `tailscale serve`: its certificate is for the `.ts.net` name |
 | "The server refused access. Is this login or token allowed?" (HTTP 403) | Your Tailscale login is not in the server's `allowed_logins`, the token is wrong, or the device is tagged (tagged devices get no login header) | Add the login on the server, or switch Login to **Token** and enter a token the server knows |
-| "No login reached the server. … With a token: check it in Settings." (HTTP 401) | Login is **Tailscale / proxy**, but the request didn't come through `tailscale serve`, or the server only takes tokens | Put the server behind `tailscale serve`, or use **Token** |
+| "No login reached the server. … Token: check it in Settings." (HTTP 401) | Login is **Tailscale / proxy**, but the request didn't come through `tailscale serve`, or the server only takes tokens | Put the server behind `tailscale serve`, or use **Token** |
 | "This button is no longer valid (already handled or expired)." | The action was already approved or denied, or the server restarted with a new button secret | Pull to refresh. Set `HOMELAB_BUTTON_SECRET` on the reference server so buttons survive restarts |
 | "Enter the token first." when saving | Login is **Token** (or the server is Home Assistant) and no token is saved | Paste the token |
 | Home Assistant: "Home Assistant refused the token. …" | The long-lived token is wrong or was deleted in HA | Create a new one: HA profile → Security → Long-lived access tokens, then edit the server and paste it |

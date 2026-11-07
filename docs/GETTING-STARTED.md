@@ -29,7 +29,7 @@ Not sure? Install the app and tap **Try the demo** on the first screen. It needs
 | A Mac | [SETUP.md](SETUP.md) (the same xtool steps) |
 | SideStore on the phone | [SIDESTORE.md](SIDESTORE.md): until the first release you still need one Linux PC or Mac once, to build the IPA (`scripts/build-ipa`, [SETUP.md](SETUP.md)) that you then import in SideStore. After the first release SideStore needs no computer for Homelab |
 
-There is no release yet, so for now you build the app yourself (the first build takes a few minutes).
+Until the first release you build the app yourself (see [Install](../README.md#install); the first build takes a few minutes).
 
 ## A. Only Home Assistant
 
@@ -126,17 +126,22 @@ You need Docker with Compose 2.17 or newer on Linux.
    `tailscale serve` address (`https://homelab-bridge.…`): use that address, not an IP or a port. If `docker compose
    ps` never shows `healthy` and the machine doesn't appear in your tailnet, `docker compose logs tailscale` shows an
    expired or already used auth key: generate a new one (step 3), put it in `docker/tailscale.env` and run
-   `docker compose up -d` again.
-5. In the app: **Add a Homelab server** (first start only; later: Settings → Add server → Type **Homelab API**, the app's name for this kind of server) → Address `https://homelab-bridge.tail1234.ts.net` → Login **Tailscale /
+   `docker compose up -d` again. If `bridge` keeps restarting in `docker compose ps` and `docker compose logs bridge`
+   says `ERROR: no tailscale0 interface in this network namespace 60 s after the start`, the Tailscale sidecar
+   isn't up with kernel networking: check `docker compose logs tailscale`, and that the host has `/dev/net/tun` (some
+   LXC and NAS setups lack it). Details: [SERVER-SETUP.md](SERVER-SETUP.md#docker).
+5. In the app: **Add a Homelab server** (welcome screen: Add a Homelab server; later: Settings → Add server) → Type **Homelab API** → Address `https://homelab-bridge.tail1234.ts.net` → Login **Tailscale /
    proxy** → **Save**. "Found" lists what it offers; **Watch** is checked → **Start**.
+
+   The app calls this kind of server "Homelab API".
 
 What you see: Today says "All quiet." or "1 problem."; a down monitor is a problem ("Jellyfin: down"). Lab
 shows the bridge as a machine, Proxmox nodes with a 24 h history, a card per monitor source ("11 of 12 up") and
 monitors with a public link in the launcher. Settings → Diagnostics lists each source as ok or failing. The status and
 hosts widgets work, also with the app closed. Actions and Chat stay hidden: they are off on the bridge. Screenshots of
-Today and Lab from the demo: [Today](https://github.com/Qantrex/homelab-ios/blob/main/docs/screenshots/01-today.png),
-[Lab](https://github.com/Qantrex/homelab-ios/blob/main/docs/screenshots/04-lab.png) (the demo has more than a new
-bridge).
+Lab from the demo (it has more than a new bridge):
+
+![Lab in the demo](img/lab.png){: width="280"}
 
 More: other machines (`hosts`), web checks, cards from your own scripts, the socket proxy for containers, updates:
 [SERVER-SETUP.md → Docker](SERVER-SETUP.md#docker) and [REFERENCE_SERVER.md](REFERENCE_SERVER.md). **Never use
@@ -201,6 +206,7 @@ It doesn't hide anything on Today.
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Turn Tailscale on. On the server: `tailscale serve status`, and the `curl` above from another tailnet device |
 | "The server refused access. …" (403) | Your login is not in `allowed_logins`. The server log shows the refused login |
 | "No login reached the server. …" (401) | The request didn't come through `tailscale serve` (or the phone isn't logged in, or it is a tagged device), or the Token is wrong |
+| `bridge` keeps restarting; its log says "ERROR: no tailscale0 interface in this network namespace 60 s after the start" | The Tailscale sidecar isn't up with kernel networking. `docker compose logs tailscale`, and check the host has `/dev/net/tun` (missing in some LXC and NAS setups). See [SERVER-SETUP.md](SERVER-SETUP.md#docker) |
 | "Home Assistant refused the token. …" | Create a new long-lived token (HA profile → Security) and paste it under Edit server |
 | "Can't find `<host>`. Check the address." | Typo in the address, or the name isn't known (MagicDNS off for a `.ts.net` name). Check it in the Tailscale app |
 | "The server answered with a redirect (HTTP 301). Enter the final address: often https:// or another port." | Enter the address the redirect leads to, often `https://` instead of `http://`, or the other port |

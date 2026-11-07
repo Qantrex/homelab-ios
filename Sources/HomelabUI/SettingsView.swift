@@ -437,7 +437,7 @@ struct ServerEditor: View {
                         } footer: {
                             SettingsFooter(kind == .homeAssistant
                                  ? "Your Home Assistant address, as you open it in a browser."
-                                 : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine plus the port you gave `tailscale serve` (for example :7443).")
+                                 : "The server's address without /api/v1. With Tailscale, the .ts.net name of the machine plus the port you gave tailscale serve (for example :7443).")
                         }
 
                         Section {
