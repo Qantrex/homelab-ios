@@ -295,6 +295,7 @@ public enum Redact {
 
     /// The host of a server for the report: `.ts.net` names keep their machine name, anything else is left out.
     public static func host(_ host: String) -> String {
-        hosts(host, knownHosts: host.lowercased().hasSuffix(".ts.net") ? [] : [host])
+        let masked = hosts(host)
+        return masked == host ? "<host>" : masked   // nothing masked by the address rules: a plain name, left out
     }
 }
