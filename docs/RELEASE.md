@@ -3,21 +3,46 @@
 Rule (owner, 2026-11-04, 2026-11-05): **every app build is done locally; CI never builds the app you install or share.**
 CI only tests and checks (tests, lint, a simulator build for the screenshots). You build the IPA yourself with xtool and publish it.
 
-## 1. Build
+There is no release yet (2026-11-07). Open decision for the owner before the first one: see "Open decision" at the end.
 
-On the Arch PC (setup: [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md), way B):
+## 0. Bump the version
 
-```bash
-cd ~/Projects/homelab-ios && git pull && scripts/build-ipa
-```
-
-The IPA is under `xtool/`. Install it on your phone first and run [DeviceTest.md](../DeviceTest.md).
-
-## 2. Write the SideStore source
+The version lives in three Info.plists, and all three must say the same: `App-Info.plist`, `Widget-Info.plist` and
+`Share-Info.plist`. `CFBundleShortVersionString` is the version people see (`1.0.0`), `CFBundleVersion` the build
+number (count it up by one for every release, also a pre-release). The app reads them (`AppVersion`, shown in
+Settings → Diagnostics); `xtool.yml` has no version of its own.
 
 ```bash
 V=1.0.0
+grep -A1 -E 'CFBundleShortVersionString|CFBundleVersion' App-Info.plist Widget-Info.plist Share-Info.plist
 ```
+
+Edit the six values, give `CHANGELOG.md` a heading `## $V (<date>)` instead of "unreleased", commit and push to
+`main`.
+
+## 1. CI green on the commit you tag
+
+The commit you build and tag must have a green CI run (CI runs on pushes to branches, not on tags):
+
+```bash
+git switch main && git pull && git status --short   # must print nothing
+SHA=$(git rev-parse HEAD)
+gh run list --commit "$SHA" --workflow ci.yml       # every run "completed  success"
+```
+
+Wait until it is green. A red or missing run: fix first, then start again at step 0 or 1.
+
+## 2. Build
+
+On the Arch PC (setup: [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md), way B), at exactly that commit:
+
+```bash
+cd ~/Projects/homelab-ios && [ "$(git rev-parse HEAD)" = "$SHA" ] && scripts/build-ipa
+```
+
+The IPA is under `xtool/`. `scripts/build-ipa` runs `scripts/verify-ipa` (widget inside, App Group on both).
+
+## 3. Write the SideStore source
 
 ```bash
 mkdir -p dist && cp xtool/*.ipa "dist/Homelab-$V.ipa" && (cd dist && sha256sum "Homelab-$V.ipa" > "Homelab-$V.ipa.sha256")
@@ -32,15 +57,30 @@ scripts/make-source --version "$V" --ipa "dist/Homelab-$V.ipa" --download-url "h
 ```
 
 `--previous` keeps the older versions in the source. A version with a `-` (`1.1.0-beta.1`) is a pre-release.
+`make-source` warns when the IPA's version is not `$V` (step 0 forgotten).
 
-## 3. Publish
+## 4. Install the exact IPA you will publish and test it
+
+Not a fresh `xtool dev` build: the file in `dist/`.
 
 ```bash
-git tag "v$V" && git push origin "v$V"
+(cd dist && sha256sum -c "Homelab-$V.ipa.sha256") && xtool install "dist/Homelab-$V.ipa"
+```
+
+On the phone: Settings → Diagnostics shows `$V` and the build number from step 0. Then go through the
+**release-blocking rows** of [DeviceTest.md](../DeviceTest.md) (listed at its top) with a real server, and write the
+date, phone, iOS and version in its header. Every ❌ in a release-blocking row stops the release.
+
+## 5. Publish
+
+Tag the commit you built and tested:
+
+```bash
+git tag "v$V" "$SHA" && git push origin "v$V"
 ```
 
 ```bash
-gh release create "v$V" "dist/Homelab-$V.ipa" "dist/Homelab-$V.ipa.sha256" dist/source.json --title "Homelab $V" --generate-notes
+gh release create "v$V" "dist/Homelab-$V.ipa" "dist/Homelab-$V.ipa.sha256" dist/source.json --verify-tag --title "Homelab $V" --generate-notes
 ```
 
 People add this source in SideStore once, and it always points at the newest release:
@@ -49,6 +89,18 @@ People add this source in SideStore once, and it always points at the newest rel
 
 (`latest` skips pre-releases. For a pre-release, give testers the URL with the tag:
 `https://github.com/Qantrex/homelab-ios/releases/download/v<version>/source.json`.)
+
+## Open decision (owner)
+
+SideStore is not verified with Homelab yet (its sign-in failed on the test iPhone with error -80045, see
+[SIDESTORE.md](SIDESTORE.md)). For the first release, choose one:
+
+| Option | For | Against |
+|---|---|---|
+| Publish `source.json` too (steps 3 and 5 as written) | SideStore users get updates from the start | It points people at a way no device test has passed |
+| Publish only the IPA and its SHA-256 (leave `dist/source.json` out of `gh release create`) | Only what was tested: `xtool install` of that IPA | No SideStore source until SideStore is verified; the source URL above stays empty |
+
+Not decided yet. Note the choice here once it is made.
 
 ## Notes
 

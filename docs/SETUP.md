@@ -4,7 +4,9 @@ The app is a SwiftPM package. [xtool](https://github.com/xtool-org/xtool) turns 
 extension, on Linux or macOS. There is no Xcode project. `xtool.yml` names the bundle ID, the Info.plists, the
 entitlements, the icon and the widget extension.
 
-If you only want to use the app, take the release IPA or the SideStore source instead ([SIDESTORE.md](SIDESTORE.md)).
+There is no release yet, so for now you build and install it yourself: from Linux see
+[INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md). After the first release you can take the release IPA instead
+([SIDESTORE.md](SIDESTORE.md); SideStore is not verified yet).
 
 ## Linux
 
@@ -33,11 +35,19 @@ swiftly install 6.4 && swift --version
 
 ### xtool and the iOS SDK (both distros)
 
+Pin the version, and check the file before you install it:
+
 ```bash
+XTOOL_VERSION=1.24.0   # the newest release on 2026-11-07; it needs the App Group patch below
 mkdir -p ~/.local/bin
-curl -fL "https://github.com/xtool-org/xtool/releases/latest/download/xtool-$(uname -m).AppImage" -o ~/.local/bin/xtool
-chmod +x ~/.local/bin/xtool
+curl -fL "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool-$(uname -m).AppImage" \
+  -o ~/Downloads/xtool-$XTOOL_VERSION.AppImage
+sha256sum ~/Downloads/xtool-$XTOOL_VERSION.AppImage
+# Compare with <sha256 of xtool-1.24.0-x86_64.AppImage, recorded at the first download>. Different: don't install it.
+install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 ```
+
+Record the checksum the first time (with the version and the date), so a later download can be compared with it.
 
 Download **Xcode 27.1** in the browser (Apple login) from https://developer.apple.com/download/all/?q=Xcode, then:
 
@@ -68,7 +78,8 @@ phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
 
 `scripts/install-dev` signs with your own Apple ID. Before the first run:
 
-- `xtool auth login` (a free Apple ID works; the app then expires after 7 days, run it again).
+- `xtool auth login` (a free Apple ID works; the app then stops opening after 7 days: run `scripts/install-dev`
+  again, your data stays. Today warns 2 days before, and Settings → Diagnostics → Install expires shows the date).
 - The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
 - On Linux, usbmuxd must be running.
 
@@ -86,18 +97,35 @@ widgets never see the app's data:
 
 xtool fixed it on `main` in [#284](https://github.com/xtool-org/xtool/pull/284) (merged 2026-10-30, one App Group
 per app on a free team, which is what Homelab uses). Use the first release after 1.24.0. Until then, build 1.24.0
-with the one line from #284 (what this project used on 2026-11-07; `main` itself didn't compile on Linux then):
+with the one line from #284 (what this project used on 2026-11-07; `main` itself didn't compile on Linux then).
+
+Save this as `build-xtool.sh` and run `bash build-xtool.sh`. It stops when the source is not the pinned commit or the
+patch changes anything but that one line:
 
 ```sh
+set -eu
+# Tag 1.24.0 is this commit (`git ls-remote https://github.com/xtool-org/xtool.git refs/tags/1.24.0`, 2026-11-07).
+XTOOL_COMMIT=70e1568fdfcb20b560774057cd783f02361293b9
 git clone --branch 1.24.0 https://github.com/xtool-org/xtool.git xtool-124 && cd xtool-124
-sed -i 's/(.appGroups, isFree: false)/(.appGroups, isFree: true)/' \
-  "Sources/XKit/DeveloperServices/App IDs/Entitlements/DeveloperServicesCapability.swift"
+[ "$(git rev-parse HEAD)" = "$XTOOL_COMMIT" ] || { echo "1.24.0 is not $XTOOL_COMMIT, stop"; exit 1; }
+
+f="Sources/XKit/DeveloperServices/App IDs/Entitlements/DeveloperServicesCapability.swift"
+[ "$(grep -c '(.appGroups, isFree: false)' "$f")" = 1 ] || { echo "not exactly one appGroups line, stop"; exit 1; }
+sed -i 's/(.appGroups, isFree: false)/(.appGroups, isFree: true)/' "$f"
+[ "$(git diff --numstat | cut -f1,2 | tr '\t' ' ')" = "1 1" ] || { echo "the patch changed more than one line, stop"; exit 1; }
+
+# The Dockerfile fetches some dependencies by branch or tag name, not by commit. Keep this list with your notes.
+grep -n '^ADD' Dockerfile
 # Docker without buildx: the Dockerfile's `ADD <git url>` lines need BuildKit, so clone instead
 sed -i -E 's#^ADD --keep-git-dir=true (https://[^ ]+\.git)\#([^ ]+) (/[^ ]+)$#RUN git clone -q --branch \2 \1 \3#' Dockerfile
 docker build --target build-xtool -t xtool-appgroups .
 cid=$(docker create xtool-appgroups) && docker cp "$cid:/xtool/Linux/packages/xtool-x86_64.AppImage" . && docker rm "$cid"
+sha256sum xtool-x86_64.AppImage   # write it down: <sha256 of your build>
 cp ~/.local/bin/xtool ~/.local/bin/xtool-1.24.0-original && install -m 755 xtool-x86_64.AppImage ~/.local/bin/xtool
 ```
+
+Keep the commit, the `ADD` list and the AppImage's sha256 together. Before a later install, `sha256sum
+~/.local/bin/xtool` must still show the same value.
 
 It reports itself as `xtool unversioned`. The first install may stop with "An Application Group with Identifier …
 is not available": run it again, the group exists by then.
@@ -115,7 +143,7 @@ their next reload; remove and add them again if one still shows the old text aft
 Linux builds record the deployment target (iOS 18) as the SDK version in the binary
 ([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). The minimum iOS is correct, so the app
 installs on iOS 18 and newer. Only an App Store upload would be refused, and this app doesn't use the App Store.
-CI builds the release IPA on macOS, where the bug doesn't happen.
+CI never builds an IPA to install: releases are built by hand ([RELEASE.md](RELEASE.md)).
 
 ## Tests
 
@@ -152,6 +180,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | Argument | Effect |
 |---|---|
 | `-HomelabDemo YES` | Turns on the demo servers (a demo homelab and a demo Home Assistant, no network) and shows the demo homelab |
+| `-HomelabDemo NO` | Removes the demo servers again (like the Demo servers switch in Settings); your own servers stay. `scripts/phone-shots` ends with it |
 | `-HomelabDemoScene <scene>` | What the demo homelab shows in this launch: `calm` (default: an ordinary current day, all quiet, one proposal; `state-demo.json`) or `problem` (the stress scene for screenshots: an unhealthy and an exited container, a warning, U6 delays; `state-problem.json`) |
 | `-HomelabServer <url>` | Adds a Homelab API server with this address (login: Tailscale / proxy) and shows it. The URL rules below apply |
 | `-HomelabTab <tab>` | Opens a tab: `today`, `actions`, `chat`, `lab` or `settings` (`overview` and `home` mean Today). A tab that depends on a server feature (Actions, Chat) opens once the server's info shows it |
@@ -176,7 +205,7 @@ that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`,
 Tailscale's `100.64–127.x`, `localhost`, names ending in `.local`, single-label
 names (not all digits or `0x…`: those are IPv4 numbers), and local IPv6 (`::1`, `fe80:`, `fc`/`fd`). A trailing
 `/api/v1` or `/api` is removed. User names and passwords in the URL are refused. A token (a token server, Home
-Assistant) only goes over `https://`, or plain `http://` to `localhost`, `127.0.0.1`, `::1` and `*.ts.net` names
+Assistant) only goes over `https://`, or plain `http://` to this device (`localhost`, `127.0.0.1`, `::1`)
 (`URLPolicy.allowsToken`, `ServerConfig.tokenTransportProblem` for the editor); otherwise the clients send nothing.
 
 ## Project layout

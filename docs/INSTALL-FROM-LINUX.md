@@ -1,9 +1,10 @@
 # Install on your iPhone from Linux (Arch)
 
-Tested setup: Arch Linux, iPhone 12 mini, iOS 18.x, a free Apple ID. The app needs iOS 18 or newer.
+Tested setup (2026-11-07): Arch Linux, iPhone 12 mini with iOS 18.7.3, a free Apple ID, xtool 1.24.0 with the App
+Group patch below. The owner installs the app this way and uses it every day. The app needs iOS 18 or newer.
 
 Two ways. **A** installs a released IPA (no Swift or Xcode needed). **B** builds on your PC; use it until the
-first release, and for testing branches.
+first release, or to run the newest code.
 
 ## Once: tools and Apple ID
 
@@ -11,12 +12,18 @@ first release, and for testing branches.
 sudo pacman -S --needed git usbmuxd libimobiledevice fuse2
 ```
 
+Get xtool as in [SETUP.md](SETUP.md) ("xtool and the iOS SDK": a pinned version, its sha256 checked):
+
 ```bash
-mkdir -p ~/.local/bin && curl -fL "https://github.com/xtool-org/xtool/releases/latest/download/xtool-$(uname -m).AppImage" -o ~/.local/bin/xtool && chmod +x ~/.local/bin/xtool
+XTOOL_VERSION=1.24.0
+mkdir -p ~/.local/bin && curl -fL "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool-$(uname -m).AppImage" -o ~/Downloads/xtool-$XTOOL_VERSION.AppImage
+sha256sum ~/Downloads/xtool-$XTOOL_VERSION.AppImage   # compare with the value you recorded, then:
+install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 ```
 
-`xtool --version` must be newer than 1.24.0: older versions drop the App Group for a free Apple ID, and the widgets
-then never show data ([SETUP.md](SETUP.md), "Known xtool bug: no App Group").
+`xtool --version` must be newer than 1.24.0, or 1.24.0 patched as in [SETUP.md](SETUP.md) ("Known xtool bug: no
+App Group", a one-line change and a Docker build). An unpatched 1.24.0 or older drops the App Group for a free
+Apple ID, and the widgets then never show data.
 
 ```bash
 xtool auth
@@ -55,7 +62,7 @@ xtool sdk install ~/Downloads/Xcode_27.1.xip
 ```
 
 ```bash
-git clone -b testing https://github.com/Qantrex/homelab-ios ~/Projects/homelab-ios && cd ~/Projects/homelab-ios && xtool dev
+git clone https://github.com/Qantrex/homelab-ios ~/Projects/homelab-ios && cd ~/Projects/homelab-ios && xtool dev
 ```
 
 `xtool dev` builds, signs with your Apple ID and installs over USB. The first build takes a few minutes.
@@ -71,9 +78,10 @@ git clone -b testing https://github.com/Qantrex/homelab-ios ~/Projects/homelab-i
 
 | Thing | What to do |
 |---|---|
-| The app stops opening after 7 days | Free Apple ID certificates last 7 days. Run the install again (A or B), or use SideStore, which refreshes by itself |
+| The app stops opening after 7 days | Free Apple ID certificates last 7 days. Today warns 2 days before ("This install stops opening in 2 days …"), and Settings → Diagnostics → Install expires shows the date. Plug the phone in and run the install again (A, or `xtool dev` / `scripts/install-dev` for B) before then: servers, tokens, settings and widgets stay. SideStore refreshes by itself, but it is not verified with this app yet ([SIDESTORE.md](SIDESTORE.md)) |
 | `xtool devices` is empty | Unlock the phone, re-plug, tap Trust. Check `systemctl status usbmuxd` (udev starts it when the phone is plugged in) |
 | `Error: … maximum number of apps` | A free Apple ID allows 3 sideloaded apps and 10 new App IDs per week. Each install registers **3** App IDs (app, widget, share extension), so about three fresh installs a week. Remove an old test app |
 | "Homelab" is missing in the share sheet | Share sheet → scroll the app row to the end → More → switch Homelab on. Open the app once first |
 | The widget shows "Open the app" | Open the app once; it writes the data the widget shows |
-| Something else | Settings → Diagnostics → Copy report, and paste it into `DeviceTest.md` or an issue |
+| Widgets say "No App Group: see Diagnostics" | xtool dropped the App Group (1.24.0 or older without the patch). Install again with a fixed xtool, see [SETUP.md](SETUP.md) |
+| Something else | Settings → Diagnostics → Copy report (host names with the tailnet part masked, no tokens), and paste it into `DeviceTest.md` or an issue |
