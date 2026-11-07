@@ -90,7 +90,7 @@ People add this source in SideStore once, and it always points at the newest rel
 (`latest` skips pre-releases. For a pre-release, give testers the URL with the tag:
 `https://github.com/Qantrex/homelab-ios/releases/download/v<version>/source.json`.)
 
-## Open decision (owner)
+## Release channel (decided 2026-11-07)
 
 SideStore was tested with Homelab on 2026-11-07 (after the -80045 fix in [SIDESTORE.md](SIDESTORE.md)); the source
 (`source.json`) itself is not tested yet. For the first release, choose one:
@@ -100,7 +100,9 @@ SideStore was tested with Homelab on 2026-11-07 (after the -80045 fix in [SIDEST
 | Publish `source.json` too (steps 3 and 5 as written) | SideStore users get updates from the start | Adding the source URL in SideStore is not tested yet (installing the IPA is) |
 | Publish only the IPA and its SHA-256 (leave `dist/source.json` out of `gh release create`) | Only what was tested: the IPA, installed with xtool or imported in SideStore | No updates through a SideStore source; the source URL above stays empty |
 
-Not decided yet. Note the choice here once it is made.
+**Decided 2026-11-07: publish `source.json` too.** Right after the release, add the source URL once in SideStore on
+the test phone (Sources → +) and check that Homelab shows up and offers the update (DeviceTest I1/I2). If that fails,
+delete `source.json` from the release assets (`gh release delete-asset`); the IPA stays.
 
 ## Notes
 
