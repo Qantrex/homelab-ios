@@ -60,6 +60,7 @@ struct SettingsView: View {
                                     .font(Typo.secondary).foregroundStyle(Palette.secondary)
                             }
                         }
+                        PresenceRow(model: model)
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
@@ -78,6 +79,7 @@ struct SettingsView: View {
                         if model.selectedStatus.hasDeals || model.settings.notifyDeals {
                             Toggle("New deals to act on", isOn: notifyBinding(\.notifyDeals))
                         }
+                        QuietHoursRow(model: model)
                     } header: {
                         Text("Notifications")
                     } footer: {

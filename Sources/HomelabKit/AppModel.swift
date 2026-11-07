@@ -53,6 +53,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var personality: Personality?
     /// The "Leave by" Live Activity on school mornings; nil = on.
     public var leaveActivity: Bool?
+    /// Settings → Today → Where you are: the Home Assistant `person.*` or `device_tracker.*` entity the "At home" and
+    /// "Away" rules read (`HomePresence.swift`); nil = off.
+    public var presenceEntity: String?
+    /// Settings → Notifications → Quiet hours: no local notifications in this window (`QuietHours.swift`); nil = off.
+    public var quietHours: TimeWindow?
 
     public static let fileName = "settings.json"
     public init() {}

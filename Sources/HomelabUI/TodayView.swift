@@ -65,6 +65,7 @@ struct TodayView: View {
             .refreshable { await pullToRefresh() }
             .toolbar(.hidden, for: .navigationBar)
             .pollingState(model)
+            .presenceRefresh(model, home: home)   // only with Settings → Today → Where you are
             // A tap you can feel when the lab turns bad while you're looking.
             .sensoryFeedback(trigger: mood.level) { old, new in
                 new == .alarm && old != .alarm ? .error : nil
