@@ -1182,9 +1182,10 @@ name = "Owner invariance goldens"
 area = "Tooling"
 status = "shipped"
 since = "2026-11-07"
-summary = "Golden files freeze the app as its owner uses it (docs/plans/MODULAR.md, M0): an owner-shaped servers.json and settings.json save back byte for byte, and for every state fixture the tabs, Today's sections per density, the headline and the widget snapshot stay the same. A failing golden means stop and ask the owner; `UPDATE_GOLDENS=1 scripts/test-linux` rewrites them only for an approved change."
-sources = ["Tests/Goldens/owner-servers.json", "Tests/Goldens/owner-settings.json", "Tests/Goldens/owner-observed.json"]
-tests = ["OwnerInvarianceTests"]
+summary = "Golden files freeze the app as its owner uses it (docs/plans/MODULAR.md, M0), and the reference server as it answers without `sources`: an owner-shaped servers.json and settings.json save back byte for byte, and for every state fixture the tabs, Today's sections per density, the headline and the widget snapshot stay the same. A failing golden means stop and ask the owner; `UPDATE_GOLDENS=1 scripts/test-linux` rewrites them only for an approved change."
+sources = ["Tests/Goldens/owner-servers.json", "Tests/Goldens/owner-settings.json", "Tests/Goldens/owner-observed.json",
+           "server/goldens/no-sources.json"]
+tests = ["OwnerInvarianceTests", "server/test_reference_server.py::NoSourcesGolden"]
 docs = ["docs/plans/MODULAR.md#4-owner-invariance-guardrails"]
 not_needed = { device_tests = "kit only; the owner checks the phone with scripts/phone" }
 depends_on = []

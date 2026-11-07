@@ -2,6 +2,10 @@
 
 Status: plan, 2026-11-07. Read sections 1, 2 and 4 before any task.
 
+> **Status:** M0 done 2026-11-07 (M0.1 `d277f04`, M0.2 and M0.3 in the commit after it). Next: M1.1 and M2.1,
+> in parallel. Goldens: `Tests/Goldens/` (app) and `server/goldens/` (reference server); `UPDATE_GOLDENS=1` rewrites
+> them only for a change the owner approved.
+
 ## 1. Goal and non-goals
 
 **Goal.** Someone without the owner's agent gets a useful app. They run Home Assistant, Uptime Kuma, Docker,
@@ -107,7 +111,8 @@ M0 first. Then M1 (server) and M2 (app) run in parallel. M3 after M0, in paralle
 ### M0. Guardrails
 
 **M0.1 Owner goldens in the kit.** Size M. Depends: none.
-- Files: `Tests/HomelabKitTests/OwnerInvarianceTests.swift`, `Tests/HomelabKitTests/Goldens/`.
+- Files: `Tests/HomelabKitTests/OwnerInvarianceTests.swift`, `Tests/Goldens/` (outside the test target, so SwiftPM
+  doesn't warn about unhandled files).
 - Steps: write a made-up owner-shaped `servers.json` (Companion `https://nas.tail1234.ts.net`, identity; HA
   `https://ha.tail1234.ts.net`, token, pins, tile names and icons, `selected` and `home` set) and `settings.json` (a
   reordered layout with hidden sections, a personality, `leaveActivity` false). For each `state-*.json` fixture and

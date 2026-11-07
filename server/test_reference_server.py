@@ -891,6 +891,64 @@ class FixtureModeTest(unittest.TestCase):
             stop_app(httpd)
 
 
+GOLDENS = os.path.join(HERE, "goldens")
+
+
+def _masked(obj, this_host):
+    """Times become "<time>"; this host's own numbers (load, temperature, disks: they differ per machine and run) are
+    reduced to what doesn't change. Everything else stays as served."""
+    if isinstance(obj, dict):
+        if obj.get("id") == this_host and "reachable" in obj:
+            return {k: obj[k] for k in ("id", "name", "kind", "reachable") if k in obj}
+        return {k: ("<time>" if k in ("time", "checked", "since") else _masked(v, this_host)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_masked(x, this_host) for x in obj]
+    return obj
+
+
+class NoSourcesGolden(unittest.TestCase):
+    """docs/plans/MODULAR.md, M0.2: without a `sources` key the server answers exactly as before. Real mode with a
+    fixed config and fixture mode, GET /info, /state, /actions, /services, compared with server/goldens/no-sources.json.
+    A difference means a change reached setups that don't use sources: stop and ask the owner. UPDATE_GOLDENS=1
+    rewrites the file for an approved change."""
+
+    def test_answers_match_the_golden(self):
+        tmp = tempfile.mkdtemp(prefix="refsrv-golden-")
+        try:
+            cfg = {"name": "golden lab", "tokens": [TOKEN], "interval": 60,
+                   "this_host": {"id": "box", "kind": "server", "disks": ["/"], "docker": False},
+                   "thresholds": {"temp_warning": 1000, "disk_warning": 1000, "disk_problem": 1001},
+                   "hosts": [{"id": "nas", "name": "nas", "kind": "nas", "check": "tcp://127.0.0.1:%d" % free_port()}],
+                   "services": [{"name": "Jellyfin", "url": "https://box.example.ts.net:8920", "group": "Media",
+                                 "icon": "play.rectangle"}],
+                   "pending_dir": os.path.join(tmp, "pending"), "actions": {"restart": ["/bin/echo", "{arg}"]},
+                   "state_dir": os.path.join(tmp, "state")}
+            os.makedirs(cfg["pending_dir"])
+            real = rs.RealApp(rs.Config(cfg, env={}))
+            fix = rs.FixtureApp(FIXTURES, "state-problem.json", echo_delay=0.3)
+            servers = {"real": start_app(real), "fixtures": start_app(fix)}
+            wait_for(lambda: real.collector.runs >= 1)
+            seen = {}
+            for mode, httpd in servers.items():
+                for path in ("/api/v1/info", "/api/v1/state", "/api/v1/actions", "/api/v1/services"):
+                    code, _, obj = call(httpd.server_address[1], "GET", path, headers=AUTH)
+                    seen["%s %s" % (mode, path)] = {"code": code, "body": _masked(obj, "box")}
+            for httpd in servers.values():
+                stop_app(httpd)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        now = json.dumps(seen, indent=2, sort_keys=True) + "\n"
+        path = os.path.join(GOLDENS, "no-sources.json")
+        if os.environ.get("UPDATE_GOLDENS") == "1":
+            os.makedirs(GOLDENS, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(now)
+        with open(path, encoding="utf-8") as fh:
+            golden = json.load(fh)
+        for key in sorted(set(golden) | set(seen)):
+            self.assertEqual(seen.get(key), golden.get(key), "answer changed: %s (server/goldens/no-sources.json)" % key)
+
+
 class CliTest(unittest.TestCase):
     def test_fixture_cli_and_sigterm(self):
         port = free_port()

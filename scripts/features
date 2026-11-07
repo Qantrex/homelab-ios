@@ -28,6 +28,7 @@ What `check` verifies (an error each):
   - docs/FEATURES.md is what `render` would write now
 Needs python3 3.11+ (tomllib), nothing else.
 """
+import glob
 import json
 import os
 import re
@@ -392,10 +393,12 @@ def analyse(reg, feats, deps):
     for s in sorted(real_suites):
         if s not in claimed["suites"]:
             err("coverage", f"test suite {s} ({suites[s][0]}) belongs to no feature")
-    for cls in py_tests("server/test_reference_server.py"):
-        key = f"server/test_reference_server.py::{cls}"
-        if key not in claimed["suites"]:
-            err("coverage", f"test class {key} belongs to no feature")
+    # Every Python test file under server/ (the bridge adds more, docs/plans/MODULAR.md), every class in it.
+    for pyfile in sorted(glob.glob("server/test_*.py")):
+        for cls in py_tests(pyfile):
+            key = f"{pyfile}::{cls}"
+            if key not in claimed["suites"]:
+                err("coverage", f"test class {key} belongs to no feature")
     for e in sorted(endpoints):
         if e not in claimed["endpoints"]:
             err("coverage", f"endpoint {e} is used by no feature")
