@@ -155,7 +155,11 @@ public enum ProposalNotice {
     public static func content(for alert: AlertTracker.Alert, locked: Bool, voice: Personality = .off) -> Content {
         let buttons = alert.proposal.flatMap { Self.category(for: $0) }
         if locked && buttons == nil {
-            let body = alert.kind == .pending ? "An action is waiting for you." : "Something needs a look."
+            let body = switch alert.kind {
+            case .pending: "An action is waiting for you."
+            case .deal: "A deal is waiting for you."
+            case .problem, .summary: "Something needs a look."
+            }
             return Content(title: "Homelab", subtitle: nil, body: body, category: nil)
         }
         let line = locked ? nil : alert.moment.flatMap { Voice.line($0, voice) }

@@ -10,8 +10,8 @@ import Testing
 
     @Test func toleratesOldAndOddData() {
         let l = TodayLayout(order: ["report", "nonsense", "report", "home"], hidden: ["cards", "gone"])
-        #expect(l.sections == [.report, .home, .day, .waiting, .cards, .machines])      // dupes and unknown dropped, new ones last
-        #expect(l.visible == [.report, .home, .day, .waiting, .machines])
+        #expect(l.sections == [.report, .home, .day, .waiting, .deals, .cards, .machines])      // dupes and unknown dropped, new ones last
+        #expect(l.visible == [.report, .home, .day, .waiting, .deals, .machines])
     }
 
     @Test func hideAndShow() {
@@ -24,20 +24,20 @@ import Testing
     }
 
     @Test func moveLikeSwiftUI() {
-        var l = TodayLayout.standard                                        // day waiting home cards report machines
-        l.move(fromOffsets: IndexSet(integer: 2), toOffset: 0)             // home to the top
-        #expect(l.sections == [.home, .day, .waiting, .cards, .report, .machines])
-        l.move(fromOffsets: IndexSet(integer: 0), toOffset: 6)             // and to the end
-        #expect(l.sections == [.day, .waiting, .cards, .report, .machines, .home])
-        l.move(fromOffsets: IndexSet([0, 1]), toOffset: 5)                 // two at once, before "home"
-        #expect(l.sections == [.cards, .report, .machines, .day, .waiting, .home])
+        var l = TodayLayout.standard                                        // day waiting deals home cards report machines
+        l.move(fromOffsets: IndexSet(integer: 3), toOffset: 0)             // home to the top
+        #expect(l.sections == [.home, .day, .waiting, .deals, .cards, .report, .machines])
+        l.move(fromOffsets: IndexSet(integer: 0), toOffset: 7)             // and to the end
+        #expect(l.sections == [.day, .waiting, .deals, .cards, .report, .machines, .home])
+        l.move(fromOffsets: IndexSet([0, 1]), toOffset: 6)                 // two at once, before "home"
+        #expect(l.sections == [.deals, .cards, .report, .machines, .day, .waiting, .home])
     }
 
     @Test func settingsRoundTripAndOldFiles() throws {
         var s = AppSettings()
         s.todayLayout.setVisible(.report, false)
         let back = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(s))
-        #expect(back.todayLayout.visible == [.day, .waiting, .home, .cards, .machines])
+        #expect(back.todayLayout.visible == [.day, .waiting, .deals, .home, .cards, .machines])
         let old = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"notifyProblems":true,"notifyPending":false,"faceIDLock":false}"#.utf8))
         #expect(old.todayLayout == .standard && old.notifyProblems)
         s.todayLayout = .standard
@@ -50,8 +50,8 @@ import Testing
         var l = TodayLayout.standard
         l.setVisible(.report, false)
         #expect(Density.calm.sections(l) == [.day, .home])
-        #expect(Density.standard.sections(l) == [.day, .waiting, .home, .cards])          // no machines, report hidden
-        #expect(Density.overkill.sections(l) == [.day, .waiting, .home, .cards, .report, .machines])
+        #expect(Density.standard.sections(l) == [.day, .waiting, .deals, .home, .cards])          // no machines, report hidden
+        #expect(Density.overkill.sections(l) == [.day, .waiting, .deals, .home, .cards, .report, .machines])
         #expect(AppSettings().todayDensity == .standard)
     }
 

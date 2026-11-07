@@ -27,6 +27,8 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         case share
         /// GET /search?q=: the server answers a text search with cards (movies and shows with posters).
         case search
+        /// GET /deals: used-market deals the server found and judged (the Deals screen, `homelab://deals`).
+        case deals
     }
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,

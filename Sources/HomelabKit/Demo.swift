@@ -317,6 +317,18 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
                           text: "Demo mode, so \(wh ? "no price check ran" : "nothing was saved").")
     }
 
+    /// The fixture's deals, with their times moved so the newest one was seen 40 minutes ago (a current list).
+    public func deals() async throws -> DealList {
+        try await Task.sleep(for: delay)
+        guard var list = Fixtures.decode(DealList.self, "deals.json") else { throw APIError.notFound }
+        let now = Date()
+        let newest = list.deals.compactMap(\.seen).max() ?? list.updated
+        let shift = newest.map { now.addingTimeInterval(-40 * 60).timeIntervalSince($0) } ?? 0
+        list.updated = now
+        list.deals = list.deals.map { var d = $0; d.seen = d.seen?.addingTimeInterval(shift); return d }
+        return list
+    }
+
     public func search(q: String) async throws -> SearchResult {
         try await Task.sleep(for: delay * 2)
         guard let clean = SearchQuery.clean(q) else { throw APIError.badRequest(SearchQuery.rule) }

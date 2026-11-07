@@ -30,6 +30,17 @@ struct IntegrationTests {
         try await control("state=state-problem.json")
     }
 
+    @Test func dealsOverRealHTTP() async throws {
+        let list = try await client.deals()
+        #expect(list.deals.count == 5 && list.ordered.first?.verdict == .act)
+        #expect(try await client.info().features.contains(.deals))
+        // Not under /api/v1/deals/<x>: an unknown path is the plain 404 a server without the feature answers.
+        var other = URLRequest(url: fixtureURL!.appendingPathComponent("api/v1/deals/nope"))
+        other.httpMethod = "GET"
+        let (_, response) = try await URLSession.shared.data(for: other)
+        #expect((response as? HTTPURLResponse)?.statusCode == 404)
+    }
+
     @Test func chatRoundTrip() async throws {
         try await control("state=state-problem.json&reset=1")
         let before = try await client.messages(after: 0)

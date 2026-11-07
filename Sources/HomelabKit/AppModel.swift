@@ -39,6 +39,9 @@ public enum AppTab: String, CaseIterable, Hashable, Sendable {
 public struct AppSettings: Codable, Sendable, Equatable {
     public var notifyProblems = false
     public var notifyPending = false
+    /// A local notification for a new "act now" deal (feature `deals`); nil = off (the server already pushes those).
+    /// Stored as an optional so settings files from before deals still decode.
+    public var dealNotifications: Bool?
     public var faceIDLock = false
     public var lastBackgroundRun: Date?
     public var lastBackgroundResult: String?
@@ -65,6 +68,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         set { leaveActivity = newValue ? nil : false }
     }
 
+    /// The Settings toggle "New deals to act on" (default off).
+    public var notifyDeals: Bool {
+        get { dealNotifications ?? false }
+        set { dealNotifications = newValue ? true : nil }
+    }
+
     public var voice: Personality {
         get { personality ?? .off }
         set { personality = newValue == .off ? nil : newValue }
@@ -75,7 +84,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         set { today = newValue == .standard ? nil : newValue }
     }
 
-    public var notificationsOn: Bool { notifyProblems || notifyPending }
+    public var notificationsOn: Bool { notifyProblems || notifyPending || notifyDeals }
 }
 
 /// The live state of one Companion server.
@@ -90,6 +99,10 @@ public struct ServerStatus: Sendable, Equatable {
     /// Actions the app may start (feature `run-actions`), fetched like services.
     public var actions: [ActionSpec] = []
     public var actionsFetched: Date?
+    /// The server's deals (`GET /deals`), nil when it has none (404, or never asked). Not cached on disk.
+    public var deals: DealList?
+    /// When `/deals` was last asked, whatever the answer: the next ask waits (`DealsFetch`).
+    public var dealsFetched: Date?
     public var infoFetched: Date?
 
     public init(snapshot: Snapshot? = nil) {
@@ -98,6 +111,9 @@ public struct ServerStatus: Sendable, Equatable {
 
     /// A host's level, the one way everywhere (tile, detail, widget): with the server's problems if a state is known.
     public func health(of host: Host) -> HostHealth { snapshot?.state.health(of: host) ?? HostHealth(host) }
+
+    /// The server answers `/deals` with a list: the Deals screen, its Start tile and Today's card exist.
+    public var hasDeals: Bool { deals != nil }
 
     /// The server's /info, live or from the cache.
     public var knownInfo: ServerInfo? { info ?? snapshot?.info }
@@ -138,6 +154,9 @@ public final class AppModel {
     /// The search screen was asked for (`homelab://search?q=dune`). The Actions tab opens it once the server is known
     /// to have the `search` feature, and clears it.
     public private(set) var openSearch: SearchRequest?
+    /// The Deals screen was asked for (`homelab://deals`, the ntfy push, the Today card). The Actions tab opens it once
+    /// the server is known to answer `/deals`, and clears it.
+    public private(set) var openDeals = false
     /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
     public private(set) var outboxCount = 0
     /// Scans and links the outbox gave up on (server removed, 7 days, refused): shown until cleared.
@@ -217,7 +236,8 @@ public final class AppModel {
         if selected != nil {
             let f = selectedStatus.features
             t.insert(.lab)
-            if f.contains(.actions) || f.contains(.runActions) || f.contains(.documents) || f.contains(.search) { t.insert(.actions) }
+            if f.contains(.actions) || f.contains(.runActions) || f.contains(.documents) || f.contains(.search)
+                || selectedStatus.hasDeals { t.insert(.actions) }
             if f.contains(.chat) { t.insert(.chat) }
         }
         return t
@@ -264,6 +284,19 @@ public final class AppModel {
         return nil
     }
 
+    /// The Actions tab asks whether to open the Deals screen now: once, when the tab shows, no form is open and the
+    /// server has deals. When the server was asked and has none (or is unknown), the request is dropped.
+    public func takeOpenDeals() -> Bool {
+        guard openDeals else { return false }
+        if selectedStatus.hasDeals {
+            guard tab == .actions, !formSheetOpen else { return false }
+            openDeals = false
+            return true
+        }
+        if selectedStatus.dealsFetched != nil || selected == nil { openDeals = false }
+        return false
+    }
+
     /// Where unsent shares and scans wait (App Group, so the share extension fills it too).
     public var outbox: Outbox { Outbox(directory: storage.url("outbox")) }
 
@@ -308,6 +341,7 @@ public final class AppModel {
         openHost = nil
         openScan = false
         openSearch = nil
+        openDeals = false
     }
 
     /// The app locks (Face ID, in the background): the system closes every sheet, so no form counts as open.
@@ -484,6 +518,55 @@ public final class AppModel {
         }
     }
 
+    /// The time `/deals` timing goes by (tests move it).
+    var clock: @Sendable () -> Date = { Date() }
+
+    /// Asks `/deals` when it is time (`DealsFetch`) and keeps the answer. A 404 means "no deals here": the list goes
+    /// and the feature hides without a word. Any other failure (offline, 5xx, a page that isn't JSON) keeps the
+    /// last list, and the next ask waits.
+    func fetchDeals(_ api: any CompanionAPI, into s: inout ServerStatus, force: Bool = false) async {
+        guard force || DealsFetch.shouldFetch(listed: s.features.contains(.deals), available: s.hasDeals,
+                                              fetched: s.dealsFetched, now: clock()) else { return }
+        do {
+            s.deals = try await api.deals()
+        } catch APIError.notFound {
+            s.deals = nil
+        } catch {
+            AppLog.notice("deals failed: \(APIError.from(error, host: "server").message)")
+        }
+        s.dealsFetched = clock()
+    }
+
+    /// The Deals screen's pull to refresh: asks now, whatever the timer says. Nil on success, else why not.
+    @discardableResult
+    public func reloadDeals(on server: ServerConfig) async -> APIError? {
+        var s = status[server.id] ?? ServerStatus()
+        let before = s.deals
+        do {
+            s.deals = try await companion(for: server).deals()
+            s.dealsFetched = clock()
+            store(dealStatus: s, for: server)
+            return nil
+        } catch APIError.notFound {
+            s.deals = nil
+            s.dealsFetched = clock()
+            store(dealStatus: s, for: server)
+            return nil
+        } catch {
+            s.deals = before
+            return APIError.from(error, host: server.host)
+        }
+    }
+
+    /// Writes back only the deals of `s`: the status may have changed while the request was on its way.
+    private func store(dealStatus s: ServerStatus, for server: ServerConfig) {
+        guard var current = status[server.id] else { return }
+        current.deals = s.deals
+        current.dealsFetched = s.dealsFetched
+        status[server.id] = current
+        validateTab()
+    }
+
     public func homeAssistantAPI(for server: ServerConfig) -> any HomeAssistantAPI {
         server.kind == .demo ? demoBackend() : HomeAssistantClient(config: server, tokens: tokens, transport: transport)
     }
@@ -561,6 +644,7 @@ public final class AppModel {
                     s.servicesFetched = Date()
                 }
             }
+            await fetchDeals(api, into: &s)
             if s.features.contains(.runActions), s.actionsFetched.map({ Date().timeIntervalSince($0) > 600 }) ?? true {
                 if let list = try? await api.actions() {
                     s.actions = list
@@ -843,6 +927,13 @@ public final class AppModel {
             request(.actions)
             let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value
             openSearch = SearchRequest(query: SearchQuery.prefill(q ?? ""))
+            return
+        }
+        // homelab://deals: the Deals screen on the Actions tab (the ntfy push for an "act now" deal opens it).
+        if url.scheme == "homelab", url.host?.lowercased() == "deals" {
+            dropRequests()
+            request(.actions)
+            openDeals = true
             return
         }
         guard let t = AppTab(url: url) else { return }

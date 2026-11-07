@@ -21,6 +21,8 @@ public protocol CompanionAPI: Sendable {
     func share(url: URL, title: String?, id: String) async throws -> ShareReply
     /// Searches the server (feature `search`): cards with the answers. `q` is 2-100 characters.
     func search(q: String) async throws -> SearchResult
+    /// Used-market deals (`GET /deals`, feature `deals`). A server without them answers 404 (`APIError.notFound`).
+    func deals() async throws -> DealList
     /// A picture of this server (`Card.Item.image`): at most 1 MB, a JPEG, PNG or WebP. Nothing from another host.
     func image(path: String) async throws -> Data
 }
@@ -111,6 +113,11 @@ public struct CompanionClient: CompanionAPI {
         // The server asks Seerr (and its metadata source) per search; 1-2 s is normal.
         return try await perform(request("search", query: [URLQueryItem(name: "q", value: clean)], timeout: 25),
                                  errors: APIError.fromSearch)
+    }
+
+    public func deals() async throws -> DealList {
+        // The server reads its watcher's database; 10 s is plenty. 404 is the normal "not here" answer.
+        try await get("deals", timeout: 10)
     }
 
     public func image(path: String) async throws -> Data {

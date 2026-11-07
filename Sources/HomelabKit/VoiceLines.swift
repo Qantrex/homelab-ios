@@ -45,6 +45,7 @@ public extension Voice {
             case .empty(.deadlines): .emptyDeadlines
             case .empty(.parcels): .emptyParcels
             case .empty(.search): .emptySearch
+            case .empty(.deals): .emptyDeals
             case .empty(.chat): .emptyChat
             case .actionDone(ok: true): .done
             case .actionDone(ok: false): .failed
@@ -52,6 +53,7 @@ public extension Voice {
             case .notice(.warning): .noticeWarning
             case .notice(.recovered): .noticeRecovered
             case .notice(.waiting): .noticeWaiting
+            case .notice(.deal): .noticeDeal
             }
         }
 
@@ -87,7 +89,7 @@ public extension Voice {
 
     /// Screens and lists with nothing in them.
     enum Empty: String, CaseIterable, Sendable {
-        case approvals, todos, deadlines, parcels, search, chat
+        case approvals, todos, deadlines, parcels, search, chat, deals
 
         /// Which empty list a card is: a checklist is to-dos, a countdown deadlines, a card about parcels or
         /// deliveries parcels; nil for any other card.
@@ -105,7 +107,7 @@ public extension Voice {
 
     /// What a notification is about.
     enum Notice: String, CaseIterable, Sendable {
-        case problem, warning, recovered, waiting
+        case problem, warning, recovered, waiting, deal
     }
 
     /// Every line set, for the tests and for anyone adding their own (`VoiceLines.all`).
@@ -113,16 +115,16 @@ public extension Voice {
         case todayCalm, todayHeadsUp, todayAlarm, todayUnknown
         case labAllGood, labWarnings, labProblems, labUnknown
         case reasonDown, reasonContainer, reasonDisk, reasonHot, reasonLoad, reasonPower, reasonBackup, reasonOther
-        case emptyApprovals, emptyTodos, emptyDeadlines, emptyParcels, emptySearch, emptyChat
+        case emptyApprovals, emptyTodos, emptyDeadlines, emptyParcels, emptySearch, emptyChat, emptyDeals
         case done, failed
-        case noticeProblem, noticeWarning, noticeRecovered, noticeWaiting
+        case noticeProblem, noticeWarning, noticeRecovered, noticeWaiting, noticeDeal
 
         /// The longest a filled line may be: one line on a small phone under Today's headline and in a
         /// notification's subtitle (48), two short lines at most anywhere else (64).
         public var maxLength: Int {
             switch self {
             case .todayCalm, .todayHeadsUp, .todayAlarm, .todayUnknown,
-                 .noticeProblem, .noticeWarning, .noticeRecovered, .noticeWaiting: 48
+                 .noticeProblem, .noticeWarning, .noticeRecovered, .noticeWaiting, .noticeDeal: 48
             default: 64
             }
         }
@@ -286,6 +288,9 @@ enum VoiceLines {
         case .emptyChat:
             ["Ask it something.", "The agent is listening, politely.", "Questions welcome. Brief ones preferred."]
 
+        case .emptyDeals:
+            ["No bargains today. The market is behaving.", "Nothing underpriced. The sellers are awake."]
+
         case .done:
             ["Done. As requested.", "Done. Quietly and without fuss.",
              "Done. Fewer forms than the Magistrat would need."]
@@ -300,6 +305,9 @@ enum VoiceLines {
             ["Back to normal. Quietly.", "Sorted itself out. Rather decent of it."]
         case .noticeWaiting:
             ["Your call.", "Needs a yes or a no.", "Awaiting a decision. Yours."]
+
+        case .noticeDeal:
+            ["A bargain has turned up. Act soon.", "Something is well under its value."]
         }
     }
 
@@ -366,6 +374,9 @@ enum VoiceLines {
             ["Say something. It's lonely in here.", "It knows your lab better than you do.",
              "Go on, ask. It won't judge. Much."]
 
+        case .emptyDeals:
+            ["No deals. Everyone prices like it is 2021.", "Nothing cheap. Your wallet is safe, your hobby less so."]
+
         case .done:
             ["Done. You're basically a sysadmin now.", "Done. Try not to break it again.",
              "Done. That was the easy part.", "Done. Quicker than a government IT project."]
@@ -380,6 +391,9 @@ enum VoiceLines {
             ["It's back. Pretend you fixed it.", "Fixed itself. Take the credit anyway."]
         case .noticeWaiting:
             ["It won't approve itself.", "The agent has ideas again.", "A robot awaits your blessing."]
+
+        case .noticeDeal:
+            ["Cheap thing found. Try not to hoard.", "A bargain. Your wallet will not survive."]
         }
     }
 
@@ -482,6 +496,10 @@ enum VoiceLines {
             ["Say something. We're all dying anyway.", "Type something. The void is listening.",
              "Ask something. It's cheaper than a consultant.", "Talk to it. It's the only AI here not raising money."]
 
+        case .emptyDeals:
+            ["No deals. Inflation got there first.", "Nothing underpriced. The invisible hand is on lunch.",
+             "No bargains. Late capitalism sends its regards."]
+
         case .done:
             ["Done. Faster than any ministry has ever done anything.",
              "Done. No form, no stamp, no Magistrat. Revolutionary.",
@@ -504,6 +522,10 @@ enum VoiceLines {
             ["Decide. Faster than the Magistrat, ideally.", "The bot did the work. Press the button.",
              "Approve it before entropy does.", "Sign here. In triplicate, for tradition's sake.",
              "The bot asks first. Unlike the data brokers.", "Approve it. Digital ID not required. Yet."]
+
+        case .noticeDeal:
+            ["A bargain. The market blinked first.", "Underpriced. Someone forgot to be greedy.",
+             "Cheap hardware. Capitalism has its moments."]
         }
     }
 }

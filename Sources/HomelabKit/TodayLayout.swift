@@ -4,6 +4,7 @@ import Foundation
 public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable {
     case day       // the day's numbers (the server's "today" card)
     case waiting   // actions waiting for approval
+    case deals     // "act now" deals the server found in the last day (only when there is one)
     case home      // Home Assistant tiles
     case cards     // the other cards (media, downloads, school, …)
     case report    // the last report
@@ -15,6 +16,7 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
         switch self {
         case .day: "The day in numbers"
         case .waiting: "Waiting for you"
+        case .deals: "Deals"
         case .home: "Home tiles"
         case .cards: "Cards"
         case .report: "Last report"
