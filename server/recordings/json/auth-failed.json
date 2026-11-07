@@ -1,0 +1,6 @@
+{
+  "_about": "Made up. A feed behind a key that answers 401 (wrong or missing key).",
+  "routes": {
+    "GET /homelab.json": {"status": 401, "json": {"error": "unauthorized"}}
+  }
+}

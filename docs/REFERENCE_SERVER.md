@@ -151,6 +151,7 @@ mv "$dir/.backup.tmp" "$dir/backup.json"
 ```
 
 Only `*.json` files count, so `.backup.tmp` is ignored. At most 50 cards; each file at most 64 KB.
+Data on another machine, or problems and hosts too: a [JSON feed](#json-feed) source.
 
 ## Actions (opt-in, dangerous)
 
@@ -220,8 +221,8 @@ With a `sources` list the reference server becomes the **Homelab Bridge**: it al
 Companion API data and needs nothing new. Without the key nothing changes (a golden test checks it).
 
 Sources are optional modules in `server/sources/`, next to `reference_server.py` (copy the folder too). They are
-stdlib only. The types are the files in that folder; `example` is the template for new ones and reads a made-up
-API.
+stdlib only. The types are the files in that folder: [`json`](#json-feed) reads a feed in the shape of `/state`;
+`example` is the template for new ones and reads a made-up API.
 
 ```json
 "sources": [
@@ -263,6 +264,44 @@ Rules the server enforces for every source:
 
 Writing a new source: [BRIDGE.md](BRIDGE.md).
 
+### JSON feed
+
+Type `json` reads one URL that answers a subset of `/state`: any of `problems`, `hosts`, `cards` and `services`, in
+the shapes of [`server/openapi.yaml`](../server/openapi.yaml). Other keys (`status`, `time`, `pending`, ...) are
+ignored; the status follows the problems, and the bridge keeps its own `since` per problem id.
+
+```json
+"sources": [
+  {"name": "Backups", "type": "json", "url": "http://192.0.2.20:8080/homelab.json"},
+  {"name": "Pi", "type": "json", "url": "https://pi.tail1234.ts.net/api/v1/state", "key_env": "PI_TOKEN"}
+]
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `url` | required | The feed's full URL |
+| `key_env` | none | Env variable with a key, sent as `Authorization: Bearer <key>` |
+| `key_header` | none | Send the key raw in this header instead (`X-Api-Key`). Needs `key_env` |
+
+```json
+{"problems": ["Backup of nas failed"],
+ "hosts": [{"id": "nas", "kind": "nas", "reachable": true, "disks": {"/": 63}}],
+ "cards": [{"id": "backups", "title": "Backups", "place": "lab", "items": [{"title": "nas", "value": "failed"}]}],
+ "services": [{"name": "NAS", "url": "https://nas.tail1234.ts.net"}]}
+```
+
+It reads the feed as leniently as the app reads `/state`: numbers in strings count, a plain string is a problem's
+text, `"yes"` and `1` are true, entries without an `id` (problems without `text`) are skipped, fields of the wrong
+type and unknown fields are dropped. It never takes actions (`pending`, a card's or item's `action`, `restartable`)
+or item `image`s (the app loads pictures only from the server it talks to). An answer that is not a JSON object, a
+401 or more than 8 MB is one warning, as for every source.
+
+**Feed or `cards_dir`?** A script on the bridge's own machine writes [card files](#cards-from-your-own-scripts) into
+`cards_dir` (push: no web server, the card stays until you delete it). Use a `json` feed when the data lives on
+another machine or a service already serves it over HTTP, when you want problems, hosts or services and not only
+cards, or to show a second Companion server's hosts and problems (pull: gone with a warning when the feed is down).
+`server/examples/sources-json.json` runs it against `server/recordings/json/normal.json`.
+
 ## Fixture mode
 
 A mock for the app's unit tests, UI tests and CI screenshots. It serves the files in `Sources/HomelabKit/Fixtures/`.
@@ -294,4 +333,4 @@ python3 -m unittest -v server/test_*.py
 Stdlib only, no network beyond `127.0.0.1`. `test_reference_server.py` starts both modes, a tiny local web app for
 the checks, and the CLI with SIGTERM; its `NoSourcesGolden` freezes the answers of a config without `sources`.
 `test_sources.py` tests the [sources](#sources) rules against `server/fake_upstream.py`, which replays recordings
-from `server/recordings/`.
+from `server/recordings/`; each source type has its own `test_source_<type>.py`.
