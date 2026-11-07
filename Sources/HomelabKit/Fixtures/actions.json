@@ -29,9 +29,9 @@
    "arg": [{"label": "Wake me", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": "T"}, {"kind": "time", "label": "Time"}]},
            {"label": "No wake-up", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": ":off"}]},
            {"label": "Normal", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": ":clear"}]}]},
-  {"name": "commute-mode", "label": "Duke or U6", "icon": "motorcycle", "fields": [],
+  {"name": "commute-mode", "label": "Bike or U6", "icon": "motorcycle", "fields": [],
    "arg": [{"label": "Way", "parts": [{"kind": "date", "label": "Day"}, {"kind": "literal", "text": ":"},
-                                      {"kind": "choice", "label": "Way", "options": [{"value": "bike", "label": "Duke"}, {"value": "u6", "label": "U6"}]}]}]},
+                                      {"kind": "choice", "label": "Way", "options": [{"value": "bike", "label": "Bike"}, {"value": "u6", "label": "U6"}]}]}]},
   {"name": "ha-control", "label": "Living room", "icon": "lightbulb", "fields": [],
    "arg": [{"label": "Switch", "parts": [{"kind": "choice", "label": "What", "options": [
      {"value": "lamps-on", "label": "Lamps on"}, {"value": "lamps-dim", "label": "Lamps dimmed"}, {"value": "lamps-off", "label": "Lamps off"},

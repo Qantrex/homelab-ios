@@ -52,5 +52,18 @@ check_conversions() {
 }
 check_conversions Sources/HomelabKit
 
+# Nothing private in this public repo: a real tailnet name (tailXXXXXX.ts.net; examples use tail1234), and any word
+# listed one per line in ~/.config/homelab-ios/private-words (kept outside the repo, so the list itself stays private).
+private_hits=$(git grep -nIE 'tail[0-9a-f]{6,}\.ts\.net' -- . ':!scripts/lint' 2>/dev/null || true)
+words=${HOMELAB_PRIVATE_WORDS:-$HOME/.config/homelab-ios/private-words}
+if [ -f "$words" ] && [ -s "$words" ]; then
+  private_hits+=$(git grep -nIiF -f "$words" -- . ':!scripts/lint' 2>/dev/null || true)
+fi
+if [ -n "$private_hits" ]; then
+  echo "lint: private names in the repo (tailnet or a word from $words)"
+  echo "$private_hits" | sed 's/^/  /'
+  fail=1
+fi
+
 if [ "$fail" = 0 ]; then echo "lint: ok"; fi
 exit "$fail"

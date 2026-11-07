@@ -39,7 +39,11 @@ public struct TodayMood: Equatable, Sendable {
         let tally = ProblemTally(state)
         switch state.status {
         case .ok:
-            self.init(level: .calm, headline: "All quiet.", detail: machines)
+            // Calm, but not silent about hosts that carry a gold note (an accepted under-voltage): the same count
+            // as Lab's header, so Today says it even with the personality off.
+            let noted = hosts.filter { state.health(of: $0) == .warning }.count
+            let detail = machines.map { noted == 0 ? $0 : "\($0) · \(noted) with a warning" }
+            self.init(level: .calm, headline: "All quiet.", detail: detail)
         case .warning where tally.problems == 0:
             self.init(level: .headsUp, headline: "Heads up.", detail: first ?? machines, warnings: tally.warnings)
         case .warning, .problem:

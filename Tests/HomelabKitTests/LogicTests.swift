@@ -502,7 +502,7 @@ import Testing
         for h in ["nas", "nas.local", "localhost", "192.168.1.5", "10.0.0.2", "100.100.1.1", "fd7a:115c:a1e0::1"] {
             #expect(URLPolicy.allowsPlainHTTP(host: h), "\(h)")
         }
-        for h in ["nas.lan", "box.home.arpa", "svc.internal", "8.8.8.8", "example.com", "pi.tail01.ts.net"] {
+        for h in ["nas.lan", "box.home.arpa", "svc.internal", "8.8.8.8", "example.com", "pi.tail1234.ts.net"] {
             #expect(!URLPolicy.allowsPlainHTTP(host: h), "\(h)")
         }
         #expect((try? URLPolicy.serverURL("http://nas.lan").get()) == nil)

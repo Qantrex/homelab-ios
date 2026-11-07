@@ -36,6 +36,14 @@ import Testing
         #expect(TodayMood(state: HomelabState(status: .ok)).detail == nil)   // no hosts: no machine line
     }
 
+    @Test func calmStillCountsHostsWithAWarning() {
+        // The server says ok (an accepted under-voltage), but a host carries a flag: Today stays calm and says so.
+        var noted = up
+        noted.flags = ["under-voltage now"]
+        let m = TodayMood(state: HomelabState(status: .ok, hosts: [up, noted]))
+        #expect(m.level == .calm && m.headline == "All quiet." && m.detail == "2 of 2 machines up · 1 with a warning")
+    }
+
     @Test func problemsAreLoudAndWarningsCountedApart() {
         let s = HomelabState(status: .problem, problems: [Problem(text: "pi: under-voltage", severity: .warning),
                                                          Problem(text: "media: sonarr unhealthy")], hosts: [up, down])

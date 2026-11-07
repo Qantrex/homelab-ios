@@ -39,15 +39,15 @@ import Testing
     }
 
     @Test func defaultServerNameIsTheShortHostName() throws {
-        #expect(ServerConfig.defaultName(for: URL(string: "https://pi-utility.tail01cd5f.ts.net")!) == "pi-utility")
+        #expect(ServerConfig.defaultName(for: URL(string: "https://nas.tail1234.ts.net")!) == "nas")
         #expect(ServerConfig.defaultName(for: URL(string: "http://192.168.1.5:8080")!) == "192.168.1.5")
         #expect(ServerConfig.defaultName(for: URL(string: "http://lab:8080")!) == "lab")
         #expect(ServerConfig.defaultName(for: URL(string: "http://[fd7a::1]:8080")!).contains(":"))
         // Saved before: the whole host as the name becomes the short one; a typed name stays.
         let id = UUID()
-        let old = #"{"id":"\#(id.uuidString)","name":"pi-utility.tail01cd5f.ts.net","kind":"companion","baseURL":"https://pi-utility.tail01cd5f.ts.net","auth":"identity"}"#
-        #expect(try JSONDecoder().decode(ServerConfig.self, from: Data(old.utf8)).name == "pi-utility")
-        let typed = #"{"id":"\#(id.uuidString)","name":"My lab","kind":"companion","baseURL":"https://pi-utility.tail01cd5f.ts.net","auth":"identity"}"#
+        let old = #"{"id":"\#(id.uuidString)","name":"nas.tail1234.ts.net","kind":"companion","baseURL":"https://nas.tail1234.ts.net","auth":"identity"}"#
+        #expect(try JSONDecoder().decode(ServerConfig.self, from: Data(old.utf8)).name == "nas")
+        let typed = #"{"id":"\#(id.uuidString)","name":"My lab","kind":"companion","baseURL":"https://nas.tail1234.ts.net","auth":"identity"}"#
         #expect(try JSONDecoder().decode(ServerConfig.self, from: Data(typed.utf8)).name == "My lab")
     }
 

@@ -199,7 +199,7 @@ import Testing
     }
 
     @Test func normalises() {
-        #expect(ok("pi-utility.tail01.ts.net") == "https://pi-utility.tail01.ts.net")
+        #expect(ok("nas.tail1234.ts.net") == "https://nas.tail1234.ts.net")
         #expect(ok("  https://Host.Example.ts.net/  ") == "https://host.example.ts.net")
         #expect(ok("https://h.example/api/v1/") == "https://h.example")
         #expect(ok("https://h.example/sub/api") == "https://h.example/sub")

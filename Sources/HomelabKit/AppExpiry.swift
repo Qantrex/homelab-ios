@@ -36,6 +36,6 @@ public enum AppExpiry {
             let days = Int(clamping: (left / (24 * 3600)).rounded(.down))
             when = days == 1 ? "stops opening in 1 day" : "stops opening in \(days) days"
         }
-        return "This install \(when) (free Apple ID, 7 days). Plug the iPhone into the computer and reinstall; your data stays."
+        return "This install \(when) (free Apple ID, 7 days). Refresh it in SideStore, or reinstall it from the computer; your data stays."
     }
 }

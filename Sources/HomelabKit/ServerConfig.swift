@@ -42,7 +42,7 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         kind = try c.decode(Kind.self, forKey: .kind)
         baseURL = try c.decode(URL.self, forKey: .baseURL)
         // Servers added before the short default name was saved with the whole host as their name
-        // ("pi-utility.tail01cd5f.ts.net" twice in the list, cut mid-word): they get the short one.
+        // ("nas.tail1234.ts.net" twice in the list, cut mid-word): they get the short one.
         name = savedName == baseURL.host ? Self.defaultName(for: baseURL) : savedName
         auth = try c.decode(Auth.self, forKey: .auth)
         pinnedEntities = try c.decodeIfPresent([String].self, forKey: .pinnedEntities) ?? []
@@ -58,8 +58,8 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         return c
     }
 
-    /// The name a server gets when none is typed: the first part of a DNS name ("pi-utility" for
-    /// "pi-utility.tail01cd5f.ts.net"). An IP address or a one-word host stays whole.
+    /// The name a server gets when none is typed: the first part of a DNS name ("nas" for
+    /// "nas.tail1234.ts.net"). An IP address or a one-word host stays whole.
     public static func defaultName(for url: URL) -> String {
         guard let host = url.host, !host.isEmpty else { return "Homelab" }
         guard !host.contains(":"), let first = host.split(separator: ".").first, first.contains(where: \.isLetter) else { return host }

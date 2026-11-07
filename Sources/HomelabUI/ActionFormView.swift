@@ -135,7 +135,7 @@ struct ActionFormView: View {
         case .time:
             DatePicker(label, selection: timeBinding(text), displayedComponents: .hourAndMinute)
         case .choice(_, let options) where options.count <= 3:
-            // Few options: all visible at once (Duke | U6).
+            // Few options: all visible at once (Bike | U6).
             Picker(label, selection: text) {
                 ForEach(options) { o in Text(o.label).tag(o.value) }
             }

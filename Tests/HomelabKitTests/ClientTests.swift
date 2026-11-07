@@ -132,7 +132,7 @@ import Testing
     @Test func networkErrorsAreExplained() {
         #expect(APIError.from(URLError(.notConnectedToInternet), host: "h") == .offline)
         #expect(APIError.from(URLError(.timedOut), host: "h") == .timeout)
-        #expect(APIError.from(URLError(.cannotFindHost), host: "pi.tail01.ts.net") == .notOnTailnet(host: "pi.tail01.ts.net"))
+        #expect(APIError.from(URLError(.cannotFindHost), host: "pi.tail1234.ts.net") == .notOnTailnet(host: "pi.tail1234.ts.net"))
         #expect(APIError.from(URLError(.cannotFindHost), host: "example.com") == .cannotFindHost(host: "example.com"))
         #expect(APIError.from(URLError(.cannotConnectToHost), host: "h") == .notOnTailnet(host: "h"))
         #expect(APIError.from(URLError(.serverCertificateUntrusted), host: "h") == .tls)

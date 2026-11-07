@@ -44,7 +44,7 @@ App:
     could hide or lock while on; Test connection without a token showed the 401 text; a deals push on a cold launch
     lost the link on a server whose only Actions feature is deals; a running poll undid a pull to refresh on Deals; a
     deal with a time far in the future stayed "new"; duplicate ids in `-HomelabPins`.
-  - Clearer: a new server without a typed name is called by its short host name ("pi-utility", older saved ones
+  - Clearer: a new server without a typed name is called by its short host name ("nas", older saved ones
     too); Today → Edit has an "On Today" section with the pinned tiles in order (Order to move them), a visible "Name
     on the tile" label and the icon menu; the approve confirm uses the row's words (Approve, Always allow, Deny) and
     Deny isn't red there; "To approve" everywhere (Today's section, Lab, the empty state); a Start tile with nothing
