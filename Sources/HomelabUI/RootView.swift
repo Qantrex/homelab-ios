@@ -3,7 +3,7 @@ import HomelabKit
 import SwiftUI
 import UIKit
 
-/// The app: onboarding until a server exists, then the tabs. A lock screen covers everything when Face ID is on.
+/// The app: the first run until a server exists (and until that run ends), then the tabs. A lock screen covers everything when Face ID is on.
 public struct RootView: View {
     @Bindable var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
@@ -17,10 +17,11 @@ public struct RootView: View {
             // While locked, nothing behind the lock exists: no tab, sheet or dialog can be reached (or read by VoiceOver).
             if model.locked {
                 Palette.background.ignoresSafeArea()
-            } else if model.hasServers {
-                tabs
-            } else {
+            } else if model.showsFirstRun {
+                // No server yet, or a first run that goes on after its first save (FirstRun): never the owner.
                 WelcomeView(model: model)
+            } else {
+                tabs
             }
             if model.locked {
                 LockView {
@@ -99,64 +100,85 @@ public struct RootView: View {
     }
 }
 
-/// First start: add a server, or look around in demo mode.
+/// The first run (`FirstRun`, docs/plans/MODULAR.md M2.3). The welcome: "Add Home Assistant", "Add a Homelab
+/// server", "Try the demo" (one tap). Once a server is saved: Found and "Start with" (`FoundView`). The server editor
+/// and the tile picker are sheets over it. Shown only while `AppModel.showsFirstRun`, never for someone with servers.
 struct WelcomeView: View {
     let model: AppModel
-    @State private var adding = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    Image(systemName: "server.rack")
-                        .font(.system(size: 56, weight: .light))
-                        .foregroundStyle(.tint)
-                        .padding(.top, 40)
-                        .accessibilityHidden(true)
-                    VStack(spacing: 8) {
-                        Text("Your homelab, in your pocket").font(.title2.weight(.bold)).multilineTextAlignment(.center)
-                        Text("See your hosts and problems at a glance. If your server offers it, approve what it proposes and chat with it. Home Assistant devices work too. Everything stays on your network.")
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                    }
-                    VStack(alignment: .leading, spacing: 14) {
-                        point("checkmark.shield", "Status of every host, problems first")
-                        point("hand.thumbsup", "Approve or deny actions your server asks about (if offered)")
-                        point("bubble.left.and.bubble.right", "Chat with your homelab agent (if offered)")
-                        point("lock.shield", "No account, no cloud, no tracking")
-                    }
-                    .padding(.horizontal)
-                    VStack(spacing: 12) {
-                        Button {
-                            adding = true
-                        } label: {
-                            Text("Add a server").frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        Button {
-                            model.setDemo(true)
-                        } label: {
-                            Text("Try the demo").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                    }
-                    VStack(spacing: 4) {
-                        Text("Works with any server that speaks the Homelab API, and with Home Assistant. A small reference server for any Linux box is in the project:")
-                        Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios/blob/main/docs/SERVER-SETUP.md")!)
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+            Group {
+                if model.firstRun?.showsFound == true {
+                    FoundView(model: model)
+                } else {
+                    welcome
                 }
-                .padding(24)
-                .frame(maxWidth: 520)
-                .frame(maxWidth: .infinity)
             }
-            .sheet(isPresented: $adding) {
-                ServerEditor(model: model, server: nil)
+            // The editor for the kind the run adds. Save moves the run on to Found; Cancel goes back (FirstRun).
+            .sheet(isPresented: Binding(get: { model.firstRun?.adding != nil },
+                                        set: { if !$0 { model.firstRunEditorClosed() } })) {
+                ServerEditor(model: model, server: nil, kind: model.firstRun?.adding) { model.firstRunSaved($0) }
             }
+        }
+    }
+
+    private var welcome: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Image(systemName: "server.rack")
+                    .font(.system(size: 56, weight: .light))
+                    .foregroundStyle(.tint)
+                    .padding(.top, 40)
+                    .accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    Text("Your homelab, in your pocket").font(.title2.weight(.bold)).multilineTextAlignment(.center)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("The lights and scenes you use most, your machines and their problems, at a glance. Everything stays on your network.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 14) {
+                    point("house", "Home Assistant: your lights and scenes as tiles")
+                    point("checkmark.shield", "Status of every machine, problems first")
+                    point("hand.thumbsup", "Approve what your server proposes (if it offers it)")
+                    point("lock.shield", "No account, no cloud, no tracking")
+                }
+                .padding(.horizontal)
+                VStack(spacing: 12) {
+                    Button {
+                        model.beginFirstRun(adding: .homeAssistant)
+                    } label: {
+                        Text("Add Home Assistant").frame(maxWidth: .infinity).foregroundStyle(Palette.onAccent)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    Button {
+                        model.beginFirstRun(adding: .companion)
+                    } label: {
+                        Text("Add a Homelab server").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    Button {
+                        model.setDemo(true)
+                    } label: {
+                        Text("Try the demo").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+                VStack(spacing: 4) {
+                    Text("A Homelab server is anything that speaks the Homelab API, like the small Homelab Bridge for any Linux box:")
+                    Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios/blob/main/docs/SERVER-SETUP.md")!)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            }
+            .padding(24)
+            .frame(maxWidth: 520)
+            .frame(maxWidth: .infinity)
         }
     }
 

@@ -52,6 +52,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | 27 | A host's details (`-HomelabHost media`, the demo's problem scene `-HomelabDemoScene problem`), dark: 24 h sparklines, containers with problems first and Restart buttons |
 | 28 | Demo Today (problem scene) in Overkill with the Snarky personality |
 | 29 | `demo-ha-only`: Today with only the demo Home Assistant (`-HomelabDemoScene ha-only`), no Companion server: "Home.", "1 light on" and gold "Bedroom fan unavailable" |
+| 30–35 | The first run (from a reset): the welcome, and Found with "Start with" over the demo servers (`-HomelabFirstRun YES`), each in light, dark and accessibility extra-large text |
 
 The demo shots from 25 on start from a reset (`-HomelabResetState YES -HomelabDemo YES`): a clean demo, without the
 fixture server and its cache from 16–22.

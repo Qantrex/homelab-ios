@@ -150,14 +150,14 @@ name = "Start presets (Home, Watch, Everything)"
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. Kit only; the first-run screens that offer it come with M2.3."
+summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. The first run's \"Start with\" offers them (first-run)."
 server_features = []
 endpoints = ["GET /info"]
 api_fields = ["info.features"]
 sources = ["Sources/HomelabKit/StartPreset.swift#StartPreset", "Sources/HomelabKit/StartPreset.swift#StartLayout"]
 tests = ["StartPresetTests"]
+device_tests = ["FS5", "FS6"]
 docs = ["docs/plans/MODULAR.md#m2-app-side"]
-not_needed = { device_tests = "kit only, no screen yet; M2.3 adds the first-run screens and their DeviceTest rows" }
 depends_on = ["today-layout"]
 notes = "Sections the servers offer come first in the preset's order; the others stay on behind them, so they appear once a server offers them. A preset that matches the defaults (the demo with Everything) stores nil for the layout."
 
@@ -912,11 +912,30 @@ name = "Welcome screen"
 area = "Settings"
 status = "shipped"
 since = "2026-11-04"
-summary = "Until a server exists: \"Your homelab, in your pocket\", four points, Add a server, Try the demo and a link to the server setup."
+summary = "Until a server exists: \"Your homelab, in your pocket\", four points, Add Home Assistant, Add a Homelab server, Try the demo and a link to the server setup. The two Add buttons start the first run (first-run)."
 sources = ["Sources/HomelabUI/RootView.swift#WelcomeView"]
 tests = ["AppModelTests/demoAndReset"]
 device_tests = ["FS1"]
 docs = ["README.md#who-it-is-for"]
+
+[[feature]]
+id = "first-run"
+name = "First run: found, start with, tiles"
+area = "Settings"
+status = "partial"
+since = "2026-11-07"
+summary = "Only for someone with no server saved (never the owner): Add Home Assistant or Add a Homelab server opens the server editor; after Save, Found lists what the servers offer in words and \"Start with\" the three start presets, the suggested one checked; Start writes it, then the tile picker opens when Home Assistant has tiles; then Today, with a line pointing to Settings → Today. Every step can be skipped; the demo stays one tap."
+server_features = []
+endpoints = ["GET /info"]
+api_fields = ["info.features"]
+sources = ["Sources/HomelabKit/FirstRun.swift#FirstRun", "Sources/HomelabKit/FirstRun.swift#showsFirstRun", "Sources/HomelabUI/FirstRunView.swift#FoundView", "Sources/HomelabUI/RootView.swift#WelcomeView", "Sources/HomelabUI/TodayView.swift#startTip", "Sources/HomelabUI/SettingsView.swift#onSaved"]
+tests = ["FirstRunTests"]
+device_tests = ["FS5", "FS6", "FS7", "FS8", "FS9", "FS10"]
+screenshots = ["first-run-welcome-light", "first-run-welcome-dark", "first-run-welcome-xxl", "first-run-found-light", "first-run-found-dark", "first-run-found-xxl"]
+docs = ["docs/plans/MODULAR.md#m2-app-side", "docs/SETUP.md#launch-arguments", "docs/CI.md"]
+launch_args = ["-HomelabFirstRun"]
+depends_on = ["onboarding", "start-presets", "servers", "home-tiles"]
+notes = "Nothing of the run is stored: it lives in AppModel.firstRun (memory), so an app quit mid-run opens on the tabs with the servers saved so far, and the line under Today goes when the app quits. A preset writes only Today's layout and density (StartLayout.apply). -HomelabFirstRun only works while every server is a demo one."
 
 [[feature]]
 id = "demo-mode"
