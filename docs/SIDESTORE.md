@@ -60,9 +60,17 @@ install stops opening, and Settings → Diagnostics → Install expires shows th
 
 - SideStore needs its own VPN helper (LocalDevVPN) while it refreshes. iOS runs only one VPN at a time, so with
   Tailscale always on, background refresh never runs. A Shortcuts automation does it instead (Shortcuts →
-  Automation → + → Time of Day, daily, Run Immediately): **Set VPN** LocalDevVPN → Connect; **Wait** 5 s; **Open App**
-  SideStore; SideStore's **Refresh All Apps**; **Wait** 60 s; **Set VPN** Tailscale → Connect (or Tailscale's own
-  Connect action).
+  Automation → + → Time of Day, daily, Run Immediately), tested 2026-11-07:
+  1. LocalDevVPN's own **Enable LocalDevVPN** action (the generic "Set VPN … Connect" did not start it in time)
+  2. **Wait** 15 s
+  3. **Open App** SideStore
+  4. SideStore's **Refresh All Apps**, with "Show When Run" off (otherwise its "Done" dialog stops the shortcut)
+  5. **Wait** 60 s
+  6. Tailscale's own **Connect to your Tailscale network** action ("Set VPN Tailscale" did not reconnect), "Show
+     When Run" off
+
+  A second automation a few minutes later with only step 6 brings Tailscale back if a refresh ever fails (a failed
+  action stops the shortcut before step 6).
 - A refresh keeps everything: servers, tokens (Keychain), cached data and the widget. `DeviceTest.md` checks this.
 - If the app expired anyway, it doesn't open. Refresh it in SideStore; the data is still there.
 - Deleting the app, or installing it with a different Apple ID, starts from zero.
