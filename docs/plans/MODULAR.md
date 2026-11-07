@@ -2,8 +2,8 @@
 
 Status: plan, 2026-11-07. Read sections 1, 2 and 4 before any task.
 
-> **Status:** M0 done 2026-11-07 (M0.1 `d277f04`, M0.2 and M0.3 after it). Merged: M2.1, M2.2, M3.1. In progress:
-> M1.1, M2.3, M3.2, M3.3. Goldens: `Tests/Goldens/` (app) and `server/goldens/` (reference server); `UPDATE_GOLDENS=1`
+> **Status:** done 2026-11-07: M0–M3 all merged (final `33e8275`, CI green on every job), plus the bridge security
+> review fixes. Goldens: `Tests/Goldens/` (app) and `server/goldens/` (reference server); `UPDATE_GOLDENS=1`
 > rewrites them only for a change the owner approved.
 
 ## 1. Goal and non-goals
