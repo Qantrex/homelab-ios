@@ -77,16 +77,43 @@ CI builds no device IPA at all. The device build, with the widget and App Group 
 
 By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release workflow.
 
+## Docs site
+
+<https://qantrex.github.io/homelab-ios/> is this `docs/` folder as a website. GitHub Pages builds it from branch
+`main`, folder `/docs`, with its classic Jekyll build on every push (no workflow of ours, nothing to install). The
+site is docs only: no IPA, no `source.json` (releases stay by hand, see [RELEASE.md](RELEASE.md)).
+
+| File | What it does |
+|---|---|
+| `docs/_config.yml` | Title, base URL `/homelab-ios`, kramdown with GFM, `layout: default` for every page, what is left out (`screenshots/`, `icon/README.md`) |
+| `docs/_layouts/default.html` | The one layout: true black, system sans, white underlined links, wide tables scroll in their own box. Links that leave `docs/` (`../README.md`, `../Sources/...`) open the file on GitHub |
+| `docs/index.md` | The start page: what Homelab is and the list of docs |
+
+Every `.md` in `docs/` becomes a page (Pages' default plugins: optional front matter, title from the first heading),
+and links to other `.md` files become links to their pages. Write docs as usual for GitHub; two things differ on
+the site (kramdown, Jekyll 3.10):
+
+- **Liquid.** Every doc goes through Liquid first, and Jekyll 3.10 can't switch that off per page. Put lines with
+  <code>&#123;&#123; … &#125;&#125;</code> or <code>&#123;% … %&#125;</code> (Home Assistant templates, for
+  example) between the lines <code>&lt;!-- &#123;% raw %&#125; --&gt;</code> and
+  <code>&lt;!-- &#123;% endraw %&#125; --&gt;</code>; GitHub hides these comments. `scripts/lint` fails on such
+  lines outside a raw block. (This paragraph writes the braces as `&#123;` and `&#125;` for the same reason.)
+- **A `|` inside code in a table cell.** GitHub needs `\|` there, kramdown shows the backslash. Write
+  `<code>a&#124;b</code>` instead; `scripts/features render` does that by itself in FEATURES.md.
+
+To look at a change before pushing, any Jekyll 3.10 works (`bundle exec jekyll serve -s docs` with the
+`github-pages` gem); nothing in the repo needs it.
+
 ## Local scripts
 
 | Script | What it does |
 |---|---|
 | `scripts/test-linux` | Fixture server on the host, `KIT_ONLY=1 swift test` in Docker (`swift:6.4-noble`), Python tests, lint |
 | `scripts/lint` | The source checks from the `linux` job, including `scripts/features check` |
-| `scripts/features [check\|render\|show X\|gaps\|json]` | The feature registry `features.toml`: checks it against the repo, writes `docs/FEATURES.md`, tells which feature a file, test or DeviceTest row belongs to |
+| <code>scripts/features [check&#124;render&#124;show X&#124;gaps&#124;json]</code> | The feature registry `features.toml`: checks it against the repo, writes `docs/FEATURES.md`, tells which feature a file, test or DeviceTest row belongs to |
 | `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), runs `scripts/verify-ipa` on it, prints the IPA path and size |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
 | `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |
 | `scripts/phone-shots [--no-install] [OUT]` | Linux or macOS: build, install on the iPhone over USB, open every tab in demo mode, save screenshots (`shots-phone/`). About 1 minute. Needs the phone unlocked, trusted, Developer Mode on; uses `pymobiledevice3` in `.venv/` (no root) |
-| `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. `--pick main\|small` prints a simulator UDID |
+| `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. <code>--pick main&#124;small</code> prints a simulator UDID |
 | `scripts/make-source` | Builds the SideStore/AltStore `source.json` (`--help` for options) |

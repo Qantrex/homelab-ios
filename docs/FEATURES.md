@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 72 | 69 | 2 | 1 | 36 | 3 |
+| 73 | 70 | 2 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -166,7 +166,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
-### Tooling (5)
+### Tooling (6)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -175,6 +175,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Look at and drive the installed app (scripts/phone)](#phone-cli) | shipped | – | n/a | n/a | 1 |
 | [This feature registry](#feature-registry) | shipped | – | n/a | n/a | 1 |
 | [Owner invariance goldens](#owner-invariance) | shipped | – | 2 | n/a | 1 |
+| [Docs site (GitHub Pages)](#docs-site) | shipped | – | n/a | n/a | 2 |
 
 ## Gaps
 
@@ -1063,7 +1064,7 @@ A "waiting for you" notification has Approve and Deny (not Always), both behind 
 
 **homelab:// links to tabs and hosts** · Links · shipped · since 2026-11-04
 
-`homelab://today\|actions\|chat\|lab\|settings` open a tab (older `overview` and `home` open Today), `homelab://lab/<host-id>` a host. A requested tab, form or host waits until the data is there; picking another tab by hand drops it, a newer link replaces it. Widgets and pushes use them.
+`homelab://today|actions|chat|lab|settings` open a tab (older `overview` and `home` open Today), `homelab://lab/<host-id>` a host. A requested tab, form or host waits until the data is there; picking another tab by hand drops it, a newer link replaces it. Widgets and pushes use them.
 
 | | |
 |---|---|
@@ -1443,6 +1444,21 @@ Golden files freeze the app as its owner uses it (docs/plans/MODULAR.md, M0), an
 | Phone (DeviceTest.md) | n/a: kit only; the owner checks the phone with scripts/phone |
 | Docs | [docs/plans/MODULAR.md#4-owner-invariance-guardrails](plans/MODULAR.md#4-owner-invariance-guardrails) |
 
+### docs-site
+
+**Docs site (GitHub Pages)** · Tooling · shipped · since 2026-11-07
+
+<https://qantrex.github.io/homelab-ios/>: the docs/ folder as a website, built by GitHub Pages from main /docs (classic Jekyll build, no workflow). True black, one typeface, wide tables scroll in their own box; links out of docs/ open the file on GitHub. Docs only, never an IPA or source.json.
+
+| | |
+|---|---|
+| Sources | [_config.yml](../docs/_config.yml), [default.html](../docs/_layouts/default.html), [index.md](index.md) |
+| Tests | n/a: scripts/lint checks the docs for Liquid tags; GitHub Pages builds the site |
+| Phone (DeviceTest.md) | n/a: a website, not the app |
+| Docs | [docs/CI.md#docs-site](CI.md#docs-site), [README.md#docs](../README.md#docs) |
+| Depends on | [github-pages](#dep-github-pages) |
+| Notes | Pages runs Jekyll 3.10 (Liquid on every page, no render_with_liquid) and kramdown: a pipe inside code in a table cell is written `<code>a&#124;b</code>`, which scripts/features render does by itself. |
+
 ## Dependencies
 
 Pinned versions are checked: each pin (`file: text`) must still be in its file, so a bump without a registry update fails `scripts/features check`.
@@ -1486,6 +1502,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
 | <a id="dep-gha-checkout"></a>**actions/checkout** | ci | v7.0.1, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-gha-artifacts"></a>**actions/upload-artifact and download-artifact** | ci | upload v7.0.2, download v8.0.2, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [screenshots](#screenshots) | 1 |
+| <a id="dep-github-pages"></a>**GitHub Pages (classic Jekyll build)** | ci | Jekyll 3.10.0, kramdown 2.4.0 with GFM input, Liquid 4.0.4, jekyll-relative-links 0.6.1 (as of 2026-11-07) | – | [docs-site](#docs-site) | 1 |
 | <a id="dep-gha-runners"></a>**GitHub-hosted runners** | ci | ubuntu-latest (job runs in the pinned Swift container), macos-26, xcode-27 | [ci.yml](../.github/workflows/ci.yml) | [ci-checks](#ci-checks), [screenshots](#screenshots) | 2 |
 
 - **Swift 6.4 toolchain** (`swift`): Builds the package; Swift 6 strict concurrency, Swift Testing. Linux builds only HomelabKit (KIT_ONLY=1). Unsure: scripts/test-linux uses the tag swift:6.4-noble without the digest that CI pins, so local runs can drift from CI. <https://www.swift.org/install/linux/>
@@ -1523,6 +1540,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 - **GitHub CLI** (`gh`): Releases: check CI on the commit, create the release with the IPA, its SHA-256 and source.json.
 - **actions/checkout** (`gha-checkout`): Checks the repo out in every CI job (persist-credentials off where nothing is pushed).
 - **actions/upload-artifact and download-artifact** (`gha-artifacts`): Screenshots and xcodebuild logs as artifacts; the screenshots job publishes them to the ci-screenshots branch.
+- **GitHub Pages (classic Jekyll build)** (`github-pages`): Builds and hosts the docs site from main /docs on every push, without a workflow of ours. GitHub sets the versions; Liquid on every page and kramdown instead of GitHub's renderer are why docs/CI.md#docs-site has two rules. <https://pages.github.com/versions/>
 - **GitHub-hosted runners** (`gha-runners`): Free standard runners only (public repo); both macOS runners are required.
 
 ### Dependency matrix
@@ -1566,4 +1584,5 @@ Features per area that need each dependency, directly or through another feature
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | actions/checkout |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | actions/upload-artifact and download-artifact |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
+| GitHub Pages (classic Jekyll build) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | GitHub-hosted runners |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |

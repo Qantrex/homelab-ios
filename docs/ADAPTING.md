@@ -133,7 +133,7 @@ and kinds. The server builds the form description and a check from the templates
 | `name` | The action; the server runs only names on this list |
 | `label`, `icon`, `hint` | Tile text, SF Symbol name, one line under the form |
 | `destructive` | Red confirm button |
-| `arg` | Variants; each `template` is literal text and `{Label: kind}` parts, a choice as `{Label: a=Text\|b=Text}` |
+| `arg` | Variants; each `template` is literal text and `{Label: kind}` parts, a choice as <code>{Label: a=Text&#124;b=Text}</code> |
 | `fields` | Per payload field: `label`, `kind`, `options` for a choice, `hidden` to keep an optional field out of the form |
 
 The server must check the argument and payload again: the form only stops obviously wrong input. For the demo and

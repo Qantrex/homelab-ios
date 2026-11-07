@@ -458,6 +458,11 @@ def analyse(reg, feats, deps):
 
 def md_link(target, label=None, base="docs"):
     rel = os.path.relpath(ROOT / target.split("#")[0], ROOT / base)
+    if any(part.startswith(("_", ".")) for part in Path(rel).parts if part != ".."):
+        # Not published on the docs site (Jekyll skips _ and . paths): go through ../, which the site's layout
+        # points at the file on GitHub (docs/CI.md#docs-site); on GitHub itself it is the same file.
+        rel = os.path.relpath(ROOT / target.split("#")[0], ROOT / base / "..")
+        rel = os.path.join("..", rel)
     anchor = "#" + target.split("#", 1)[1] if "#" in target else ""
     return f"[{label or target}]({rel}{anchor})"
 
@@ -466,8 +471,24 @@ def code(v):
     return f"`{v}`"
 
 
-def esc(s):
-    return str(s).replace("|", "\\|").replace("\n", " ").strip()
+def esc(s, cell=True):
+    """Text for one line of FEATURES.md, the same on GitHub and on the Pages site (kramdown).
+
+    A `|` outside code becomes `\\|` (a table cell separator otherwise; kramdown even makes a paragraph with one a
+    table). Inside a code span, GitHub needs `\\|` in a table cell but shows the backslash elsewhere, and kramdown
+    shows it everywhere: so a code span with a `|` in a table cell becomes <code>…&#124;…</code>, and outside a
+    table (cell=False) it stays as it is.
+    """
+    out = []
+    for part in re.split(r"(`[^`]*`)", str(s).replace("\n", " ").strip()):
+        if len(part) > 1 and part.startswith("`") and part.endswith("`"):
+            if cell and "|" in part:
+                inner = part[1:-1].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                part = "<code>" + inner.replace("|", "&#124;") + "</code>"
+            out.append(part)
+        else:
+            out.append(part.replace("|", "\\|"))
+    return "".join(out)
 
 
 def render(reg, feats, deps, a):
@@ -538,7 +559,7 @@ def render(reg, feats, deps, a):
         p("Not verified (the registry says so in `unsure`):")
         p("")
         for x in unsure:
-            p(f"- [{x['id']}](#{x['id']}): {esc(x['unsure'])}")
+            p(f"- [{x['id']}](#{x['id']}): {esc(x['unsure'], cell=False)}")
         p("")
 
     # code inventories
@@ -569,9 +590,9 @@ def render(reg, feats, deps, a):
         for x in by_area[area]:
             p(f"### {x['id']}")
             p("")
-            p(f"**{esc(x['name'])}** · {area} · {x['status']} · since {x['since']}")
+            p(f"**{esc(x['name'], cell=False)}** · {area} · {x['status']} · since {x['since']}")
             p("")
-            p(esc(x["summary"]))
+            p(esc(x["summary"], cell=False))
             p("")
             rows = []
             if x["server_features"] or x["endpoints"] or x["api_fields"]:
@@ -598,7 +619,7 @@ def render(reg, feats, deps, a):
                 if x[k]:
                     rows.append((label, ", ".join(code(v) for v in x[k])))
             if x["settings"]:
-                rows.append(("Settings", "; ".join(esc(s) for s in x["settings"])))
+                rows.append(("Settings", "; ".join(x["settings"])))
             if x["depends_on"]:
                 rows.append(("Depends on", ", ".join(
                     f"[{d}](#dep-{d})" if d in dep_by_id else f"[{d}](#{d})" for d in x["depends_on"])))
@@ -606,13 +627,13 @@ def render(reg, feats, deps, a):
                 if indirect:
                     rows.append(("Through those", ", ".join(f"[{d}](#dep-{d})" for d in indirect)))
             if x.get("notes"):
-                rows.append(("Notes", esc(x["notes"])))
+                rows.append(("Notes", x["notes"]))
             if x.get("unsure"):
-                rows.append(("Unsure", esc(x["unsure"])))
+                rows.append(("Unsure", x["unsure"]))
             p("| | |")
             p("|---|---|")
             for k, v in rows:
-                p(f"| {k} | {v} |")
+                p(f"| {k} | {esc(v)} |")
             p("")
 
     # dependencies
@@ -635,8 +656,8 @@ def render(reg, feats, deps, a):
           f"{used or '–'} | {len(a['needed_by'].get(d['id'], []))} |")
     p("")
     for d in deps:
-        p(f"- **{esc(d['name'])}** (`{d['id']}`): {esc(d['why'])}"
-          + (f" Unsure: {esc(d['unsure'])}" if d.get("unsure") else "")
+        p(f"- **{esc(d['name'], cell=False)}** (`{d['id']}`): {esc(d['why'], cell=False)}"
+          + (f" Unsure: {esc(d['unsure'], cell=False)}" if d.get("unsure") else "")
           + (f" <{d['url']}>" if d.get("url") else ""))
     p("")
 

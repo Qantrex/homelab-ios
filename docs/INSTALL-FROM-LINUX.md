@@ -51,7 +51,7 @@ Until the first release, use B.
 ## B: build on the PC
 
 Needs Swift 6.4 and the iOS SDK from Xcode 27.1 (download `Xcode_27.1.xip` in the browser from
-https://developer.apple.com/download/all/?q=Xcode, Apple login).
+[developer.apple.com/download](https://developer.apple.com/download/all/?q=Xcode), Apple login).
 
 ```bash
 yay -S swift-bin   # from the AUR (any AUR helper, or makepkg)

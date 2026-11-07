@@ -25,7 +25,7 @@ yay -S swift-bin        # or the Swift 6.4 tarball from https://www.swift.org/in
 sudo apt install usbmuxd libimobiledevice-utils libfuse2   # Ubuntu 24.04 and newer: libfuse2t64
 ```
 
-Install Swift 6.4 with swiftly, as described on https://www.swift.org/install/linux/:
+Install Swift 6.4 with swiftly, as described on <https://www.swift.org/install/linux/>:
 
 ```bash
 curl -O "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
@@ -49,7 +49,7 @@ install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 
 Record the checksum the first time (with the version and the date), so a later download can be compared with it.
 
-Download **Xcode 27.1** in the browser (Apple login) from https://developer.apple.com/download/all/?q=Xcode, then:
+Download **Xcode 27.1** in the browser (Apple login) from <https://developer.apple.com/download/all/?q=Xcode>, then:
 
 ```bash
 xtool sdk install ~/Downloads/Xcode_27.1.xip
@@ -205,7 +205,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabResetState YES` | Deletes all servers, tokens, cached data and settings before the start |
 | `-HomelabAction <name>` | Opens the Actions tab with that action's form (once the server lists it; dropped when it doesn't). Names as in `GET /actions`: `[a-z0-9][a-z0-9_-]*` |
 | `-HomelabHost <host-id>` | Opens Lab with that host's details (once the state has the host; dropped when a newer state lacks it) |
-| `-HomelabDeals list\|detail` | Opens the Deals screen (`detail`: with the first deal's detail). Needs a server with deals (the demo has them) |
+| <code>-HomelabDeals list&#124;detail</code> | Opens the Deals screen (`detail`: with the first deal's detail). Needs a server with deals (the demo has them) |
 | `-HomelabPins <ids>` | Sets the Home tiles of the Home Assistant server: entity ids separated by commas (`light.a,script.b`), at most 12; anything odd drops the whole argument |
 | `-HomelabTileNames "<id>=<name>,…"` | Sets custom names for pinned Home tiles, for example `"light.wohnzimmer_lampen=Living room,script.homelab_radio_off=Alarm off"`. Ids as for `-HomelabPins`, names trimmed to one line of at most 24 characters and without commas; a bad id, an empty name or more than 12 entries drops the whole argument. Names only stick to pinned entities, so give `-HomelabPins` first (an earlier launch is enough). Home Assistant keeps its own names |
 | `-HomelabTileIcons "<id>=<symbol>,…"` | Sets icons for pinned Home tiles, for example `"light.wohnzimmer_lampen=lamp.floor,script.homelab_goodnight=moon.stars"`. Symbols only from the app's list (`TileIcon.choices`: `lightbulb`, `lamp.floor`, `lamp.table`, `lamp.ceiling`, `sofa`, `sparkles`, `book`, `moon.stars`, `bed.double`, `sun.horizon`, `alarm`, `music.note`, `speaker.slash`, `radio`, `tv`, `power`); anything else, a bad id or more than 12 entries drops the whole argument. Like names, icons only stick to pinned entities |

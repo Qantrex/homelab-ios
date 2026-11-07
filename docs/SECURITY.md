@@ -75,5 +75,5 @@ For the reference server most of this is the default. For your own server, do th
 ## Reporting a problem
 
 Please don't open a public issue for a security bug. Use GitHub's private vulnerability reporting: the repository's
-**Security** tab → **Report a vulnerability** (https://github.com/Qantrex/homelab-ios/security). Say what you found,
+**Security** tab → **Report a vulnerability** (<https://github.com/Qantrex/homelab-ios/security>). Say what you found,
 how to reproduce it, and which version (Settings → About, or Diagnostics).
