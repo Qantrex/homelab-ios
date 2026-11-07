@@ -77,6 +77,33 @@ CI builds no device IPA at all. The device build, with the widget and App Group 
 
 By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release workflow.
 
+## Docs site
+
+<https://qantrex.github.io/homelab-ios/> is this `docs/` folder as a website. GitHub Pages builds it from branch
+`main`, folder `/docs`, with its classic Jekyll build on every push (no workflow of ours, nothing to install). The
+site is docs only: no IPA, no `source.json` (releases stay by hand, see [RELEASE.md](RELEASE.md)).
+
+| File | What it does |
+|---|---|
+| `docs/_config.yml` | Title, base URL `/homelab-ios`, kramdown with GFM, `layout: default` for every page, what is left out (`screenshots/`, `icon/README.md`) |
+| `docs/_layouts/default.html` | The one layout: true black, system sans, white underlined links, wide tables scroll in their own box. Links that leave `docs/` (`../README.md`, `../Sources/...`) open the file on GitHub |
+| `docs/index.md` | The start page: what Homelab is and the list of docs |
+
+Every `.md` in `docs/` becomes a page (Pages' default plugins: optional front matter, title from the first heading),
+and links to other `.md` files become links to their pages. Write docs as usual for GitHub; two things differ on
+the site (kramdown, Jekyll 3.10):
+
+- **Liquid.** Every doc goes through Liquid first, and Jekyll 3.10 can't switch that off per page. Put lines with
+  <code>&#123;&#123; … &#125;&#125;</code> or <code>&#123;% … %&#125;</code> (Home Assistant templates, for
+  example) between the lines <code>&lt;!-- &#123;% raw %&#125; --&gt;</code> and
+  <code>&lt;!-- &#123;% endraw %&#125; --&gt;</code>; GitHub hides these comments. `scripts/lint` fails on such
+  lines outside a raw block. (This paragraph writes the braces as `&#123;` and `&#125;` for the same reason.)
+- **A `|` inside code in a table cell.** GitHub needs `\|` there, kramdown shows the backslash. Write
+  `<code>a&#124;b</code>` instead; `scripts/features render` does that by itself in FEATURES.md.
+
+To look at a change before pushing, any Jekyll 3.10 works (`bundle exec jekyll serve -s docs` with the
+`github-pages` gem); nothing in the repo needs it.
+
 ## Local scripts
 
 | Script | What it does |

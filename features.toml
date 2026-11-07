@@ -1176,6 +1176,19 @@ docs = ["docs/FEATURES.md#features"]
 not_needed = { tests = "it checks itself on every scripts/lint run", device_tests = "runs on a computer" }
 depends_on = ["python3"]
 
+[[feature]]
+id = "docs-site"
+name = "Docs site (GitHub Pages)"
+area = "Tooling"
+status = "shipped"
+since = "2026-11-07"
+summary = "<https://qantrex.github.io/homelab-ios/>: the docs/ folder as a website, built by GitHub Pages from main /docs (classic Jekyll build, no workflow). True black, one typeface, wide tables scroll in their own box; links out of docs/ open the file on GitHub. Docs only, never an IPA or source.json."
+sources = ["docs/_config.yml", "docs/_layouts/default.html", "docs/index.md"]
+docs = ["docs/CI.md#docs-site", "README.md#docs"]
+not_needed = { tests = "scripts/lint checks the docs for Liquid tags; GitHub Pages builds the site", device_tests = "a website, not the app" }
+depends_on = ["github-pages"]
+notes = "Pages runs Jekyll 3.10 (Liquid on every page, no render_with_liquid) and kramdown: a pipe inside code in a table cell is written `<code>a&#124;b</code>`, which scripts/features render does by itself."
+
 # ==================================================================================================== dependencies
 # kind: toolchain | sdk | account | install | runtime | ios-framework | server-side | ci | tooling
 # pins: "file: text" that must still be in that file (a version, a digest, a SHA). A bump without a registry update
@@ -1483,6 +1496,14 @@ pins = [
   ".github/workflows/ci.yml: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
   ".github/workflows/ci.yml: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2",
 ]
+
+[[dependency]]
+id = "github-pages"
+name = "GitHub Pages (classic Jekyll build)"
+kind = "ci"
+version = "Jekyll 3.10.0, kramdown 2.4.0 with GFM input, Liquid 4.0.4, jekyll-relative-links 0.6.1 (as of 2026-11-07)"
+why = "Builds and hosts the docs site from main /docs on every push, without a workflow of ours. GitHub sets the versions; Liquid on every page and kramdown instead of GitHub's renderer are why docs/CI.md#docs-site has two rules."
+url = "https://pages.github.com/versions/"
 
 [[dependency]]
 id = "gha-runners"

@@ -150,6 +150,9 @@ More: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Docs
 
+Docs site: <https://qantrex.github.io/homelab-ios/>, the `docs/` folder as a website (GitHub Pages builds it from
+`main`, see [docs/CI.md](docs/CI.md#docs-site)).
+
 | Doc | For |
 |---|---|
 | [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) | Installing from a Linux PC over USB (no Mac) |
