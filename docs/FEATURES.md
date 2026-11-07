@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 77 | 70 | 6 | 1 | 37 | 3 |
+| 81 | 70 | 10 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (11)
+### Today (12)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -23,9 +23,10 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 6 | n/a | 1 |
+| [Where you are (presence from Home Assistant)](#presence) | partial | – | 2 | H8, H9 | 3 |
 | [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
-| [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | n/a | 1 |
+| [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | **X2** | 3 |
 | [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | partial | – | 4 | DL10 | 3 |
@@ -111,12 +112,13 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Widget data: snapshot, self-fetch, stale marks, lock redaction](#widget-data) | shipped | `status` | 7 | **W6**, W11, **W12** | 3 |
 | ["Leave by" Live Activity](#live-activity) | shipped | `status` | 8 | LA1, LA2, LA3, LA4 | 2 |
 
-### Notifications (3)
+### Notifications (4)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Background refresh](#background-refresh) | shipped (?) | – | 1 | **B1**, **B3** | 2 |
 | [Local notifications for new problems and actions](#notifications) | shipped | `status`, `actions` | 3 | B2, **B4**, B5, **B6** | 2 |
+| [Quiet hours for notifications](#quiet-hours) | partial | – | 1 | B12, B13 | 3 |
 | [Approve and Deny on the notification](#notification-actions) | shipped | `actions` | 1 | B7, B8, B9, B10, B11 | 2 |
 
 ### Links (2)
@@ -126,11 +128,12 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [homelab:// links to tabs and hosts](#deep-links) | shipped | – | 7 | B3b | 2 |
 | [Launch arguments (tests, screenshots, first run over USB)](#launch-arguments) | shipped | – | 3 | n/a | 1 |
 
-### Settings (8)
+### Settings (9)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Welcome screen](#onboarding) | shipped | – | 1 | **FS1** | 1 |
+| [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
 | [Demo mode](#demo-mode) | shipped | – | 9 | **FS2**, **FS3**, **FS4** | 3 |
 | [Servers: add, edit, test, switch](#servers) | shipped | – | 6 | **R1**, **R2**, R3, R6, **R8**, **ST1**, **ST2** | 3 |
 | [Tabs follow the server's features](#tabs-by-features) | shipped | `status` | 5 | **FS2**, T8 | 2 |
@@ -162,12 +165,13 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (3)
+### Server (4)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
+| [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -204,12 +208,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 
 | Kind | Entry | Features |
 |---|---|---|
-| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server) |
+| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources) |
+| Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server) |
+| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources) |
+| Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources) |
 | Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
@@ -230,6 +234,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Launch arguments (`LaunchArguments`) | `-HomelabDemo` | [launch-arguments](#launch-arguments), [demo-mode](#demo-mode) |
 | Launch arguments (`LaunchArguments`) | `-HomelabDemoScene` | [home-only-today](#home-only-today), [launch-arguments](#launch-arguments), [demo-mode](#demo-mode) |
 | Launch arguments (`LaunchArguments`) | `-HomelabDensity` | [today-layout](#today-layout) |
+| Launch arguments (`LaunchArguments`) | `-HomelabFirstRun` | [first-run](#first-run) |
 | Launch arguments (`LaunchArguments`) | `-HomelabHost` | [host-detail](#host-detail) |
 | Launch arguments (`LaunchArguments`) | `-HomelabPersonality` | [personality](#personality) |
 | Launch arguments (`LaunchArguments`) | `-HomelabPins` | [home-tiles](#home-tiles) |
@@ -263,12 +268,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
 | Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
-| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
+| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [first-run](#first-run), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
-| Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
+| Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources) |
 | Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
@@ -362,6 +367,24 @@ One optional rule per Today section says when it shows: Always (the default, and
 | Docs | [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Depends on | [today-layout](#today-layout) |
 
+### presence
+
+**Where you are (presence from Home Assistant)** · Today · partial · since 2026-11-07
+
+Settings → Today → "Where you are" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass.
+
+| | |
+|---|---|
+| Server | `Home Assistant GET /api/states: person.* and device_tracker.* state` |
+| Sources | [HomePresence.swift](../Sources/HomelabKit/HomePresence.swift), [PresenceSettings.swift](../Sources/HomelabUI/PresenceSettings.swift), [HomeTiles.swift#fetched](../Sources/HomelabUI/HomeTiles.swift), [TodayView.swift#presenceRefresh](../Sources/HomelabUI/TodayView.swift) |
+| Tests | `HomePresenceTests`, `PresenceModelTests` |
+| Phone (DeviceTest.md) | H8, H9 |
+| Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
+| Settings | Settings → Today → Where you are |
+| Depends on | [show-rules](#show-rules), [home-tiles](#home-tiles), [home-assistant-api](#dep-home-assistant-api) |
+| Through those | [keychain](#dep-keychain) |
+| Notes | docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), HomeModel.presence(_:)). |
+
 ### show-rule-editor
 
 **Show rules: editor and "Hidden now"** · Today · partial · since 2026-11-07
@@ -377,8 +400,9 @@ Settings → Today → Sections shows each section's rule in words under its nam
 | Docs | [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Launch arguments | `-HomelabRules`, `-HomelabTime` |
 | Settings | Settings → Today → Sections → tap a section |
-| Depends on | [show-rules](#show-rules), [today-layout](#today-layout) |
-| Notes | docs/plans/MODULAR.md M3.2. SectionRuleRow takes `presence` (false until M3.3 wires it). The rule clock ticks every 30 s on Today only while a rule is set. |
+| Depends on | [show-rules](#show-rules), [today-layout](#today-layout), [presence](#presence) |
+| Through those | [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain) |
+| Notes | docs/plans/MODULAR.md M3.2. The sheet offers what AppModel.ruleKinds(for:) allows (At home and Away once Where you are is set, feature presence). The rule clock ticks every 30 s on Today only while a rule is set. |
 
 ### last-report
 
@@ -401,14 +425,14 @@ The agent's last chat report (morning, watchdog, …) at the end of Today; tap o
 
 **Start presets (Home, Watch, Everything)** · Today · partial · since 2026-11-07
 
-For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. Kit only; the first-run screens that offer it come with M2.3.
+For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. The first run's "Start with" offers them (first-run).
 
 | | |
 |---|---|
 | Server | `GET /info`, `info.features` |
 | Sources | [StartPreset.swift#StartPreset](../Sources/HomelabKit/StartPreset.swift), [StartPreset.swift#StartLayout](../Sources/HomelabKit/StartPreset.swift) |
 | Tests | `StartPresetTests` |
-| Phone (DeviceTest.md) | n/a: kit only, no screen yet; M2.3 adds the first-run screens and their DeviceTest rows |
+| Phone (DeviceTest.md) | **FS5**, **FS6** |
 | Docs | [docs/plans/MODULAR.md#m2-app-side](plans/MODULAR.md#m2-app-side) |
 | Depends on | [today-layout](#today-layout) |
 | Notes | Sections the servers offer come first in the preset's order; the others stay on behind them, so they appear once a server offers them. A preset that matches the defaults (the demo with Everything) stores nil for the layout. |
@@ -1118,6 +1142,23 @@ Optional, off by default: one notification per new problem or new action to appr
 | Depends on | [background-refresh](#background-refresh), [usernotifications](#dep-usernotifications) |
 | Through those | [backgroundtasks](#dep-backgroundtasks) |
 
+### quiet-hours
+
+**Quiet hours for notifications** · Notifications · partial · since 2026-11-07
+
+Settings → Notifications → "Quiet hours" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with ", quiet hours". Without it nothing changes.
+
+| | |
+|---|---|
+| Sources | [QuietHours.swift](../Sources/HomelabKit/QuietHours.swift), [QuietHoursSettings.swift](../Sources/HomelabUI/QuietHoursSettings.swift), [Background.swift#notificationsToPost](../Sources/HomelabUI/Background.swift) |
+| Tests | `QuietHoursTests` |
+| Phone (DeviceTest.md) | B12, B13 |
+| Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
+| Settings | Settings → Notifications → Quiet hours |
+| Depends on | [notifications](#notifications), [show-rules](#show-rules) |
+| Through those | [backgroundtasks](#dep-backgroundtasks), [usernotifications](#dep-usernotifications) |
+| Notes | docs/plans/MODULAR.md M3.3. The window is a TimeWindow (ShowRule.swift), every day, by the phone's time zone. |
+
 ### notification-actions
 
 **Approve and Deny on the notification** · Notifications · shipped · since 2026-11-06
@@ -1167,7 +1208,7 @@ A "waiting for you" notification has Approve and Deny (not Always), both behind 
 
 **Welcome screen** · Settings · shipped · since 2026-11-04
 
-Until a server exists: "Your homelab, in your pocket", four points, Add a server, Try the demo and a link to the server setup.
+Until a server exists: "Your homelab, in your pocket", four points, Add Home Assistant, Add a Homelab server, Try the demo and a link to the server setup. The two Add buttons start the first run (first-run).
 
 | | |
 |---|---|
@@ -1175,6 +1216,25 @@ Until a server exists: "Your homelab, in your pocket", four points, Add a server
 | Tests | `AppModelTests/demoAndReset` |
 | Phone (DeviceTest.md) | **FS1** |
 | Docs | [README.md#who-it-is-for](../README.md#who-it-is-for) |
+
+### first-run
+
+**First run: found, start with, tiles** · Settings · partial · since 2026-11-07
+
+Only for someone with no server saved (never the owner): Add Home Assistant or Add a Homelab server opens the server editor; after Save, Found lists what the servers offer in words and "Start with" the three start presets, the suggested one checked; Start writes it, then the tile picker opens when Home Assistant has tiles; then Today, with a line pointing to Settings → Today. Every step can be skipped; the demo stays one tap.
+
+| | |
+|---|---|
+| Server | `GET /info`, `info.features` |
+| Sources | [FirstRun.swift#FirstRun](../Sources/HomelabKit/FirstRun.swift), [FirstRun.swift#showsFirstRun](../Sources/HomelabKit/FirstRun.swift), [FirstRunView.swift#FoundView](../Sources/HomelabUI/FirstRunView.swift), [RootView.swift#WelcomeView](../Sources/HomelabUI/RootView.swift), [TodayView.swift#startTip](../Sources/HomelabUI/TodayView.swift), [SettingsView.swift#onSaved](../Sources/HomelabUI/SettingsView.swift) |
+| Tests | `FirstRunTests` |
+| Phone (DeviceTest.md) | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 |
+| CI screenshots | `first-run-welcome-light`, `first-run-welcome-dark`, `first-run-welcome-xxl`, `first-run-found-light`, `first-run-found-dark`, `first-run-found-xxl` |
+| Docs | [docs/plans/MODULAR.md#m2-app-side](plans/MODULAR.md#m2-app-side), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md](CI.md) |
+| Launch arguments | `-HomelabFirstRun` |
+| Depends on | [onboarding](#onboarding), [start-presets](#start-presets), [servers](#servers), [home-tiles](#home-tiles) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain), [tailscale](#dep-tailscale) |
+| Notes | Nothing of the run is stored: it lives in AppModel.firstRun (memory), so an app quit mid-run opens on the tabs with the servers saved so far, and the line under Today goes when the app quits. A preset writes only Today's layout and density (StartLayout.apply). -HomelabFirstRun only works while every server is a demo one. |
 
 ### demo-mode
 
@@ -1434,6 +1494,23 @@ One Python file for any homelab: host and web checks, cards (also from your own 
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
 | Notes | Real mode offers status and hosts, plus actions, chat, cards and services when configured. Fixture mode (--fixtures Sources/HomelabKit/Fixtures) serves the demo's /info, so every feature, with run-actions, documents, share, search and deals answered in memory. |
 
+### server-sources
+
+**Homelab Bridge sources interface** · Server · partial · since 2026-11-07
+
+A `sources` list in the reference server's config reads other services' APIs (one stdlib module per type in server/sources/) and adds their problems, hosts, cards and services to /state and /services: ids prefixed `<name>:`, keys only from env variables and never in a reply, read-only, a failing source is exactly one warning, each source on its own `every`. Without `sources` nothing changes.
+
+| | |
+|---|---|
+| Server | `status`, `hosts`, `cards`, `services`, `GET /state`, `GET /services`, `state.problems`, `state.hosts`, `state.cards`, `services` |
+| Sources | [__init__.py#Runner](../server/sources/__init__.py), [__init__.py#Fetch](../server/sources/__init__.py), [example.py#collect](../server/sources/example.py), [fake_upstream.py#FakeUpstream](../server/fake_upstream.py), [test_sources.py](../server/test_sources.py), [normal.json](../server/recordings/example/normal.json), [odd.json](../server/recordings/example/odd.json), [sources-example.json](../server/examples/sources-example.json) |
+| Tests | `server/test_sources.py::ConfigRules`, `server/test_sources.py::FetchRules`, `server/test_sources.py::MergeRules`, `server/test_sources.py::RunnerRules`, `server/test_sources.py::ExampleSource`, `server/test_sources.py::SourceModuleRules`, `server/test_sources.py::BridgeEndToEnd`, `server/test_sources.py::FakeUpstreamRules` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources), [docs/BRIDGE.md#homelab-bridge-adding-a-source](BRIDGE.md#homelab-bridge-adding-a-source) |
+| Depends on | [python3](#dep-python3), [reference-server](#reference-server) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet. |
+
 ### live-api-check
 
 **Live API check** · Server · shipped · since 2026-11-06
@@ -1551,9 +1628,9 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 11 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 27 |
-| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 4 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 13 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 29 |
+| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
 | <a id="dep-seerr"></a>**Seerr (server side)** | server-side | – | [API.md](API.md) | [find](#find) | 1 |
@@ -1562,15 +1639,15 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widgetkit"></a>**WidgetKit** | ios-framework | iOS 18 SDK | [HomelabWidget.swift](../Sources/HomelabWidget/HomelabWidget.swift) | [widget-status](#widget-status), [widget-day](#widget-day), [widget-hosts](#widget-hosts), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos) | 6 |
 | <a id="dep-activitykit"></a>**ActivityKit** | ios-framework | iOS 18 SDK | [LeaveActivityController.swift](../Sources/HomelabUI/LeaveActivityController.swift), [App-Info.plist](../App-Info.plist) | [live-activity](#live-activity) | 1 |
 | <a id="dep-visionkit"></a>**VisionKit document camera** | ios-framework | iOS 18 SDK | [DocumentScanner.swift](../Sources/HomelabUI/DocumentScanner.swift), [App-Info.plist](../App-Info.plist), [Package.swift](../Package.swift) | [scan](#scan) | 1 |
-| <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 8 |
-| <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 3 |
+| <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 9 |
+| <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 4 |
 | <a id="dep-localauthentication"></a>**LocalAuthentication (Face ID)** | ios-framework | iOS 18 SDK | [Components.swift](../Sources/HomelabUI/Components.swift), [App-Info.plist](../App-Info.plist) | [app-lock](#app-lock) | 1 |
-| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 5 |
+| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 8 |
 | <a id="dep-app-group-entitlement"></a>**App Group entitlement** | runtime | group.com.qantrex.homelab (renamed by SideStore and xtool) | [App.entitlements](../App.entitlements), [Widget.entitlements](../Widget.entitlements), [Share.entitlements](../Share.entitlements) | [app-group](#app-group) | 12 |
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 5 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 6 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
@@ -1633,9 +1710,9 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 1 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 3 |  |
-| Home Assistant REST API |  |  |  |  |  |  |  |  | 4 |  |  |  |  |  |  |  |  |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 2 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 4 |  |
+| Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Seerr (server side) |  |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1644,15 +1721,15 @@ Features per area that need each dependency, directly or through another feature
 | WidgetKit |  |  |  |  |  |  |  |  |  | 6 |  |  |  |  |  |  |  |  |
 | ActivityKit |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |  |  |
 | VisionKit document camera |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 3 |  |  |  |  |  |  |  |
-| UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 2 |  |  |  |  |  |  |  |
+| BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 4 |  |  |  |  |  |  |  |
+| UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 3 |  |  |  |  |  |  |  |
 | LocalAuthentication (Face ID) |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |
-| Keychain (Security framework) |  |  |  |  |  |  |  |  | 4 |  |  |  |  | 1 |  |  |  |  |
+| Keychain (Security framework) | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 | 1 |  |  |  |  |
 | App Group entitlement |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  |  |  |  |
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 2 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 3 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |

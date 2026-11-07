@@ -10,8 +10,6 @@ import SwiftUI
 struct SectionRuleRow: View {
     let model: AppModel
     let section: TodaySection
-    /// Whether presence (At home, Away) is set up (M3.3); until then the sheet doesn't offer it.
-    var presence = false
     @State private var editing = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -50,29 +48,35 @@ struct SectionRuleRow: View {
             }
             .labelsHidden()
         }
-        .sheet(isPresented: $editing) { ShowRuleSheet(model: model, section: section, presence: presence) }
+        .sheet(isPresented: $editing) { ShowRuleSheet(model: model, section: section) }
     }
 }
 
 /// When one section shows: Always, When it needs me, a named time (Mornings … Weekends), Custom (from, to, days),
-/// and At home or Away once presence is set up. Done saves, Cancel keeps the old rule.
+/// and At home or Away once Settings → Today → Where you are is set (`AppModel.ruleKinds(for:)`). Done saves, Cancel
+/// keeps the old rule.
 struct ShowRuleSheet: View {
     let model: AppModel
     let section: TodaySection
-    let presence: Bool
     @State private var rule: ShowRule?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.calendar) private var calendar
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    init(model: AppModel, section: TodaySection, presence: Bool) {
+    init(model: AppModel, section: TodaySection) {
         self.model = model
         self.section = section
-        self.presence = presence
         _rule = State(initialValue: model.settings.todayLayout.rule(for: section))
     }
 
     private var chosen: RuleOption { RuleOption.current(rule, for: section) }
+
+    /// The kinds the app allows, plus the stored rule's own (an At home rule stays visible after Where you are is
+    /// turned off, so it can be changed).
+    private var options: [RuleOption] {
+        let offered = RuleOption.options(for: section, kinds: model.ruleKinds(for: section))
+        return offered.contains(chosen) ? offered : offered + [chosen]
+    }
 
     /// The window Custom edits, while Custom is chosen.
     private var custom: TimeWindow? {
@@ -85,7 +89,7 @@ struct ShowRuleSheet: View {
             List {
                 Group {
                     Section {
-                        ForEach(RuleOption.options(for: section, presence: presence)) { optionRow($0) }
+                        ForEach(options) { optionRow($0) }
                     } header: {
                         Text("Show")
                     } footer: {

@@ -21,6 +21,7 @@ private func at(_ text: String) -> Date { ServerDate.parse(text)! }
         #expect(!RuleOption.options(for: .cards, presence: false).contains(.atHome))                  // no presence yet
         #expect(RuleOption.options(for: .cards, presence: true).suffix(2) == [.atHome, .away])
         #expect(!RuleOption.options(for: .deals, presence: true).contains(.overkillOnly))
+        #expect(RuleOption.options(for: .machines, kinds: [.always, .away]) == [.overkillOnly, .always, .away])
     }
 
     @Test func eachOptionReadsBackAsItself() {
@@ -155,6 +156,10 @@ private func at(_ text: String) -> Date { ServerDate.parse(text)! }
         let e = evening.todayContext(now: now, calendar: utc())
         #expect(evening.hiddenOnToday(e, now: now).isEmpty)                    // the rule is stored, 19:00 is evening
         #expect(Density.standard.sections(evening.settings.todayLayout, e).contains(.report))
+
+        let away = Presence(atHome: false, fetched: now)
+        #expect(m.todayContext(now: now, calendar: utc(), presence: away).presence == away)          // passed through
+        #expect(RuleOption.options(for: .deals, kinds: m.ruleKinds(for: .deals)) == RuleOption.options(for: .deals, presence: false))
 
         let (cleared, _, _, _) = makeModel(server, args: ["-HomelabRules", "report=always,cards=none"], storage: storage)
         #expect(cleared.settings.todayLayout.rules == nil && cleared.settings.today == nil)    // back to no rules

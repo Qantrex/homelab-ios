@@ -10,6 +10,8 @@ final class HomeModel {
     var loading = false
     var busy: Set<String> = []
     var actionError: String?
+    /// When `entities` last came from Home Assistant without an error; presence older than 30 min counts as unknown.
+    var fetched: Date?
     private var loadedFor: String?
 
     /// A different Home Assistant (new address) means the old entities don't exist there.
@@ -17,6 +19,7 @@ final class HomeModel {
         guard server?.target != loadedFor else { return }
         loadedFor = server?.target
         entities = []
+        fetched = nil
         error = nil
         busy = []
     }
@@ -29,6 +32,7 @@ final class HomeModel {
             let fresh = try await api.states()
             guard sid == loadedFor else { return }   // another Home Assistant now
             entities = fresh
+            fetched = Date()
             error = nil
         } catch {
             guard sid == loadedFor else { return }
@@ -52,7 +56,7 @@ final class HomeModel {
             // HA sometimes answers before the device reports its new state.
             if changed.isEmpty || entity.control == .toggle {
                 try? await Task.sleep(for: .milliseconds(700))
-                if let fresh = try? await api.states(), sid == loadedFor { entities = fresh }
+                if let fresh = try? await api.states(), sid == loadedFor { entities = fresh; fetched = Date() }
             }
         } catch {
             guard sid == loadedFor else { return }

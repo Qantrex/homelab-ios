@@ -1,0 +1,11 @@
+{
+  "_comment": "Homelab Bridge with one source, against the fake upstream (docs/BRIDGE.md#try-it). Start: python3 server/fake_upstream.py server/recordings/example/normal.json --port 8795, then HOMELAB_TOKENS=<16+ characters> LAB_KEY=any-made-up-key python3 server/reference_server.py --config server/examples/sources-example.json",
+
+  "name": "bridge example",
+  "listen": "127.0.0.1:8791",
+  "this_host": {"id": "bridge", "kind": "server", "disks": ["/"]},
+
+  "sources": [
+    {"name": "Lab", "type": "example", "url": "http://127.0.0.1:8795", "key_env": "LAB_KEY", "every": 60}
+  ]
+}

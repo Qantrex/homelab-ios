@@ -153,9 +153,9 @@ targets.
 
 | Command | Needs | Runs |
 |---|---|---|
-| `scripts/test-linux` | docker, python3 | Same as the CI `linux` job: fixture server on `127.0.0.1:8791`, `KIT_ONLY=1 swift test` in `swift:6.4-noble`, the reference server's Python tests, `scripts/lint` |
+| `scripts/test-linux` | docker, python3 | Same as the CI `linux` job: fixture server on `127.0.0.1:8791`, `KIT_ONLY=1 swift test` in `swift:6.4-noble`, the reference server's Python tests (`server/test_*.py`), `scripts/lint` |
 | `KIT_ONLY=1 swift test` | Swift 6.4 | The HomelabKit tests. The integration tests are skipped unless `HOMELAB_FIXTURE_URL` is set |
-| `python3 -m unittest -v server/test_reference_server.py` | python3 | The reference server's tests |
+| `python3 -m unittest -v server/test_*.py` | python3 | The reference server's tests and its sources' tests ([BRIDGE.md](BRIDGE.md)) |
 | `scripts/lint` | bash, grep (python3 3.11+ for the registry) | No `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit, the feature registry (`scripts/features check`) |
 
 To run the integration tests natively, start the fixture server first:
@@ -206,6 +206,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabAction <name>` | Opens the Actions tab with that action's form (once the server lists it; dropped when it doesn't). Names as in `GET /actions`: `[a-z0-9][a-z0-9_-]*` |
 | `-HomelabHost <host-id>` | Opens Lab with that host's details (once the state has the host; dropped when a newer state lacks it) |
 | <code>-HomelabDeals list&#124;detail</code> | Opens the Deals screen (`detail`: with the first deal's detail). Needs a server with deals (the demo has them) |
+| `-HomelabFirstRun YES` | With `-HomelabDemo YES` (and a reset): opens the first run's Found step, with "Start with", over the demo servers. Does nothing while any server isn't a demo one, so it never shows over your own |
 | `-HomelabPins <ids>` | Sets the Home tiles of the Home Assistant server: entity ids separated by commas (`light.a,script.b`), at most 12; anything odd drops the whole argument |
 | `-HomelabTileNames "<id>=<name>,…"` | Sets custom names for pinned Home tiles, for example `"light.wohnzimmer_lampen=Living room,script.homelab_radio_off=Alarm off"`. Ids as for `-HomelabPins`, names trimmed to one line of at most 24 characters and without commas; a bad id, an empty name or more than 12 entries drops the whole argument. Names only stick to pinned entities, so give `-HomelabPins` first (an earlier launch is enough). Home Assistant keeps its own names |
 | `-HomelabTileIcons "<id>=<symbol>,…"` | Sets icons for pinned Home tiles, for example `"light.wohnzimmer_lampen=lamp.floor,script.homelab_goodnight=moon.stars"`. Symbols only from the app's list (`TileIcon.choices`: `lightbulb`, `lamp.floor`, `lamp.table`, `lamp.ceiling`, `sofa`, `sparkles`, `book`, `moon.stars`, `bed.double`, `sun.horizon`, `alarm`, `music.note`, `speaker.slash`, `radio`, `tv`, `power`); anything else, a bad id or more than 12 entries drops the whole argument. Like names, icons only stick to pinned entities |

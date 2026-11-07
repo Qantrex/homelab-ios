@@ -3,7 +3,7 @@
 # Runs the Linux-testable part locally, the same as CI job `linux`:
 #   1. the fixture server on the host (127.0.0.1:8791), so tests can use HOMELAB_FIXTURE_URL
 #   2. `KIT_ONLY=1 swift test` inside the swift:6.4-noble container (host network, repo mounted at /w)
-#   3. the Python tests of the reference server, on the host
+#   3. the Python tests of the reference server and its sources (server/test_*.py), on the host
 # Needs docker and python3. Env: PORT (default 8791), SWIFT_IMAGE (default swift:6.4-noble).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -30,9 +30,9 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp \
   -e KIT_ONLY=1 -e HOMELAB_FIXTURE_URL="http://127.0.0.1:$PORT" -e UPDATE_GOLDENS="${UPDATE_GOLDENS:-}" \
   -v "$PWD":/w -w /w "$SWIFT_IMAGE" swift test --scratch-path .build-linux
 
-if [ -f server/test_reference_server.py ]; then
+if compgen -G "server/test_*.py" > /dev/null; then
   echo "== python tests"
-  python3 -m unittest -v server/test_reference_server.py
+  python3 -m unittest -v server/test_*.py
 fi
 
 echo "== lint"

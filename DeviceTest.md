@@ -16,7 +16,7 @@ other rows are nice-to-have: run them when the area changed, and note what you s
 | Area | Rows |
 |---|---|
 | Install with xtool | X1, X2, X3 |
-| First start and demo | FS1 to FS4 |
+| First start and demo | FS1 to FS6, FS9 |
 | Real server | R1, R2, R4, R7, R8 |
 | Today | T1, T2, T7 |
 | Lab | O1, O3, O4 |
@@ -50,10 +50,16 @@ How the owner installs it (docs/INSTALL-FROM-LINUX.md). Set up servers, a token 
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| FS1 | Welcome screen | "Your homelab, in your pocket", a short text, four points, **Add a server**, **Try the demo** and a link to the server setup. No tabs yet | | |
+| FS1 | Welcome screen | After Settings → Reset everything (or a fresh install): "Your homelab, in your pocket", a short text, four points, **Add Home Assistant**, **Add a Homelab server**, **Try the demo** and a link to the server setup. No tabs yet | | |
 | FS2 | Try the demo | Today with the date, a status line, the "today" numbers, actions waiting and Home tiles. Tabs: Today, Actions (with badge), Chat, Lab, Settings | | |
 | FS3 | Demo is alive | Demo chat answers a message. A demo Home tile on Today flips. A demo Approve shows an answer | | |
 | FS4 | Demo off | Settings → Demo servers off → back to the welcome screen (when no own server exists) | | |
+| FS5 | First run with Home Assistant | From the welcome: **Add Home Assistant** → the editor opens with Type Home Assistant → address and token → **Save**. "Found" shows the Home Assistant with its tiles in words ("12 lights, 4 switches and 3 scenes"), and "Start with" Home, Watch and Everything, one line each, **Home** checked and marked Suggested → **Start** → the tile picker opens → tap one light → **Done**: Today with that tile (Calm), and at the bottom "Change what Today shows in Settings → Today". At most 5 taps after typing the token | | |
+| FS6 | First run with a Homelab server | From the welcome: **Add a Homelab server** → Homelab API, address → **Save**. Found shows "Asking `<host>`…", then what the server offers in words (Status and problems, Machines, …); the reference server suggests **Watch**. Tap **Everything** (the checkmark moves) → **Start**: Today in Overkill (Settings → Today shows Overkill). No tile picker without Home Assistant | | |
+| FS7 | Second server in the run | FS6 up to Found → **Add Home Assistant too** → the editor (Home Assistant) → **Cancel**: back to Found. Again with **Save**: Found lists both servers; Start → the tile picker opens | | |
+| FS8 | Skip and cancel | From the welcome: Add Home Assistant → **Cancel**: the welcome again. Add it and Save → **Skip** on Found → the tile picker → **Cancel**: Today with the standard sections and density (Settings → Today: Standard), no tiles, and the line at the bottom | | |
+| FS9 | The owner sees none of it | With servers already saved (an update over a set-up install, or the owner's phone): the app opens on the tabs as before. No welcome, no Found, no line at the bottom of Today | | |
+| FS10 | Found with VoiceOver and large text | In FS5 with VoiceOver on: each preset reads its name, "suggested" for the suggested one, its line, and "selected" for the checked one; Skip and Start say what they do. At the largest accessibility text size nothing is cut off. After the run, the line at the bottom of Today opens Settings and is gone afterwards; after quitting the app it doesn't come back | | |
 
 ## Real server
 
@@ -80,7 +86,7 @@ How the owner installs it (docs/INSTALL-FROM-LINUX.md). Set up servers, a token 
 | T6 | Tile icons | Today → Home → Edit: under a pinned entity, "Icon on the tile" → Floor lamp, Done: the tile shows a floor lamp, filled while the light is on. Back to Automatic: the bulb is back. Unpin and re-pin: Automatic again | | |
 | T7 | "On Today" section | Today → Home → Edit: "On Today" at the top lists the pinned tiles in tile order, each with its name, "Name on the tile" (a visible label above the field) and "Icon on the tile". **Order** → drag a tile → **Done ordering** → Done: the tiles on Today are in the new order. Editing the Home Assistant server (new token or name) keeps the names and icons | | |
 | T8 | No "Lab ›" without Lab | With a server whose Lab tab is missing (none selected, only Home Assistant): no "Lab ›" next to the date | | |
-| T9 | Show rules: editor | Settings → Today → Sections: under each name a grey line with its rule ("Always"; Machines "Only in Overkill"; with only Home Assistant the other sections say "Not on your servers"). Tap Deals: a sheet "Deals" with Always, When it needs me (and what that means), Mornings … Weekends, Custom. Evenings → Done: the row says "Evenings". Custom: From and To pickers and seven day chips (Mon–Fri, then Sat, Sun); turn off Sat and Sun, Done: "Weekdays 18–22". Cancel keeps the old rule. The switch still hides the section, the handles still reorder. No At home or Away until presence is set up. Largest text size: the switch goes under the name, chips two per row, nothing cut. VoiceOver reads "Deals, Evenings", the chips by their full day names with "selected" | | |
+| T9 | Show rules: editor | Settings → Today → Sections: under each name a grey line with its rule ("Always"; Machines "Only in Overkill"; with only Home Assistant the other sections say "Not on your servers"). Tap Deals: a sheet "Deals" with Always, When it needs me (and what that means), Mornings … Weekends, Custom. Evenings → Done: the row says "Evenings". Custom: From and To pickers and seven day chips (Mon–Fri, then Sat, Sun); turn off Sat and Sun, Done: "Weekdays 18–22". Cancel keeps the old rule. The switch still hides the section, the handles still reorder. No At home or Away until Settings → Today → Where you are is set; then both are offered ("From Home Assistant"). Largest text size: the switch goes under the name, chips two per row, nothing cut. VoiceOver reads "Deals, Evenings", the chips by their full day names with "selected" | | |
 | T10 | Show rules: Today | Deals set to Evenings, before 18:00 (or `-HomelabRules deals=evenings -HomelabTime 14:00`): no Deals panel, and at the end of Today one grey line "Hidden now: Deals (evenings) · Show" (only while there is a deal to show). Tap it: Deals is back and the line goes, until the app is closed from the app switcher. After 18:00 (or `-HomelabTime 19:00`) Deals shows by itself, no line. Without any rule there is never such a line and Today is as before. Overkill shows everything. "Standard layout" removes all rules | | |
 | O1 | Lab header | "All good" or "N problems", "checked … ago", and "N actions waiting" when there are any. A host with a warning (gold dot) but no problem: "No problems · 1 host with a warning" (or "N hosts with a warning"), not "All good"; Today stays calm | | |
 | O2 | Problems | Listed first, with icon and "since …" | | |
@@ -202,6 +208,8 @@ Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has 
 | H5 | Unavailable | An unavailable device shows "Unavailable" (sensor) or a greyed-out toggle, no crash | | |
 | H6 | Wrong token | Edit HA, paste a wrong token: a clear error text in the Home section on Today, no crash. Put the right one back | | |
 | H7 | Home Assistant only | Only a Home Assistant server, no Homelab server (or the demo: `-HomelabResetState YES -HomelabDemo YES -HomelabDemoScene ha-only`). Today's headline is "Home." with what is true under it ("1 light on", "All lights off", "Front door open"). While a light, switch, fan, lock or pinned tile is unavailable: a gold triangle with "Bedroom fan unavailable" (one) or "2 unavailable" and a gold glow; else a white tick. Switch a light in the HA app: the count follows within 30 s. Only Today and Settings as tabs, no "Lab ›". With a wrong token the headline is a grey "Home." again | | |
+| H8 | Where you are | Settings → Today → "Where you are" (only with a Home Assistant server) says "Off" on a fresh setup. Open it: "Off" ticked, then the people of Home Assistant, then its device trackers, each with its id and state ("person.alex · Home", "… · Away"). iOS asks for no location. Pick yours: the row shows its id; "Off" removes it again. Nothing else on Today changes | | |
+| H9 | At home and Away | With Where you are set, a section with an "Away" rule (M3.2 rule sheet) is gone within a minute of Home Assistant showing you home, also with the Home section hidden; "At home" the other way round. Tailscale off for over 30 minutes, then open the app: both sections show (unknown presence passes) | | |
 
 ## Widgets
 
@@ -253,6 +261,8 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | B9 | Already answered | Approve the proposal in the app or chat first, then press Approve on its old notification: "`<server>`: no longer valid" (with the app lock on: "That didn't go through. Open the app to see why.") | | |
 | B10 | App lock and buttons | Lock on, iOS Settings → Notifications → Show Previews "When Unlocked" (the default). Lock the phone, wait for a new proposal notification: the locked lock screen shows only "Homelab" with no text. Look at it so Face ID unlocks: it names the action ("`<server>`: approve …?"). Long-press it: Approve and Deny. Approve asks for Face ID / the passcode if the phone isn't unlocked, then runs (no "open Homelab" refusal); the result notification only says "Approved. Open the app for the answer." A problem notification with the lock on still says only "Something needs a look." | | |
 | B11 | Press with the app killed | Swipe the app away, then Approve on a notification: the result notification still comes (iOS starts the app in the background) | | |
+| B12 | Quiet hours row | Settings → Notifications: no "Quiet hours" row while all toggles are off. Turn one on: "Quiet hours · Off". Turn quiet hours on: From 22:00, To 07:00, the row says "22–7". Turn it off again: Off | | |
+| B13 | Quiet hours hold | Quiet hours around now (From an hour ago, To in an hour), then make a problem: no notification; Diagnostics → Background → Result ends with ", quiet hours"; Today and the widget show the problem. After the window the same problem doesn't notify, a new one does | | |
 
 ## Face ID lock
 

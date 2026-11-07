@@ -59,6 +59,8 @@ struct TodayView: View {
                     if model.settings.todayLayout.rules != nil {
                         HiddenNowLine(model: model, context: ruleContext, now: ruleClock)
                     }
+                    // Only right after a first run (never for the owner): where Today is changed.
+                    if model.showsStartTip { startTip }
                 }
                 .motion(.snappy, value: shape)
                 .padding(.horizontal)
@@ -70,6 +72,7 @@ struct TodayView: View {
             .refreshable { await pullToRefresh() }
             .toolbar(.hidden, for: .navigationBar)
             .pollingState(model)
+            .presenceRefresh(model, home: home)   // only with Settings → Today → Where you are
             .task(id: model.settings.todayLayout.rules != nil) {
                 guard model.settings.todayLayout.rules != nil else { return }
                 while !Task.isCancelled {
@@ -94,9 +97,28 @@ struct TodayView: View {
     }
 
     /// What the show rules are checked against. Without rules the sections are exactly `density.sections(layout)`.
-    private var ruleContext: ShowContext { model.todayContext(now: ruleClock, homeEntities: home.entities) }
+    private var ruleContext: ShowContext {
+        model.todayContext(now: ruleClock, homeEntities: home.entities, presence: home.presence(model))
+    }
 
     private var shown: [TodaySection] { density.sections(model.settings.todayLayout, ruleContext) }
+
+    /// The footer after a first run, until the app quits or it is tapped: Settings → Today changes the sections and
+    /// how much they show.
+    private var startTip: some View {
+        Button { model.openStartTip() } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("Change what Today shows in Settings → Today")
+                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).accessibilityHidden(true)
+            }
+            .font(Typo.meta)
+            .foregroundStyle(Palette.tertiary)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text("Opens Settings"))
+    }
 
     // MARK: Hero
 

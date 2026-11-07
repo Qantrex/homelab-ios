@@ -30,8 +30,13 @@ public enum RuleOption: Hashable, Sendable, Identifiable {
 
     /// What the sheet offers for `section`, from `ShowRule.kinds` (presence only once it's set up).
     public static func options(for section: TodaySection, presence: Bool) -> [RuleOption] {
+        options(for: section, kinds: ShowRule.kinds(for: section, presence: presence))
+    }
+
+    /// What the sheet offers for `section` from the kinds the app allows (`AppModel.ruleKinds(for:)`).
+    public static func options(for section: TodaySection, kinds: [ShowRule.Kind]) -> [RuleOption] {
         var out: [RuleOption] = section == .machines ? [.overkillOnly] : []
-        for kind in ShowRule.kinds(for: section, presence: presence) {
+        for kind in kinds {
             switch kind {
             case .always: out.append(.always)
             case .needsMe: out.append(.needsMe)
@@ -207,10 +212,13 @@ enum ListWords {
 // MARK: - From the app's state
 
 extension AppModel {
-    /// The context Today checks its rules against: `showContext` with this run's "Show" taps (`shownAnyway`), and
-    /// the clock time of `-HomelabTime` (screenshots) in place of `now`'s. Needs-me checks keep the real `now`.
-    public func todayContext(now: Date, calendar: Calendar = .current, homeEntities: [HAEntity] = []) -> ShowContext {
-        var c = showContext(now: now, calendar: calendar, homeEntities: homeEntities, shownAnyway: shownAnyway)
+    /// The context Today checks its rules against: `showContext` with where I am (`presence(in:fetched:)`, nil when
+    /// not set up), this run's "Show" taps (`shownAnyway`), and the clock time of `-HomelabTime` (screenshots) in place
+    /// of `now`'s. Needs-me checks keep the real `now`.
+    public func todayContext(now: Date, calendar: Calendar = .current, homeEntities: [HAEntity] = [],
+                             presence: Presence? = nil) -> ShowContext {
+        var c = showContext(now: now, calendar: calendar, homeEntities: homeEntities, presence: presence,
+                            shownAnyway: shownAnyway)
         if let m = fixedTime { c.now = TimeWindow.date(minutes: m, on: now, calendar: calendar) }
         return c
     }

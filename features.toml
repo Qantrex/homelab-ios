@@ -127,6 +127,22 @@ not_needed = { device_tests = "kit only; the rows are the editor's (show-rule-ed
 depends_on = ["today-layout"]
 
 [[feature]]
+id = "presence"
+name = "Where you are (presence from Home Assistant)"
+area = "Today"
+status = "partial"
+since = "2026-11-07"
+summary = "Settings → Today → \"Where you are\" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass."
+api_fields = ["Home Assistant GET /api/states: person.* and device_tracker.* state"]
+sources = ["Sources/HomelabKit/HomePresence.swift", "Sources/HomelabUI/PresenceSettings.swift", "Sources/HomelabUI/HomeTiles.swift#fetched", "Sources/HomelabUI/TodayView.swift#presenceRefresh"]
+tests = ["HomePresenceTests", "PresenceModelTests"]
+device_tests = ["H8", "H9"]
+docs = ["docs/SECURITY.md#what-the-app-does", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
+settings = ["Settings → Today → Where you are"]
+depends_on = ["show-rules", "home-tiles", "home-assistant-api"]
+notes = "docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), HomeModel.presence(_:))."
+
+[[feature]]
 id = "show-rule-editor"
 name = "Show rules: editor and \"Hidden now\""
 area = "Today"
@@ -140,8 +156,8 @@ screenshots = ["demo-rule-hidden", "demo-rule-shown"]
 docs = ["docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
 launch_args = ["-HomelabRules", "-HomelabTime"]
 settings = ["Settings → Today → Sections → tap a section"]
-depends_on = ["show-rules", "today-layout"]
-notes = "docs/plans/MODULAR.md M3.2. SectionRuleRow takes `presence` (false until M3.3 wires it). The rule clock ticks every 30 s on Today only while a rule is set."
+depends_on = ["show-rules", "today-layout", "presence"]
+notes = "docs/plans/MODULAR.md M3.2. The sheet offers what AppModel.ruleKinds(for:) allows (At home and Away once Where you are is set, feature presence). The rule clock ticks every 30 s on Today only while a rule is set."
 
 [[feature]]
 id = "last-report"
@@ -167,14 +183,14 @@ name = "Start presets (Home, Watch, Everything)"
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. Kit only; the first-run screens that offer it come with M2.3."
+summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. The first run's \"Start with\" offers them (first-run)."
 server_features = []
 endpoints = ["GET /info"]
 api_fields = ["info.features"]
 sources = ["Sources/HomelabKit/StartPreset.swift#StartPreset", "Sources/HomelabKit/StartPreset.swift#StartLayout"]
 tests = ["StartPresetTests"]
+device_tests = ["FS5", "FS6"]
 docs = ["docs/plans/MODULAR.md#m2-app-side"]
-not_needed = { device_tests = "kit only, no screen yet; M2.3 adds the first-run screens and their DeviceTest rows" }
 depends_on = ["today-layout"]
 notes = "Sections the servers offer come first in the preset's order; the others stay on behind them, so they appear once a server offers them. A preset that matches the defaults (the demo with Everything) stores nil for the layout."
 
@@ -878,6 +894,21 @@ settings = ["Settings → Notifications → \"New problems\", \"New actions to a
 depends_on = ["background-refresh", "usernotifications"]
 
 [[feature]]
+id = "quiet-hours"
+name = "Quiet hours for notifications"
+area = "Notifications"
+status = "partial"
+since = "2026-11-07"
+summary = "Settings → Notifications → \"Quiet hours\" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with \", quiet hours\". Without it nothing changes."
+sources = ["Sources/HomelabKit/QuietHours.swift", "Sources/HomelabUI/QuietHoursSettings.swift", "Sources/HomelabUI/Background.swift#notificationsToPost"]
+tests = ["QuietHoursTests"]
+device_tests = ["B12", "B13"]
+docs = ["docs/SECURITY.md#what-the-app-does", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
+settings = ["Settings → Notifications → Quiet hours"]
+depends_on = ["notifications", "show-rules"]
+notes = "docs/plans/MODULAR.md M3.3. The window is a TimeWindow (ShowRule.swift), every day, by the phone's time zone."
+
+[[feature]]
 id = "notification-actions"
 name = "Approve and Deny on the notification"
 area = "Notifications"
@@ -929,11 +960,30 @@ name = "Welcome screen"
 area = "Settings"
 status = "shipped"
 since = "2026-11-04"
-summary = "Until a server exists: \"Your homelab, in your pocket\", four points, Add a server, Try the demo and a link to the server setup."
+summary = "Until a server exists: \"Your homelab, in your pocket\", four points, Add Home Assistant, Add a Homelab server, Try the demo and a link to the server setup. The two Add buttons start the first run (first-run)."
 sources = ["Sources/HomelabUI/RootView.swift#WelcomeView"]
 tests = ["AppModelTests/demoAndReset"]
 device_tests = ["FS1"]
 docs = ["README.md#who-it-is-for"]
+
+[[feature]]
+id = "first-run"
+name = "First run: found, start with, tiles"
+area = "Settings"
+status = "partial"
+since = "2026-11-07"
+summary = "Only for someone with no server saved (never the owner): Add Home Assistant or Add a Homelab server opens the server editor; after Save, Found lists what the servers offer in words and \"Start with\" the three start presets, the suggested one checked; Start writes it, then the tile picker opens when Home Assistant has tiles; then Today, with a line pointing to Settings → Today. Every step can be skipped; the demo stays one tap."
+server_features = []
+endpoints = ["GET /info"]
+api_fields = ["info.features"]
+sources = ["Sources/HomelabKit/FirstRun.swift#FirstRun", "Sources/HomelabKit/FirstRun.swift#showsFirstRun", "Sources/HomelabUI/FirstRunView.swift#FoundView", "Sources/HomelabUI/RootView.swift#WelcomeView", "Sources/HomelabUI/TodayView.swift#startTip", "Sources/HomelabUI/SettingsView.swift#onSaved"]
+tests = ["FirstRunTests"]
+device_tests = ["FS5", "FS6", "FS7", "FS8", "FS9", "FS10"]
+screenshots = ["first-run-welcome-light", "first-run-welcome-dark", "first-run-welcome-xxl", "first-run-found-light", "first-run-found-dark", "first-run-found-xxl"]
+docs = ["docs/plans/MODULAR.md#m2-app-side", "docs/SETUP.md#launch-arguments", "docs/CI.md"]
+launch_args = ["-HomelabFirstRun"]
+depends_on = ["onboarding", "start-presets", "servers", "home-tiles"]
+notes = "Nothing of the run is stored: it lives in AppModel.firstRun (memory), so an app quit mid-run opens on the tabs with the servers saved so far, and the line under Today goes when the app quits. A preset writes only Today's layout and density (StartLayout.apply). -HomelabFirstRun only works while every server is a demo one."
 
 [[feature]]
 id = "demo-mode"
@@ -1178,6 +1228,28 @@ docs = ["docs/REFERENCE_SERVER.md#reference-server", "docs/SERVER-SETUP.md#a-ref
 not_needed = { device_tests = "R1 to R8 run against any server; the reference server has its own Python tests" }
 depends_on = ["python3", "tailscale", "companion-api"]
 notes = "Real mode offers status and hosts, plus actions, chat, cards and services when configured. Fixture mode (--fixtures Sources/HomelabKit/Fixtures) serves the demo's /info, so every feature, with run-actions, documents, share, search and deals answered in memory."
+
+[[feature]]
+id = "server-sources"
+name = "Homelab Bridge sources interface"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "A `sources` list in the reference server's config reads other services' APIs (one stdlib module per type in server/sources/) and adds their problems, hosts, cards and services to /state and /services: ids prefixed `<name>:`, keys only from env variables and never in a reply, read-only, a failing source is exactly one warning, each source on its own `every`. Without `sources` nothing changes."
+server_features = ["status", "hosts", "cards", "services"]
+endpoints = ["GET /state", "GET /services"]
+api_fields = ["state.problems", "state.hosts", "state.cards", "services"]
+sources = ["server/sources/__init__.py#Runner", "server/sources/__init__.py#Fetch", "server/sources/example.py#collect",
+           "server/fake_upstream.py#FakeUpstream", "server/test_sources.py", "server/recordings/example/normal.json",
+           "server/recordings/example/odd.json", "server/examples/sources-example.json"]
+tests = ["server/test_sources.py::ConfigRules", "server/test_sources.py::FetchRules", "server/test_sources.py::MergeRules",
+         "server/test_sources.py::RunnerRules", "server/test_sources.py::ExampleSource",
+         "server/test_sources.py::SourceModuleRules", "server/test_sources.py::BridgeEndToEnd",
+         "server/test_sources.py::FakeUpstreamRules"]
+docs = ["docs/REFERENCE_SERVER.md#sources", "docs/BRIDGE.md#homelab-bridge-adding-a-source"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["python3", "reference-server"]
+notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
 
 [[feature]]
 id = "live-api-check"

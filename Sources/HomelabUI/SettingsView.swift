@@ -60,6 +60,7 @@ struct SettingsView: View {
                                     .font(Typo.secondary).foregroundStyle(Palette.secondary)
                             }
                         }
+                        PresenceRow(model: model)
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
@@ -78,6 +79,7 @@ struct SettingsView: View {
                         if model.selectedStatus.hasDeals || model.settings.notifyDeals {
                             Toggle("New deals to act on", isOn: notifyBinding(\.notifyDeals))
                         }
+                        QuietHoursRow(model: model)
                     } header: {
                         Text("Notifications")
                     } footer: {
@@ -371,14 +373,22 @@ struct ServerEditor: View {
     @State private var testResult: Result<String, APIError>?
     @State private var saveError: String?
     @State private var confirmDelete = false
+    /// Called after a successful Save, before the editor closes (the first run goes on to Found).
+    private let onSaved: ((ServerConfig) -> Void)?
 
-    init(model: AppModel, server: ServerConfig?) {
+    /// `kind` is the type a new server starts with (the first run's "Add Home Assistant"); an existing server keeps
+    /// its own.
+    init(model: AppModel, server: ServerConfig?, kind newKind: ServerConfig.Kind? = nil,
+         onSaved: ((ServerConfig) -> Void)? = nil) {
         self.model = model
         original = server
+        self.onSaved = onSaved
+        let startKind: ServerConfig.Kind = server.map { $0.kind == .homeAssistant ? .homeAssistant : .companion }
+            ?? (newKind == .homeAssistant ? .homeAssistant : .companion)
         _name = State(initialValue: server?.name ?? "")
-        _kind = State(initialValue: server?.kind == .homeAssistant ? .homeAssistant : .companion)
+        _kind = State(initialValue: startKind)
         _address = State(initialValue: server.map { $0.kind == .demo ? "" : $0.baseURL.absoluteString } ?? "")
-        _auth = State(initialValue: server?.auth ?? .identity)
+        _auth = State(initialValue: server?.auth ?? (startKind == .homeAssistant ? .token : .identity))
         _tokenStored = State(initialValue: server.map { model.tokens.token(for: $0.id) != nil } ?? false)
     }
 
@@ -576,6 +586,7 @@ struct ServerEditor: View {
         do {
             try model.save(c, token: typed.isEmpty ? nil : typed)
             if c.speaksCompanionAPI { Task { await model.refresh(c) } }
+            onSaved?(c)
             dismiss()
         } catch {
             saveError = error.localizedDescription
