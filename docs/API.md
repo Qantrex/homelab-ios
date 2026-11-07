@@ -247,7 +247,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
 | `api` | Must be `1`. Anything else: an error that asks to update the app |
-| `sources` | Nothing yet (ignored like any unknown field). Diagnostics will list it ([MODULAR.md M2.4](plans/MODULAR.md#m2-app-side)) |
+| `sources` | Settings → Diagnostics gets a "Sources" section: per source its name and type, the state in words (`ok`, red `failing: 401`, `not yet`), when it last worked, and a gold "Certificate not checked (insecure)" for `insecure: true`; Copy report has one line per source (tailnet names masked). Missing, `null` or not a list: no section. Entries without a `name` are dropped; an unknown `state` reads "unknown"; `error` is cut to its first line and 120 characters |
 
 ## Source status (`sources` in `/info`)
 
@@ -274,7 +274,8 @@ as it was. Schema: `SourceStatus` in `server/openapi.yaml`.
 | `last_ok` | When the last good run finished; kept while the source fails, so "failing since" can be shown |
 | `insecure` | Only sent as `true`: the source skips the TLS certificate check (`insecure: true` in its config, for a self-signed Proxmox or TrueNAS). Show it as a warning. `ca_file` is the safer choice |
 
-`scripts/check-live-api` warns for each failing or insecure source.
+`scripts/check-live-api` warns for each failing or insecure source. The app lists the sources in Settings →
+Diagnostics ([What `/info` changes in the app](#what-info-changes-in-the-app)).
 
 ## Actions the app starts (`run-actions`)
 

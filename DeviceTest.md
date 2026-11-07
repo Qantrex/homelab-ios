@@ -284,6 +284,7 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | ST2b | Token over plain http | Add a server, Login Token, address `http://192.168.1.10:8080`: a red error under the address ("uses a token over plain http …"), Test connection and Save stay off. `https://…` or Login "Tailscale / proxy": the error goes | | |
 | ST3 | Delete removes the token | Swipe → Delete on a token server. Add it again: the token field is empty and Save says "Enter the token first." | | |
 | ST4 | Diagnostics | Version and build, bundle ID (with the SideStore team suffix after SideStore), Install expires with a date and time (free Apple ID), App Group "ok", each server with "data … ago". Copy report: host names have the tailnet part masked, no tokens | | |
+| ST4b | Sources in Diagnostics | Without a Homelab Bridge (the owner's server, the demo): Diagnostics has no "Sources" section and Copy report no `source` line. With a bridge (`server/examples/sources-example.json`, docs/BRIDGE.md#try-it) as "Show data from": a "Sources" section, "Lab" with "example", "ok" and "checked … ago". Stop the fake upstream and wait a minute and up to 10 for the next /info: red "failing: …" with "last ok … ago". A source with `"insecure": true` has a gold "Certificate not checked (insecure)". VoiceOver reads each source as one line. Copy report: one `source Lab (example): …` line per source, tailnet names masked | | |
 | ST5 | Reset everything | Confirm "Delete all data": welcome screen, no servers, widget shows "Open the app" | | |
 
 ## Accessibility

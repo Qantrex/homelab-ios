@@ -1264,9 +1264,24 @@ sources = ["server/sources/__init__.py#status", "server/reference_server.py#info
 tests = ["server/test_source_status.py::StatusRows", "server/test_source_status.py::InfoSources", "InfoSourcesTests",
          "server/test_reference_server.py::NoSourcesGolden"]
 docs = ["docs/API.md#source-status-sources-in-info", "docs/REFERENCE_SERVER.md#sources"]
-not_needed = { device_tests = "server side; the app doesn't show it yet (Diagnostics, MODULAR.md M2.4)" }
+not_needed = { device_tests = "server side; the app shows it in Diagnostics (feature diagnostics-sources, ST4b)" }
 depends_on = ["server-sources"]
-notes = "docs/plans/MODULAR.md M1.2. The app ignores the field for now (InfoSourcesTests checks any shape of it leaves ServerInfo unchanged); M2.4 shows it in Diagnostics. Owner decision 5: insecure sources carry the flag here and in Diagnostics."
+notes = "docs/plans/MODULAR.md M1.2. The app reads it since M2.4 (diagnostics-sources). Owner decision 5: insecure sources carry the flag here and in Diagnostics."
+
+[[feature]]
+id = "diagnostics-sources"
+name = "Sources in Diagnostics"
+area = "Settings"
+status = "partial"
+since = "2026-11-07"
+summary = "With a Homelab Bridge, Settings → Diagnostics has a \"Sources\" section: per source its name and type, the state in words (\"ok\", red \"failing: 401\", \"not yet\"), \"checked … ago\" or \"last ok … ago\", and a gold \"Certificate not checked (insecure)\" for a source with `insecure: true`. Copy report has one line per source, tailnet names masked. A server that doesn't send `sources` (the owner's, the demo) gets no section and no line."
+api_fields = ["info.sources"]
+sources = ["Sources/HomelabKit/SourceStatus.swift", "Sources/HomelabKit/Models.swift#ServerInfo", "Sources/HomelabUI/SourceStatusSection.swift", "Sources/HomelabUI/SettingsView.swift#DiagnosticsView"]
+tests = ["InfoSourcesTests", "OwnerInvarianceTests"]
+device_tests = ["ST4b"]
+docs = ["docs/API.md#what-info-changes-in-the-app", "docs/API.md#source-status-sources-in-info", "docs/SECURITY.md#what-the-app-does"]
+depends_on = ["diagnostics", "source-status"]
+notes = "docs/plans/MODULAR.md M2.4. Read from the cached or live /info (asked every 10 minutes); Diagnostics asks nothing new. No note on Today or Lab: a failing source is already one warning problem in /state."
 
 [[feature]]
 id = "source-json"
