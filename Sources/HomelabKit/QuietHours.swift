@@ -9,6 +9,10 @@ extension AppSettings {
     /// What Quiet hours suggests when it is turned on: 22:00 to 07:00, every day.
     public static let defaultQuietHours = TimeWindow(from: 22 * 60, to: 7 * 60)
 
+    /// Settings → Notifications shows the "Quiet hours" row: while a notification is on, or while quiet hours are set
+    /// (so they can be turned off).
+    public var showsQuietHoursRow: Bool { notificationsOn || quietHours != nil }
+
     /// Whether quiet hours hold at `now` (by the calendar's time zone). Always false without quiet hours.
     public func isQuiet(at now: Date, calendar: Calendar = .current) -> Bool {
         quietHours?.contains(now, calendar: calendar) ?? false

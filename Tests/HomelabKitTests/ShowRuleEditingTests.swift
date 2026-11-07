@@ -54,6 +54,40 @@ private func at(_ text: String) -> Date { ServerDate.parse(text)! }
         #expect(RuleOption.custom.rule(from: .times(.evenings)) == .times(.evenings))                // starts from the named one
         #expect(RuleOption.custom.rule(from: .always) == .times(TimeWindow(from: 18 * 60, to: 22 * 60)))
         #expect(RuleOption.overkillOnly.rule(from: own) == nil)
+        // In the sheet, Custom is chosen as such, not read back from the window: on Evenings' times it is Custom
+        // with the pickers, and a stored named window opens as its name again.
+        var sheet = RuleChoice(.times(.evenings), for: .cards)
+        #expect(sheet.chosen == .named(2) && sheet.custom == nil)
+        sheet.choose(.custom)
+        #expect(sheet.chosen == .custom && sheet.custom == .evenings && sheet.rule == .times(.evenings))
+        #expect(sheet.customWords(calendar: utc()) == "18–24")
+        #expect(RuleChoice(sheet.rule, for: .cards).chosen == .named(2))
+        #expect(RuleChoice(own, for: .cards).chosen == .custom)
+    }
+
+    /// Review 2026-11-07: tapping Custom while Evenings was chosen did nothing (the sheet read Evenings back).
+    @Test func customFromANamedWindowShowsCustom() {
+        var sheet = RuleChoice(.times(.evenings), for: .deals)
+        sheet.choose(.custom)
+        #expect(sheet.chosen == .custom && sheet.custom != nil)
+        sheet.choose(.named(0))
+        #expect(sheet.chosen == .named(0) && sheet.custom == nil && sheet.rule == .times(.mornings))
+        sheet.edit(TimeWindow(from: 0, to: 60))                                                      // no pickers: ignored
+        #expect(sheet.rule == .times(.mornings))
+        sheet.choose(.always)
+        #expect(sheet.chosen == .always && sheet.rule == .always)
+    }
+
+    /// Review 2026-11-07: Custom 18–22 edited to end at 0:00 is Evenings' window; the pickers used to vanish.
+    @Test func customEditedIntoANamedWindowStaysCustom() throws {
+        var sheet = RuleChoice(.always, for: .deals)
+        sheet.choose(.custom)
+        let w = try #require(sheet.custom)
+        #expect(w == TimeWindow(from: 18 * 60, to: 22 * 60))
+        sheet.edit(w.with(to: 0))
+        #expect(sheet.chosen == .custom && sheet.custom == .evenings && sheet.rule == .times(.evenings))
+        sheet.edit(TimeWindow(from: 0, to: 1440, days: [2, 3, 4, 5, 6]))                            // Weekdays' window
+        #expect(sheet.chosen == .custom && sheet.customWords(calendar: utc()) == "Weekdays")
     }
 
     @Test func needsMeWordsForEverySectionThatCanNeedMe() {
@@ -71,6 +105,24 @@ private func at(_ text: String) -> Date { ServerDate.parse(text)! }
             #expect(TimeWindow.minutes(of: TimeWindow.date(minutes: m, on: day, calendar: utc()), calendar: utc()) == m)
         }
         #expect(TimeWindow.minutes(of: TimeWindow.date(minutes: 1440, on: day, calendar: utc()), calendar: utc()) == 0)
+    }
+
+    /// Review 2026-11-07: on the day the clocks go forward (Vienna, 29 March 2026) 2:30 "today" is 3:30, so a picker
+    /// built on today turned 2:30 into 3:30. The picker's fixed day keeps every time of the day.
+    @Test func pickerTimesSurviveClockChanges() throws {
+        var vienna = Calendar(identifier: .gregorian)
+        vienna.timeZone = try #require(TimeZone(identifier: "Europe/Vienna"))
+        let springForward = try #require(vienna.date(from: DateComponents(year: 2026, month: 3, day: 29, hour: 12)))
+        #expect(TimeWindow.minutes(of: TimeWindow.date(minutes: 150, on: springForward, calendar: vienna),
+                                   calendar: vienna) != 150)                                         // why pickers don't use it
+        for zone in ["Europe/Vienna", "America/New_York", "Australia/Sydney", "America/Santiago", "UTC"] {
+            var cal = Calendar(identifier: .gregorian)
+            cal.timeZone = try #require(TimeZone(identifier: zone))
+            for m in stride(from: 0, to: 1440, by: 5) {
+                #expect(TimeWindow.minutes(of: TimeWindow.pickerDate(minutes: m, calendar: cal), calendar: cal) == m, "\(zone) \(m)")
+            }
+            #expect(TimeWindow.minutes(of: TimeWindow.pickerDate(minutes: 1440, calendar: cal), calendar: cal) == 0)
+        }
     }
 
     @Test func midnightAsEndIsTheEndOfTheDay() {

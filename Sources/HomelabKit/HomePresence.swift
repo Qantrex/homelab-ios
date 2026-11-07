@@ -65,6 +65,10 @@ extension AppModel {
         return Presence(entities: entities, entityID: settings.presenceEntity, fetched: fetched)
     }
 
+    /// Settings → Today shows the "Where you are" row: with a real Home Assistant, or while one is chosen (so it can
+    /// be turned off when Home Assistant is gone).
+    public var showsPresenceRow: Bool { homeAssistant?.kind == .homeAssistant || settings.presenceEntity != nil }
+
     /// Sets or clears Where you are. Clearing writes nothing back (the key goes away).
     public func setPresenceEntity(_ entityID: String?) {
         settings.presenceEntity = entityID?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
