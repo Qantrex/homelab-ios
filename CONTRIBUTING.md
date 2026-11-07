@@ -9,7 +9,7 @@ Thanks for helping. This page says how to build and test, the code rules, and wh
 | Shared code tests (HomelabKit) | Linux or macOS, with Docker | `scripts/test-linux` |
 | Same, by hand | Docker | `docker run --rm --network host -e KIT_ONLY=1 -v $PWD:/w -w /w swift:6.4-noble swift test` |
 | Same, on a Mac | macOS | `KIT_ONLY=1 swift test` |
-| Reference server tests | any, Python 3 | `python3 -m unittest server/test_reference_server.py` |
+| Reference server tests | any, Python 3 | `python3 -m unittest server/test_*.py` |
 | Source checks | any, bash | `scripts/lint` |
 | IPA (always built locally, checked by `verify-ipa`) | macOS or Linux with xtool | `scripts/build-ipa` |
 | Install on your iPhone | xtool + USB | `scripts/install-dev` |

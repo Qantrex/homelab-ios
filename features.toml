@@ -1163,6 +1163,28 @@ depends_on = ["python3", "tailscale", "companion-api"]
 notes = "Real mode offers status and hosts, plus actions, chat, cards and services when configured. Fixture mode (--fixtures Sources/HomelabKit/Fixtures) serves the demo's /info, so every feature, with run-actions, documents, share, search and deals answered in memory."
 
 [[feature]]
+id = "server-sources"
+name = "Homelab Bridge sources interface"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "A `sources` list in the reference server's config reads other services' APIs (one stdlib module per type in server/sources/) and adds their problems, hosts, cards and services to /state and /services: ids prefixed `<name>:`, keys only from env variables and never in a reply, read-only, a failing source is exactly one warning, each source on its own `every`. Without `sources` nothing changes."
+server_features = ["status", "hosts", "cards", "services"]
+endpoints = ["GET /state", "GET /services"]
+api_fields = ["state.problems", "state.hosts", "state.cards", "services"]
+sources = ["server/sources/__init__.py#Runner", "server/sources/__init__.py#Fetch", "server/sources/example.py#collect",
+           "server/fake_upstream.py#FakeUpstream", "server/test_sources.py", "server/recordings/example/normal.json",
+           "server/recordings/example/odd.json", "server/examples/sources-example.json"]
+tests = ["server/test_sources.py::ConfigRules", "server/test_sources.py::FetchRules", "server/test_sources.py::MergeRules",
+         "server/test_sources.py::RunnerRules", "server/test_sources.py::ExampleSource",
+         "server/test_sources.py::SourceModuleRules", "server/test_sources.py::BridgeEndToEnd",
+         "server/test_sources.py::FakeUpstreamRules"]
+docs = ["docs/REFERENCE_SERVER.md#sources", "docs/BRIDGE.md#homelab-bridge-adding-a-source"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["python3", "reference-server"]
+notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
+
+[[feature]]
 id = "live-api-check"
 name = "Live API check"
 area = "Server"

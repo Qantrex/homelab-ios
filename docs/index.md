@@ -21,5 +21,5 @@ The [README on GitHub](../README.md) has the screenshots, the quick start and th
 - [Shortcuts](SHORTCUTS.md): `homelab://` links, Shortcuts recipes, quick actions
 - [Plan: Homelab for other homelabs](plans/MODULAR.md): making the app useful without the owner's services
 
-Also: [Reference server](REFERENCE_SERVER.md) options, [CI](CI.md), the [changelog](../CHANGELOG.md) and the
+Also: [Reference server](REFERENCE_SERVER.md) options, [Homelab Bridge sources](BRIDGE.md), [CI](CI.md), the [changelog](../CHANGELOG.md) and the
 [phone checks](../DeviceTest.md).
