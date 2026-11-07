@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 97 | 70 | 26 | 1 | 41 | 3 |
+| 98 | 71 | 26 | 1 | 41 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -31,7 +31,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | X2 | 3 |
 | [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | partial | – | 4 | DL10 | 3 |
 
-### Cards (7)
+### Cards (8)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -41,6 +41,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Parcels (Delivered button, tracking link)](#parcels) | shipped | `cards`, `run-actions` | 1 | O9b | 1 |
 | [Lessons (cancelled and changed)](#lessons-card) | shipped | `cards` | 1 | O12b | 1 |
 | [Cards in Lab (place: lab)](#lab-cards) | shipped | `cards` | 5 | O12d, O12e | 1 |
+| [Game server card (status and wake)](#game-server-card) | shipped | `cards` | 2 | O12f | 1 |
 | [Card and item actions (header button, one-tap items)](#card-actions) | shipped | `run-actions` | 8 | O11 | 2 |
 
 ### Actions (4)
@@ -229,7 +230,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
+| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [game-server-card](#game-server-card), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
@@ -290,7 +291,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [game-server-card](#game-server-card), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
@@ -598,6 +599,22 @@ Cancelled lessons are struck through and grey, substitutions and room changes ge
 | Phone (DeviceTest.md) | O12d, O12e |
 | Docs | [docs/API.md#cards-for-lab-place](API.md#cards-for-lab-place) |
 | Depends on | [cards](#cards) |
+| Through those | [companion-api-v1](#dep-companion-api-v1) |
+
+### game-server-card
+
+**Game server card (status and wake)** · Cards · shipped · since 2026-11-07
+
+A `gameserver` source (Minecraft Java, Valve A2S) or an agent card shows each game server in Lab, on Today while someone plays; a Start action can wake a sleeping server. The app needs no code for it: it is a Lab card with the existing styles.
+
+| | |
+|---|---|
+| Server | `cards`, `GET /state` |
+| Sources | [Cards.swift#CardView](../Sources/HomelabUI/Cards.swift) |
+| Tests | `server/test_source_gameserver.py::MinecraftSource`, `server/test_source_gameserver.py::A2SSource` |
+| Phone (DeviceTest.md) | O12f |
+| Docs | [docs/REFERENCE_SERVER.md#game-servers](REFERENCE_SERVER.md#game-servers) |
+| Depends on | [lab-cards](#lab-cards) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
 
 ### card-actions
@@ -1919,7 +1936,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 29 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 45 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 46 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -2009,7 +2026,7 @@ Features per area that need each dependency, directly or through another feature
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 4 |  |  | 1 | 17 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 5 | 1 |  |  | 19 |  |
+| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 5 | 1 |  |  | 19 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

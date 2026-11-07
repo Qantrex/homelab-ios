@@ -1,10 +1,10 @@
 # Device test: Homelab 1.0.0
 
-The checks that only a real iPhone can do. Use the IPA you will release, installed through SideStore (copy it into
+The checks that only a real iPhone can do. Use the release candidate (the IPA that becomes the release if all rows pass), installed through SideStore (copy it into
 SideStore's folder with `scripts/phone push-ipa`, then My Apps → + → the IPA), Tailscale on, and a real server (the agent, or the reference server). Mark each row ✅ / ⚠️ /
 ❌ and add a note.
 
-Date: ____  iPhone model: iPhone 12 mini  iOS version: 18.7.3  App version (Settings → Diagnostics): ____
+Date: ____  iPhone model: iPhone 12 mini  iOS version: 18.7.3  App version (Settings → Diagnostics): ____ (must match the released build number, `CFBundleVersion`)
 
 Installed with: SideStore 0.7.0 (since 2026-11-07, after the -80045 fix in docs/SIDESTORE.md) / xtool 1.24.0 + App Group patch (docs/SETUP.md)
 
@@ -108,6 +108,7 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 | O12c | Weather line | Standard / Overkill: under "Checked 2 min ago" one grey line with the weather card's subtitle ("Rain from 15:00, take an umbrella"); Calm: no such line, only the card | | |
 | O12d | Lab cards | Server with `place: "lab"` cards (tailnet, ad blocking, backups; demo has them): they show in Lab between Hosts and Services, not on Today. Rows: a dot, name, reason in grey, value at the right; a yellow tint gives a gold dot and value, red love. Nothing is cut at 5.4" or at the largest text size (values go under the name) | | |
 | O12e | Pause blocking | Ad blocking card → "Pause 5 min" → "Pause 5 min Blocking?" confirm → the value reads "paused · 5 min" in gold with a "Resume" button (demo) | | |
+| O12f | Game server card (not release-blocking) | A server with a `gameserver` source or an agent card for a game server: the card shows in Lab with its state and players (on Today while someone plays). Its Start action ("Wake <game>") starts a sleeping server; the card shows it online afterwards | | |
 | O13 | Services | Service buttons are grouped and open the right page in Safari | | |
 | O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
 | O15 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |

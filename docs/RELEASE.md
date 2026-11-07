@@ -1,9 +1,9 @@
 # Releasing (by hand, from your own build)
 
 Rule (owner, 2026-11-04, 2026-11-05): **every app build is done locally; CI never builds the app you install or share.**
-CI only tests and checks (tests, lint, a simulator build for the screenshots). You build the IPA yourself with xtool and publish it.
+CI only tests and checks (tests, lint, a simulator build for the screenshots). You build the IPA yourself with xtool, install it via SideStore and publish it.
 
-There is no release yet (2026-11-07). Open decision for the owner before the first one: see "Open decision" at the end.
+There is no release yet (2026-11-07). The release channel is decided: see "Release channel" at the end.
 
 ## 0. Bump the version
 

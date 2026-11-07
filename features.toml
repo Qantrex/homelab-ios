@@ -345,6 +345,21 @@ docs = ["docs/API.md#cards-for-lab-place"]
 depends_on = ["cards"]
 
 [[feature]]
+id = "game-server-card"
+name = "Game server card (status and wake)"
+area = "Cards"
+status = "shipped"
+since = "2026-11-07"
+summary = "A `gameserver` source (Minecraft Java, Valve A2S) or an agent card shows each game server in Lab, on Today while someone plays; a Start action can wake a sleeping server. The app needs no code for it: it is a Lab card with the existing styles."
+server_features = ["cards"]
+endpoints = ["GET /state"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView"]
+tests = ["server/test_source_gameserver.py::MinecraftSource", "server/test_source_gameserver.py::A2SSource"]
+device_tests = ["O12f"]
+docs = ["docs/REFERENCE_SERVER.md#game-servers"]
+depends_on = ["lab-cards"]
+
+[[feature]]
 id = "card-actions"
 name = "Card and item actions (header button, one-tap items)"
 area = "Cards"

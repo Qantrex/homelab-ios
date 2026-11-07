@@ -20,7 +20,7 @@ Highlights:
 - Lab: hosts, 24 h history, containers with Restart, web UIs.
 - Chat with your homelab agent, with proposals and cards in the replies.
 - Widgets (status, day, hosts, U6, deadlines, to-dos) and a "Leave by" Live Activity.
-- Built and installed from Linux with xtool and a free Apple ID; Today warns 2 days before the install stops opening.
+- Built on Linux with xtool, installed with SideStore on a free Apple ID; Today warns 2 days before the install stops opening.
 
 Security review fixes:
 
