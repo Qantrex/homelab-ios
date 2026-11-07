@@ -23,14 +23,14 @@ setups (only Home Assistant, the Homelab Bridge with your services, or your own 
 
 | Tab | What you see and do |
 |---|---|
-| Today | The status in two words ("All quiet.", "1 problem."; tap it or "Lab ›" for Lab). The server's "today" card as a line through the day with a countdown to the next stop. Then actions to approve, Home tiles, deals to act on and the other cards (to-dos you tick off, deadlines counting down, downloads, parcels, …). Settings → Today: order of the sections, and Calm, Standard or Overkill detail. Refreshes every 30 s while open |
+| Today | The status in two words ("All quiet.", "1 problem."; tap it or "Lab ›" for Lab). The server's "today" card as a line through the day with a countdown to the next stop. Then actions to approve, Home tiles, deals to act on and the other cards (to-dos you tick off, deadlines counting down, downloads, parcels, …). Settings → Today: order of the sections, when each shows (a [show rule](docs/GETTING-STARTED.md#show-rules): always, when it needs you, mornings … weekends, a custom time, at home or away), and Calm, Standard or Overkill detail. What a rule hides is listed at the end of Today as "Hidden now: … · Show". Refreshes every 30 s while open |
 | Actions | Start: tiles for the actions your server lets you start (add a to-do, set tomorrow's wake-up, restart a container, …); each opens a small form, or asks "Run now?" right away when there is nothing to fill in. Below: "To approve", the actions your homelab proposes, with reason and age. Approve, Always or Deny, each with a confirm step. Approve and Deny also work right on the notification; your three most used actions are Home-screen quick actions; links like `homelab://actions/todo-add?summary=Milk` open a form filled in ([docs/SHORTCUTS.md](docs/SHORTCUTS.md)) |
 | Scan and share | If the server has `documents`: a Scan tile on Actions (and a Home-screen quick action, or `homelab://scan`) opens the document camera and sends the PDF to Paperless. The share extension "Homelab" sends a link (a willhaben ad gets a price check, other links a read-later list), a PDF, or photos (made into one PDF) to your server. Offline or on a token server, items wait in an outbox and the app sends them later |
 | Find | If the server has `search`: a "Find a movie or show" tile on Actions. Posters from the server, a Request button per title |
 | Deals | If the server offers `/deals`: a Deals tile on Actions (`homelab://deals`), and a section on Today while a strong one is fresh. Used-market ads far below their market value that your server found and judged: price, −50 %, confidence, warnings in gold, the comparable ads, open or copy the ad |
 | Chat | Chat with your homelab agent. "Working…" while it runs, report tags (`morning`, `watchdog`, …), long-press to copy, a "/" button with the commands the server lists, Clear (hides the chat on this phone; the server keeps it). Proposals in a reply have Approve, Always and Deny in the bubble; cards in a reply show small under the text |
 | Lab | Problems, a tile per host (load, RAM, worst disk, temperature, containers, a 24 h load line); the header says "No problems · 2 hosts with a warning" when a host has one. Tap a host for 24 h charts and its containers (problems first) with Restart for the ones on its restart list. A launcher for your web UIs (opens Safari). Diagnostics at the end |
-| Settings | Several servers ("Show data from" picks the one for Today, Lab, Actions and Chat; "Home tiles from" the Home Assistant), test connection, Today's sections and detail, a personality (Off, Dry or Snarky; off by default), notifications, the "Leave by" Live Activity, Face ID lock, demo servers, Diagnostics |
+| Settings | Several servers ("Show data from" picks the one for Today, Lab, Actions and Chat; "Home tiles from" the Home Assistant), test connection, Today's sections with their show rules, detail and "Where you are" (at home or away, from a Home Assistant person), a personality (Off, Dry or Snarky; off by default), notifications (with quiet hours), the "Leave by" Live Activity, Face ID lock, demo servers, Diagnostics |
 
 Tabs appear only when they make sense: Actions and Chat only if the server offers them. Home tiles appear on Today
 when you add a Home Assistant server. A setup error (token, address, certificate) has an "Edit server" button next
@@ -84,13 +84,19 @@ look around without any server.
 |---|---|---|
 | ![Lab](docs/screenshots/04-lab.png) | ![Settings](docs/screenshots/05-settings.png) | ![Dark mode](docs/screenshots/06-dark.png) |
 
+| Only Home Assistant | First start (dark) |
+|---|---|
+| ![Today with only Home Assistant](docs/screenshots/07-ha-only.png) | ![The welcome screen](docs/screenshots/08-first-run-dark.png) |
+
+All screenshots show demo data.
+
 ## Install
 
-> **Status (2026-11-07): no release yet.** Used daily on an iPhone 12 mini (iOS 18), installed through SideStore
+> **Status (2026-11-07): there is no release yet.** Used daily on an iPhone 12 mini (iOS 18), installed through SideStore
 > (after the [-80045 sign-in fix](docs/SIDESTORE.md#sign-in-error--80045)); xtool 1.24.0 plus the one-line App Group
 > patch ([docs/SETUP.md](docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older)) works
 > too.
-> Until the first release, build and install it yourself. Releases are built by hand, never by CI
+> Build and install it yourself for now. Releases are built by hand, never by CI
 > ([docs/RELEASE.md](docs/RELEASE.md)).
 
 | Way | Status | How |

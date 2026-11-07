@@ -20,7 +20,7 @@ You need iOS 18 or newer for Homelab.
 
 | Way | Steps |
 |---|---|
-| Add the source (gets updates) | SideStore → Sources → + → paste `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` → open the source → Homelab → install. |
+| Add the source (gets updates; available after the first release) | SideStore → Sources → + → paste `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` → open the source → Homelab → install. |
 | Import an IPA | Download `Homelab-<version>.ipa` from [GitHub Releases](https://github.com/Qantrex/homelab-ios/releases) (or build one, see [SETUP.md](SETUP.md)). In Files: Share → SideStore, or in SideStore: My Apps → + → pick the IPA |
 
 The release IPA has a `.sha256` file next to it if you want to check the download. Releases are built by hand
@@ -110,7 +110,7 @@ and open an issue.
 | "No login reached the server. … With a token: check it in Settings." (HTTP 401) | Login is **Tailscale / proxy**, but the request didn't come through `tailscale serve`, or the server only takes tokens | Put the server behind `tailscale serve`, or use **Token** |
 | "This button is no longer valid (already handled or expired)." | The action was already approved or denied, or the server restarted with a new button secret | Pull to refresh. Set `HOMELAB_BUTTON_SECRET` on the reference server so buttons survive restarts |
 | "Enter the token first." when saving | Login is **Token** (or the server is Home Assistant) and no token is saved | Paste the token |
-| Home Assistant: "No login reached the server. …" | The long-lived token is wrong or was deleted in HA | Create a new one: HA profile → Security → Long-lived access tokens, then edit the server and paste it |
+| Home Assistant: "Home Assistant refused the token. …" | The long-lived token is wrong or was deleted in HA | Create a new one: HA profile → Security → Long-lived access tokens, then edit the server and paste it |
 | Home Assistant: "The server rejected the request." (HTTP 400) | HA is behind a reverse proxy that sends `X-Forwarded-For`, but HA's `http:` config doesn't trust it | Set `use_x_forwarded_for: true` and `trusted_proxies` in HA's `http:` block, or use HA's direct address |
 | "The server's answer couldn't be read. Is it a Homelab API server?" | The address points at a web page, not the API | Use the server's base address (the app adds `/api/v1` itself) |
 | "The secure connection failed (certificate?)." | Self-signed or expired certificate | Use `tailscale serve` (real certificates), or plain `http://` on a local address (Tailscale login only: a token needs https) |

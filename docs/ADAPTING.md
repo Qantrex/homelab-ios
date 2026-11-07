@@ -54,7 +54,7 @@ Start on the server. Change the app only if you want the code gone.
 | Where | What to do | Code change |
 |---|---|---|
 | Server | Leave the feature out of `features` in `/info` (reference server: leave its config key out, see [REFERENCE_SERVER.md](REFERENCE_SERVER.md)) | None |
-| Phone | Settings → Today: hide a section; Calm/Standard/Overkill picks how much shows | None |
+| Phone | Settings → Today: hide a section, or give it a show rule (Always, When it needs me, a time, At home / Away; [GETTING-STARTED.md](GETTING-STARTED.md#show-rules)); Calm/Standard/Overkill picks how much shows | None |
 | Demo | Remove the feature from `Fixtures/info.json`. Tests that expect it fail: fix or delete those | Fixture + tests |
 
 To delete a module from the app:
