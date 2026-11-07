@@ -1,0 +1,8 @@
+{
+  "_about": "Made up, Sonarr v4 shape: a wrong API key; every request answers 401.",
+  "routes": {
+    "GET /api/v3/health": {"status": 401, "body": ""},
+    "GET /api/v3/queue": {"status": 401, "body": ""},
+    "GET /api/v3/calendar": {"status": 401, "body": ""}
+  }
+}

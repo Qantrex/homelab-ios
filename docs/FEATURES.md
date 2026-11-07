@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 77 | 70 | 6 | 1 | 37 | 3 |
+| 83 | 70 | 12 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -161,13 +161,19 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (4)
+### Server (10)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
+| [Opt-in source actions](#source-actions) | partial | `run-actions` | 2 | n/a | 2 |
+| [Pi-hole source](#source-pihole) | partial | `status`, `cards` | 2 | n/a | 2 |
+| [AdGuard Home source](#source-adguard) | partial | `status`, `cards` | 2 | n/a | 2 |
+| [Sonarr source](#source-sonarr) | partial | `status`, `cards` | 2 | n/a | 2 |
+| [Radarr source](#source-radarr) | partial | `status`, `cards` | 2 | n/a | 2 |
+| [qBittorrent source](#source-qbittorrent) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -204,13 +210,13 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 
 | Kind | Entry | Features |
 |---|---|---|
-| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources) |
+| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent) |
 | Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources) |
+| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources) |
-| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart) |
+| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `search` | [find](#find) |
@@ -259,15 +265,15 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `checklist` | [checklist-card](#checklist-card) |
 | Card styles (`Card.Style`) | `countdown` | [countdown-card](#countdown-card) |
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
-| Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions) |
+| Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
 | Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources) |
-| Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent) |
+| Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
 | Endpoints (`server/openapi.yaml`) | `POST /messages` | [chat](#chat) |
@@ -1431,6 +1437,108 @@ A `sources` list in the reference server's config reads other services' APIs (on
 | Through those | [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale) |
 | Notes | docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet. |
 
+### source-actions
+
+**Opt-in source actions** · Server · partial · since 2026-11-07
+
+A source's config may list actions it offers (`"actions": ["pause"]`); only then its cards keep that button, /info lists `run-actions`, GET /actions lists `<name>-<action>` and POST /actions/<name> runs it after the app's confirm. The bridge checks name and argument again (choices only), sends nothing upstream for anything else, answers a failure with a 502 and a short reason without keys, and reads the source again afterwards. Off by default.
+
+| | |
+|---|---|
+| Server | `run-actions`, `GET /actions`, `POST /actions/{name}`, `cards[].items[].action`, `actions` |
+| Sources | [__init__.py#action_args](../server/sources/__init__.py), [__init__.py#_parse_actions](../server/sources/__init__.py), [reference_server.py#source_action](../server/reference_server.py), [test_source_actions.py](../server/test_source_actions.py) |
+| Tests | `server/test_source_actions.py::SourceActionRules`, `server/test_source_actions.py::BridgeActionsEndToEnd` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary run-actions |
+| Docs | [docs/REFERENCE_SERVER.md#opt-in-source-actions](REFERENCE_SERVER.md#opt-in-source-actions), [docs/BRIDGE.md#opt-in-actions](BRIDGE.md#opt-in-actions) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.6 and owner decision 6 (actions off by default, per listed item). Today only pihole and adguard offer one (`pause`); container and VM actions (M1.5) can reuse actions(cfg)/act(). |
+
+### source-pihole
+
+**Pi-hole source** · Server · partial · since 2026-11-07
+
+The bridge's `pihole` type reads Pi-hole v6 with an app password (session from POST /api/auth, logout after every run): the `dns` card in Lab (queries and blocked in 24 h, blocking on, off or paused), the top blocked domains as `dns-top`, and a warning while blocking is off for good. The pause button only with `"actions": ["pause"]`.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [pihole.py#collect](../server/sources/pihole.py), [pihole.py#act](../server/sources/pihole.py), [_dns.py#result](../server/sources/_dns.py), [normal.json](../server/recordings/pihole/normal.json), [odd.json](../server/recordings/pihole/odd.json), [auth-failed.json](../server/recordings/pihole/auth-failed.json), [test_source_pihole.py](../server/test_source_pihole.py), [sources-dns-media.json](../server/examples/sources-dns-media.json) |
+| Tests | `server/test_source_pihole.py::PiholeSource`, `server/test_source_actions.py::DnsMediaSample` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#dns-and-media-sources](REFERENCE_SERVER.md#dns-and-media-sources), [docs/SERVER-SETUP.md#sources-homelab-bridge](SERVER-SETUP.md#sources-homelab-bridge) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | Recordings in the shapes of Pi-hole FTL v6.8 (made up). v5 (admin/api.php) is not supported. |
+
+### source-adguard
+
+**AdGuard Home source** · Server · partial · since 2026-11-07
+
+The bridge's `adguard` type reads AdGuard Home with basic auth (/control/status, /control/stats): the same `dns` and `dns-top` cards as Pi-hole, warnings while protection is off or DNS is not running. The pause button only with `"actions": ["pause"]`.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [adguard.py#collect](../server/sources/adguard.py), [adguard.py#act](../server/sources/adguard.py), [_dns.py#pause_spec](../server/sources/_dns.py), [normal.json](../server/recordings/adguard/normal.json), [odd.json](../server/recordings/adguard/odd.json), [auth-failed.json](../server/recordings/adguard/auth-failed.json), [test_source_adguard.py](../server/test_source_adguard.py), [sources-dns-media.json](../server/examples/sources-dns-media.json) |
+| Tests | `server/test_source_adguard.py::AdGuardSource`, `server/test_source_actions.py::DnsMediaSample` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#dns-and-media-sources](REFERENCE_SERVER.md#dns-and-media-sources), [docs/SERVER-SETUP.md#sources-homelab-bridge](SERVER-SETUP.md#sources-homelab-bridge) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | Recordings in the shapes of AdGuard Home v0.107.80 (made up). |
+
+### source-sonarr
+
+**Sonarr source** · Server · partial · since 2026-11-07
+
+The bridge's `sonarr` type reads the v3 API with an X-Api-Key: health errors and warnings become problems, the queue a Lab `list` card with `progress` per download (a blocked or failed import is also a warning), and the next days' episodes a `countdown` card on Today.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [sonarr.py#collect](../server/sources/sonarr.py), [_arr.py#queue](../server/sources/_arr.py), [_arr.py#health](../server/sources/_arr.py), [normal.json](../server/recordings/sonarr/normal.json), [odd.json](../server/recordings/sonarr/odd.json), [auth-failed.json](../server/recordings/sonarr/auth-failed.json), [test_source_sonarr.py](../server/test_source_sonarr.py), [sources-dns-media.json](../server/examples/sources-dns-media.json) |
+| Tests | `server/test_source_sonarr.py::SonarrSource`, `server/test_source_actions.py::DnsMediaSample` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#dns-and-media-sources](REFERENCE_SERVER.md#dns-and-media-sources), [docs/SERVER-SETUP.md#sources-homelab-bridge](SERVER-SETUP.md#sources-homelab-bridge) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | Recordings in the shapes of Sonarr v4.0.20, API v3 (made up names). |
+
+### source-radarr
+
+**Radarr source** · Server · partial · since 2026-11-07
+
+The bridge's `radarr` type reads the v3 API with an X-Api-Key: health as problems, the queue as a Lab card with `progress`, and each movie's next digital, disc or cinema release in a `countdown` card on Today.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [radarr.py#collect](../server/sources/radarr.py), [_arr.py#calendar_card](../server/sources/_arr.py), [normal.json](../server/recordings/radarr/normal.json), [odd.json](../server/recordings/radarr/odd.json), [test_source_radarr.py](../server/test_source_radarr.py), [sources-dns-media.json](../server/examples/sources-dns-media.json) |
+| Tests | `server/test_source_radarr.py::RadarrSource`, `server/test_source_actions.py::DnsMediaSample` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#dns-and-media-sources](REFERENCE_SERVER.md#dns-and-media-sources), [docs/SERVER-SETUP.md#sources-homelab-bridge](SERVER-SETUP.md#sources-homelab-bridge) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | Recordings in the shapes of Radarr v6.4.4, API v3 (made up names). |
+
+### source-qbittorrent
+
+**qBittorrent source** · Server · partial · since 2026-11-07
+
+The bridge's `qbittorrent` type reads the WebUI API v2 with an API key (5.2 and newer) or a login whose session cookie is sent back as a header and closed after each run: running downloads as a Lab `list` card (progress, speed, time left), torrents in error and a lost connection as warnings.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [qbittorrent.py#collect](../server/sources/qbittorrent.py), [normal.json](../server/recordings/qbittorrent/normal.json), [odd.json](../server/recordings/qbittorrent/odd.json), [auth-failed.json](../server/recordings/qbittorrent/auth-failed.json), [test_source_qbittorrent.py](../server/test_source_qbittorrent.py), [sources-dns-media.json](../server/examples/sources-dns-media.json) |
+| Tests | `server/test_source_qbittorrent.py::QbittorrentSource`, `server/test_source_actions.py::DnsMediaSample` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#dns-and-media-sources](REFERENCE_SERVER.md#dns-and-media-sources), [docs/SERVER-SETUP.md#sources-homelab-bridge](SERVER-SETUP.md#sources-homelab-bridge) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | Recordings in the shapes of qBittorrent 5.1 / 5.2, WebUI API v2.11 to v2.14 (made up names). |
+
 ### live-api-check
 
 **Live API check** · Server · shipped · since 2026-11-06
@@ -1548,8 +1656,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 12 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 28 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 18 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 34 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 4 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -1567,7 +1675,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 6 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 12 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
@@ -1630,8 +1738,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 2 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 4 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 8 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 10 |  |
 | Home Assistant REST API |  |  |  |  |  |  |  |  | 4 |  |  |  |  |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1649,7 +1757,7 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 3 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 9 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |

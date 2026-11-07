@@ -104,6 +104,21 @@ cron cuts a line at every unescaped `%`.)
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.
 
+### Sources (Homelab Bridge)
+
+With a `sources` list the reference server also reads other services' APIs and shows what they report
+([REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources)). Keys go in env variables; the config only names them.
+
+| Type | Config keys | What the key needs |
+|---|---|---|
+| `pihole` | `url`, `key_env`, `top` | Pi-hole v6 app password |
+| `adguard` | `url`, `username`, `password_env`, `top` | An AdGuard Home user (basic auth) |
+| `sonarr`, `radarr` | `url`, `key_env`, `queue`, `calendar_days` | The API key (Settings → General) |
+| `qbittorrent` | `url`, `key_env` or `username` and `password_env`, `limit` | An API key (5.2 and newer) or a WebUI login |
+
+All are read-only. `"actions": ["pause"]` on `pihole` or `adguard` adds a pause button
+([opt-in](REFERENCE_SERVER.md#opt-in-source-actions)).
+
 ## (b) Home Assistant
 
 Today shows the few devices you pin as tiles: lights, switches, fans, toggles, automations (tap to toggle), scripts,

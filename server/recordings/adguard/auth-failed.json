@@ -1,0 +1,7 @@
+{
+  "_about": "Made up, AdGuard Home v0.107 shape: a wrong user or password; every request answers 401.",
+  "routes": {
+    "GET /control/status": {"status": 401, "body": "Unauthorized"},
+    "GET /control/stats": {"status": 401, "body": "Unauthorized"}
+  }
+}

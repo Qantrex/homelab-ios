@@ -1,0 +1,22 @@
+{
+  "_about": "Made up. Radarr answering oddly: health that is not a list, a queue without records, calendar movies with bad dates and wrong types. The source must not crash.",
+  "routes": {
+    "GET /api/v3/health": {
+      "status": 200,
+      "json": {"message": "not a list"}
+    },
+    "GET /api/v3/queue": {
+      "status": 200,
+      "json": {"page": 1, "records": "none", "totalRecords": -4}
+    },
+    "GET /api/v3/calendar": {
+      "status": 200,
+      "json": [
+        {"title": "Bad Dates", "digitalRelease": "soon", "inCinemas": 20261110, "hasFile": "no"},
+        {"title": null, "digitalRelease": "2026-11-09T00:00:00Z"},
+        "junk",
+        {"title": "Only Cinemas", "inCinemas": "2026-11-13", "new": {"x": 1}}
+      ]
+    }
+  }
+}

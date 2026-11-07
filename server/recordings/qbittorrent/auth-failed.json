@@ -1,0 +1,8 @@
+{
+  "_about": "Made up, qBittorrent 5.x shape: a wrong password. The login answers 200 with 'Fails.' and no cookie; the rest needs a session (403).",
+  "routes": {
+    "POST /api/v2/auth/login": {"status": 200, "body": "Fails."},
+    "GET /api/v2/transfer/info": {"status": 403, "body": "Forbidden"},
+    "GET /api/v2/torrents/info": {"status": 403, "body": "Forbidden"}
+  }
+}

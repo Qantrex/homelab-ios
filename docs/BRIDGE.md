@@ -57,6 +57,29 @@ Anything that is not a dict with the needed fields is skipped (and logged). Dupl
 problems, 100 hosts, 50 cards and 100 services. Fields named like a secret (`token`, `password`, `api_key`, ...) are
 dropped at any depth, and the values of the source's env variables become `***` wherever they appear.
 
+### Opt-in actions
+
+A source may offer actions (pause ad blocking; later container restarts). They stay off until the user lists them in
+the source's `actions` ([REFERENCE_SERVER.md](REFERENCE_SERVER.md#opt-in-source-actions)). The module adds two
+functions:
+
+```python
+def actions(cfg):                    # what it offers: short name -> ActionSpec without `name`
+    return {"pause": {"label": "Pause %s" % cfg["name"], "icon": "shield.slash",
+                      "arg": [{"label": "Pause", "parts": [{"kind": "choice", "label": "For",
+                               "options": [{"value": "5", "label": "5 min"}, {"value": "on", "label": "Resume"}]}]}]}}
+
+
+def act(cfg, fetch, name, arg):      # runs one; the bridge checked name and arg already
+    fetch("/api/dns/blocking", method="POST", body={"blocking": arg == "on"})
+    return "Blocking paused"         # a short text for the app; raise SourceError("...") on failure
+```
+
+`collect` puts the button on an item with the short name, `{"action": {"name": "pause", "label": "Pause 5 min", "arg":
+"5"}}`; the bridge keeps it only when the config lists `pause` and renames it to `<source name>-pause`. The `arg`
+variants may only use `choice` and `literal` parts, so the bridge can check every argument (at most 50). Shared code
+of several types goes in a module whose name starts with `_` (`_dns.py`, `_arr.py`): it is not a type.
+
 When `collect` raises (a `SourceError` from `fetch`, or any bug), or returns something that is not a JSON object,
 the source becomes exactly **one warning** `<name>: <short error>` (id `<name>:source`) and nothing else. Raise
 `SourceError("short text")` yourself for a known failure ("slug not found"). Never put a URL or a key in the text;
@@ -68,7 +91,10 @@ URLs are cut out anyway.
   `reference_server`.
 - Talk to the upstream only through `fetch`; read keys only with `fetch.secret()`. No `os.environ`, `subprocess`,
   `urllib`, `socket` or `open(` (a test greps for them).
-- Read-only. Never call an endpoint that changes something upstream (Pi-hole's logout after login is fine).
+- Read-only. `collect` never calls an endpoint that changes something upstream (a login and the logout after it are
+  fine: Pi-hole and qBittorrent). Writes happen only in `act`, for an action the config opted in to.
+- A session cookie (qBittorrent) is read from the login's `set-cookie` header and sent back as a `Cookie` header;
+  `fetch` keeps no cookies itself. Log out at the end of the run, also when a read failed (`try`/`finally`).
 - Lenient: every upstream field may be missing or have another type. Use `as_list`, `as_dict`, `as_text`; skip what
   doesn't fit. The odd recording must never crash the source.
 - Ids from the upstream's stable ids (monitor id, VM id), not from list positions, so `since` stays put.
@@ -93,8 +119,8 @@ URLs are cut out anyway.
 4. **Registry.** One `[[feature]]` in `features.toml`, area `Server`, `status = "partial"`, `depends_on =
    ["server-sources"]`, its module, recordings and test file in `sources`, the test classes in `tests`, `not_needed =
    { device_tests = "server side; the app sees ordinary Companion data" }`. Then `scripts/features render`.
-5. **Docs.** A row in the sources table of [SERVER-SETUP.md](SERVER-SETUP.md) (when it exists) with the config keys and
-   what the key needs (read-only token, role).
+5. **Docs.** A row in the sources table of [SERVER-SETUP.md](SERVER-SETUP.md#sources-homelab-bridge) with the config
+   keys and what the key needs (read-only token, role).
 6. **Check.** `python3 -m unittest -v server/test_*.py`, `scripts/features`, `scripts/lint`, and
    [try it](#try-it) with `scripts/check-live-api`.
 
@@ -119,6 +145,7 @@ For your own source, copy the config, change `type` and `url`, and replay your r
 start). `RealApp` starts a `sources.Runner`: every 0.25 s it starts each source that is due and not still running,
 in its own daemon thread. A run that takes longer than `every + timeout` shows as `<name>: timeout` until it ends.
 `/state` and `/services` add `Runner.merged()`, the last result of every source, after the server's own problems,
-hosts and cards; the status is the worst of all problems. `/info` lists `cards` and `services` when a source sends
+hosts and cards; the status is the worst of all problems. With opt-in actions, `GET /actions` serves
+`Runner.action_specs()` and `POST /actions/<name>` calls `Runner.act()`. `/info` lists `cards` and `services` when a source sends
 any. `Runner.status()` keeps per source `ok`, `error`, `checked` and `insecure` for `/info` and Diagnostics (task
 M1.2).

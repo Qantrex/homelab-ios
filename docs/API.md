@@ -137,13 +137,14 @@ item with `progress`, and an item `action` as a button at the end (the usual con
 or `orange` is a warning (gold), `red` a problem (love), `gray` inactive (a grey dot, "not set up"), anything else
 normal; a warning or problem row has a warning glyph instead of its dot. A `list` card with more than 3 items shows 3
 and a "Show N more" row. The card's `subtitle` (or, when it has items, its `text`) is the line under its title. Use
-one grammar per card: `title` what, `subtitle` the details, `value` when or how much. The first three users:
+one grammar per card: `title` what, `subtitle` the details, `value` when or how much. The users so far:
 
 | Card id | What | Rows |
 |---|---|---|
 | `tailnet` | The tailnet's nodes | name, "linux · direct", no value when online ("online" is also shown as nothing), "offline" or "seen 3 h ago" when not (a warning glyph with the word); a key that expires soon `yellow`, expired or an offline server `red` |
-| `dns` and `dns-top` | Ad blocking | Queries, Blocked, Blocking with a "Pause 5 min" button (`dns-pause`); the blocked domains |
+| `dns` and `dns-top` | Ad blocking | Queries, Blocked, Blocking with a "Pause 5 min" button (`dns-pause`); the blocked domains. The Homelab Bridge's `pihole` and `adguard` sources send the same cards as `<name>:dns` and `<name>:dns-top`; the button (`<name>-pause`) only when the source opted in ([REFERENCE_SERVER.md](REFERENCE_SERVER.md#opt-in-source-actions)) |
 | `backups` | Backup runs | what, size or snapshots, "today 04:52", `progress` for space used |
+| `queue`, `downloads` | Downloads (the bridge's `sonarr`, `radarr` and `qbittorrent` sources, as `<name>:queue` and `<name>:downloads`) | the episode, movie or torrent; its state and reason ("Import blocked: ..."); time left; `progress`. `orange` needs a look, `red` failed. The `sonarr` and `radarr` calendars are ordinary `countdown` cards on Today |
 
 ## Auth
 

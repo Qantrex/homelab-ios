@@ -1,0 +1,31 @@
+{
+  "_about": "Made up. qBittorrent answering oddly: an old-style SID cookie, junk torrents, wrong types, an errored list that is not a list, no connection. The source must not crash.",
+  "routes": {
+    "POST /api/v2/auth/login": {
+      "status": 200,
+      "body": "Ok.",
+      "headers": {"Set-Cookie": "SID=oddSession0123456789; path=/"}
+    },
+    "GET /api/v2/transfer/info": {
+      "status": 200,
+      "json": {"connection_status": "disconnected", "dl_info_speed": null, "up_info_speed": "fast", "new": [1]}
+    },
+    "GET /api/v2/torrents/info?filter=downloading": {
+      "status": 200,
+      "json": [
+        {"name": null, "hash": "aaaa"},
+        {"name": "No hash"},
+        "junk",
+        {"name": "Odd one", "hash": "ffff", "progress": "half", "eta": -1, "dlspeed": "fast", "state": "newState"},
+        {"name": "Over full", "hash": "eeee", "progress": 1.7, "eta": 8640000, "state": "stalledDL"},
+        {"name": "Odd one again", "hash": "ffff", "state": "downloading"},
+        null
+      ]
+    },
+    "GET /api/v2/torrents/info?filter=errored": {
+      "status": 200,
+      "json": {"not": "a list"}
+    },
+    "POST /api/v2/auth/logout": {"status": 500, "body": "oops"}
+  }
+}

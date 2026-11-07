@@ -18,8 +18,9 @@ The Runner here runs every source on its own `every`, each run in its own thread
 into /state and /services (`merged()`). Rules it enforces, whatever the module returns:
   - ids get the prefix "<source name>:"; a problem's `host` too (dropped unless the source sent that host)
   - a failing, crashing or hanging source is exactly one warning problem "<name>: <short error>", nothing else
-  - no actions: `action` on cards and items and `restartable` on containers are removed (bridge actions come later,
-    off by default, per item)
+  - no actions unless the config lists them: `action` on cards and `restartable` on containers are removed, and an
+    item's `action` stays only when its name is in the source's `actions` list (opt-in, per source; the module offers
+    them with actions(cfg) and runs them with act(cfg, fetch, name, arg); see Runner.act)
   - the card ids `today` and `departures` are refused (the app gives those ids a meaning)
   - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values are replaced by
     "***" in everything the source returns and in every error; fields named like a secret are dropped
@@ -31,6 +32,7 @@ import http.client
 import datetime
 import hashlib
 import importlib
+import itertools
 import json
 import os
 import re
@@ -65,7 +67,9 @@ SECRET_QUERY = re.compile(r"(?i)(^|[&;])[^=&;]*(key|token|password|passwd|secret
 RESERVED_CARD_IDS = ("today", "departures")
 RESERVED_ENV = ("HOMELAB_TOKENS", "HOMELAB_BUTTON_SECRET")
 SEVERITIES = ("problem", "warning")
-COMMON_KEYS = ("name", "type", "url", "every", "timeout", "insecure", "ca_file")
+COMMON_KEYS = ("name", "type", "url", "every", "timeout", "insecure", "ca_file", "actions")
+ACTION_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")   # Companion API action names (openapi.yaml ActionSpec)
+MAX_ARGS = 50   # argument choices an opt-in action may have
 
 _URL_RE = re.compile(r"[a-z][a-z0-9+.-]*://\S+", re.I)
 _NO_PROXY = urllib.request.ProxyHandler({})
@@ -208,7 +212,7 @@ def parse(raw, env):
     the variables its *_env keys name, and nothing else)}."""
     if not isinstance(raw, list):
         raise ValueError("sources must be a list of objects")
-    specs, names = [], set()
+    specs, names, action_names = [], set(), set()
     for i, item in enumerate(raw):
         if not isinstance(item, dict):
             raise ValueError("sources[%d] must be an object" % i)
@@ -261,9 +265,68 @@ def parse(raw, env):
                 check(copy.deepcopy(cfg))
             except ValueError as exc:
                 raise ValueError("%s: %s" % (where, exc))
+        actions = _parse_actions(item, cfg, module, where, action_names)
+        cfg["actions"] = list(actions)
         specs.append({"name": name, "type": item["type"], "every": cfg["every"], "timeout": cfg["timeout"],
-                      "cfg": cfg, "module": module, "env": values})
+                      "cfg": cfg, "module": module, "env": values, "actions": actions})
     return specs
+
+
+def action_name(source_name, short):
+    """The Companion action name of a source's opt-in action: "Pi-hole" + "pause" -> "pi-hole-pause"."""
+    slug = re.sub(r"[^a-z0-9]+", "-", source_name.lower()).strip("-")
+    return "%s-%s" % (slug or "source", short)
+
+
+def action_args(aspec):
+    """Every argument an opt-in action takes: its `arg` variants, built from `choice` and `literal` parts only (a
+    source action has a short, fixed list). No variants: only "". None when a part has another kind."""
+    variants = as_list(aspec.get("arg"))
+    if not variants:
+        return {""}
+    out = set()
+    for v in variants:
+        parts = []
+        for part in as_list(as_dict(v).get("parts")):
+            part = as_dict(part)
+            if part.get("kind") == "literal" and isinstance(part.get("text"), str):
+                parts.append([part["text"]])
+            elif part.get("kind") == "choice":
+                parts.append([o["value"] for o in as_list(part.get("options"))
+                              if isinstance(o, dict) and isinstance(o.get("value"), str)])
+            else:
+                return None
+        for combo in itertools.product(*parts):
+            out.add("".join(combo))
+            if len(out) > MAX_ARGS:
+                return None
+    return out
+
+
+def _parse_actions(item, cfg, module, where, taken):
+    """The `actions` key: this source's opt-in actions, {short name: Companion name}. Empty (off) by default."""
+    wanted = item.get("actions", [])
+    if not isinstance(wanted, list) or not all(isinstance(a, str) for a in wanted):
+        raise ValueError("%s.actions must be a list of action names" % where)
+    if not wanted:
+        return {}
+    offer = getattr(module, "actions", None)
+    offered = as_dict(offer(copy.deepcopy(cfg))) if callable(offer) and callable(getattr(module, "act", None)) else {}
+    out = {}
+    for short in wanted:
+        if short not in offered:
+            raise ValueError("%s.actions: %r is not an action of type %s (it offers: %s)"
+                             % (where, short, item.get("type"), ", ".join(sorted(offered)) or "none"))
+        full = action_name(item["name"], short)
+        if not ACTION_RE.fullmatch(full):
+            raise ValueError("%s.actions: %r gives the action name %r, which is not allowed" % (where, short, full))
+        if full in taken:
+            raise ValueError("%s.actions: the action name %r is taken by another source (rename one)" % (where, full))
+        if action_args(as_dict(offered[short])) is None:
+            raise ValueError("%s.actions: %r takes an argument the bridge can't check" % (where, short))
+        taken.add(full)
+        out[short] = full
+    return out
 
 
 def env_names(specs):
@@ -417,16 +480,23 @@ def _pick(items, limit, valid, kind, name, logf):
     return out
 
 
-def _no_actions(card):
+def _no_actions(card, actions=None):
+    """Remove every action, except an item action the config opted in to (renamed to its Companion name)."""
     card.pop("action", None)
     for item in card.get("items", []):
-        item.pop("action", None)
+        act = item.pop("action", None)
+        full = (actions or {}).get(act.get("name")) if isinstance(act, dict) else None
+        if isinstance(full, str):
+            kept = {"name": full}
+            kept.update({k: act[k] for k in ("label", "arg") if isinstance(act.get(k), str)})
+            item["action"] = kept
     return card
 
 
-def normalize(name, result, secrets=(), checked=None, logf=lambda m: None):
+def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, actions=None):
     """A source's raw result → {"problems", "hosts", "cards", "services"} as the app may see it (rules in the
-    module docstring). Raises SourceError when the result is not a JSON object."""
+    module docstring). `actions`: the source's opt-in actions, {short name: Companion name}. Raises SourceError when
+    the result is not a JSON object."""
     if not isinstance(result, dict):
         raise SourceError("collect() returned %s, not a dict" % type(result).__name__)
     try:
@@ -491,7 +561,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None):
                 del c["items"]
         if checked and "updated" not in c:
             c["updated"] = checked
-        cards.append(_no_actions(c))
+        cards.append(_no_actions(c, actions))
 
     services = []
     for s in _pick(result.get("services"), MAX_SERVICES,
@@ -529,6 +599,13 @@ class Runner:
         self.tick_seconds = tick
         self.secrets = sorted({v for s in specs for v in s["env"].values() if v}, key=len, reverse=True)
         self.states = {s["name"]: _State() for s in specs}
+        # Opt-in actions: Companion name -> (spec, short name, ActionSpec for GET /actions). Empty by default.
+        self.offered = {}
+        for s in specs:
+            for short, full in (s.get("actions") or {}).items():
+                aspec = dict(as_dict(as_dict(s["module"].actions(copy.deepcopy(s["cfg"]))).get(short)))
+                aspec["name"] = full
+                self.offered[full] = (s, short, aspec)
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
         self.thread = None
@@ -583,7 +660,7 @@ class Runner:
         result, error = None, None
         try:
             raw = spec["module"].collect(copy.deepcopy(spec["cfg"]), fetch)
-            result = normalize(name, raw, self.secrets, now_iso(), self.log)
+            result = normalize(name, raw, self.secrets, now_iso(), self.log, spec.get("actions"))
         except SourceError as exc:
             error = scrub(exc, self.secrets)
         except Exception as exc:  # noqa: BLE001 - a crash is one warning, not a dead server
@@ -608,6 +685,37 @@ class Runner:
                 st.logged = error
                 pid = name + ":source"
                 st.since = {pid: st.since.get(pid, stamp)}
+
+    def action_specs(self):
+        """The opt-in actions for GET /actions (feature run-actions), in config order."""
+        return [copy.deepcopy(entry[2]) for entry in self.offered.values()]
+
+    def act(self, full, arg):
+        """Run one opt-in action now (the app asked, after its confirm): (HTTP code, body). The name and the argument
+        are checked again here; the module's act(cfg, fetch, name, arg) does the one write and returns a short text.
+        A failure is a 502 with a short, scrubbed reason. Afterwards the source is read again at the next tick."""
+        entry = self.offered.get(full)
+        if entry is None:
+            return 404, {"error": "not an action of this server"}
+        spec, short, aspec = entry
+        if not isinstance(arg, str) or arg not in (action_args(aspec) or ()):
+            return 400, {"error": "%s: that choice is not offered" % as_text(aspec.get("label"), full)}
+        name = spec["name"]
+        self.log("source %s: action %s %s" % (name, full, arg))
+        fetch = Fetch(spec["cfg"], spec["env"], deadline=time.monotonic() + 3 * spec["timeout"])
+        try:
+            text = spec["module"].act(copy.deepcopy(spec["cfg"]), fetch, short, arg)
+        except SourceError as exc:
+            error = scrub(exc, self.secrets)
+        except Exception as exc:  # noqa: BLE001 - a crash is an error answer, not a dead server
+            error = scrub(short_error(exc), self.secrets)
+            self.log("source %s action %s crashed:\n%s" % (name, full, self._scrub_log(traceback.format_exc())))
+        else:
+            with self.lock:
+                self.states[name].next_due = 0.0
+            return 200, {"ok": True, "text": scrub(as_text(text) or "Done", self.secrets)}
+        self.log("source %s: action %s failed: %s" % (name, full, error))
+        return 502, {"error": "%s: %s (it may not have run)" % (name, error)}
 
     def _failure(self, name, st, error):
         pid = name + ":source"

@@ -1,0 +1,41 @@
+{
+  "_about": "Made up, in the shapes of Pi-hole FTL v6.8 (docs.pi-hole.net/api, FTL specs auth.yaml, stats.yaml, dns.yaml): login with an app password, the 24 h summary, blocking on, the top blocked domains, logout, and the pause the opt-in action sends.",
+  "routes": {
+    "POST /api/auth": {
+      "status": 200,
+      "json": {"session": {"valid": true, "totp": false, "sid": "made-up-sid-0123456789ab=", "csrf": "made-up-csrf-0123=",
+                           "validity": 1800, "message": "app-password correct"},
+               "took": 0.032}
+    },
+    "GET /api/stats/summary": {
+      "status": 200,
+      "json": {
+        "queries": {"total": 23410, "blocked": 4307, "percent_blocked": 18.398120880126953, "unique_domains": 1840,
+                    "forwarded": 12011, "cached": 7092, "frequency": 0.27,
+                    "types": {"A": 11000, "AAAA": 8000, "HTTPS": 3900, "PTR": 300, "OTHER": 210},
+                    "status": {"UNKNOWN": 0, "GRAVITY": 4100, "FORWARDED": 12011, "CACHE": 7092, "REGEX": 150,
+                               "DENYLIST": 57, "IN_PROGRESS": 0},
+                    "replies": {"UNKNOWN": 0, "NODATA": 900, "NXDOMAIN": 410, "CNAME": 2100, "IP": 19900,
+                                "DOMAIN": 100}},
+        "clients": {"active": 9, "total": 14},
+        "gravity": {"domains_being_blocked": 104756, "last_update": 1762480000},
+        "took": 0.0008
+      }
+    },
+    "GET /api/dns/blocking": {
+      "status": 200,
+      "json": {"blocking": "enabled", "timer": null, "took": 0.0001}
+    },
+    "GET /api/stats/top_domains": {
+      "status": 200,
+      "json": {"domains": [{"domain": "ads.example.net", "count": 812}, {"domain": "tracker.example.org", "count": 640},
+                           {"domain": "telemetry.example.com", "count": 377}],
+               "total_queries": 23410, "blocked_queries": 4307, "took": 0.0011}
+    },
+    "DELETE /api/auth": {"status": 204, "body": ""},
+    "POST /api/dns/blocking": {
+      "status": 200,
+      "json": {"blocking": "disabled", "timer": 300, "took": 0.0003}
+    }
+  }
+}

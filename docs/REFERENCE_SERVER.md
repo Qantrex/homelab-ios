@@ -242,6 +242,7 @@ against a fake upstream.
 | `key_env` | none | The **name** of the env variable that holds the key. Other `*_env` keys work the same (`password_env`) |
 | `insecure` | `false` | Skip the TLS certificate check (self-signed Proxmox or TrueNAS). Logged as a warning |
 | `ca_file` | none | A PEM file with the CA that signed the upstream's certificate (better than `insecure`) |
+| `actions` | `[]` | Opt-in actions of this source, by name (`["pause"]`). Off unless listed. See [below](#opt-in-source-actions) |
 | other keys | | Per type, in the module's docstring |
 
 Rules the server enforces for every source:
@@ -251,7 +252,8 @@ Rules the server enforces for every source:
   Put the variables in the systemd `EnvironmentFile` next to `HOMELAB_TOKENS`. A source sees only the variables its
   own `*_env` keys name. Their values are replaced by `***` in every answer and log line, and commands from actions
   and chat don't get them.
-- **Read-only.** A source can't offer actions; buttons on its cards and items are removed.
+- **Read-only by default.** Buttons on a source's cards and items are removed, unless the source's config lists
+  that action in `actions` (see [Opt-in actions](#opt-in-source-actions)).
 - **Ids are prefixed.** A Kuma monitor `m3` becomes the problem `Kuma:m3`, the host `pve1` of the source `Lab`
   becomes `Lab:pve1`. The card ids `today` and `departures` are refused.
 - **A failing source is one warning.** A wrong key, a timeout, an odd answer or a bug in the module gives exactly one
@@ -262,6 +264,40 @@ Rules the server enforces for every source:
 - Each source runs in its own thread, so a slow upstream never holds up the host checks or another source.
 
 Writing a new source: [BRIDGE.md](BRIDGE.md).
+
+### DNS and media sources
+
+`server/examples/sources-dns-media.json` has all five. Each module's docstring has the details and the version its
+recordings come from.
+
+| Type | Config keys | The key it needs | What it adds |
+|---|---|---|---|
+| `pihole` | `url`, `key_env`, `top` (5) | An **app password** (Pi-hole v6: Settings → Web interface / API). Pi-hole has no read-only login; the session is closed after each read | Card `dns` in Lab (Queries and Blocked in 24 h, Blocking), `dns-top` (top blocked domains); a warning while blocking is off for good |
+| `adguard` | `url`, `username`, `password_env`, `top` (5) | An AdGuard Home user (basic auth; AdGuard has no read-only users) | The same `dns` and `dns-top` cards; warnings while protection is off or DNS is not running |
+| `sonarr` | `url`, `key_env`, `queue` (10), `calendar_days` (7) | The API key (Settings → General) | Health errors as problems, warnings as warnings; card `queue` in Lab with `progress` per download (an import that is blocked or failed is also a warning); card `calendar` (style `countdown`, on Today) with the next episodes |
+| `radarr` | as `sonarr` | The API key | As `sonarr`; the calendar has the next digital, disc or cinema release per movie |
+| `qbittorrent` | `url`, `key_env` (5.2 and newer) or `username` and `password_env`, `limit` (10) | An API key, or a WebUI login (the session cookie is sent back as a header and closed after each read) | Card `downloads` in Lab (progress, speed, time left); torrents in error and a lost connection as warnings |
+
+All ids get the source's name in front (`Pi-hole:dns`). Times in the calendar are the bridge's local time.
+
+### Opt-in source actions
+
+Sources are read-only unless you list an action in the source's `actions`. Then, and only for that source:
+
+- its cards carry the button (for `pihole` and `adguard`: "Pause 5 min" on the Blocking row, "Resume" while paused),
+- `/info` lists `run-actions`, and `GET /actions` lists the action as `<name>-<action>` (`pi-hole-pause`) with its
+  choices (5, 15 or 30 minutes, or Resume),
+- `POST /actions/pi-hole-pause` with `{"arg": "15"}` runs it: the app asks first, the bridge checks the name and the
+  argument again (anything else is a 400, nothing is sent upstream), then does the one write and reads the source
+  again. A failure answers 502 with a short reason and no key.
+
+```json
+{"name": "Pi-hole", "type": "pihole", "url": "http://192.0.2.53", "key_env": "PIHOLE_APP_PASSWORD",
+ "actions": ["pause"]}
+```
+
+The ad blockers offer `pause`; the other types offer none. Two sources whose names give the same action name stop the
+server at start (rename one).
 
 ## Fixture mode
 

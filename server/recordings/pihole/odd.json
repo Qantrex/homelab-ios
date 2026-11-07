@@ -1,0 +1,24 @@
+{
+  "_about": "Made up. Pi-hole v6 answering oddly: unknown fields, wrong types, junk entries in the top list, blocking off for good. The source must not crash.",
+  "routes": {
+    "POST /api/auth": {
+      "status": 200,
+      "json": {"session": {"valid": true, "sid": "made-up-sid-odd=", "validity": "long", "new": [1, 2]}, "extra": null}
+    },
+    "GET /api/stats/summary": {
+      "status": 200,
+      "json": {"queries": {"total": "23k", "blocked": null, "percent_blocked": "high", "types": []},
+               "clients": [], "gravity": "?", "new_section": {"x": 1}}
+    },
+    "GET /api/dns/blocking": {
+      "status": 200,
+      "json": {"blocking": "disabled", "timer": "soon"}
+    },
+    "GET /api/stats/top_domains": {
+      "status": 200,
+      "json": {"domains": [{"domain": null, "count": 3}, "junk", {"domain": "ads.example.net", "count": "many"},
+                           {"domain": "tracker.example.org", "count": 5}, 7, {"count": 2}]}
+    },
+    "DELETE /api/auth": {"status": 410, "json": {"error": {"key": "gone"}}}
+  }
+}

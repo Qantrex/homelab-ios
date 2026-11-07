@@ -1,0 +1,33 @@
+{
+  "_about": "Made up, in the shapes of AdGuard Home v0.107.80 (openapi/openapi.yaml, API 0.107): status with protection on, 24 h stats with the top blocked domains, and the pause the opt-in action sends.",
+  "routes": {
+    "GET /control/status": {
+      "status": 200,
+      "json": {"dns_addresses": ["192.0.2.54"], "dns_port": 53, "http_port": 3000, "protection_enabled": true,
+               "protection_disabled_duration": 0, "dhcp_available": false, "running": true, "version": "v0.107.80",
+               "language": "en", "start_time": 1762480000000}
+    },
+    "GET /control/stats": {
+      "status": 200,
+      "json": {
+        "time_units": "hours",
+        "num_dns_queries": 23410,
+        "num_blocked_filtering": 4307,
+        "num_replaced_safebrowsing": 2,
+        "num_replaced_safesearch": 0,
+        "num_replaced_parental": 0,
+        "avg_processing_time": 0.012,
+        "top_queried_domains": [{"example.com": 900}, {"example.org": 455}],
+        "top_clients": [{"192.0.2.60": 9000}, {"192.0.2.61": 4100}],
+        "top_blocked_domains": [{"ads.example.net": 812}, {"tracker.example.org": 640}, {"telemetry.example.com": 377}],
+        "top_upstreams_responses": [{"192.0.2.1:53": 18000}],
+        "top_upstreams_avg_time": [{"192.0.2.1:53": 0.021}],
+        "dns_queries": [900, 950, 1000, 980, 970, 960, 1010, 990, 1000, 940, 930, 1020, 1100, 990, 980, 970, 960, 950, 940, 930, 920, 910, 900, 1290],
+        "blocked_filtering": [160, 170, 180, 175, 170, 180, 190, 185, 180, 170, 165, 190, 200, 180, 175, 170, 165, 160, 158, 155, 150, 148, 145, 287],
+        "replaced_safebrowsing": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+        "replaced_parental": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      }
+    },
+    "POST /control/protection": {"status": 200, "body": ""}
+  }
+}
