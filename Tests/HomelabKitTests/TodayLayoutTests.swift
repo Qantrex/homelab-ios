@@ -50,8 +50,8 @@ import Testing
         var l = TodayLayout.standard
         l.setVisible(.report, false)
         #expect(Density.calm.sections(l) == [.day, .home])
-        #expect(Density.standard.sections(l) == [.day, .waiting, .deals, .home, .cards])          // no machines, report hidden
-        #expect(Density.overkill.sections(l) == [.day, .waiting, .deals, .home, .cards, .report, .machines])
+        #expect(Density.standard.sections(l) == [.day, .waiting, .deals, .home, .cards])          // report hidden
+        #expect(Density.overkill.sections(l) == [.day, .waiting, .deals, .home, .cards, .report])   // no machines in any density
         #expect(AppSettings().todayDensity == .standard)
     }
 

@@ -146,7 +146,7 @@ private func context(_ now: String, needsMe: Set<TodaySection> = [], presence: P
         #expect(Density.standard.hiddenNow(l, afternoon) == [.deals])
         #expect(Density.standard.sections(l, evening) == [.day, .waiting, .deals, .home, .cards, .report])
         #expect(Density.standard.hiddenNow(l, evening).isEmpty)
-        #expect(Density.overkill.sections(l, afternoon) == TodaySection.allCases)                  // Overkill ignores rules
+        #expect(Density.overkill.sections(l, afternoon) == TodaySection.allCases.filter(\.isOnToday))                  // Overkill ignores rules
         #expect(Density.overkill.hiddenNow(l, afternoon).isEmpty)
         let shown = context("2026-11-06T14:00:00Z", shownAnyway: [.deals])
         #expect(Density.standard.sections(l, shown).contains(.deals) && Density.standard.hiddenNow(l, shown).isEmpty)
@@ -161,16 +161,17 @@ private func context(_ now: String, needsMe: Set<TodaySection> = [], presence: P
         #expect(Density.standard.hiddenNow(l, context("2026-11-06T14:00:00Z")).isEmpty)           // off, not hidden by a rule
     }
 
-    @Test func machinesInStandardOnlyWithARule() {
+    /// The retired Machines section is never on Today, whatever an old settings file says about its rule.
+    @Test func machinesNeverShowOnToday() {
         var l = TodayLayout.standard
         let now = context("2026-11-06T14:00:00Z", needsMe: [.machines])
-        #expect(!Density.standard.sections(l, now).contains(.machines))
-        l.setRule(.always, for: .machines)                                                          // stored: "in Standard too"
-        #expect(l.rule(for: .machines) == .always && Density.standard.sections(l, now).last == .machines)
+        l.setRule(.always, for: .machines)                                                          // an old file: "in Standard too"
         l.setRule(.needsMe, for: .machines)
-        #expect(Density.standard.sections(l, now).last == .machines)
-        #expect(!Density.standard.sections(l, context("2026-11-06T14:00:00Z")).contains(.machines))
-        #expect(Density.standard.hiddenNow(l, context("2026-11-06T14:00:00Z")).isEmpty)           // needs-me isn't listed
+        for density in Density.allCases {
+            #expect(!density.sections(l, now).contains(.machines))
+            #expect(!density.hiddenNow(l, now).contains(.machines))
+        }
+        #expect(l.rule(for: .machines) == .needsMe)                                                 // kept in the file
         l.setRule(nil, for: .machines)
         #expect(l.rules == nil && l == .standard)
     }
@@ -182,10 +183,10 @@ private func context(_ now: String, needsMe: Set<TodaySection> = [], presence: P
         l.setRule(.times(.evenings), for: .cards)                                                   // not needs-me: Calm leaves it out
         #expect(Density.calm.sections(l, context("2026-11-06T19:00:00Z")) == [.day, .home])
         let busy = context("2026-11-06T19:00:00Z", needsMe: [.waiting, .machines, .cards, .report])
-        #expect(Density.calm.sections(l, busy) == [.day, .waiting, .home, .machines])
+        #expect(Density.calm.sections(l, busy) == [.day, .waiting, .home])
         // Home by its rule in Calm too.
         l.setRule(.times(.mornings), for: .home)
-        #expect(Density.calm.sections(l, busy) == [.day, .waiting, .machines])
+        #expect(Density.calm.sections(l, busy) == [.day, .waiting])
         #expect(Density.calm.hiddenNow(l, busy) == [.home])
     }
 

@@ -114,7 +114,7 @@ import Testing
             #expect(l.density == .overkill)
             #expect(l.today.hidden.isEmpty)
             #expect(Set(l.today.sections) == Set(TodaySection.allCases))
-            #expect(Density.overkill.sections(l.today).count == TodaySection.allCases.count)
+            #expect(Density.overkill.sections(l.today).count == TodaySection.allCases.filter(\.isOnToday).count)
         }
         // Offered first, in the standard order.
         let haOnly = StartPreset.everything.layout(features: [], hasHA: true)

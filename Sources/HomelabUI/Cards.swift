@@ -17,6 +17,10 @@ struct CardView: View {
     /// card's text came from the chat, so its rows only show and never run anything. The header's form button stays
     /// (the form shows everything before it runs).
     var allowsItemActions = true
+    /// Today only: long lists and texts fold (`TodayFold`). Nil = every row.
+    var fold: TodayFoldContext?
+    /// Only the content, without header and panel: inside the "Also" panel, whose row is the header.
+    var bare = false
 
     /// A chat bubble shows this many rows at most.
     static let compactRows = 6
@@ -68,6 +72,7 @@ struct CardView: View {
         layout
         // Rows that come or go (a parcel delivered, a to-do added) spring into place; a ticked-off item too.
         .rowMotion(card.items)
+        .rowMotion(fold?.expanded ?? false)
         .rowMotion(ticked)
         .onChange(of: card) { _, new in ticked.prune(new) }
         .sheet(item: $formFor, onDismiss: {
@@ -99,7 +104,9 @@ struct CardView: View {
     /// bubble (`compact`): one small panel with a quiet header.
     @ViewBuilder
     private var layout: some View {
-        if compact {
+        if bare {
+            content
+        } else if compact {
             VStack(alignment: .leading, spacing: 8) {
                 header
                 if let subtitle = card.subtitle { Text(subtitle).font(Typo.meta).foregroundStyle(Palette.secondary) }
@@ -182,8 +189,12 @@ struct CardView: View {
     private var content: some View {
         switch card.style {
         case .text:
-            Text(markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n"))).tint(Palette.iris)
-                .font(compact ? Typo.meta : Typo.body)
+            let text = markdown(card.text ?? card.items.compactMap(\.title).joined(separator: "\n"))
+            if let fold, !compact {
+                FoldedText(text: text, title: card.title ?? card.id, fold: fold)
+            } else {
+                Text(text).tint(Palette.iris).font(compact ? Typo.meta : Typo.body)
+            }
         case .metrics where usesRows, .list where usesRows:
             labRows
         case .posterGrid:
@@ -196,11 +207,11 @@ struct CardView: View {
         case .checklist:
             // Redrawn every minute, so "today 18:00" turns love when it passes.
             TimelineView(.everyMinute) { context in
-                rows(ticked.applied(to: card, now: context.date).items) { checkRow($0, now: context.date) }
+                rows(ticked.applied(to: card, now: context.date).items, now: context.date) { checkRow($0, now: context.date) }
             }
         case .countdown:
             TimelineView(.everyMinute) { context in
-                rows(card.sortedForCountdown) { countdownRow($0, now: context.date) }
+                rows(card.sortedForCountdown, now: context.date) { countdownRow($0, now: context.date) }
             }
         case .departures:
             departures
@@ -284,7 +295,7 @@ struct CardView: View {
     /// The rows of a list-like card; its `text` when it has no items ("Nothing open."). A chat bubble shows the
     /// first few and how many more there are.
     @ViewBuilder
-    private func rows<Row: View>(_ items: [Card.Item], @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
+    private func rows<Row: View>(_ items: [Card.Item], now: Date = .now, @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
         if items.isEmpty, let text = card.text {
             VStack(alignment: .leading, spacing: 4) {
                 Text(markdown(text)).tint(Palette.iris).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)
@@ -294,14 +305,26 @@ struct CardView: View {
                 }
             }
         } else {
-            let shown = compact ? Array(items.prefix(Self.compactRows)) : items
+            // On Today long lists fold: urgent rows stay, the rest is behind one row (`TodayFold.rows`).
+            let folded = compact ? nil : fold.map {
+                TodayFold.rows(items, in: card, density: $0.density, expanded: $0.expanded, now: now)
+            }
+            let shown = compact ? Array(items.prefix(Self.compactRows)) : folded?.items ?? items
             VStack(alignment: .leading, spacing: compact ? 8 : 12) {
                 ForEach(Array(Self.keyed(shown).enumerated()), id: \.element.key) { i, keyed in
                     if i > 0, !compact { TodaySeparator() }
                     row(keyed.item).transition(.opacity)
                 }
-                if shown.count < items.count {
+                if compact, shown.count < items.count {
                     Text("and \(items.count - shown.count) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
+                }
+                if let fold, let folded, folded.folds {
+                    TodaySeparator()
+                    FoldRow(title: card.title ?? card.id,
+                            label: fold.expanded ? String(localized: "Show less")
+                                                 : folded.hint.map { String(localized: "Show \(folded.hidden) more · \($0)") }
+                                                   ?? String(localized: "Show \(folded.hidden) more"),
+                            hidden: folded.hidden, expanded: fold.expanded, toggle: fold.toggle)
                 }
             }
         }

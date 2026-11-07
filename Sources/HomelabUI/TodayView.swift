@@ -18,6 +18,8 @@ struct TodayView: View {
     @State private var home = HomeModel()
     /// The time the show rules check (Settings → Today → Sections); ticks every 30 s while a rule is set.
     @State private var ruleClock = Date.now
+    /// The folded cards and Also rows the owner opened (card ids, "also:<kind>"). Only for this launch.
+    @State private var expanded: Set<String> = []
 
     private var status: ServerStatus { model.selectedStatus }
     private var density: Density { model.settings.todayDensity }
@@ -62,7 +64,7 @@ struct TodayView: View {
                         }
                     }
                     // In my order, without the hidden ones and those a rule hides now (Settings → Today).
-                    ForEach(shown) { section(for: $0) }
+                    ForEach(shown) { section(for: $0, shown: shown) }
                     if model.settings.todayLayout.rules != nil, let context = today.context {
                         HiddenNowLine(model: model, context: context, now: ruleClock)
                     }
@@ -347,22 +349,23 @@ struct TodayView: View {
     // MARK: Content
 
     @ViewBuilder
-    private func section(for section: TodaySection) -> some View {
+    private func section(for section: TodaySection, shown: [TodaySection]) -> some View {
         switch section {
         case .day:
-            if let dayCard { DaySection(card: dayCard) }
+            if let dayCard { DaySection(card: dayCard, plainLines: density != .calm) }
         case .waiting:
             if let state, model.selected != nil, !state.pending.isEmpty { waiting(state.pending) }
         case .deals:
-            if model.selected != nil, let fresh = status.deals?.freshAct(), !fresh.isEmpty { dealsCard(fresh) }
+            // Deals are a row of the Also panel (with the cards); alone only when the cards are not on Today.
+            if !shown.contains(.cards), model.selected != nil, !freshDeals.isEmpty { alsoOnly }
         case .home:
             if let ha = model.homeAssistant { HomeTiles(model: model, server: ha, home: home) }
         case .cards:
-            if let state, model.selected != nil { otherCards(state) }
+            if let state, model.selected != nil { otherCards(state, withDeals: shown.contains(.deals)) }
         case .report:
             if let state, model.selected != nil { lastReport(state) }
         case .machines:
-            if let state, model.selected != nil, !state.hosts.isEmpty { MachineList(hosts: state.hosts, state: state, exact: density.exactTimes) }
+            EmptyView()   // retired: the machines are in Lab; the headline says how many are up
         }
     }
 
@@ -370,7 +373,8 @@ struct TodayView: View {
     /// At accessibility sizes the age goes under the title, so the title keeps the row's width.
     private func waiting(_ pending: [PendingAction]) -> some View {
         let ageBelow = density.exactTimes || typeSize.isAccessibilitySize
-        let shown = Array(pending.prefix(density == .overkill ? pending.count : 3))
+        let cap = TodayFold.approvals(density)
+        let shown = Array(pending.prefix(cap))
         return VStack(alignment: .leading, spacing: Space.titleToPanel) {
             SectionTitle(text: "To approve", trailing: "\(pending.count)")
             Button {
@@ -406,9 +410,18 @@ struct TodayView: View {
                         }
                         .multilineTextAlignment(.leading)
                     }
-                    if density != .overkill, pending.count > 3 {
+                    if pending.count > cap {
+                        // A real row: the whole panel opens Actions, and this says how many more wait there.
                         TodaySeparator()
-                        Text("and \(pending.count - 3) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
+                        HStack {
+                            Text("and \(pending.count - cap) more").font(Typo.secondary).foregroundStyle(Palette.secondary)
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right").font(Typo.meta.weight(.semibold))
+                                .foregroundStyle(Palette.tertiary).accessibilityHidden(true)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .padding(.vertical, -6)
+                        .accessibilityLabel(Text("\(pending.count - cap) more to approve"))
                     }
                 }
                 .panel()
@@ -418,56 +431,118 @@ struct TodayView: View {
         }
     }
 
-    /// Only while the server has an "act now" deal from the last day, so the section is gone when there is nothing to do
-    /// (and for a server without deals). Tap opens the Deals screen. Rows as in "To approve"; at accessibility
-    /// sizes the figures go under the title.
-    private func dealsCard(_ fresh: [Deal]) -> some View {
+    /// The "act now" deals from the last day (empty for a server without deals).
+    private var freshDeals: [Deal] { status.deals?.freshAct() ?? [] }
+
+    /// A deal's rows, opened in the Also panel; at accessibility sizes the figures go under the title. The last row
+    /// opens the Deals screen.
+    private func dealRows(_ fresh: [Deal]) -> some View {
         let stacked = typeSize.isAccessibilitySize
-        let shown = Array(fresh.prefix(density == .overkill ? fresh.count : 2))
-        return VStack(alignment: .leading, spacing: Space.titleToPanel) {
-            SectionTitle(text: "Deals to act on", trailing: "\(fresh.count)")
-            Button {
-                model.showDeals()
-            } label: {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(Array(shown.enumerated()), id: \.element.id) { i, deal in
-                        if i > 0 { TodaySeparator() }
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                Image(systemName: "tag").foregroundStyle(Palette.secondary).font(Typo.secondary)
-                                    .accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
-                                    if let line = deal.note ?? deal.place {
-                                        Text(line).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                                            .lineLimit(density == .overkill ? nil : 2)
-                                    }
-                                }
-                                Spacer(minLength: 8)
-                                if !stacked { DealFigures(deal: deal) }
+        let shown = Array(fresh.prefix(density == .overkill ? fresh.count : 4))
+        return VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(shown.enumerated()), id: \.element.id) { i, deal in
+                if i > 0 { TodaySeparator() }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                            if let line = deal.note ?? deal.place {
+                                Text(line).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                                    .lineLimit(density == .overkill ? nil : 2)
                             }
-                            if stacked { DealFigures(deal: deal, leading: true) }
-                            if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: 1) }
                         }
-                        .multilineTextAlignment(.leading)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(deal.spoken)
+                        Spacer(minLength: 8)
+                        if !stacked { DealFigures(deal: deal) }
                     }
-                    if density != .overkill, fresh.count > 2 {
-                        TodaySeparator()
-                        Text("and \(fresh.count - 2) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
-                    }
+                    if stacked { DealFigures(deal: deal, leading: true) }
+                    if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: 1) }
                 }
-                .panel()
+                .multilineTextAlignment(.leading)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(deal.spoken)
             }
-            .buttonStyle(.press)
+            Button { model.showDeals() } label: {
+                HStack {
+                    Text(fresh.count > shown.count ? "All \(fresh.count) deals" : "Open Deals")
+                        .font(Typo.secondary).foregroundStyle(Palette.secondary)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.tertiary)
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             .accessibilityHint(Text("Opens Deals"))
         }
     }
 
+    /// The expanded state of a fold, for `CardView`: this card's id in the session's set.
+    private func foldContext(_ card: Card) -> TodayFoldContext {
+        TodayFoldContext(density: density, expanded: expanded.contains(card.id)) { toggle(card.id, title: card.title ?? card.id) }
+    }
+
+    /// Opens or closes a fold or an Also row; VoiceOver hears what happened.
+    private func toggle(_ id: String, title: String) {
+        if expanded.remove(id) == nil {
+            expanded.insert(id)
+            AccessibilityNotification.Announcement(String(localized: "\(title) expanded")).post()
+        } else {
+            AccessibilityNotification.Announcement(String(localized: "\(title) collapsed")).post()
+        }
+    }
+
+    /// The Also panel's rows: deals first (when the Deals section is on), then the summarised cards.
+    private func alsoItems(_ cards: [Card], deals: [Deal], now: Date) -> [AlsoItem] {
+        var items: [AlsoItem] = []
+        if let text = TodayFold.summary(deals: deals, density: density) {
+            items.append(AlsoItem(kind: .deals, summary: text, count: deals.count, content: AnyView(dealRows(deals))))
+        }
+        for card in cards {
+            guard let kind = TodayFold.alsoKind(card), let text = TodayFold.summary(card, now: now, density: density) else { continue }
+            let count = kind == .departures ? nil : card.items.count
+            items.append(AlsoItem(kind: kind, summary: text, count: count,
+                                  content: AnyView(CardView(card: card, model: model, bare: true))))
+        }
+        return items
+    }
+
+    /// The Also panel with deals only (the cards section is off).
     @ViewBuilder
-    private func otherCards(_ state: HomelabState) -> some View {
-        ForEach(state.cards.filter { $0.id != dayCard?.id && $0.place != .lab }) { CardView(card: $0, model: model) }
+    private var alsoOnly: some View {
+        let items = alsoItems([], deals: freshDeals, now: .now)
+        if !items.isEmpty {
+            AlsoPanel(items: items, density: density, expanded: expanded) { toggle($0, title: String(localized: "Deals")) }
+        }
+    }
+
+    /// The server's other Today cards, folded (`TodayFold`): the weather is the hero's, a short list card is one line,
+    /// deals, downloads, grades and departures are the Also panel (departures a full board while "Leave by" is near).
+    @ViewBuilder
+    private func otherCards(_ state: HomelabState, withDeals: Bool) -> some View {
+        let deals = withDeals ? freshDeals : []
+        let any = state.cards.contains { $0.id != dayCard?.id && $0.place != .lab && TodayFold.drawsOnToday($0) } || !deals.isEmpty
+        if any {
+            // Every minute: a departure board appears when "Leave by" gets near, its trains drop off.
+            TimelineView(.everyMinute) { context in
+                let now = context.date
+                let board = state.departuresCard.map(DepartureBoard.init(card:))
+                let matters = board.map { TodayFold.departuresMatter($0, day: dayCard, now: now) } ?? false
+                let plan = TodayFold.plan(state.cards, dayCardID: dayCard?.id, departuresMatter: matters)
+                let items = alsoItems(plan.also, deals: deals, now: now)
+                VStack(alignment: .leading, spacing: Space.section) {
+                    ForEach(Array(plan.blocks.enumerated()), id: \.offset) { _, block in
+                        switch block {
+                        case .card(let card): CardView(card: card, model: model, fold: foldContext(card))
+                        case .line(let card, let text): OneLineCard(card: card, text: text)
+                        }
+                    }
+                    if !items.isEmpty {
+                        AlsoPanel(items: items, density: density, expanded: expanded) { toggle($0, title: String(localized: "Also")) }
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -508,12 +583,18 @@ struct TodayView: View {
 /// big-number grid; a text card ("No school today: …") shows its text.
 struct DaySection: View {
     let card: Card
+    /// A day that is only a short sentence ("No school") is one plain line without a panel (Standard and Overkill;
+    /// Calm keeps its panel).
+    var plainLines = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         // Redrawn every minute, so the line and the countdown move while the screen is open.
         TimelineView(.everyMinute) { context in
             let line = DayTimeline(card: card, now: context.date)
+            if plainLines, line.stops.isEmpty, !line.isStale, line.notes.isEmpty, TodayFold.isPlainLine(line.text), let text = line.text {
+                plainLine(line, text)
+            } else {
             ZStack(alignment: .topLeading) {
                 // VoiceOver's heading for the section (the rotor jumps here): the visible "Tomorrow" / "From yesterday"
                 // line, or an invisible "Today" (the panel has no title on screen).
@@ -564,7 +645,25 @@ struct DaySection: View {
             .panel()
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text(line.isTomorrow ? String(localized: "Tomorrow") : line.isStale ? Self.staleText(line.staleDays, card.date) : String(localized: "Today")))
+            }
         }
+    }
+
+    /// "Tomorrow · No school": the day without events as one line of text, no panel. Today's is the sentence alone.
+    private func plainLine(_ line: DayTimeline, _ text: String) -> some View {
+        let words = Text(markdown(text)).font(Typo.body).foregroundColor(line.isTomorrow ? Palette.secondary : Palette.text)
+        return Group {
+            if line.isTomorrow {
+                (Text("Tomorrow").font(Typo.headline).foregroundColor(Palette.text) + Text("  ·  ").font(Typo.body).foregroundColor(Palette.tertiary) + words)
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                words.tint(Palette.iris)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .combine)
     }
 
     /// The next stop as a sentence: "Leave by **21:27**", then "in 26 min · U6 21:32".
@@ -672,105 +771,5 @@ struct DayNumbers: View {
         case .orange, .yellow, .red: true
         default: false
         }
-    }
-}
-
-/// Overkill: every machine with all its numbers and its 24 h load, one dense block each. Tap a host in Lab for the
-/// details screen.
-struct MachineList: View {
-    let hosts: [Host]
-    /// The state the hosts come from, for each host's level (`HomelabState.health(of:)`).
-    let state: HomelabState
-    let exact: Bool
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(text: "Machines", trailing: String(localized: "\(hosts.filter { $0.reachable == true }.count) of \(hosts.count) up"))
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(Array(hosts.enumerated()), id: \.element.id) { i, host in
-                    if i > 0 { TodaySeparator() }
-                    let health = state.health(of: host)
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
-                            Text(host.name).font(Typo.headline)
-                            if health != .ok { Text(health.label).font(Typo.secondary).foregroundStyle(Palette.secondary) }
-                            if !typeSize.isAccessibilitySize {
-                                Spacer(minLength: 4)
-                                checkedText(host)
-                            }
-                        }
-                        // At accessibility sizes the age gets its own line, so the name isn't squeezed.
-                        if typeSize.isAccessibilitySize { checkedText(host) }
-                        numbers(host)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityLabel(spokenNumbers(host))
-                        if let history = host.history, history.last(.load) != nil {
-                            Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "\(host.name) load, last 24 hours"),
-                                      lineWidth: 1.2, fill: false)
-                                .frame(height: 18)
-                                .padding(.top, 4)
-                        }
-                        if !host.flags.isEmpty {
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill").font(Typo.meta)
-                                    .foregroundStyle(health == .problem ? Palette.love : Palette.gold)
-                                    .accessibilityHidden(true)
-                                Text(host.flags.map(Format.flag).joined(separator: " · ")).font(Typo.meta)
-                                    .foregroundStyle(Palette.secondary)
-                            }
-                            .padding(.top, 2)
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-            }
-            .panel()
-        }
-    }
-
-    @ViewBuilder
-    private func checkedText(_ host: Host) -> some View {
-        if let checked = host.checked {
-            Text(Format.when(checked, exact: exact)).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(1)
-                .accessibilityLabel(Format.spoken(Format.when(checked, exact: exact)))
-        }
-    }
-
-    /// `numbers` for VoiceOver: the same parts, a value over its limit followed by "high".
-    private func spokenNumbers(_ h: Host) -> String {
-        guard h.reachable == true else { return HostHealth(h).label }
-        return parts(h).map { part in
-            let value = part.level == .normal || part.value.isEmpty ? part.value : part.value + " " + String(localized: "high")
-            return [part.label, Format.spoken(value)].filter { !$0.isEmpty }.joined(separator: " ")
-        }.joined(separator: ", ")
-    }
-
-    private func parts(_ h: Host) -> [(label: String, value: String, level: ValueLevel)] {
-        var p: [(label: String, value: String, level: ValueLevel)] = []
-        if h.load != nil { p.append((String(localized: "Load"), Format.load(h.load) + (h.cpuCount.map { "/\($0)" } ?? ""), h.loadLevel)) }
-        if h.memPct != nil { p.append((String(localized: "RAM"), Format.percent(h.memPct), h.ramLevel)) }
-        for (mount, pct) in h.disks.sorted(by: { $0.key < $1.key }) { p.append((mount, "\(pct)%", HostHistory.Series.diskPct.level(of: Double(pct), cores: nil))) }
-        if h.temp != nil { p.append(("", Format.temperature(h.temp), h.tempLevel)) }
-        if h.containersTotal != nil { p.append((String(localized: "Containers"), Format.containers(up: h.containersUp, total: h.containersTotal), .normal)) }
-        if let u = h.upgradable, u > 0 { p.append((String(localized: "Updates"), "\(u)", .normal)) }
-        if h.rebootRequired == true { p.append((String(localized: "Reboot needed"), "", .normal)) }
-        if let b = Format.backup(last: h.backupLast, result: h.backupResult) { p.append((String(localized: "Backup"), b, .normal)) }
-        return p
-    }
-
-    /// "Load 1.85/4 · RAM 71% · / 81% · 63 °C · Containers 14/14 · Updates 3 · Reboot needed · Backup ok": the words
-    /// in the text style, only the values in the data font.
-    private func numbers(_ h: Host) -> Text {
-        guard h.reachable == true else { return Text(HostHealth(h).label).font(Typo.secondary).foregroundStyle(Palette.secondary) }
-        let p = parts(h)
-        var out = Text("")
-        for (i, part) in p.enumerated() {
-            if i > 0 { out = out + Text("  ·  ").font(Typo.secondary).foregroundStyle(Palette.tertiary) }
-            if !part.label.isEmpty { out = out + Text(part.label + (part.value.isEmpty ? "" : " ")).font(Typo.secondary).foregroundStyle(Palette.secondary) }
-            if !part.value.isEmpty { out = out + Text(part.value).font(Typo.data(.subheadline)).foregroundStyle(Meter.valueColor(part.level)) }
-        }
-        return out
     }
 }

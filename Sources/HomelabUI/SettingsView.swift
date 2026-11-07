@@ -56,7 +56,7 @@ struct SettingsView: View {
                             TodayLayoutEditor(model: model)
                         } label: {
                             LabeledContent("Sections") {
-                                Text("\(model.settings.todayLayout.visible.count) of \(TodaySection.allCases.count)")
+                                Text("\(model.settings.todayLayout.listedVisibleCount) of \(TodaySection.allCases.filter(\.isOnToday).count)")
                                     .font(Typo.secondary).foregroundStyle(Palette.secondary)
                             }
                         }
@@ -740,8 +740,8 @@ struct TodayLayoutEditor: View {
             Group {
                 Section {
                     // Each row: the switch, and when it shows (a tap picks the rule; ShowRuleEditor.swift).
-                    ForEach(model.settings.todayLayout.sections) { SectionRuleRow(model: model, section: $0) }
-                    .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
+                    ForEach(model.settings.todayLayout.listed) { SectionRuleRow(model: model, section: $0) }
+                    .onMove { model.settings.todayLayout.moveListed(fromOffsets: $0, toOffset: $1) }
                 } footer: {
                     SettingsFooter("The headline with your lab's status always stays on top. Tap a section to choose when it shows. Drag the handles to change the order.")
                 }

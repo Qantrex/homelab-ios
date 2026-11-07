@@ -8,9 +8,13 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
     case home      // Home Assistant tiles
     case cards     // the other cards (media, downloads, school, …)
     case report    // the last report
-    case machines  // every host's numbers in one dense list (Overkill only)
+    case machines  // retired: Today no longer shows the machines (they are in Lab). Kept so stored layouts decode and save back unchanged.
 
     public var id: String { rawValue }
+
+    /// Whether Today can show this section. Machines are retired (Lab has them; the headline's "3 of 3 machines up"
+    /// still opens Lab): the case stays in the model so old settings files keep their order, hidden list and rules.
+    public var isOnToday: Bool { self != .machines }
 
     public var title: String {
         switch self {
@@ -20,7 +24,7 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
         case .home: "Home tiles"
         case .cards: "Cards"
         case .report: "Last report"
-        case .machines: "Machines (Overkill)"
+        case .machines: "Machines"
         }
     }
 }
@@ -63,6 +67,12 @@ public struct TodayLayout: Codable, Equatable, Sendable {
 
     public var visible: [TodaySection] { sections.filter { !hidden.contains($0.rawValue) } }
 
+    /// The sections Settings lists and Today can draw: `sections` without the retired ones.
+    public var listed: [TodaySection] { sections.filter(\.isOnToday) }
+
+    /// How many of the listed sections are on.
+    public var listedVisibleCount: Int { visible.filter(\.isOnToday).count }
+
     public func isVisible(_ s: TodaySection) -> Bool { !hidden.contains(s.rawValue) }
 
     public mutating func setVisible(_ s: TodaySection, _ on: Bool) {
@@ -79,6 +89,14 @@ public struct TodayLayout: Codable, Equatable, Sendable {
         let at = min(max(destination - before, 0), list.count)
         list.insert(contentsOf: moving, at: at)
         order = list.map(\.rawValue)
+    }
+
+    /// `move` for what Settings lists (`listed`): the offsets count the listed sections only, and a retired section
+    /// (Machines) keeps its place after them.
+    public mutating func moveListed(fromOffsets source: IndexSet, toOffset destination: Int) {
+        var list = TodayLayout(order: listed.map(\.rawValue), hidden: [])
+        list.move(fromOffsets: source, toOffset: destination)
+        order = (list.listed + sections.filter { !$0.isOnToday }).map(\.rawValue)
     }
 }
 
@@ -101,8 +119,8 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
     public func sections(_ layout: TodayLayout) -> [TodaySection] {
         switch self {
         case .calm: layout.visible.filter { $0 == .day || $0 == .home }
-        case .standard: layout.visible.filter { $0 != .machines }
-        case .overkill: layout.sections   // everything, hidden ones too: that's the point
+        case .standard: layout.visible.filter(\.isOnToday)
+        case .overkill: layout.listed   // every section, hidden ones too: that's the point
         }
     }
 

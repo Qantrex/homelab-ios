@@ -285,16 +285,17 @@ extension TodayLayout {
 
 extension Density {
     /// The sections Today shows now: `sections(_:)` with the rules applied. Without rules it is exactly
-    /// `sections(_:)`. Overkill ignores rules. Standard drops Machines unless Machines has a rule. Calm shows the day
+    /// `sections(_:)`. Overkill ignores rules. The retired Machines section never shows. Calm shows the day
     /// and Home by their rules, plus every visible section set to "When it needs me" while it needs me.
     public func sections(_ layout: TodayLayout, _ context: ShowContext) -> [TodaySection] {
         switch self {
         case .overkill:
-            return layout.sections
+            return layout.listed
         case .standard:
-            return layout.visible.filter { inStandard($0, layout) && layout.shows($0, context) }
+            return layout.visible.filter { $0.isOnToday && layout.shows($0, context) }
         case .calm:
             return layout.visible.filter { s in
+                guard s.isOnToday else { return false }
                 if s == .day || s == .home { return layout.shows(s, context) }
                 return layout.rule(for: s) == .needsMe && context.needsMe.contains(s)
             }
@@ -306,17 +307,13 @@ extension Density {
     public func hiddenNow(_ layout: TodayLayout, _ context: ShowContext) -> [TodaySection] {
         let candidates: [TodaySection] = switch self {
         case .overkill: []
-        case .standard: layout.visible.filter { inStandard($0, layout) }
+        case .standard: layout.visible.filter(\.isOnToday)
         case .calm: layout.visible.filter { $0 == .day || $0 == .home }
         }
         return candidates.filter { s in
             guard let rule = layout.rule(for: s), rule != .needsMe else { return false }
             return !rule.shows(s, in: context)
         }
-    }
-
-    private func inStandard(_ s: TodaySection, _ layout: TodayLayout) -> Bool {
-        s != .machines || layout.rule(for: s) != nil
     }
 }
 
