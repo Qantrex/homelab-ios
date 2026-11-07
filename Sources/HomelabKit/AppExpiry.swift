@@ -9,11 +9,7 @@ public enum AppExpiry {
 
     /// The `ExpirationDate` from a provisioning profile's bytes.
     public static func date(fromProfile data: Data) -> Date? {
-        guard let start = data.range(of: Data("<?xml".utf8)),
-              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex) else { return nil }
-        let xml = data.subdata(in: start.lowerBound..<end.upperBound)
-        guard let plist = try? PropertyListSerialization.propertyList(from: xml, format: nil) as? [String: Any] else { return nil }
-        return plist["ExpirationDate"] as? Date
+        Provisioning.parse(data)?.expires
     }
 
     /// This install's date, read once.

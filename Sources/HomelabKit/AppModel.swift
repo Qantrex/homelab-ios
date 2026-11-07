@@ -953,6 +953,13 @@ public final class AppModel {
     }
 
     func saveSettings() {
+        // The background task writes the last run into the same file. Never overwrite a newer one with this copy's.
+        if let disk = storage.read(AppSettings.self, AppSettings.fileName), let ran = disk.lastBackgroundRun,
+           ran > (settings.lastBackgroundRun ?? .distantPast) {
+            settings.lastBackgroundRun = ran      // settings didSet runs once more, finds nothing newer and saves
+            settings.lastBackgroundResult = disk.lastBackgroundResult
+            return
+        }
         try? storage.write(settings, AppSettings.fileName)
         onWidgetDataChange()   // the widget hides details while the app lock is on
     }

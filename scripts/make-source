@@ -22,7 +22,7 @@ from pathlib import Path
 BUNDLE_ID = "com.qantrex.homelab"
 # The icon comes straight from the repo, so a release needs no website (releases are made by hand: docs/RELEASE.md).
 ICON_URL = "https://raw.githubusercontent.com/Qantrex/homelab-ios/main/Resources/AppIcon.png"
-TINT = "2F6FED"
+TINT = "FFFFFF"   # white: the house style is true black and white, never blue
 
 SOURCE = {
     "name": "Homelab iOS",
