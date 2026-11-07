@@ -98,7 +98,7 @@ struct HomeTiles: View {
                                                                 : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                           spacing: 12) {
                     ForEach(pinned) { e in
-                        HomeTile(entity: e, busy: home.busy.contains(e.entityID)) {
+                        HomeTile(entity: e, customName: server.tileName(for: e.entityID), busy: home.busy.contains(e.entityID)) {
                             Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
                         }
                     }
@@ -106,7 +106,9 @@ struct HomeTiles: View {
             }
         }
         .sheet(isPresented: $picking) {
-            EntityPicker(entities: home.entities, selected: server.pinnedEntities) { model.setPinned($0, for: server.id) }
+            EntityPicker(entities: home.entities, selected: server.pinnedEntities, names: server.tileNames) {
+                model.setPinned($0, names: $1, for: server.id)
+            }
         }
         .alert("Didn't work", isPresented: Binding(get: { home.actionError != nil }, set: { if !$0 { home.actionError = nil } })) {
             Button("OK") {}
@@ -132,6 +134,8 @@ struct HomeTiles: View {
 /// is filled (white on black), so the state reads without colour.
 struct HomeTile: View {
     let entity: HAEntity
+    /// The name set in Today → Edit; nil shows Home Assistant's friendly name.
+    var customName: String?
     let busy: Bool
     let tap: () -> Void
 
@@ -154,7 +158,7 @@ struct HomeTile: View {
                     .frame(width: iconWidth)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entity.name).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
+                    Text(TileName.shown(custom: customName, haName: entity.name)).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
                         .lineLimit(2).multilineTextAlignment(.leading)
                     Text(stateText).font(Typo.meta).foregroundStyle(on ? Palette.text : Palette.tertiary).lineLimit(1)
                 }
@@ -171,7 +175,7 @@ struct HomeTile: View {
         .selectionFeedback(trigger: taps)
         .disabled(busy || !entity.isAvailable || entity.control == .none)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(entity.name))
+        .accessibilityLabel(Text(TileName.spoken(custom: customName, haName: entity.name)))
         .accessibilityValue(Text(spokenState))
         .accessibilityHint(hint)
         .accessibilityAddTraits(entity.control == .toggle ? [.isButton, .isToggle] : .isButton)
@@ -248,13 +252,17 @@ func entitySymbol(_ e: HAEntity) -> String {
 struct EntityPicker: View {
     let entities: [HAEntity]
     @State var selected: [String]
-    let save: ([String]) -> Void
+    /// "Name on the tile" by entity id; empty or missing = Home Assistant's friendly name.
+    @State var names: [String: String]
+    let save: ([String], [String: String]) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
 
-    init(entities: [HAEntity], selected: [String], save: @escaping ([String]) -> Void) {
+    init(entities: [HAEntity], selected: [String], names: [String: String] = [:],
+         save: @escaping ([String], [String: String]) -> Void) {
         self.entities = entities
         _selected = State(initialValue: selected)
+        _names = State(initialValue: names)
         self.save = save
     }
 
@@ -264,6 +272,12 @@ struct EntityPicker: View {
         return entities.filter { domains.contains($0.domain) }.filter {
             query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.entityID.localizedCaseInsensitiveContains(query)
         }
+    }
+
+    /// Typing keeps one line of at most 24 characters; the saved name is cleaned again by the app model.
+    private func nameBinding(_ id: String) -> Binding<String> {
+        Binding(get: { names[id] ?? "" },
+                set: { names[id] = String($0.replacingOccurrences(of: "\n", with: " ").prefix(TileName.maxLength)) })
     }
 
     var body: some View {
@@ -286,6 +300,14 @@ struct EntityPicker: View {
                                 }
                             }
                             .accessibilityAddTraits(selected.contains(e.entityID) ? .isSelected : [])
+                            if selected.contains(e.entityID) {
+                                TextField("Name on the tile", text: nameBinding(e.entityID),
+                                          prompt: Text(e.name).foregroundStyle(Palette.tertiary))
+                                    .font(Typo.secondary)
+                                    .textInputAutocapitalization(.sentences)
+                                    .submitLabel(.done)
+                                    .accessibilityHint(Text("Optional. Empty shows Home Assistant's name."))
+                            }
                         }
                     }
                 }
@@ -299,7 +321,7 @@ struct EntityPicker: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        save(selected)
+                        save(selected, names)
                         dismiss()
                     }
                 }
