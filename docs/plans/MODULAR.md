@@ -63,15 +63,24 @@ a `TodayLayout` and a `Density`. Calm, Standard and Overkill stay.
 **D6. Secrets stay on the bridge, in env vars.** Config names the variable (`key_env`), never the key. Sources are
 read-only by default. Actions (restart, start, stop) are opt-in and reuse the existing signed buttons.
 
-**Left to the owner** (my recommendation in brackets):
-1. Name: keep "reference server", or rename to "Companion Bridge"? [Keep the name. Say "reference server with
-   sources" in docs.]
-2. Publish the image to GHCR from CI (needs `packages: write`)? [Not yet. Build locally until M1.5 ships.]
-3. Homepage import needs YAML: PyYAML in the image, or a stdlib subset reader? [PyYAML in the image only; the
-   import says what is missing without it.]
-4. Show rules at all? [Yes, M3.1 and M3.2. Presence later.]
-5. Proxmox self-signed certs: allow `insecure: true`? [Prefer `ca_file`. Allow `insecure` with a warning in `/info`.]
-6. Container actions from the Docker source? [Later, after the read-only sources ship.]
+**Decided by the owner, 2026-11-07** (binding for every task):
+1. **Name: "Homelab Bridge".** The reference server grown with sources is the Homelab Bridge; the image is
+   `ghcr.io/qantrex/homelab-bridge`. Docs say "Homelab Bridge"; `server/reference_server.py` keeps its file name and
+   its no-sources behaviour (M0.2 golden).
+2. **Image on GHCR, built by hand.** A script (like `scripts/build-ipa`) builds and pushes the image; CI only checks
+   that it builds. CI never publishes.
+3. **PyYAML only in the Docker image.** The single-file reference server stays stdlib-only; without PyYAML the
+   Homepage import says what is missing (M1.8 is in scope).
+4. **Show rules: yes, including presence and quiet hours.** M3.1, M3.2 and M3.3 are all in scope. Every rule is off
+   by default; the owner's Today stays identical (goldens).
+5. **Self-signed certificates (Proxmox, TrueNAS): opt-in `insecure: true` plus a warning** in the source status
+   (`/info` and Diagnostics). A `ca_file` option is welcome on top.
+6. **Bridge actions (container restart, VM start/stop): off by default, per item.** Only containers/VMs listed in the
+   source's config get actions; each press still goes through the app's confirm and the signed-button rules.
+7. **Merging:** each task on its own branch; the coordinator merges into `main` only when every check in section 4 is
+   green, and pushes in batches so CI runs finish.
+8. **Phone:** the coordinator may look at the owner's phone read-only (`scripts/phone`: launch, screenshots, logs) and
+   copy a finished IPA into SideStore's folder; installing stays the owner's tap. Agents never touch the phone.
 
 ## 3. Architecture
 
@@ -213,7 +222,7 @@ M0 first. Then M1 (server) and M2 (app) run in parallel. M3 after M0, in paralle
 - `README.md#who-it-is-for`: a row "Uptime Kuma, Docker, Proxmox, Pi-hole, *arr: the reference server with
   sources". `docs/SERVER-SETUP.md`: "Pick your sources". `docs/ADAPTING.md`: a source is the third way to add a module.
 
-### M3. Today control (optional, after the owner's go on decision 4)
+### M3. Today control (in scope: decision 4, presence and quiet hours included)
 
 **M3.1 Show rules (kit).** Size M. Depends: M0.1. Parallel: M1.x, M2.x.
 - `ShowRule` (`always`, `needsMe`, `times` with `from`, `to`, `days`), `TodayLayout.rules: [String: ShowRule]?`
