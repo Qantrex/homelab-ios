@@ -115,8 +115,9 @@ without `id` or `title`):
 | `price`, `value`, `discount` | The price, "worth € 200" and "−50 %" (`discount` 0–1; missing: worked out from the prices; a percent such as 50 is read as 0.5) |
 | `conf` | `high`, `medium`, `low` as words; `low` in gold |
 | `verdict` | `act` first under "Act now" (and on Today for a day), `consider` and not judged (null) under "Worth a look", `skip` last. `note` is the judge's line |
-| `flags` | Warnings in gold with a triangle, each in the server's words. Never an error colour |
-| `near`, `private`, `ships`, `cond`, `loc`, `state`, `specs` | The meta line and the detail |
+| `flags` | Warnings only ("too good to be true? …", "urgent sale"), in gold with a triangle, each in the server's words. Never an error colour. Facts don't go here: the condition goes in `cond`, a dealer is `private: false`, shipping is `ships` |
+| `cond` | The condition: `used`, `like new`, `new` or null |
+| `near`, `private`, `ships`, `loc`, `state`, `specs` | The meta line and the detail |
 | `url`, `comps[].url` | Only http(s) links; "Open the ad" and "Copy link"; comparables as iris links |
 | `seen` | How old; `act` deals seen in the last 24 h count as fresh, and in the last 6 h they may notify |
 
