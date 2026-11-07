@@ -147,7 +147,7 @@ import Testing
 
     @Test func messagesNeverContainTheToken() {
         let all: [APIError] = [.offline, .notOnTailnet(host: "h"), .cannotFindHost(host: "h"), .timeout, .unauthorized,
-                               .forbidden, .notFound, .tooManyRequests, .server(status: 500), .invalidResponse,
+                               .homeAssistantToken, .forbidden, .notFound, .tooManyRequests, .server(status: 500), .invalidResponse,
                                .decoding("x"), .tls, .badRequest(""), .cancelled, .other("x")]
         for e in all {
             #expect(!e.message.isEmpty)
@@ -172,10 +172,21 @@ import Testing
 
     @Test func noTokenFailsWithoutARequest() async {
         let t = FakeTransport(json: "[]")
-        await #expect(throws: APIError.unauthorized) {
+        await #expect(throws: APIError.homeAssistantToken) {
             try await HomeAssistantClient(baseURL: base, token: " ", transport: t).states()
         }
         #expect(t.requests.isEmpty)
+    }
+
+    @Test func aRefusedTokenSaysHomeAssistantNotTailscale() async {
+        let t = FakeTransport(status: 401, json: "{}")
+        await #expect(throws: APIError.homeAssistantToken) {
+            try await HomeAssistantClient(baseURL: base, token: "wrong", transport: t).states()
+        }
+        let text = APIError.homeAssistantToken.message
+        #expect(text.hasPrefix("Home Assistant refused the token."))
+        #expect(!text.contains("Tailscale") && !text.lowercased().contains("bearer"))
+        #expect(!APIError.homeAssistantToken.mayHaveRun && !APIError.homeAssistantToken.isTransient)
     }
 
     @Test func callUsesTheRightService() async throws {

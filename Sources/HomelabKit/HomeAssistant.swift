@@ -178,7 +178,7 @@ public struct HomeAssistantClient: HomeAssistantAPI {
     }
 
     func perform(_ request: URLRequest) async throws -> Data {
-        guard token != nil else { throw APIError.unauthorized }
+        guard token != nil else { throw APIError.homeAssistantToken }
         // The long-lived token is an HA login: never over plain http outside this device and the tailnet.
         if let problem = URLPolicy.tokenProblem(baseURL) { throw APIError.badRequest(problem) }
         let host = baseURL.host ?? "Home Assistant"
@@ -189,7 +189,9 @@ public struct HomeAssistantClient: HomeAssistantAPI {
         } catch {
             throw APIError.from(error, host: host)
         }
-        if let error = APIError.from(status: response.statusCode, body: data) { throw error }
+        if let error = APIError.from(status: response.statusCode, body: data) {
+            throw error == .unauthorized ? APIError.homeAssistantToken : error
+        }
         if data.count > Self.maxResponseBytes { throw APIError.tooLarge }
         return data
     }
