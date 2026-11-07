@@ -1,0 +1,46 @@
+{
+  "_about": "Made up. The feed answering oddly: unknown fields, numbers in strings, wrong types, junk entries, duplicates, a reserved card id, actions, a secret-named field, an object where a list belongs. The source must not crash and keeps what the app would keep.",
+  "routes": {
+    "GET /homelab.json": {
+      "status": 200,
+      "json": {
+        "version": 3,
+        "extra": {"nested": [1, 2, 3]},
+        "problems": [
+          {"id": "p1", "text": "  Disk almost full  ", "severity": "WARNING", "host": "nas"},
+          {"id": "p1", "text": "duplicate of p1"},
+          {"text": 42, "severity": "critical"},
+          {"id": "no-text"},
+          {"text": "   "},
+          "",
+          null,
+          ["a", "list"],
+          {"id": 7, "text": "id as a number", "host": "not-a-host-here"}
+        ],
+        "hosts": [
+          {"id": "nas", "name": null, "reachable": "yes", "load": "0.5", "cpu_count": "4", "mem_pct": 140,
+           "temp": "NaN", "disks": {"/": "55", "/boot": "full", "/srv": 101.6}, "containers": {"up": "x", "total": 2},
+           "updates": "none", "backup": {"last": 20261107, "result": ["ok"]}, "flags": "throttled_now",
+           "url": "javascript:alert(1)", "history": {"step": "300", "load": [1, "2", "high", null], "temp": "hot"},
+           "container_list": [{"name": "db", "state": "Running", "health": "sick", "restarts": -3, "restartable": true},
+                              {"state": "running"}, "junk"],
+           "token": "made-up-token-in-a-feed", "new_field": true},
+          {"id": 12, "load": "1e999"},
+          {"name": "no id"},
+          "a string",
+          null
+        ],
+        "cards": [
+          {"id": "today", "title": "Reserved id"},
+          {"id": "c1", "title": 5, "style": "list", "action": {"name": "add", "label": "Add"},
+           "items": [{"title": "one", "progress": "1.5", "done": "yes", "image": "/api/v1/poster/w342/x.jpg",
+                      "action": {"name": "tick"}, "url": "ftp://192.0.2.1/file"},
+                     {}, null, "text", {"value": 3, "cancelled": 0, "due": ["2026-11-07"]}]},
+          {"id": "c2", "items": "not a list"},
+          {"title": "no id"}
+        ],
+        "services": {"name": "an object, not a list", "url": "https://nas.tail1234.ts.net"}
+      }
+    }
+  }
+}

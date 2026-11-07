@@ -31,11 +31,13 @@ import http.client
 import datetime
 import hashlib
 import importlib
+import importlib.util
 import json
 import os
 import re
 import socket
 import ssl
+import sys
 import threading
 import time
 import traceback
@@ -161,11 +163,33 @@ def load_type(kind):
     if not isinstance(kind, str) or not TYPE_RE.fullmatch(kind):
         raise ValueError("type must be lower-case letters, digits and -, got %r" % (kind,))
     here = os.path.dirname(os.path.abspath(__file__))
-    if not os.path.isfile(os.path.join(here, module_name(kind) + ".py")):
+    path = os.path.join(here, module_name(kind) + ".py")
+    if not os.path.isfile(path):
         raise ValueError("unknown type %r (known: %s)" % (kind, ", ".join(known_types()) or "none"))
-    mod = importlib.import_module("." + module_name(kind), __name__)
+    mod = _import_source(module_name(kind), path)
     if not callable(getattr(mod, "collect", None)):
         raise ValueError("type %r has no collect(cfg, fetch)" % kind)
+    return mod
+
+
+_IMPORT_LOCK = threading.Lock()
+
+
+def _import_source(mod_name, path):
+    """Import server/sources/<mod_name>.py as `sources.<mod_name>` without setting it as an attribute of this package:
+    importlib.import_module would, and a type named like a module imported here (`json`) would then replace it."""
+    full = "%s.%s" % (__name__, mod_name)
+    with _IMPORT_LOCK:
+        mod = sys.modules.get(full)
+        if mod is None:
+            spec = importlib.util.spec_from_file_location(full, path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[full] = mod
+            try:
+                spec.loader.exec_module(mod)
+            except BaseException:
+                del sys.modules[full]
+                raise
     return mod
 
 

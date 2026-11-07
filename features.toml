@@ -1252,6 +1252,26 @@ depends_on = ["python3", "reference-server"]
 notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
 
 [[feature]]
+id = "source-json"
+name = "JSON feed source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "Bridge source type `json`: one URL that answers a subset of the Companion /state (`problems`, `hosts`, `cards`, `services`), read as leniently as the app reads /state (numbers in strings, plain-string problems, junk entries skipped, wrong-typed fields dropped). Optional key from `key_env`, as a bearer token or in `key_header`. Works with your own script's JSON or a second Companion server. Pending actions, card actions and item images are not taken."
+server_features = ["status", "hosts", "cards", "services"]
+endpoints = ["GET /state", "GET /services"]
+api_fields = ["state.problems", "state.hosts", "state.cards", "services"]
+sources = ["server/sources/json.py#collect", "server/test_source_json.py", "server/recordings/json/normal.json",
+           "server/recordings/json/odd.json", "server/recordings/json/big.json", "server/recordings/json/not-object.json",
+           "server/recordings/json/auth-failed.json", "server/examples/sources-json.json"]
+tests = ["server/test_source_json.py::JsonFeedSource", "server/test_source_json.py::JsonFeedOdd",
+         "server/test_source_json.py::JsonFeedFromCompanion", "server/test_source_json.py::JsonFeedEndToEnd"]
+docs = ["docs/REFERENCE_SERVER.md#json-feed"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "docs/plans/MODULAR.md M1.3. The type is `json`, so the module is server/sources/json.py; sources.load_type imports it without binding it on the package, so the package's stdlib `json` stays. For a script on the bridge's own machine, `cards_dir` (push) is simpler."
+
+[[feature]]
 id = "live-api-check"
 name = "Live API check"
 area = "Server"
