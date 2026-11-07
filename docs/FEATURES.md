@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 76 | 70 | 5 | 1 | 37 | 3 |
+| 77 | 70 | 6 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (10)
+### Today (11)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -23,6 +23,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 6 | n/a | 1 |
+| [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | n/a | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
@@ -233,10 +234,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Launch arguments (`LaunchArguments`) | `-HomelabPersonality` | [personality](#personality) |
 | Launch arguments (`LaunchArguments`) | `-HomelabPins` | [home-tiles](#home-tiles) |
 | Launch arguments (`LaunchArguments`) | `-HomelabResetState` | [launch-arguments](#launch-arguments), [reset-everything](#reset-everything) |
+| Launch arguments (`LaunchArguments`) | `-HomelabRules` | [show-rule-editor](#show-rule-editor) |
 | Launch arguments (`LaunchArguments`) | `-HomelabServer` | [launch-arguments](#launch-arguments) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTab` | [launch-arguments](#launch-arguments) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTileIcons` | [tile-icons](#tile-icons) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTileNames` | [tile-names](#tile-names) |
+| Launch arguments (`LaunchArguments`) | `-HomelabTime` | [show-rule-editor](#show-rule-editor) |
 | Widgets (`HomelabWidgets`) | `StatusWidget` | [widget-status](#widget-status) |
 | Widgets (`HomelabWidgets`) | `DayWidget` | [widget-day](#widget-day) |
 | Widgets (`HomelabWidgets`) | `HostsWidget` | [widget-hosts](#widget-hosts) |
@@ -349,15 +352,33 @@ In Overkill, Today lists every host's numbers in one dense list with a 24 h load
 
 **Show rules (kit)** · Today · partial · since 2026-11-07
 
-One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" come in M3.2.
+One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" are the feature show-rule-editor.
 
 | | |
 |---|---|
 | Sources | [ShowRule.swift](../Sources/HomelabKit/ShowRule.swift) |
 | Tests | `TimeWindowTests`, `ShowRuleTests`, `ShowRuleLayoutTests`, `ShowRuleCodingTests`, `NeedsMeTests`, `ShowRuleOwnerTests` |
-| Phone (DeviceTest.md) | n/a: kit only; the rule editor (M3.2) brings the DeviceTest rows |
+| Phone (DeviceTest.md) | n/a: kit only; the rows are the editor's (show-rule-editor: T9, T10) |
 | Docs | [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Depends on | [today-layout](#today-layout) |
+
+### show-rule-editor
+
+**Show rules: editor and "Hidden now"** · Today · partial · since 2026-11-07
+
+Settings → Today → Sections shows each section's rule in words under its name ("Always", "Evenings", Machines "Only in Overkill"; "Not on your servers" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line "Hidden now: Deals (evenings) · Show"; Show brings them back until the app closes. Without rules Today is exactly as before.
+
+| | |
+|---|---|
+| Sources | [ShowRuleEditing.swift](../Sources/HomelabKit/ShowRuleEditing.swift), [ShowRuleEditor.swift](../Sources/HomelabUI/ShowRuleEditor.swift), [SettingsView.swift#SectionRuleRow](../Sources/HomelabUI/SettingsView.swift), [TodayView.swift#HiddenNowLine](../Sources/HomelabUI/TodayView.swift), [AppModel.swift#shownAnyway](../Sources/HomelabKit/AppModel.swift) |
+| Tests | `RuleOptionTests`, `TimeWindowEditingTests`, `HiddenNowTests`, `ShowRuleModelTests`, `ShowRuleOwnerTests`, `OwnerInvarianceTests` |
+| Phone (DeviceTest.md) | T9, T10 |
+| CI screenshots | `demo-rule-hidden`, `demo-rule-shown` |
+| Docs | [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
+| Launch arguments | `-HomelabRules`, `-HomelabTime` |
+| Settings | Settings → Today → Sections → tap a section |
+| Depends on | [show-rules](#show-rules), [today-layout](#today-layout) |
+| Notes | docs/plans/MODULAR.md M3.2. SectionRuleRow takes `presence` (false until M3.3 wires it). The rule clock ticks every 30 s on Today only while a rule is set. |
 
 ### last-report
 

@@ -14,6 +14,8 @@ struct TodayView: View {
     @State private var pulls = 0
     /// Home Assistant's states, loaded by the Home tiles; without a Companion server the headline reads them too.
     @State private var home = HomeModel()
+    /// The time the show rules check (Settings → Today → Sections); ticks every 30 s while a rule is set.
+    @State private var ruleClock = Date.now
 
     private var status: ServerStatus { model.selectedStatus }
     private var density: Density { model.settings.todayDensity }
@@ -52,8 +54,11 @@ struct TodayView: View {
                             }
                         }
                     }
-                    // In my order, without the hidden ones (Settings → Today).
-                    ForEach(density.sections(model.settings.todayLayout)) { section(for: $0) }
+                    // In my order, without the hidden ones and those a rule hides now (Settings → Today).
+                    ForEach(shown) { section(for: $0) }
+                    if model.settings.todayLayout.rules != nil {
+                        HiddenNowLine(model: model, context: ruleContext, now: ruleClock)
+                    }
                 }
                 .motion(.snappy, value: shape)
                 .padding(.horizontal)
@@ -65,6 +70,13 @@ struct TodayView: View {
             .refreshable { await pullToRefresh() }
             .toolbar(.hidden, for: .navigationBar)
             .pollingState(model)
+            .task(id: model.settings.todayLayout.rules != nil) {
+                guard model.settings.todayLayout.rules != nil else { return }
+                while !Task.isCancelled {
+                    ruleClock = .now
+                    try? await Task.sleep(for: .seconds(30))
+                }
+            }
             // A tap you can feel when the lab turns bad while you're looking.
             .sensoryFeedback(trigger: mood.level) { old, new in
                 new == .alarm && old != .alarm ? .error : nil
@@ -75,11 +87,16 @@ struct TodayView: View {
     /// What decides which panels show: when it changes (an action approved elsewhere, a download done, a section
     /// turned off), panels slide instead of jumping.
     private var shape: [String] {
-        density.sections(model.settings.todayLayout).map(\.rawValue)
+        shown.map(\.rawValue)
             + (state?.pending.map { "p:" + $0.id } ?? [])
             + (state?.cards.map { "c:\($0.id):\($0.items.count)" } ?? [])
             + [state == nil ? "empty" : "loaded"]
     }
+
+    /// What the show rules are checked against. Without rules the sections are exactly `density.sections(layout)`.
+    private var ruleContext: ShowContext { model.todayContext(now: ruleClock, homeEntities: home.entities) }
+
+    private var shown: [TodaySection] { density.sections(model.settings.todayLayout, ruleContext) }
 
     // MARK: Hero
 

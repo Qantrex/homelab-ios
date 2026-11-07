@@ -119,12 +119,29 @@ name = "Show rules (kit)"
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to \"When it needs me\" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and \"Hidden now\" come in M3.2."
+summary = "One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to \"When it needs me\" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and \"Hidden now\" are the feature show-rule-editor."
 sources = ["Sources/HomelabKit/ShowRule.swift"]
 tests = ["TimeWindowTests", "ShowRuleTests", "ShowRuleLayoutTests", "ShowRuleCodingTests", "NeedsMeTests", "ShowRuleOwnerTests"]
 docs = ["docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
-not_needed = { device_tests = "kit only; the rule editor (M3.2) brings the DeviceTest rows" }
+not_needed = { device_tests = "kit only; the rows are the editor's (show-rule-editor: T9, T10)" }
 depends_on = ["today-layout"]
+
+[[feature]]
+id = "show-rule-editor"
+name = "Show rules: editor and \"Hidden now\""
+area = "Today"
+status = "partial"
+since = "2026-11-07"
+summary = "Settings → Today → Sections shows each section's rule in words under its name (\"Always\", \"Evenings\", Machines \"Only in Overkill\"; \"Not on your servers\" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line \"Hidden now: Deals (evenings) · Show\"; Show brings them back until the app closes. Without rules Today is exactly as before."
+sources = ["Sources/HomelabKit/ShowRuleEditing.swift", "Sources/HomelabUI/ShowRuleEditor.swift", "Sources/HomelabUI/SettingsView.swift#SectionRuleRow", "Sources/HomelabUI/TodayView.swift#HiddenNowLine", "Sources/HomelabKit/AppModel.swift#shownAnyway"]
+tests = ["RuleOptionTests", "TimeWindowEditingTests", "HiddenNowTests", "ShowRuleModelTests", "ShowRuleOwnerTests", "OwnerInvarianceTests"]
+device_tests = ["T9", "T10"]
+screenshots = ["demo-rule-hidden", "demo-rule-shown"]
+docs = ["docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
+launch_args = ["-HomelabRules", "-HomelabTime"]
+settings = ["Settings → Today → Sections → tap a section"]
+depends_on = ["show-rules", "today-layout"]
+notes = "docs/plans/MODULAR.md M3.2. SectionRuleRow takes `presence` (false until M3.3 wires it). The rule clock ticks every 30 s on Today only while a rule is set."
 
 [[feature]]
 id = "last-report"

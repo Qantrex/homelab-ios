@@ -211,6 +211,8 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabTileIcons "<id>=<symbol>,…"` | Sets icons for pinned Home tiles, for example `"light.wohnzimmer_lampen=lamp.floor,script.homelab_goodnight=moon.stars"`. Symbols only from the app's list (`TileIcon.choices`: `lightbulb`, `lamp.floor`, `lamp.table`, `lamp.ceiling`, `sofa`, `sparkles`, `book`, `moon.stars`, `bed.double`, `sun.horizon`, `alarm`, `music.note`, `speaker.slash`, `radio`, `tv`, `power`); anything else, a bad id or more than 12 entries drops the whole argument. Like names, icons only stick to pinned entities |
 | `-HomelabDensity <detail>` | Today's detail: `calm`, `standard` or `overkill` (stored like the setting) |
 | `-HomelabPersonality <voice>` | The headline's personality: `off`, `dry`, `snarky` or `ultrakill` (stored like the setting) |
+| `-HomelabRules "<section>=<rule>,…"` | Show rules for Today's sections (stored like the setting), for example `"deals=evenings,cards=18:00-22:00"`. Sections by their stored names (`day`, `waiting`, `deals`, `home`, `cards`, `report`, `machines`); rules `always`, `needs-me`, `mornings`, `daytime`, `evenings`, `weekdays`, `weekends`, `at-home`, `away`, `HH:MM-HH:MM` (every day) or `none` (no rule). `deals=always` or `deals=none` removes the Deals rule again. Anything odd drops the whole argument |
+| `-HomelabTime <HH:MM>` | The clock time the show rules check in this launch, for screenshots of a rule (`14:00`: an evening rule hides its section). Nothing else uses it |
 
 `YES`, `true` and `1` all count as yes. The links `homelab://today`, `homelab://actions`, `homelab://chat`,
 `homelab://lab` and `homelab://settings` open a tab too (the widgets use them; the older `overview` and `home` open Today).
