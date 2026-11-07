@@ -16,9 +16,10 @@ Highlights:
 
 Security review fixes:
 
-- A token never goes over plain `http://`: a token server or Home Assistant needs `https://` (or `http://` to
-  `localhost` or a `*.ts.net` name). A token server on a LAN IP, `.local`, a single name or a raw `100.x` address now
-  gets nothing and says "This server uses a token over plain http. Use its https://….ts.net address (tailscale
+- A token never goes over plain `http://`: a token server or Home Assistant needs `https://` (or `http://` to this
+  device: `localhost`, `127.0.0.1`, `::1`; no longer to a `*.ts.net` name, which over http is only safe while
+  Tailscale is on). A token server on a LAN IP, `.local`, a single name, a raw `100.x` address or a `.ts.net` name
+  over http now gets nothing and says "This server uses a token over plain http. Use its https://….ts.net address (tailscale
   serve)."
   Identity (Tailscale) servers keep the old http rules; all-digit or `0x…` hosts and leading-zero IPs are no longer
   local.

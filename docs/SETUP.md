@@ -180,7 +180,7 @@ that stay in your home network or tailnet: private IPs (`10.x`, `172.16–31.x`,
 Tailscale's `100.64–127.x`, `localhost`, names ending in `.local`, single-label
 names (not all digits or `0x…`: those are IPv4 numbers), and local IPv6 (`::1`, `fe80:`, `fc`/`fd`). A trailing
 `/api/v1` or `/api` is removed. User names and passwords in the URL are refused. A token (a token server, Home
-Assistant) only goes over `https://`, or plain `http://` to `localhost`, `127.0.0.1`, `::1` and `*.ts.net` names
+Assistant) only goes over `https://`, or plain `http://` to this device (`localhost`, `127.0.0.1`, `::1`)
 (`URLPolicy.allowsToken`, `ServerConfig.tokenTransportProblem` for the editor); otherwise the clients send nothing.
 
 ## Project layout
