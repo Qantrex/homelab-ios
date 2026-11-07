@@ -9,6 +9,11 @@ import HomelabKit
 public enum LeaveActivityController {
     public static var allowed: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
+    /// Ends every "Leave by" activity now (Reset everything: nothing of the old setup stays on the lock screen).
+    public static func endAll() async {
+        for a in Activity<LeaveAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
+    }
+
     /// Looks at the selected server's `commute` and starts, updates or ends the activity. Returns what happened (and
     /// writes it to the Diagnostics log).
     @discardableResult

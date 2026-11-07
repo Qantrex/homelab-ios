@@ -60,6 +60,7 @@ struct ActionsView: View {
                                       showIds: model.settings.todayDensity == .overkill,
                                       open: { spec in
                                           formPrefill = nil
+                                          guard !model.actionsRunning.contains(spec.name) else { return }   // still on its way
                                           if ActionForm(spec).needsNoInput { quickRun = spec } else { formFor = spec }
                                       }, scan: { scanning = true },
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil,
@@ -87,6 +88,7 @@ struct ActionsView: View {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
             }
+            .onChange(of: quickRun?.name) { _, name in if name == nil { openRequested() } }
             .confirmationDialog(quickRun?.label ?? "", isPresented: Binding(get: { quickRun != nil }, set: { if !$0 { quickRun = nil } }),
                                 titleVisibility: .visible, presenting: quickRun) { spec in
                 Button(spec.destructive ? String(localized: "Run it") : String(localized: "Run now"),
@@ -181,6 +183,7 @@ struct ActionsView: View {
     /// Opens a requested form once this tab shows and the list knows the action. While another tab shows or a form
     /// is open (here or a card's) the request waits (`AppModel.takeOpenAction`).
     private func openRequested() {
+        guard quickRun == nil else { return }   // a Run? confirm is up: the link waits until it's answered
         if model.tab == .actions, formFor == nil, !scanning, searching == nil, !showingDeals, model.takeOpenDeals() {   // homelab://deals
             showingDeals = true
             return

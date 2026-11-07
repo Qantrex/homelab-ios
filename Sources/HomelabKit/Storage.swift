@@ -69,8 +69,12 @@ public struct Storage: Sendable {
         #endif
     }
 
+    /// Also from the app's own folder it adopted from: a deleted server's cache must not live on there.
     public func remove(_ name: String) {
         try? FileManager.default.removeItem(at: url(name))
+        if let adoptedFrom, adoptedFrom.standardizedFileURL != directory.standardizedFileURL {
+            try? FileManager.default.removeItem(at: adoptedFrom.appendingPathComponent(name))
+        }
     }
 
     public func removeAll() {

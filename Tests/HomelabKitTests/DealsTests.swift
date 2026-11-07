@@ -91,7 +91,8 @@ import Testing
             let d = try decode(Deal.self, #"{"id": 5, "title": "t", "url": "\#(bad)"}"#)
             #expect(d.url == nil, "\(bad.prefix(40))")
         }
-        #expect(try decode(Deal.self, #"{"id": 5, "title": "t", "url": "http://www.willhaben.at/x"}"#).url != nil)
+        #expect(try decode(Deal.self, #"{"id": 5, "title": "t", "url": "https://www.willhaben.at/x"}"#).url != nil)
+        #expect(try decode(Deal.self, #"{"id": 5, "title": "t", "url": "http://www.willhaben.at/x"}"#).url == nil)   // https only
     }
 
     @Test func encodesTheSameShapeBack() throws {

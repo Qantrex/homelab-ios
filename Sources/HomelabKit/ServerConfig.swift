@@ -43,7 +43,8 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         baseURL = try c.decode(URL.self, forKey: .baseURL)
         // Servers added before the short default name was saved with the whole host as their name
         // ("nas.tail1234.ts.net" twice in the list, cut mid-word): they get the short one.
-        name = savedName == baseURL.host ? Self.defaultName(for: baseURL) : savedName
+        // Only for tailnet names (the app filled those in itself); a full host typed on purpose stays.
+        name = savedName == baseURL.host && savedName.hasSuffix(".ts.net") ? Self.defaultName(for: baseURL) : savedName
         auth = try c.decode(Auth.self, forKey: .auth)
         pinnedEntities = try c.decodeIfPresent([String].self, forKey: .pinnedEntities) ?? []
         tileNames = TileName.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileNames) ?? [:], pinned: pinnedEntities)

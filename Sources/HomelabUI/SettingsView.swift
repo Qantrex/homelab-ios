@@ -141,7 +141,15 @@ struct SettingsView: View {
                                               : "The address, its saved token and cached data are removed from this phone.")
             }
             .confirmationDialog("Reset everything?", isPresented: $confirmReset, titleVisibility: .visible) {
-                Button("Delete all data", role: .destructive) { model.resetAll() }
+                Button("Delete all data", role: .destructive) {
+                    model.resetAll()
+                    // Also what iOS still shows from before: notifications (problem texts, proposal and deal titles)
+                    // and a running Leave-by on the lock screen.
+                    let center = UNUserNotificationCenter.current()
+                    center.removeAllDeliveredNotifications()
+                    center.removeAllPendingNotificationRequests()
+                    Task { await LeaveActivityController.endAll() }
+                }
             } message: {
                 Text("All servers, tokens, Home tiles, cached data and settings are deleted from this phone. Your servers keep their data.")
             }
@@ -635,7 +643,7 @@ struct DiagnosticsView: View {
                         copied = true
                     }
                 } footer: {
-                    SettingsFooter("The report has no tokens. It helps when something doesn't work.")
+                    SettingsFooter("The report has no tokens, and the tailnet part of host names is masked. It helps when something doesn't work.")
                 }
             }
             .surfaceRows()
@@ -662,7 +670,7 @@ struct DiagnosticsView: View {
             let st = model.status[s.id]
             lines.append("server \(s.kind.rawValue)/\(s.auth.rawValue) \(s.host): data \(Format.age(st?.snapshot?.fetched)), error \(st?.error?.message ?? "none")")
         }
-        return lines.joined(separator: "\n")
+        return Redact.hosts(lines.joined(separator: "\n"))
     }
 }
 

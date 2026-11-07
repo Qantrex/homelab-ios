@@ -164,8 +164,11 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
     }
 
     /// An ad or comparable link: http(s) with a host, not absurdly long.
+    /// https only: ad text comes from strangers, and a link the app opens should at least be encrypted. The screen
+    /// shows its host next to the button, so a link that leads somewhere unexpected is visible before the tap.
     static func link(_ text: String) -> URL? {
-        text.count <= maxLink ? URLPolicy.webURL(text) : nil
+        guard text.count <= maxLink, let url = URLPolicy.webURL(text), url.scheme?.lowercased() == "https" else { return nil }
+        return url
     }
 
     // MARK: What the screens say

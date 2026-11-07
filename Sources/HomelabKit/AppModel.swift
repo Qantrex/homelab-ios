@@ -143,6 +143,7 @@ public final class AppModel {
 
     /// Opens Settings with this server's editor: the way out of a setup error (wrong token, address, certificate).
     public func requestEdit(_ id: UUID) {
+        dropRequests()   // a waiting link (homelab://chat, deals) must not pull the user away from the fix
         editServerRequest = id
         tab = .settings
     }
@@ -185,6 +186,8 @@ public final class AppModel {
     /// Proposals whose button press is on its way (by proposal id). The Actions tab and the chat share it, so the same
     /// proposal can't be pressed a second time from the other place meanwhile.
     public private(set) var proposalsSending: Set<String> = []
+    /// Actions (by name) whose run is on its way: a second tap waits for the first, so nothing starts twice.
+    public private(set) var actionsRunning: Set<String> = []
     public var locked = false
 
     public let storage: Storage
@@ -550,6 +553,8 @@ public final class AppModel {
     func fetchDeals(_ api: any CompanionAPI, into s: inout ServerStatus, force: Bool = false) async {
         guard force || DealsFetch.shouldFetch(listed: s.features.contains(.deals), available: s.hasDeals,
                                               fetched: s.dealsFetched, now: clock()) else { return }
+        // Stamped with the time it was asked, not answered: a slow poll that asked before a pull to refresh is older.
+        let asked = clock()
         do {
             s.deals = try await api.deals()
         } catch APIError.notFound {
@@ -557,26 +562,25 @@ public final class AppModel {
         } catch {
             AppLog.notice("deals failed: \(APIError.from(error, host: "server").message)")
         }
-        s.dealsFetched = clock()
+        s.dealsFetched = asked
     }
 
     /// The Deals screen's pull to refresh: asks now, whatever the timer says. Nil on success, else why not.
     @discardableResult
     public func reloadDeals(on server: ServerConfig) async -> APIError? {
         var s = status[server.id] ?? ServerStatus()
-        let before = s.deals
+        let asked = clock()
         do {
             s.deals = try await companion(for: server).deals()
-            s.dealsFetched = clock()
+            s.dealsFetched = asked
             store(dealStatus: s, for: server)
             return nil
         } catch APIError.notFound {
             s.deals = nil
-            s.dealsFetched = clock()
+            s.dealsFetched = asked
             store(dealStatus: s, for: server)
             return nil
         } catch {
-            s.deals = before
             return APIError.from(error, host: server.host)
         }
     }
@@ -735,6 +739,10 @@ public final class AppModel {
         guard let arg = form.arg, form.problems.isEmpty else {
             return .failure(.badRequest(form.problems.first ?? "The form isn't complete."))
         }
+        guard actionsRunning.insert(form.spec.name).inserted else {
+            return .failure(.badRequest("\(form.spec.label) is already running."))
+        }
+        defer { actionsRunning.remove(form.spec.name) }
         noteStarted(form.spec.name, server: server.id)
         let result: Result<ActionResult, APIError>
         do {

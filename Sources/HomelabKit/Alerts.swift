@@ -14,6 +14,9 @@ public struct AlertTracker: Codable, Sendable, Equatable {
     public var seenPending: Set<String> = []
     /// Ids of the "act now" deals already announced (or learned).
     public var seenDeals: Set<String> = []
+    /// When each announced or learned act deal was last in a list. A deal that leaves the list for a while (or goes
+    /// act → consider → act) stays known until it has been gone longer than it could still alert; then it's dropped.
+    public var seenDealsAt: [String: Date] = [:]
     /// The tracker has seen a deal list once: from then on a new act deal alerts.
     public var dealsLearned = false
     public var lastRun: Date?
@@ -27,7 +30,7 @@ public struct AlertTracker: Codable, Sendable, Equatable {
 
     public init() {}
 
-    enum CodingKeys: String, CodingKey { case seenProblems, seenPending, seenDeals, dealsLearned, lastRun, serverID }
+    enum CodingKeys: String, CodingKey { case seenProblems, seenPending, seenDeals, seenDealsAt, dealsLearned, lastRun, serverID }
 
     /// Files from before deals have no `seenDeals` or `dealsLearned`.
     public init(from decoder: any Decoder) throws {
@@ -37,6 +40,9 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         seenDeals = try c.decodeIfPresent(Set<String>.self, forKey: .seenDeals) ?? []
         dealsLearned = try c.decodeIfPresent(Bool.self, forKey: .dealsLearned) ?? false
         lastRun = try c.decodeIfPresent(Date.self, forKey: .lastRun)
+        // Files from before the times: every known deal counts as seen at the last run.
+        seenDealsAt = try c.decodeIfPresent([String: Date].self, forKey: .seenDealsAt)
+            ?? Dictionary(seenDeals.map { ($0, lastRun ?? Date()) }, uniquingKeysWith: { a, _ in a })
         serverID = try c.decodeIfPresent(UUID.self, forKey: .serverID)
     }
 
@@ -75,9 +81,13 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         defer {
             seenProblems = Set(state.problems.map(\.id))
             seenPending = Set(state.pending.map(\.id))
-            if serverChanged { seenDeals = []; dealsLearned = false }
+            if serverChanged { seenDeals = []; seenDealsAt = [:]; dealsLearned = false }
             if let deals {
-                seenDeals = Set(deals.deals.filter { $0.verdict == .act }.map { String($0.id) })
+                // Added to, not replaced: a deal that drops out of one list and comes back isn't announced twice.
+                for d in deals.deals where d.verdict == .act { seenDealsAt[String(d.id)] = now }
+                let keep = Self.maxDealAge + DealList.freshFor
+                seenDealsAt = seenDealsAt.filter { now.timeIntervalSince($0.value) <= keep }
+                seenDeals = Set(seenDealsAt.keys)
                 dealsLearned = true
             }
             lastRun = now

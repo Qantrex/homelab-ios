@@ -4,7 +4,7 @@ import Foundation
 /// voice commands and the HA app don't change). Empty means Home Assistant's friendly name.
 public enum TileName {
     public static let maxLength = 24
-    static let maxPins = 12
+    public static let maxPins = 12
 
     /// Trimmed, newlines and control characters turned into spaces, runs of spaces collapsed, at most 24
     /// characters. nil when nothing is left (the tile then shows HA's name).

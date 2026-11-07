@@ -271,3 +271,13 @@ public extension HomelabState {
     /// A host's level with this state's problems (`HostHealth.init(_:problems:)`).
     func health(of host: Host) -> HostHealth { HostHealth(host, problems: problems) }
 }
+
+/// Text that may leave the phone (Diagnostics → Copy report, pasted into an issue): the tailnet part of `.ts.net`
+/// names and Tailscale `100.x` addresses masked, so a report doesn't give away the tailnet.
+public enum Redact {
+    public static func hosts(_ text: String) -> String {
+        var out = text.replacing(/\.[A-Za-z0-9-]+\.ts\.net/) { _ in ".<tailnet>.ts.net" }
+        out = out.replacing(/\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "100.x.x.x" }
+        return out
+    }
+}

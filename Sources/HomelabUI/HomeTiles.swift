@@ -292,8 +292,10 @@ struct EntityPicker: View {
                 set: { names[id] = String($0.replacingOccurrences(of: "\n", with: " ").prefix(TileName.maxLength)) })
     }
 
+    /// At most 12 tiles (like `-HomelabPins`): a 13th tap does nothing until one is removed.
     private func toggle(_ id: String) {
-        if let i = selected.firstIndex(of: id) { selected.remove(at: i) } else { selected.append(id) }
+        if let i = selected.firstIndex(of: id) { selected.remove(at: i) }
+        else if selected.count < TileName.maxPins { selected.append(id) }
     }
 
     var body: some View {
@@ -301,8 +303,10 @@ struct EntityPicker: View {
             List {
                 if query.isEmpty && !selected.isEmpty {
                     Section {
+                        // Every pin gets a row, also one Home Assistant no longer has (renamed or deleted): it can be
+                        // removed here, and the rows match `selected` for moving and deleting.
                         ForEach(selected, id: \.self) { id in
-                            if let e = byID[id] { pinnedRow(e) }
+                            if let e = byID[id] { pinnedRow(e) } else { missingRow(id) }
                         }
                         .onMove { selected.move(fromOffsets: $0, toOffset: $1) }
                         .onDelete { selected.remove(atOffsets: $0) }
@@ -310,15 +314,16 @@ struct EntityPicker: View {
                         HStack {
                             Text("On Today")
                             Spacer()
-                            Button(editMode.isEditing ? "Done ordering" : "Order") {
+                            Button(editMode.isEditing ? LocalizedStringKey("Done ordering") : LocalizedStringKey("Order")) {
                                 withAnimation { editMode = editMode.isEditing ? .inactive : .active }
                             }
                             .font(Typo.secondary)
                             .textCase(nil)
                         }
                     } footer: {
-                        SettingsFooter("Tiles show in this order, two per row. Empty name: Home Assistant's name. Automatic icon: the one for the kind of entity.")
+                        SettingsFooter("Tiles show in this order, two per row, at most 12. Empty name: Home Assistant's name. Automatic icon: the one for the kind of entity.")
                     }
+                    .surfaceRows()
                 }
                 let groups = Dictionary(grouping: useful, by: \.domain)
                 ForEach(groups.keys.sorted(), id: \.self) { domain in
@@ -358,6 +363,22 @@ struct EntityPicker: View {
                 }
             }
         }
+    }
+
+    /// A pin Home Assistant doesn't list (any more): its id, and a way to take it off Today.
+    private func missingRow(_ id: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "questionmark.circle").foregroundStyle(Palette.tertiary).frame(width: 26).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Not in Home Assistant").foregroundStyle(Palette.text)
+                Text(verbatim: id).font(.caption2).foregroundStyle(Palette.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("Remove") { selected.removeAll { $0 == id } }
+                .buttonStyle(CapsuleButtonStyle(kind: .text))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: Text("Remove")) { selected.removeAll { $0 == id } }
     }
 
     /// A pinned entity: its name, then "Name on the tile" (a visible label above the field) and "Icon on the tile".

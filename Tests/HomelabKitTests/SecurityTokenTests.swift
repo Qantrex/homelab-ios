@@ -7,15 +7,15 @@ import Testing
 
 // Fixes from the security review of 2026-11-06 (its probe tests, turned into real ones).
 
-/// Tokens never travel over plain http outside this device and the tailnet's `.ts.net` names.
+/// Tokens never travel over plain http outside this device (not even to `.ts.net` names: round-3 review).
 struct TokenTransportTests {
     @Test func whereATokenMayGo() {
         for u in ["https://nas.example.ts.net", "https://8.8.8.8", "https://192.168.1.5:8443/homelab",
-                  "http://localhost:8791", "http://127.0.0.1:8791", "http://[::1]:8791",
-                  "http://nas.tail1234.ts.net", "http://NAS.Tail1234.TS.NET:8080/x", "http://nas.tail1234.ts.net./"] {
+                  "http://localhost:8791", "http://127.0.0.1:8791", "http://[::1]:8791"] {
             #expect(URLPolicy.allowsToken(URL(string: u)!), "\(u)")
         }
-        for u in ["http://100.101.102.103", "http://100.64.0.1:8791",          // raw tailnet IPs: CGNAT without Tailscale
+        for u in ["http://nas.tail1234.ts.net", "http://NAS.Tail1234.TS.NET:8080/x", "http://nas.tail1234.ts.net./",   // DNS off the tailnet
+                  "http://100.101.102.103", "http://100.64.0.1:8791",          // raw tailnet IPs: CGNAT without Tailscale
                   "http://192.168.1.10:8791", "http://10.0.0.2", "http://172.16.0.1",
                   "http://nas.local", "http://nas:8123", "http://[fd7a:115c:a1e0::1]:8791", "http://[fe80::1]",
                   "http://127.0.0.2", "http://ts.net", "http://evilts.net", "http://example.com",
@@ -56,7 +56,7 @@ struct TokenTransportTests {
 
     @Test func companionClientSendsWhereItMay() async throws {
         let t = FakeTransport(fixture: "state-ok.json")
-        for u in ["https://lab.example.ts.net", "http://nas.tail1234.ts.net", "http://localhost:8791"] {
+        for u in ["https://lab.example.ts.net", "https://nas.tail1234.ts.net", "http://localhost:8791"] {
             _ = try await CompanionClient(baseURL: URL(string: u)!, token: "secret", transport: t).state()
             #expect(t.last?.value(forHTTPHeaderField: "Authorization") == "Bearer secret", "\(u)")
         }

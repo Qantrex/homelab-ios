@@ -134,3 +134,11 @@ import Testing
         #expect(AppExpiry.warning(expires: nil) == nil)
     }
 }
+
+@Suite struct RedactTests {
+    @Test func reportMasksTheTailnet() {
+        let r = Redact.hosts("server companion/identity nas.tail1234.ts.net: error Can't reach nas.tail1234.ts.net. via 100.101.102.103, LAN 192.168.1.5")
+        #expect(!r.contains("tail1234") && !r.contains("100.101.102.103"))
+        #expect(r.contains("nas.<tailnet>.ts.net") && r.contains("100.x.x.x") && r.contains("192.168.1.5"))
+    }
+}

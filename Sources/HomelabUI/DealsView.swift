@@ -297,7 +297,7 @@ struct DealDetailView: View {
             layout {
                 Button { openURL(url) } label: { Label("Open the ad", systemImage: "arrow.up.right.square") }
                     .buttonStyle(CapsuleButtonStyle(kind: .filled))
-                    .accessibilityHint(Text("Opens willhaben or Safari."))
+                    .accessibilityHint(Text("Opens \(url.host ?? "the link") in Safari or its app."))
                 Button {
                     UIPasteboardBridge.copy(url.absoluteString)
                     copied = true
@@ -309,6 +309,10 @@ struct DealDetailView: View {
                 .buttonStyle(CapsuleButtonStyle(kind: .raised))
             }
             .padding(.top, 4)
+            // Where the link goes, before the tap (ad text comes from strangers).
+            if let host = url.host {
+                Text(verbatim: host).font(Typo.meta).foregroundStyle(Palette.tertiary).accessibilityHidden(true)
+            }
         }
     }
 
@@ -398,7 +402,7 @@ struct CompRow: View {
             Button { openURL(url) } label: { row }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text([title, comp.price.map(DealFormat.price)].compactMap { $0 }.joined(separator: ", ")))
-                .accessibilityHint(Text("Opens the ad."))
+                .accessibilityHint(Text("Opens the ad on \(url.host ?? "the web")."))
         } else {
             row.accessibilityElement(children: .combine)
         }

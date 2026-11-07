@@ -100,18 +100,18 @@ public enum URLPolicy {
     }
 
     /// May a bearer token travel to `url`? `https` always. Plain `http` only to this device (`localhost`,
-    /// `127.0.0.1`, `::1`) and to Tailscale MagicDNS names (`*.ts.net`): those resolve only inside the tailnet, so
-    /// the traffic is WireGuard-encrypted. Not to a raw `100.64/10` address (carrier CGNAT when Tailscale is off),
-    /// a private LAN address, `.local` or a single-label name: anyone on that network could read the token.
+    /// `127.0.0.1`, `::1`). Not to a `.ts.net` name (with Tailscale off, another network's DNS can answer it), a raw
+    /// `100.64/10` address (carrier CGNAT when Tailscale is off), a private LAN address, `.local` or a single-label
+    /// name: anyone on that network could read the token.
     public static func allowsToken(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(), var host = url.host?.lowercased(), !host.isEmpty else { return false }
         if scheme == "https" { return true }
         guard scheme == "http" else { return false }
         host = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
         if host.hasSuffix(".") { host.removeLast() }
-        if ["localhost", "127.0.0.1", "::1"].contains(host) { return true }
-        let tailnet = ".ts.net"
-        return host.hasSuffix(tailnet) && host.count > tailnet.count && !host.contains(":")
+        // Only this phone itself. Not a .ts.net name: with Tailscale off, the Wi-Fi's DNS could answer it and get
+        // the token in clear text (round-3 security review). Use https://….ts.net (tailscale serve) instead.
+        return ["localhost", "127.0.0.1", "::1"].contains(host)
     }
 
     /// Why a token must not go to `url`, or nil when it may (`allowsToken`).

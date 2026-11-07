@@ -101,6 +101,18 @@ import Testing
         #expect(out.count <= AlertTracker.maxPerRun)
     }
 
+    @Test func aDealThatLeavesTheListAndComesBackIsNotAnnouncedTwice() {
+        var t = learned()
+        #expect(t.update(with: calm, deals: list(deal(1)), server: "lab", serverID: server, options: on, now: now).count == 1)
+        // Gone from one list (a cap, a hiccup), or judged "consider" for a run, then back as act: no second alert.
+        _ = t.update(with: calm, deals: list(deal(2, .consider)), server: "lab", serverID: server, options: on, now: now + 60)
+        #expect(t.update(with: calm, deals: list(deal(1)), server: "lab", serverID: server, options: on, now: now + 120).isEmpty)
+        // Long gone: forgotten, so the tracker doesn't grow forever.
+        _ = t.update(with: calm, deals: list(), server: "lab", serverID: server, options: on,
+                     now: now + AlertTracker.maxDealAge + DealList.freshFor + 600)
+        #expect(t.seenDeals.isEmpty)
+    }
+
     @Test func aLongGapOnlyLearns() {
         var t = learned()
         let later = now + AlertTracker.relearnAfter + 1
