@@ -271,7 +271,7 @@ struct CardView: View {
         .lineLimit(1)
     }
 
-    /// "Floridsdorf from Erlaaer Straße: 20:54, then 20:59 (3 minutes late), 21:04".
+    /// "Floridsdorf from Westbahnhof: 20:54, then 20:59 (3 minutes late), 21:04".
     static func spoken(_ group: DepartureBoard.Group) -> String {
         let times = group.departures.prefix(4).enumerated().map { i, d -> String in
             let late = d.late ? (d.delay.map { String(localized: ", \($0) minutes late") } ?? String(localized: ", late")) : ""

@@ -748,7 +748,7 @@ components:
         flags:
           type: array
           items: { type: string }
-          example: ["too good to be true? price far below every comparable", "urgent sale (Notverkauf)", dealer]
+          example: ["too good to be true? price far below every comparable", "urgent sale (Notverkauf)"]
         seen: { type: string, format: date-time, description: When the watcher first saw it. }
         verdict: { type: [string, null], enum: [act, consider, skip, null] }
         note: { type: [string, null], description: One line from the server's judge. }

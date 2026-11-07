@@ -130,7 +130,7 @@ import Testing
     @Test func boardGroupsInTheServersOrder() throws {
         let b = try board()
         #expect(b.groups.map(\.towards) == ["Floridsdorf", "Siebenhirten"])
-        #expect(b.groups.map(\.stop) == ["Erlaaer Straße", "Jägerstraße"])
+        #expect(b.groups.map(\.stop) == ["Westbahnhof", "Jägerstraße"])
         #expect(b.groups.map(\.departures.count) == [4, 4])
         #expect(b.isDisrupted && b.disruption == "U6: Schadhaftes Fahrzeug" && b.line == "U6")
         let second = b.groups[0].departures[1]

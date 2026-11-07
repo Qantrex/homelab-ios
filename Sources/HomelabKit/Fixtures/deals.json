@@ -26,7 +26,7 @@
    "specs": "2 TB · NVMe · PCIe 4.0", "loc": "Graz", "state": "Steiermark",
    "near": null, "private": false, "ships": true, "cond": "new",
    "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/demo-ssd-1310555871/",
-   "flags": ["dealer"], "seen": "2026-11-06T17:03:09Z", "verdict": "consider",
+   "flags": [], "seen": "2026-11-06T17:03:09Z", "verdict": "consider",
    "note": "A dealer, so there is a warranty, but the price is only a little below the shops.",
    "comps": [{"title": "NVMe SSD 2 TB", "price": 115.0, "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/demo-comp-6/"}]},
   {"id": 1310441906, "watch": "any-gpu", "kind": "gpu", "title": "Gaming card, never opened",

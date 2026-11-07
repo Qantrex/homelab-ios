@@ -25,7 +25,7 @@ public struct DepartureBoard: Equatable, Sendable {
     public struct Group: Equatable, Sendable, Identifiable {
         /// The direction ("Floridsdorf").
         public var towards: String
-        /// The stop ("Erlaaer Straße").
+        /// The stop ("Westbahnhof").
         public var stop: String?
         public var departures: [Departure]
         public var id: String { towards + "|" + (stop ?? "") }
