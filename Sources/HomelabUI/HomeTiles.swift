@@ -98,7 +98,7 @@ struct HomeTiles: View {
                                                                 : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                           spacing: 12) {
                     ForEach(pinned) { e in
-                        HomeTile(entity: e, customName: server.tileName(for: e.entityID), busy: home.busy.contains(e.entityID)) {
+                        HomeTile(entity: e, customName: server.tileName(for: e.entityID), customIcon: server.tileIcon(for: e.entityID), busy: home.busy.contains(e.entityID)) {
                             Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
                         }
                     }
@@ -106,8 +106,8 @@ struct HomeTiles: View {
             }
         }
         .sheet(isPresented: $picking) {
-            EntityPicker(entities: home.entities, selected: server.pinnedEntities, names: server.tileNames) {
-                model.setPinned($0, names: $1, for: server.id)
+            EntityPicker(entities: home.entities, selected: server.pinnedEntities, names: server.tileNames, icons: server.tileIcons) {
+                model.setPinned($0, names: $1, icons: $2, for: server.id)
             }
         }
         .alert("Didn't work", isPresented: Binding(get: { home.actionError != nil }, set: { if !$0 { home.actionError = nil } })) {
@@ -136,6 +136,8 @@ struct HomeTile: View {
     let entity: HAEntity
     /// The name set in Today → Edit; nil shows Home Assistant's friendly name.
     var customName: String?
+    /// The icon set in Today → Edit (an SF Symbol from `TileIcon.choices`); nil shows the icon by domain.
+    var customIcon: String?
     let busy: Bool
     let tap: () -> Void
 
@@ -153,7 +155,7 @@ struct HomeTile: View {
             // Design research #3: an "on" tile is not a white block (it outshone the hero): a lifted panel, a filled
             // white symbol and "On" in white; "off" stays a plain panel with an outline symbol and grey words.
             HStack(alignment: .center, spacing: 12) {
-                Image(systemName: entitySymbol(entity))
+                Image(systemName: customIcon.flatMap { TileIcon.shown($0, on: on) } ?? entitySymbol(entity))
                     .font(.title3).foregroundStyle(on ? Palette.text : Palette.secondary)
                     .frame(width: iconWidth)
                     .accessibilityHidden(true)
@@ -254,15 +256,18 @@ struct EntityPicker: View {
     @State var selected: [String]
     /// "Name on the tile" by entity id; empty or missing = Home Assistant's friendly name.
     @State var names: [String: String]
-    let save: ([String], [String: String]) -> Void
+    /// Icon by entity id (an SF Symbol from `TileIcon.choices`); missing = the icon by domain.
+    @State var icons: [String: String]
+    let save: ([String], [String: String], [String: String]) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
 
-    init(entities: [HAEntity], selected: [String], names: [String: String] = [:],
-         save: @escaping ([String], [String: String]) -> Void) {
+    init(entities: [HAEntity], selected: [String], names: [String: String] = [:], icons: [String: String] = [:],
+         save: @escaping ([String], [String: String], [String: String]) -> Void) {
         self.entities = entities
         _selected = State(initialValue: selected)
         _names = State(initialValue: names)
+        _icons = State(initialValue: icons)
         self.save = save
     }
 
@@ -278,6 +283,29 @@ struct EntityPicker: View {
     private func nameBinding(_ id: String) -> Binding<String> {
         Binding(get: { names[id] ?? "" },
                 set: { names[id] = String($0.replacingOccurrences(of: "\n", with: " ").prefix(TileName.maxLength)) })
+    }
+
+    /// "Icon on the tile": Automatic (by Home Assistant domain) or one of `TileIcon.choices`.
+    private func iconMenu(_ e: HAEntity) -> some View {
+        let current = icons[e.entityID].flatMap(TileIcon.choice)
+        return Menu {
+            Picker("Icon on the tile", selection: Binding(get: { icons[e.entityID] ?? "" },
+                                                          set: { icons[e.entityID] = $0.isEmpty ? nil : $0 })) {
+                Label("Automatic", systemImage: entitySymbol(e)).tag("")
+                ForEach(TileIcon.choices) { c in
+                    Label(LocalizedStringKey(c.label), systemImage: c.symbol).tag(c.symbol)
+                }
+            }
+        } label: {
+            HStack {
+                Text("Icon on the tile").foregroundStyle(Palette.text)
+                Spacer()
+                Image(systemName: current?.symbol ?? entitySymbol(e)).foregroundStyle(Palette.secondary)
+                Text(current.map { LocalizedStringKey($0.label) } ?? "Automatic").foregroundStyle(Palette.secondary)
+            }
+            .font(Typo.secondary)
+        }
+        .accessibilityHint(Text("Optional. Automatic shows the icon for the kind of entity."))
     }
 
     var body: some View {
@@ -307,6 +335,7 @@ struct EntityPicker: View {
                                     .textInputAutocapitalization(.sentences)
                                     .submitLabel(.done)
                                     .accessibilityHint(Text("Optional. Empty shows Home Assistant's name."))
+                                iconMenu(e)
                             }
                         }
                     }
@@ -321,7 +350,7 @@ struct EntityPicker: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        save(selected, names)
+                        save(selected, names, icons)
                         dismiss()
                     }
                 }

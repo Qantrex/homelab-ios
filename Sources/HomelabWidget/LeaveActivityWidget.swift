@@ -28,7 +28,7 @@ struct LeaveActivityWidget: Widget {
                         .accessibilityLabel(Format.spoken(LeaveLockScreen.trainLine(context.state)))
                 }
             } compactLeading: {
-                Image(systemName: context.state.bike ? "bicycle" : "tram.fill")
+                Image(systemName: context.state.bike ? "motorcycle" : "tram.fill")
             } compactTrailing: {
                 Text(timerInterval: Date()...max(Date(), context.state.leaveBy), countsDown: true)
                     .font(Typo.data(.caption)).frame(maxWidth: 44)
@@ -68,7 +68,7 @@ struct LeaveLockScreen: View {
                     .foregroundStyle(state.leaveBy.timeIntervalSinceNow < 300 ? Palette.gold : Palette.text)
             }
             HStack(spacing: 6) {
-                Image(systemName: state.bike ? "bicycle" : "tram.fill").foregroundStyle(Palette.secondary)
+                Image(systemName: state.bike ? "motorcycle" : "tram.fill").foregroundStyle(Palette.secondary)
                 Text(Self.trainLine(state)).foregroundStyle(Palette.secondary).lineLimit(1)
                     .accessibilityLabel(Format.spoken(Self.trainLine(state)))
             }

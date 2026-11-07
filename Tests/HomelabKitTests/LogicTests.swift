@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 import Testing
 @testable import HomelabKit
 
@@ -215,6 +218,62 @@ import Testing
         #expect(m.homeAssistant?.pinnedEntities == ["light.a", "script.b"])
         #expect(m.homeAssistant?.tileNames == ["light.a": "Living room"])
     }
+}
+
+@Suite struct TileIconTests {
+    @Test func onlyKnownSymbolsAndFilledWhenOn() {
+        #expect(TileIcon.shown("lamp.floor", on: false) == "lamp.floor")
+        #expect(TileIcon.shown("lamp.floor", on: true) == "lamp.floor.fill")
+        #expect(TileIcon.shown("sparkles", on: true) == "sparkles")   // no filled form: the outline stays
+        #expect(TileIcon.shown("trash", on: false) == nil)            // not in the list: never drawn
+        #expect(Set(TileIcon.choices.map(\.symbol)).count == TileIcon.choices.count)
+        #expect(TileIcon.cleaned(["light.a": "lamp.floor", "light.b": "trash", "light.gone": "sofa"], pinned: ["light.a", "light.b"])
+                == ["light.a": "lamp.floor"])
+    }
+
+    @Test func savedIconsDecodeCleaned() throws {
+        let odd = """
+        {"id":"\(UUID().uuidString)","name":"HA","kind":"homeAssistant","baseURL":"https://ha.example.com","auth":"token","pinnedEntities":["light.a"],"tileIcons":{"light.a":"sofa","light.gone":"sofa","light.x":"../../x"}}
+        """
+        let s = try JSONDecoder().decode(ServerConfig.self, from: Data(odd.utf8))
+        #expect(s.tileIcons == ["light.a": "sofa"] && s.tileIcon(for: "light.a") == "sofa")
+    }
+
+    @MainActor @Test func iconsRoundTripAndPinsDropThem() async throws {
+        let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES"])
+        let ha = try #require(m.homeAssistant)
+        m.setPinned(["light.a", "script.b"], icons: ["light.a": "lamp.floor", "script.b": "moon.stars"], for: ha.id)
+        m.setPinned(["light.a"], names: ["light.a": "Lamp"], for: ha.id)   // icons stay when not passed
+        #expect(m.homeAssistant?.tileIcons == ["light.a": "lamp.floor"])
+        let data = try JSONEncoder().encode(m.homeAssistant)
+        #expect(try JSONDecoder().decode(ServerConfig.self, from: data) == m.homeAssistant)
+    }
+
+    @MainActor @Test func launchArgumentSetsIconsOnPins() async throws {
+        let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES"])
+        m.apply(LaunchArguments(["-HomelabPins", "light.a,script.b", "-HomelabTileIcons", "light.a=lamp.floor,script.zzz=sofa"]))
+        #expect(m.homeAssistant?.tileIcons == ["light.a": "lamp.floor"])
+    }
+
+    @Test func launchArgumentParsing() {
+        #expect(LaunchArguments(["-HomelabTileIcons", "light.a=lamp.floor,script.b=moon.stars"]).tileIcons
+                == ["light.a": "lamp.floor", "script.b": "moon.stars"])
+        for bad in ["light.a=trash", "light.a", "light.a=", "Bad.Id=sofa", "light.a=sofa,light.b=x"] {
+            #expect(LaunchArguments(["-HomelabTileIcons", bad]).tileIcons == nil, "\(bad)")
+        }
+        #expect(LaunchArguments([]).tileIcons == nil)
+    }
+
+    #if canImport(UIKit)
+    /// Every symbol the app can draw for a tile or the bike day exists on this iOS (the simulator run in CI).
+    @Test func symbolsExist() {
+        for c in TileIcon.choices {
+            #expect(UIImage(systemName: c.symbol) != nil, "\(c.symbol)")
+            if let f = c.filled { #expect(UIImage(systemName: f) != nil, "\(f)") }
+        }
+        #expect(UIImage(systemName: "motorcycle") != nil)
+    }
+    #endif
 }
 
 @Suite struct StorageTests {

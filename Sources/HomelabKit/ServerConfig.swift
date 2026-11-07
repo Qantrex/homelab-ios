@@ -23,15 +23,18 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     /// HA only: short names for the pinned tiles, by entity id (set in the app only; Home Assistant keeps its names).
     /// Always cleaned by `TileName.clean`; an entity without an entry shows HA's friendly name.
     public var tileNames: [String: String]
+    /// HA only: icons for the pinned tiles, by entity id, from `TileIcon.choices`. No entry = the icon by domain.
+    public var tileIcons: [String: String]
 
     public init(id: UUID = UUID(), name: String, kind: Kind, baseURL: URL, auth: Auth, pinnedEntities: [String] = [],
-                tileNames: [String: String] = [:]) {
+                tileNames: [String: String] = [:], tileIcons: [String: String] = [:]) {
         self.id = id; self.name = name; self.kind = kind; self.baseURL = baseURL; self.auth = auth
         self.pinnedEntities = pinnedEntities
         self.tileNames = tileNames
+        self.tileIcons = tileIcons
     }
 
-    /// Settings saved before custom tile names existed have no `tileNames`: they still decode.
+    /// Settings saved before custom tile names or icons existed have no `tileNames`/`tileIcons`: they still decode.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
@@ -41,10 +44,14 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         auth = try c.decode(Auth.self, forKey: .auth)
         pinnedEntities = try c.decodeIfPresent([String].self, forKey: .pinnedEntities) ?? []
         tileNames = TileName.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileNames) ?? [:], pinned: pinnedEntities)
+        tileIcons = TileIcon.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileIcons) ?? [:], pinned: pinnedEntities)
     }
 
     /// The tile's custom name for an entity, or nil (then the tile shows HA's friendly name).
     public func tileName(for entityID: String) -> String? { tileNames[entityID] }
+
+    /// The tile's custom icon (an SF Symbol from `TileIcon.choices`), or nil (then the icon by domain).
+    public func tileIcon(for entityID: String) -> String? { tileIcons[entityID] }
 
     public static let demoURL = URL(string: "https://demo.invalid")!   // .invalid never resolves (RFC 2606)
 

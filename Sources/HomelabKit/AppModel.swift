@@ -428,12 +428,13 @@ public final class AppModel {
         validateTab()
     }
 
-    /// Sets the pinned entities. Names of entities that are no longer pinned are dropped; `names`, when given,
-    /// replaces the custom tile names (cleaned: see `TileName`).
-    public func setPinned(_ entities: [String], names: [String: String]? = nil, for id: UUID) {
+    /// Sets the pinned entities. Names and icons of entities that are no longer pinned are dropped; `names` and
+    /// `icons`, when given, replace the custom tile names (cleaned: see `TileName`) and icons (see `TileIcon`).
+    public func setPinned(_ entities: [String], names: [String: String]? = nil, icons: [String: String]? = nil, for id: UUID) {
         guard var s = servers.servers.first(where: { $0.id == id }) else { return }
         s.pinnedEntities = entities
         s.tileNames = TileName.cleaned(names ?? s.tileNames, pinned: entities)
+        s.tileIcons = TileIcon.cleaned(icons ?? s.tileIcons, pinned: entities)
         servers.upsert(s)
         saveServers()
     }
@@ -901,6 +902,12 @@ public final class AppModel {
             for (id, name) in names { merged[id] = name }
             setPinned(homeAssistant?.pinnedEntities ?? ha.pinnedEntities, names: merged, for: ha.id)
         }
+        if let icons = args.tileIcons, let ha = homeAssistant {
+            // Like names: after -HomelabPins, so read the server again (this launch may have just changed the pins).
+            var merged = homeAssistant?.tileIcons ?? ha.tileIcons
+            for (id, symbol) in icons { merged[id] = symbol }
+            setPinned(homeAssistant?.pinnedEntities ?? ha.pinnedEntities, icons: merged, for: ha.id)
+        }
         if let scene = args.demoScene {
             demoScene = scene
             demo = nil
@@ -986,6 +993,9 @@ struct LaunchArguments {
     /// `-HomelabTileNames "light.a=Living room,script.b=Alarm off"`: custom names for pinned Home tiles (ids as in
     /// `-HomelabPins`, names cleaned by `TileName`; anything odd drops the whole argument).
     var tileNames: [String: String]?
+    /// `-HomelabTileIcons "light.a=lamp.floor,script.b=moon.stars"`: icons for pinned Home tiles, symbols from
+    /// `TileIcon.choices` only (anything odd drops the whole argument).
+    var tileIcons: [String: String]?
     /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state.
     var demoScene: DemoBackend.Scene?
     var reset = false
@@ -1015,6 +1025,7 @@ struct LaunchArguments {
             ids.count <= 12 && ids.allSatisfy({ $0.wholeMatch(of: /[a-z_]{1,32}\.[a-z0-9_]{1,96}/) != nil }) ? ids : nil
         }
         tileNames = value("HomelabTileNames").flatMap(TileName.parse)
+        tileIcons = value("HomelabTileIcons").flatMap(TileIcon.parse)
         demoScene = value("HomelabDemoScene").flatMap { DemoBackend.Scene(rawValue: $0.lowercased()) }
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
