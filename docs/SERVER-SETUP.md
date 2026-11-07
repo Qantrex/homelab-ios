@@ -144,24 +144,49 @@ Notes:
   address for services on the same machine (a service bound only to the host's `127.0.0.1` can't be reached).
 - **This machine** in the app is the container: load and memory are the Docker host's (same kernel), `/` is Docker's
   disk. The image has no `docker` CLI and no `apt`, so keep `this_host.docker` and `updates` off. For containers, the
-  Docker source reads them through the socket proxy: `docker compose --profile docker up -d` starts it (read-only,
-  container list only); the bridge reaches it at `http://socket-proxy:2375`. Never mount the Docker socket into the
-  bridge.
+  Docker source reads them through the socket proxy: `docker compose --profile docker up -d` starts it
+  ([wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy), pinned by digest) with `GET
+  /containers/json` and nothing else: no container details (they hold every container's env, so its keys), no logs,
+  no files, no POST. The bridge reaches it at `http://socket-proxy:2375`. For Restart (`"actions": {"restart":
+  [...]}`), add the commented `-allowPOST=/containers/(sonarr|gluetun)/restart` line in `compose.yaml` with exactly
+  your containers. Never mount the Docker socket into the bridge.
 - **Why the sidecar needs `NET_ADMIN` and `/dev/net/tun`.** It runs Tailscale with kernel networking
   (`TS_USERSPACE=false`). In userspace mode, tailscaled hands tailnet connections to the namespace's `127.0.0.1`
   ports, so any tailnet device could reach the bridge on `:8791` past `tailscale serve` and fake the login header.
+  The image guards against it: with `trust_identity_header: Tailscale-User-Login` it refuses to start when
+  `TS_USERSPACE=true` is in its env, and logs a `WARNING` when the shared namespace has no `tailscale0` interface a
+  minute after the start (userspace mode has none). `HOMELAB_ALLOW_USERSPACE=1` in `docker/bridge.env` starts it
+  anyway; do that only with the ACL below, and with tokens instead of the login header if you can.
 - **Tokens** for tagged devices or `curl`: `HOMELAB_TOKENS` in `docker/bridge.env`. Devices with tags get no login
   header from `tailscale serve`.
-- **ACLs.** If your tailnet has an ACL policy, allow port 443 of `homelab-bridge` for your phone.
+- **ACLs.** Let your devices reach only port 443 of the bridge machine. Tag it `tag:bridge` (add the tag below to
+  the access controls first, then pick it when you generate the auth key in step 3, or later on the machine's page)
+  and allow only HTTPS to it:
+
+  ```json
+  {
+    "tagOwners": {"tag:bridge": ["autogroup:admin"]},
+    "grants": [
+      {"src": ["autogroup:member"], "dst": ["tag:bridge"], "ip": ["tcp:443"]}
+    ]
+  }
+  ```
+
+  No other rule may reach `tag:bridge` on another port. The default policy's allow-all rule (`"src": ["*"], "dst":
+  ["*"], "ip": ["*"]`) does: replace it with rules that name their destinations. With this, even a sidecar that
+  ended up in userspace mode can't be reached on `127.0.0.1:8791` from the tailnet. The login header still comes
+  from the device that connects (your phone, not tagged), so `allowed_logins` works as before.
 - **Hardened.** The bridge runs as user 10001 with a read-only root, no capabilities and `no-new-privileges`; its
   only writable places are `/tmp` (in memory) and the `bridge-state` volume (chat history). Actions and chat run
   commands inside that container, which has only Python and BusyBox.
 - **Health.** Each container has a healthcheck. The bridge's asks `/api/v1/info` once a minute, so its log has one
   `GET /api/v1/info 401` line a minute.
-- **Updates.** `git pull && docker compose up -d --build`. The Tailscale image is pinned by digest in
-  `compose.yaml`; a newer one is a change to that line. The published image `ghcr.io/qantrex/homelab-bridge` (built
-  by hand, see [RELEASE.md](RELEASE.md#homelab-bridge-image)) works too: `docker compose pull bridge && docker compose
-  up -d`, and `BRIDGE_TAG=<version>` in `server/.env` pins a version.
+- **Updates.** `git pull && docker compose up -d --build`. The Tailscale image and the socket proxy are pinned by
+  digest in `compose.yaml`; a newer one is a change to that line. The bridge image is never `latest`: by default it
+  is `ghcr.io/qantrex/homelab-bridge:local`, built from your checkout. The published image (built by hand, see
+  [RELEASE.md](RELEASE.md#homelab-bridge-image)) needs a pinned version in `server/.env`:
+  `BRIDGE_TAG=2026.11.07-1a2b3c4` (`scripts/build-bridge-image` tags each image `<commit date>-<short sha>`; add
+  `@sha256:<digest>` after it to pin the content too), then `docker compose pull bridge && docker compose up -d`.
 
 ### Containers without the docker group
 
@@ -206,9 +231,9 @@ Each source, its keys and the access it needs:
 | Type | What it reads | Keys | Access it needs | Tested with |
 |---|---|---|---|---|
 | `json` | One URL that answers a subset of `/state` (your own script, or another Companion server) ([JSON feed](REFERENCE_SERVER.md#json-feed)) | `url`; `key_env`, `key_header` | None, or a token sent as a bearer token (or in `key_header`) | the shape of `server/openapi.yaml` |
-| `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services ([Uptime Kuma](REFERENCE_SERVER.md#uptime-kuma)) | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
+| `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services with `services: true` ([Uptime Kuma](REFERENCE_SERVER.md#uptime-kuma)) | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
 | `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab ([Gatus](REFERENCE_SERVER.md#gatus)) | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
-| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems ([Docker](REFERENCE_SERVER.md#docker)) | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` | Engine 29 (API 1.52) and older |
+| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems ([Docker](REFERENCE_SERVER.md#docker)) | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers/json` | Engine 29 (API 1.52) and older |
 | `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list ([Proxmox](REFERENCE_SERVER.md#proxmox)) | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) | 9.0 |
 | `pihole` | Queries, blocked and blocking as the `dns` card in Lab, the top blocked domains; blocking off = warning ([Pi-hole](REFERENCE_SERVER.md#pi-hole)) | `url`, `key_env`, `top`, `actions` | A Pi-hole v6 app password | FTL v6.8 |
 | `adguard` | The same `dns` cards; protection off or DNS not running = warning ([AdGuard Home](REFERENCE_SERVER.md#adguard-home)) | `url`, `username`, `password_env`, `top`, `actions` | An AdGuard Home user (basic auth) | v0.107.80 |
