@@ -4,11 +4,22 @@
 
 First release.
 
+Highlights:
+
+- Today: the lab's state in two words, your day as a line with a countdown, actions to approve, Home Assistant tiles
+  and the server's cards.
+- Actions: approve, always allow or deny proposals; start your own actions from small forms; Deals, Scan and Find.
+- Lab: hosts, 24 h history, containers with Restart, web UIs.
+- Chat with your homelab agent, with proposals and cards in the replies.
+- Widgets (status, day, hosts, U6, deadlines, to-dos) and a "Leave by" Live Activity.
+- Built and installed from Linux with xtool and a free Apple ID; Today warns 2 days before the install stops opening.
+
 Security review fixes:
 
 - A token never goes over plain `http://`: a token server or Home Assistant needs `https://` (or `http://` to
   `localhost` or a `*.ts.net` name). A token server on a LAN IP, `.local`, a single name or a raw `100.x` address now
-  gets nothing and says "This server uses a token over plain http. Use https (tailscale serve) or its .ts.net name."
+  gets nothing and says "This server uses a token over plain http. Use its https://….ts.net address (tailscale
+  serve)."
   Identity (Tailscale) servers keep the old http rules; all-digit or `0x…` hosts and leading-zero IPs are no longer
   local.
 - A card item's action sends exactly its argument; one that no longer fits the server's action is refused instead of
