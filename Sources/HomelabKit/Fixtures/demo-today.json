@@ -1,0 +1,184 @@
+{
+ "cards": [
+  {
+   "id": "recent",
+   "title": "Recently added",
+   "icon": "sparkles",
+   "style": "list",
+   "updated": "21:28",
+   "items": [
+    {
+     "title": "The Long Quiet",
+     "subtitle": "Movies",
+     "value": "today"
+    },
+    {
+     "title": "Nine Floors Up – Season 2",
+     "subtitle": "TV Shows",
+     "value": "yesterday"
+    },
+    {
+     "title": "Salt Road – Season 1",
+     "subtitle": "TV Shows",
+     "value": "2 d ago"
+    },
+    {
+     "title": "Night Signals",
+     "subtitle": "Music",
+     "value": "3 d ago"
+    },
+    {
+     "title": "Harbour Lights",
+     "subtitle": "Movies",
+     "value": "3 d ago"
+    },
+    {
+     "title": "Paper Moons – Season 4",
+     "subtitle": "TV Shows",
+     "value": "4 d ago"
+    },
+    {
+     "title": "Low Tide Radio",
+     "subtitle": "Music",
+     "value": "5 d ago"
+    },
+    {
+     "title": "Cold Orchard",
+     "subtitle": "Movies",
+     "value": "6 d ago"
+    }
+   ]
+  },
+  {
+   "id": "grades",
+   "title": "New grades",
+   "icon": "graduationcap",
+   "style": "list",
+   "updated": "21:00",
+   "items": [
+    {
+     "title": "Test 2 (written)",
+     "subtitle": "Maths",
+     "value": "85 %"
+    },
+    {
+     "title": "Poster hand-in",
+     "subtitle": "IT project",
+     "value": "95 %"
+    },
+    {
+     "title": "Vocabulary quiz",
+     "subtitle": "English",
+     "value": "78 %"
+    }
+   ]
+  },
+  {
+   "id": "deadlines",
+   "title": "Deadlines",
+   "icon": "hourglass",
+   "style": "countdown",
+   "items": [
+    {
+     "title": "Rent transfer",
+     "subtitle": "Paperwork",
+     "due": "2026-11-04"
+    },
+    {
+     "title": "Lab report",
+     "subtitle": "Network systems",
+     "due": "2026-11-05"
+    },
+    {
+     "title": "Project hand-in",
+     "subtitle": "Software engineering",
+     "due": "2026-11-07"
+    },
+    {
+     "title": "Maths homework",
+     "subtitle": "Maths",
+     "due": "2026-11-09"
+    },
+    {
+     "title": "Library books",
+     "subtitle": "Errands",
+     "due": "2026-11-10"
+    },
+    {
+     "title": "Dentist form",
+     "subtitle": "Errands",
+     "due": "2026-11-12"
+    },
+    {
+     "title": "Tax return",
+     "subtitle": "Paperwork",
+     "due": "2026-11-16"
+    },
+    {
+     "title": "Presentation slides",
+     "subtitle": "IT project",
+     "due": "2026-11-18"
+    },
+    {
+     "title": "Passport renewal",
+     "subtitle": "Paperwork",
+     "due": "2026-11-20"
+    },
+    {
+     "title": "Gym membership",
+     "subtitle": "Errands",
+     "due": "2026-11-30"
+    }
+   ]
+  },
+  {
+   "id": "todos",
+   "title": "To-dos",
+   "icon": "checklist",
+   "style": "checklist",
+   "action": {
+    "name": "todo-add",
+    "label": "Add",
+    "payload": {
+     "list": "todo"
+    }
+   },
+   "items": [
+    {
+     "title": "Milk",
+     "subtitle": "Shopping",
+     "action": {
+      "name": "todo-done",
+      "label": "Tick off",
+      "payload": {
+       "item": "Milk",
+       "list": "shopping"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "briefing",
+   "title": "Morning briefing",
+   "icon": "text.alignleft",
+   "style": "text",
+   "updated": "06:30",
+   "text": "School day. Wake-up 06:20, leave by **07:31** for the U6 at 07:36.\n\nWeather: partly cloudy, 4 to 10 °C, no rain. No umbrella needed, but the evening gets cold, so take a jacket.\n\nSchool: 08:00 to 13:30, no cancellations or substitutions. Maths has the second test back, and the English vocabulary quiz is graded.\n\nDue soon: the rent transfer today, the lab report tomorrow, and the project hand-in in 3 days. Seven more deadlines wait further out, the next one is the library books on the 10th.\n\nHome: one parcel is out for delivery, a keyboard from DHL. Milk is on the shopping list.\n\nHomelab: all fine. 12 updates wait on server, 3 of them security, and one proposal waits for your OK. The last backup finished at 04:45.\n\nMedia: eight new titles arrived this week, the newest is The Long Quiet."
+  },
+  {
+   "id": "gameserver",
+   "title": "Brickworld",
+   "icon": "gamecontroller",
+   "style": "list",
+   "updated": "21:28",
+   "items": [
+    {
+     "title": "Mira is playing",
+     "subtitle": "1 online",
+     "value": "2 h"
+    }
+   ]
+  }
+ ]
+}
