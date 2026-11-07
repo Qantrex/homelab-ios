@@ -301,7 +301,7 @@ def arg_fits(spec, arg):
 
 CHECKS = [
     ("info", "GET /info"), ("state", "GET /state"), ("actions", "GET /actions"), ("services", "GET /services"),
-    ("messages", "GET /messages?after=0"), ("search", "GET /search?q=matrix"),
+    ("messages", "GET /messages?after=0"), ("search", "GET /search?q=matrix"), ("deals", "GET /deals"),
     ("ids", "ids unique"), ("times", "times parse"), ("cards", "card styles and items"),
     ("refs", "card/item actions"), ("hidden", "hidden fields"), ("args", "arg templates"),
     ("images", "poster/image URLs"), ("history", "host history"), ("containers", "containers and Restart"),
@@ -845,6 +845,24 @@ def main():
                     unique("ids", v, "id", path, "result id")
     else:
         skipped["search"] = "no search feature"
+
+    # Deals are optional, and a 404 is how a server says "none here": that is a SKIP, not an error.
+    probe, probe_problem = fetch(base, "/deals", a.token, a.timeout)
+    if probe_problem or (probe and probe["status"] == 404):
+        skipped["deals"] = "no deals here (404)" if probe else "no answer"
+    else:
+        deals = get_json("deals", base, "/deals", a.token, a.timeout)
+        if deals is not None:
+            answers["deals"] = deals
+            spec.validate("deals", deals, spec.response("/deals"), "deals")
+            items = deals.get("deals") if isinstance(deals.get("deals"), list) else []
+            notes["deals"] += ", %d deals" % len(items)
+            unique("ids", items, "id", "deals.deals", "deal id")
+            if len(items) > 100:
+                warn("deals", "deals.deals", "%d deals; the API says 100 at most" % len(items))
+            for i, d in dicts(items):
+                if "seen" in d and parse_time(d.get("seen")) is None:
+                    err("times", "deals.deals[%d].seen" % i, "a time the app can't read: %r" % (d.get("seen"),))
 
     # invariants the app relies on
     run_actions = has("run-actions")

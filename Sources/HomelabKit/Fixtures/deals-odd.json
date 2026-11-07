@@ -1,0 +1,18 @@
+{"updated": 1794044400,
+ "deals": [
+  {"id": "1310000001", "title": "  Everything as text  ", "price": "99.5", "value": "200", "discount": "50", "conf": "HIGH",
+   "near": "yes", "private": "no", "ships": 1, "cond": "Like New", "verdict": "ACT", "seen": "2026-11-07 09:50:51",
+   "url": "https://www.willhaben.at/iad/d/odd-1", "flags": "a single flag, not a list",
+   "comps": [{"title": "kept", "price": "150"}, {"url": "https://www.willhaben.at/x"}, "not an object", {"title": "javascript link", "url": "javascript:alert(1)"}]},
+  {"id": 1310000002, "title": "Unknown words", "conf": "certain", "verdict": "maybe", "cond": "refurbished",
+   "price": 1e30, "value": -5, "discount": -0.2, "specs": 12, "flags": [3, "", "  ", "real flag", null],
+   "url": "ftp://files.example/deal", "future_field": {"anything": true}, "comps": "none"},
+  {"id": 1310000002, "title": "Duplicate id, dropped"},
+  {"id": 0, "title": "Zero id, dropped"},
+  {"title": "No id, dropped"},
+  {"id": 1310000003},
+  {"id": 1310000004, "title": "Nulls everywhere", "price": null, "value": null, "near": null, "private": null,
+   "ships": null, "cond": null, "verdict": null, "note": null, "seen": null, "flags": null, "comps": null},
+  "not an object",
+  42
+ ]}

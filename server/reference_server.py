@@ -1106,6 +1106,11 @@ class FixtureApp:
         self.search_doc = self._load("search.json", optional=True)
         if self.search_doc is not None:
             self.routes["search"] = {"GET": self.search}
+        # Deals (feature "deals"): deals.json is served as it is. Without the file the route is missing and /deals
+        # answers 404, which is how a server says "no deals here" (the app hides the feature).
+        self.deals_doc = self._load("deals.json", optional=True)
+        if self.deals_doc is not None:
+            self.routes["deals"] = {"GET": lambda q, b: (200, self.deals_doc)}
         # Actions the app may start (feature run-actions): actions.json, one POST route per listed name.
         self.actions_doc = self._load("actions.json", optional=True)
         if isinstance(self.actions_doc, dict):

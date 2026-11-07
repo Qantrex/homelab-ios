@@ -254,6 +254,30 @@ paths:
             image/jpeg: { schema: { type: string, format: binary } }
             image/png: { schema: { type: string, format: binary } }
         "404": { description: Not a picture this server issued. }
+  /deals:
+    get:
+      summary: Used-market deals the server found and judged (feature `deals`, optional).
+      description: |
+        Ads clearly below their market value that the server's watcher found in the last 7 days, newest first, at most
+        100. A server without this endpoint answers 404 and the app hides the feature without a word. The app also
+        asks a server that does not list `deals` in `features` (at most every 10 minutes), because the contract says
+        404 is the "not here" answer. `verdict` is the server's judgement: `act` (a strong one, pushed to the phone,
+        which opens `homelab://deals`), `consider`, `skip`; null = not judged yet. `flags` are warnings in the server's
+        words ("too good to be true? ..."): the app shows them in gold, never as an error.
+      responses:
+        "200":
+          description: The deals.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: string, format: date-time, example: "2026-11-07T09:50:51Z" }
+                  deals:
+                    type: array
+                    maxItems: 100
+                    items: { $ref: "#/components/schemas/Deal" }
+        "404": { description: No deals here; the app hides the feature. }
   /share:
     post:
       summary: Send a web link (feature `share`).
@@ -309,12 +333,13 @@ components:
           type: array
           items:
             type: string
-            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share, search]
+            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share, search, deals]
           description: |
             `actions`: proposed actions to approve (`pending`, `/button`). `run-actions`: the app may start actions
             itself (`/actions`). `documents`: `POST /documents` takes a PDF (the Scan tile, the share extension).
             `share`: `POST /share` takes a link. `search`: `GET /search?q=` answers cards (the Find a movie or show
-            screen). The other values switch the matching tabs and sections.
+            screen). `deals`: `GET /deals` answers (the Willhaben deals screen; a server without the word is still asked
+            once in a while). The other values switch the matching tabs and sections.
         auth: { type: string, enum: [identity, token, none] }
         commands:
           type: array
@@ -699,6 +724,43 @@ components:
         ok: { type: boolean }
         text: { type: string }
         running: { type: boolean, description: Still running; the result comes in the chat. }
+    Deal:
+      type: object
+      required: [id, title]
+      description: One ad the server judged. Everything but `id` and `title` may be missing or null.
+      properties:
+        id: { type: integer, format: int64, example: 1310779339, description: "The ad's number on the marketplace." }
+        watch: { type: string, example: any-gpu, description: Which saved search found it. }
+        kind: { type: string, example: gpu, description: What kind of thing it is. }
+        title: { type: string }
+        price: { type: number, example: 100.0, description: Asking price in euros. }
+        value: { type: number, example: 200.0, description: The server's market value in euros. }
+        discount: { type: number, minimum: 0, maximum: 1, example: 0.5, description: "Share below value (0.5 = 50 % below). Missing: the app works it out from price and value." }
+        conf: { type: string, enum: [high, medium, low], description: How sure the server is about `value`. }
+        specs: { type: string, example: "ddr4 · dimm · 2x16 · 3200 MHz" }
+        loc: { type: string, example: Krems an der Donau }
+        state: { type: string, example: Niederösterreich }
+        near: { type: [boolean, null], description: In the owner's pickup area. }
+        private: { type: boolean, description: A private seller (false = dealer). }
+        ships: { type: boolean, description: The seller ships. }
+        cond: { type: [string, null], enum: [used, like new, new, null] }
+        url: { type: string, format: uri, description: The ad. Only http(s) links are used. }
+        flags:
+          type: array
+          items: { type: string }
+          example: ["too good to be true? price far below every comparable", "urgent sale (Notverkauf)", dealer]
+        seen: { type: string, format: date-time, description: When the watcher first saw it. }
+        verdict: { type: [string, null], enum: [act, consider, skip, null] }
+        note: { type: [string, null], description: One line from the server's judge. }
+        comps:
+          type: array
+          description: The comparable ads behind `value`.
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              price: { type: number }
+              url: { type: string, format: uri }
     Service:
       type: object
       required: [name, url]

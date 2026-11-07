@@ -601,6 +601,11 @@ class RealModeTest(unittest.TestCase):
         self.assertEqual(self.get("/__control?state=state-ok.json")[0], 404)
         self.assertEqual(self.get("/api/v1/button")[0], 405)
 
+    def test_real_mode_has_no_deals(self):
+        # The reference server has no watcher: /deals is the plain 404 a server answers when it lacks the feature,
+        # and the app hides the Deals screen on it.
+        self.assertEqual(self.get("/api/v1/deals")[0], 404)
+
     # --- config -------------------------------------------------------------------------------
     def test_config_errors(self):
         with self.assertRaises(rs.ConfigError):
@@ -660,6 +665,21 @@ class FixtureModeTest(unittest.TestCase):
             self.assertEqual(call(self.port, "GET", "/api/v1/search" + bad)[0], 400, bad)
         self.assertEqual(call(self.port, "POST", "/api/v1/search", {})[0], 405)
         self.assertIn("search", call(self.port, "GET", "/api/v1/info")[2]["features"])
+
+    def test_deals_are_served_as_they_are(self):
+        code, _, obj = call(self.port, "GET", "/api/v1/deals")
+        self.assertEqual((code, obj), (200, fixture("deals.json")))
+        self.assertIn("deals", call(self.port, "GET", "/api/v1/info")[2]["features"])
+        self.assertEqual(call(self.port, "POST", "/api/v1/deals", {})[0], 405)
+        # The contract's shape: newest first, at most 100, an ad number and a title each.
+        deals = obj["deals"]
+        self.assertTrue(0 < len(deals) <= 100)
+        self.assertEqual([d["seen"] for d in deals if d.get("verdict") == "act"],
+                         sorted((d["seen"] for d in deals if d.get("verdict") == "act"), reverse=True))
+        for d in deals:
+            self.assertTrue(isinstance(d["id"], int) and d["title"])
+            self.assertIn(d.get("verdict"), ("act", "consider", "skip", None))
+            self.assertIn(d.get("conf"), ("high", "medium", "low", None))
 
     def test_posters_are_pngs_for_named_files_only(self):
         item = fixture("search.json")["cards"][0]["items"][0]
