@@ -1,0 +1,10 @@
+{
+  "_about": "Made up, Pi-hole v6.8 shape: a wrong app password. The login is refused; nothing else is asked.",
+  "routes": {
+    "POST /api/auth": {
+      "status": 401,
+      "json": {"error": {"key": "unauthorized", "message": "Unauthorized", "hint": null}, "took": 0.0002}
+    },
+    "GET /api/stats/summary": {"status": 401, "json": {"error": {"key": "unauthorized"}}}
+  }
+}

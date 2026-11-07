@@ -1401,16 +1401,117 @@ name = "Bridge source actions (opt-in)"
 area = "Server"
 status = "partial"
 since = "2026-11-07"
-summary = "Off by default and per item (owner decision 6): only containers or VMIDs listed under a source's `actions` get Docker restart (`restart-container`, the host page's Restart) or Proxmox start and clean shutdown (`guest-start`, `guest-stop`), served as run-actions. The app confirms each press; the server takes only an argument from the list (looked up, never parsed, so prefixed host ids with `:` work), no payload, 30 presses an hour, one per item at a time, and answers without URLs or keys. Without `actions` there is no /actions route."
+summary = "Off by default and per item (owner decision 6): only containers, VMIDs or pause lengths listed under a source's `actions` get Docker restart (`restart-container`, the host page's Restart), Proxmox start and clean shutdown (`guest-start`, `guest-stop`) or the ad blockers' pause (`dns-pause`, with a Pause or Resume button on the Blocking row), served as run-actions. The app confirms each press; the server takes only an argument from the list (looked up, never parsed, so prefixed host ids with `:` work), no payload, 30 presses an hour, one per item at a time, answers without URLs or keys, and reads the source again after a press that worked. A card item's button from a source stays only when its action and argument are on the list. Without `actions` there is no /actions route."
 server_features = ["run-actions"]
 endpoints = ["GET /actions", "POST /actions/{name}"]
-api_fields = ["hosts[].container_list[].restartable"]
-sources = ["server/sources/__init__.py#SourceActions", "server/sources/docker.py#act", "server/sources/proxmox.py#act"]
-tests = ["server/test_source_docker.py::DockerActions", "server/test_source_proxmox.py::ProxmoxActions"]
+api_fields = ["hosts[].container_list[].restartable", "cards[].items[].action"]
+sources = ["server/sources/__init__.py#SourceActions", "server/sources/__init__.py#_no_actions",
+           "server/sources/docker.py#act", "server/sources/proxmox.py#act", "server/sources/_dns.py#allowed",
+           "server/sources/pihole.py#act", "server/sources/adguard.py#act", "server/test_source_actions.py"]
+tests = ["server/test_source_docker.py::DockerActions", "server/test_source_proxmox.py::ProxmoxActions",
+         "server/test_source_actions.py::DnsPauseRules", "server/test_source_actions.py::DnsPauseEndToEnd"]
 docs = ["docs/REFERENCE_SERVER.md#source-actions", "docs/BRIDGE.md#actions-optional-off-by-default"]
-not_needed = { device_tests = "server side; the app's existing Restart and Actions tab run them" }
-depends_on = ["source-docker", "source-proxmox"]
-notes = "docs/plans/MODULAR.md M1.5. Uses the app's run-actions path (what the container Restart button calls), not pending proposals with signed buttons: a press is the user's own, confirmed in the app."
+not_needed = { device_tests = "server side; the app's existing Restart, item buttons and Actions tab run them" }
+depends_on = ["source-docker", "source-proxmox", "source-pihole", "source-adguard"]
+notes = "docs/plans/MODULAR.md M1.5 (restart, start, stop) and M1.6 (dns-pause, item buttons kept only when listed, read again after a press). Uses the app's run-actions path (what the container Restart button calls), not pending proposals with signed buttons: a press is the user's own, confirmed in the app."
+
+[[feature]]
+id = "source-pihole"
+name = "Pi-hole source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `pihole` type reads Pi-hole v6 with an app password (session from POST /api/auth, logout after every run): the `dns` card in Lab (queries and blocked in 24 h, blocking on, off or paused), the top blocked domains as `dns-top`, and a warning while blocking is off for good. The pause (`dns-pause`) only with `\"actions\": {\"pause\": [5, 15, 30]}` (minutes)."
+server_features = ["status", "cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.cards"]
+sources = ["server/sources/pihole.py#collect", "server/sources/pihole.py#act", "server/sources/_dns.py#result",
+           "server/recordings/pihole/normal.json", "server/recordings/pihole/odd.json",
+           "server/recordings/pihole/auth-failed.json", "server/test_source_pihole.py",
+           "server/examples/sources-dns-media.json"]
+tests = ["server/test_source_pihole.py::PiholeSource", "server/test_source_actions.py::DnsMediaSample"]
+docs = ["docs/REFERENCE_SERVER.md#pi-hole", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "Recordings in the shapes of Pi-hole FTL v6.8 (made up). v5 (admin/api.php) is not supported."
+
+[[feature]]
+id = "source-adguard"
+name = "AdGuard Home source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `adguard` type reads AdGuard Home with basic auth (/control/status, /control/stats): the same `dns` and `dns-top` cards as Pi-hole, warnings while protection is off or DNS is not running. The pause (`dns-pause`) only with `\"actions\": {\"pause\": [5, 15, 30]}` (minutes)."
+server_features = ["status", "cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.cards"]
+sources = ["server/sources/adguard.py#collect", "server/sources/adguard.py#act", "server/sources/_dns.py#check_actions",
+           "server/recordings/adguard/normal.json", "server/recordings/adguard/odd.json",
+           "server/recordings/adguard/auth-failed.json", "server/test_source_adguard.py",
+           "server/examples/sources-dns-media.json"]
+tests = ["server/test_source_adguard.py::AdGuardSource", "server/test_source_actions.py::DnsMediaSample"]
+docs = ["docs/REFERENCE_SERVER.md#adguard-home", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "Recordings in the shapes of AdGuard Home v0.107.80 (made up)."
+
+[[feature]]
+id = "source-sonarr"
+name = "Sonarr source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `sonarr` type reads the v3 API with an X-Api-Key: health errors and warnings become problems, the queue a Lab `list` card with `progress` per download (a blocked or failed import is also a warning), and the next days' episodes a `countdown` card on Today."
+server_features = ["status", "cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.cards"]
+sources = ["server/sources/sonarr.py#collect", "server/sources/_arr.py#queue", "server/sources/_arr.py#health",
+           "server/recordings/sonarr/normal.json", "server/recordings/sonarr/odd.json",
+           "server/recordings/sonarr/auth-failed.json", "server/test_source_sonarr.py",
+           "server/examples/sources-dns-media.json"]
+tests = ["server/test_source_sonarr.py::SonarrSource", "server/test_source_actions.py::DnsMediaSample"]
+docs = ["docs/REFERENCE_SERVER.md#sonarr-and-radarr", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "Recordings in the shapes of Sonarr v4.0.20, API v3 (made up names)."
+
+[[feature]]
+id = "source-radarr"
+name = "Radarr source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `radarr` type reads the v3 API with an X-Api-Key: health as problems, the queue as a Lab card with `progress`, and each movie's next digital, disc or cinema release in a `countdown` card on Today."
+server_features = ["status", "cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.cards"]
+sources = ["server/sources/radarr.py#collect", "server/sources/_arr.py#calendar_card",
+           "server/recordings/radarr/normal.json", "server/recordings/radarr/odd.json", "server/test_source_radarr.py",
+           "server/examples/sources-dns-media.json"]
+tests = ["server/test_source_radarr.py::RadarrSource", "server/test_source_actions.py::DnsMediaSample"]
+docs = ["docs/REFERENCE_SERVER.md#sonarr-and-radarr", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "Recordings in the shapes of Radarr v6.4.4, API v3 (made up names)."
+
+[[feature]]
+id = "source-qbittorrent"
+name = "qBittorrent source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `qbittorrent` type reads the WebUI API v2 with an API key (5.2 and newer) or a login whose session cookie is sent back as a header and closed after each run: running downloads as a Lab `list` card (progress, speed, time left), torrents in error and a lost connection as warnings."
+server_features = ["status", "cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.cards"]
+sources = ["server/sources/qbittorrent.py#collect", "server/recordings/qbittorrent/normal.json",
+           "server/recordings/qbittorrent/odd.json", "server/recordings/qbittorrent/auth-failed.json",
+           "server/test_source_qbittorrent.py", "server/examples/sources-dns-media.json"]
+tests = ["server/test_source_qbittorrent.py::QbittorrentSource", "server/test_source_actions.py::DnsMediaSample"]
+docs = ["docs/REFERENCE_SERVER.md#qbittorrent", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "Recordings in the shapes of qBittorrent 5.1 / 5.2, WebUI API v2.11 to v2.14 (made up names)."
 
 [[feature]]
 id = "homepage-import"

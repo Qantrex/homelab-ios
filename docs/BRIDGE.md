@@ -58,6 +58,8 @@ Anything that is not a dict with the needed fields is skipped (and logged). Dupl
 problems, 100 hosts, 50 cards and 100 services. Fields named like a secret (`token`, `password`, `api_key`, ...) are
 dropped at any depth, and the values of the source's env variables become `***` wherever they appear.
 
+Shared code of several types goes in a module whose name starts with `_` (`_dns.py`, `_arr.py`): it is not a type.
+
 When `collect` raises (a `SourceError` from `fetch`, or any bug), or returns something that is not a JSON object,
 the source becomes exactly **one warning** `<name>: <short error>` (id `<name>:source`) and nothing else. Raise
 `SourceError("short text")` yourself for a known failure ("slug not found"). Never put a URL or a key in the text;
@@ -65,8 +67,8 @@ URLs are cut out anyway.
 
 ## Actions (optional, off by default)
 
-A source may offer actions that change something upstream (Docker restart, Proxmox start and stop: owner decision 6
-in [plans/MODULAR.md](plans/MODULAR.md)). They exist only for the items the user lists under `actions` in the
+A source may offer actions that change something upstream (Docker restart, Proxmox start and stop, the ad blockers'
+pause: owner decision 6 in [plans/MODULAR.md](plans/MODULAR.md)). They exist only for the items the user lists under `actions` in the
 source's config; without that key the module is read-only like any other. A module that offers actions has three
 more names:
 
@@ -92,14 +94,23 @@ press per item at a time. `restartable: true` is set on exactly the containers `
 `item` and `host` match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`, so they are safe in a URL path; check them in `act`
 anyway. Document the upstream permission each action needs, and keep it to exactly those items.
 
+A button on a card item works the same way: `collect` sends `{"action": {"name": "dns-pause", "label": "Pause 5 min",
+"arg": "Pi-hole:5"}}` with the full argument, and the bridge keeps it only when that action and argument are on the
+`allowed` list (any other `action` is removed, like the card's own). After a press that worked, the source is read
+again at the next tick, so the card shows the change. The `actions` value is per type (`{"restart": [...]}`,
+`{"pause": [5, 15]}`); check its shape in `check(cfg)`.
+
 ## Rules for a source module
 
 - Stdlib only. Import the helpers from `.` (`as_list`, `as_dict`, `as_text`, `SourceError`), nothing from
   `reference_server`.
 - Talk to the upstream only through `fetch`; read keys only with `fetch.secret()`. No `os.environ`, `subprocess`,
   `urllib`, `socket` or `open(` (a test greps for them).
-- Read-only. Never call an endpoint that changes something upstream (Pi-hole's logout after login is fine), except
-  in `act` for an item the config lists (see [Actions](#actions-optional-off-by-default)).
+- Read-only. `collect` never calls an endpoint that changes something upstream (a login and the logout after it are
+  fine: Pi-hole and qBittorrent). Writes happen only in `act`, for an item the config lists (see
+  [Actions](#actions-optional-off-by-default)).
+- A session cookie (qBittorrent) is read from the login's `set-cookie` header and sent back as a `Cookie` header;
+  `fetch` keeps no cookies itself. Log out at the end of the run, also when a read failed (`try`/`finally`).
 - Lenient: every upstream field may be missing or have another type. Use `as_list`, `as_dict`, `as_text`; skip what
   doesn't fit. The odd recording must never crash the source.
 - Ids from the upstream's stable ids (monitor id, VM id), not from list positions, so `since` stays put.
@@ -124,8 +135,8 @@ anyway. Document the upstream permission each action needs, and keep it to exact
 4. **Registry.** One `[[feature]]` in `features.toml`, area `Server`, `status = "partial"`, `depends_on =
    ["server-sources"]`, its module, recordings and test file in `sources`, the test classes in `tests`, `not_needed =
    { device_tests = "server side; the app sees ordinary Companion data" }`. Then `scripts/features render`.
-5. **Docs.** A row in the sources table of [SERVER-SETUP.md](SERVER-SETUP.md) (when it exists) with the config keys and
-   what the key needs (read-only token, role).
+5. **Docs.** A row in the sources table of [SERVER-SETUP.md](SERVER-SETUP.md#sources) with the config
+   keys and what the key needs (read-only token, role).
 6. **Check.** `python3 -m unittest -v server/test_*.py`, `scripts/features`, `scripts/lint`, and
    [try it](#try-it) with `scripts/check-live-api`.
 
@@ -153,7 +164,8 @@ in its own daemon thread. A run that takes longer than `every + timeout` shows a
 hosts and cards; the status is the worst of all problems. `/info` lists `cards` and `services` when a source sends
 any, and `sources`: `Runner.status()`, per source `state` (`ok`, `failing`, `never`), `error`, `checked`, `last_ok`
 and `insecure` ([API.md → Source status](API.md#source-status-sources-in-info); tests in
-`server/test_source_status.py`).
+`server/test_source_status.py`). With source actions, `GET /actions` serves `Runner.actions.listing()` and
+`POST /actions/<name>` calls `Runner.actions.run()`.
 
 The `homepage` key is a pre-processor, not a source type: at start `Config` hands it to
 `sources/_homepage.py` (the leading `_` keeps it out of the types), which reads Homepage's `services.yaml` with

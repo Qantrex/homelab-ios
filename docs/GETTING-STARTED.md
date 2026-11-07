@@ -76,7 +76,10 @@ your tailnet (`homelab-bridge`). No port opens on your Docker host.
 | Anything that answers JSON in the shape of `/state` | `json` | Works |
 | Docker (through a socket proxy) | `docker` | Works |
 | Proxmox VE (an API token, read-only) | `proxmox` | Works |
-| Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | – | Coming (plan M1.6) |
+| Pi-hole v6 (an app password) | `pihole` | Works |
+| AdGuard Home | `adguard` | Works |
+| Sonarr, Radarr (the API key) | `sonarr`, `radarr` | Works |
+| qBittorrent (an API key, or a WebUI login) | `qbittorrent` | Works |
 | A Homepage `services.yaml` | the `homepage` key ([import](SERVER-SETUP.md#import-from-homepage)) | Works: its services in the launcher, its Kuma, Gatus and Proxmox widgets as sources |
 
 Details per source: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources). For Docker, `docker compose --profile docker

@@ -181,8 +181,8 @@ cron cuts a line at every unescaped `%`.) Or read them through a socket proxy wi
 
 With a `sources` list the reference server is the Homelab Bridge: it reads other services' APIs and shows what
 they report on Today and in Lab. Copy the `server/sources/` folder next to `reference_server.py`. The common keys
-(`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources);
-each module's docstring has the details. Keys go in env variables, never in the config.
+(`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources),
+one section per type there; each module's docstring has the details. Keys go in env variables, never in the config.
 
 #### Pick your sources
 
@@ -196,20 +196,24 @@ are two sources with different names.
 | A script or another server that writes JSON | `json` ([REFERENCE_SERVER.md → JSON feed](REFERENCE_SERVER.md#json-feed)) | Whatever it sends: problems, hosts, cards, services. On the bridge's own machine, `cards_dir` is simpler |
 | Docker (through a socket proxy) | `docker` | Unhealthy, restarting and crashed containers as problems |
 | Proxmox VE | `proxmox` | Nodes as hosts with 24 h history, VMs and containers per node |
-| Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | coming (plan M1.6) | DNS card, health problems, a download queue |
+| Pi-hole or AdGuard Home | `pihole`, `adguard` | The ad blocking card (queries, blocked, on or off), a warning while it is off |
+| Sonarr, Radarr | `sonarr`, `radarr` | Health problems, the download queue with progress, what comes in the next days |
+| qBittorrent | `qbittorrent` | Running downloads with progress, torrents in error |
 | Homepage (its `services.yaml`) | the `homepage` key | Its services in the launcher, its Kuma, Gatus and Proxmox widgets as sources ([Import from Homepage](#import-from-homepage)) |
 
 Each source, its keys and the access it needs:
 
 | Type | What it reads | Keys | Access it needs | Tested with |
 |---|---|---|---|---|
-| `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
-| `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
-| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` ([Docker](REFERENCE_SERVER.md#docker)) | Docker Engine 29 (API 1.52) |
-| `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) ([Proxmox](REFERENCE_SERVER.md#proxmox)) | Proxmox VE 9.0 |
-
-Restart, start and stop are off until you list containers or VMIDs under `actions`
-([Source actions](REFERENCE_SERVER.md#source-actions)).
+| `json` | One URL that answers a subset of `/state` (your own script, or another Companion server) ([JSON feed](REFERENCE_SERVER.md#json-feed)) | `url`; `key_env`, `key_header` | None, or a token sent as a bearer token (or in `key_header`) | the shape of `server/openapi.yaml` |
+| `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services ([Uptime Kuma](REFERENCE_SERVER.md#uptime-kuma)) | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
+| `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab ([Gatus](REFERENCE_SERVER.md#gatus)) | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
+| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems ([Docker](REFERENCE_SERVER.md#docker)) | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` | Engine 29 (API 1.52) and older |
+| `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list ([Proxmox](REFERENCE_SERVER.md#proxmox)) | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) | 9.0 |
+| `pihole` | Queries, blocked and blocking as the `dns` card in Lab, the top blocked domains; blocking off = warning ([Pi-hole](REFERENCE_SERVER.md#pi-hole)) | `url`, `key_env`, `top`, `actions` | A Pi-hole v6 app password | FTL v6.8 |
+| `adguard` | The same `dns` cards; protection off or DNS not running = warning ([AdGuard Home](REFERENCE_SERVER.md#adguard-home)) | `url`, `username`, `password_env`, `top`, `actions` | An AdGuard Home user (basic auth) | v0.107.80 |
+| `sonarr`, `radarr` | Health as problems, the download queue in Lab with progress, the next episodes or releases as a countdown on Today ([Sonarr and Radarr](REFERENCE_SERVER.md#sonarr-and-radarr)) | `url`, `key_env`, `queue`, `calendar_days` | The API key (Settings → General) | Sonarr 4.0.20, Radarr 6.4.4 |
+| `qbittorrent` | Running downloads in Lab (progress, speed, time left); errors and a lost connection = warning ([qBittorrent](REFERENCE_SERVER.md#qbittorrent)) | `url`, `key_env` or `username` and `password_env`, `limit` | An API key (5.2 and newer) or a WebUI login | 5.1 and 5.2 |
 
 ```json
 "sources": [
@@ -219,7 +223,13 @@ Restart, start and stop are off until you list containers or VMIDs under `action
 ```
 
 The slug is the part after `/status/` in the status page's address. A status page only for the bridge is fine.
-[`server/examples/sources-monitors.json`](../server/examples/sources-monitors.json) is a whole config with both.
+Whole configs: [`sources-monitors.json`](../server/examples/sources-monitors.json) (Kuma and Gatus),
+[`sources-docker-proxmox.json`](../server/examples/sources-docker-proxmox.json),
+[`sources-dns-media.json`](../server/examples/sources-dns-media.json) (Pi-hole, AdGuard, Sonarr, Radarr, qBittorrent)
+and [`sources-json.json`](../server/examples/sources-json.json).
+
+All sources only read. Docker restart, Proxmox start and stop and the ad blockers' pause are off until you list the
+containers, VMIDs or pause lengths under `actions` ([Source actions](REFERENCE_SERVER.md#source-actions)).
 
 ### Import from Homepage
 

@@ -19,8 +19,9 @@ into /state and /services (`merged()`). Rules it enforces, whatever the module r
   - ids get the prefix "<source name>:"; a problem's `host` too (dropped unless the source sent that host)
   - a failing, crashing or hanging source is exactly one warning problem "<name>: <short error>", nothing else
   - no actions by default: `action` on cards and items and `restartable` on containers are removed. A source type
-    may offer actions (docker: restart, proxmox: start and stop). They exist only for the items its config lists under
-    `actions`; SourceActions serves them as the app's run-actions (GET /actions, POST /actions/<name>)
+    may offer actions (docker: restart, proxmox: start and stop, pihole and adguard: pause). They exist only for the
+    items its config lists under `actions`; SourceActions serves them as the app's run-actions (GET /actions,
+    POST /actions/<name>). An item's `action` stays only when its name and arg are on that list
   - the card ids `today` and `departures` are refused (the app gives those ids a meaning)
   - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values are replaced by
     "***" in everything the source returns and in every error; fields named like a secret are dropped
@@ -489,17 +490,23 @@ def _pick(items, limit, valid, kind, name, logf):
     return out
 
 
-def _no_actions(card):
+def _no_actions(card, allowed=frozenset()):
+    """Remove every action, except an item's `action` whose (name, arg) is on the source's list (`allowed`); it keeps
+    only name, label and arg."""
     card.pop("action", None)
     for item in card.get("items", []):
-        item.pop("action", None)
+        act = item.pop("action", None)
+        if isinstance(act, dict) and (act.get("name"), act.get("arg")) in allowed:
+            item["action"] = {k: act[k] for k in ("name", "label", "arg") if isinstance(act.get(k), str)}
     return card
 
 
-def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, restartable=frozenset()):
+def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, restartable=frozenset(),
+              item_actions=frozenset()):
     """A source's raw result → {"problems", "hosts", "cards", "services"} as the app may see it (rules in the
     module docstring). `restartable`: the (host id, container name) pairs on the source's restart list; only those
-    get `restartable: true`. Raises SourceError when the result is not a JSON object."""
+    get `restartable: true`. `item_actions`: the (action, arg) pairs on the source's actions list; only those stay
+    as an item's button. Raises SourceError when the result is not a JSON object."""
     if not isinstance(result, dict):
         raise SourceError("collect() returned %s, not a dict" % type(result).__name__)
     try:
@@ -567,7 +574,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
                 del c["items"]
         if checked and "updated" not in c:
             c["updated"] = checked
-        cards.append(_no_actions(c))
+        cards.append(_no_actions(c, item_actions))
 
     services = []
     for s in _pick(result.get("services"), MAX_SERVICES,
@@ -605,7 +612,7 @@ class Runner:
         self.log = logf
         self.tick_seconds = tick
         self.secrets = sorted({v for s in specs for v in s["env"].values() if v}, key=len, reverse=True)
-        self.actions = SourceActions(specs, self.secrets, logf)
+        self.actions = SourceActions(specs, self.secrets, logf, after=self.read_soon)
         self.states = {s["name"]: _State() for s in specs}
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -618,6 +625,12 @@ class Runner:
                     logf("source %s: env %s is shorter than %d characters" % (s["name"], var, MIN_SCRUB))
             if s["cfg"].get("insecure"):
                 logf("source %s: warning: insecure: true, TLS certificates are not checked" % s["name"])
+
+    def read_soon(self, name):
+        """Read this source again at the next tick (after an action changed something upstream)."""
+        with self.lock:
+            if name in self.states:
+                self.states[name].next_due = 0.0
 
     def start(self):
         self.thread = threading.Thread(target=self._loop, name="sources", daemon=True)
@@ -662,7 +675,8 @@ class Runner:
         try:
             raw = spec["module"].collect(copy.deepcopy(spec["cfg"]), fetch)
             restartable = {(a["host"], a["item"]) for a in spec.get("actions", ()) if a["action"] == RESTART}
-            result = normalize(name, raw, self.secrets, now_iso(), self.log, restartable)
+            listed = {(a["action"], a["arg"]) for a in spec.get("actions", ())}
+            result = normalize(name, raw, self.secrets, now_iso(), self.log, restartable, listed)
         except SourceError as exc:
             error = scrub(exc, self.secrets)
         except Exception as exc:  # noqa: BLE001 - a crash is one warning, not a dead server
@@ -749,9 +763,10 @@ class SourceActions:
     the argument must be exactly one on the list (it is looked up, never parsed or put into a URL), no payload, at
     most ACTIONS_PER_HOUR presses an hour in all, one press per item at a time. Errors never hold a key or a URL."""
 
-    def __init__(self, specs, secrets=(), logf=lambda m: None, per_hour=ACTIONS_PER_HOUR):
+    def __init__(self, specs, secrets=(), logf=lambda m: None, per_hour=ACTIONS_PER_HOUR, after=None):
         self.secrets = secrets
         self.log = logf
+        self.after = after  # after(source name), called after a press that worked (the Runner reads it again)
         self.per_hour = per_hour
         self.table = {}     # (action, arg) -> (spec, entry)
         self.meta = {}      # action -> its ACTIONS entry (from the first source type that offers it)
@@ -840,4 +855,6 @@ class SourceActions:
                 self.running.discard(key)
         text = scrub(text, self.secrets)
         self.log("source %s: %s %s: %s" % (spec["name"], action, arg, "ok" if ok else text))
+        if ok and self.after:
+            self.after(spec["name"])
         return 200, {"ok": ok, "text": text}

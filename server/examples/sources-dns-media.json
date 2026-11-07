@@ -1,0 +1,16 @@
+{
+  "_comment": "Homelab Bridge with the DNS and media sources (docs/SERVER-SETUP.md#sources). Keys only in env variables: HOMELAB_TOKENS=<16+ characters> PIHOLE_APP_PASSWORD=... ADGUARD_PASSWORD=... SONARR_KEY=... RADARR_KEY=... QBIT_API_KEY=... python3 server/reference_server.py --config server/examples/sources-dns-media.json. Read-only: add \"actions\": {\"pause\": [5, 15, 30]} (minutes) to an ad blocker only if you want its pause button (docs/REFERENCE_SERVER.md#source-actions).",
+
+  "name": "bridge media",
+  "listen": "127.0.0.1:8791",
+  "this_host": {"id": "bridge", "kind": "server", "disks": ["/"]},
+
+  "sources": [
+    {"name": "Pi-hole", "type": "pihole", "url": "http://192.0.2.53", "key_env": "PIHOLE_APP_PASSWORD"},
+    {"name": "AdGuard", "type": "adguard", "url": "http://192.0.2.54:3000", "username": "monitor",
+     "password_env": "ADGUARD_PASSWORD"},
+    {"name": "Sonarr", "type": "sonarr", "url": "http://192.0.2.30:8989", "key_env": "SONARR_KEY"},
+    {"name": "Radarr", "type": "radarr", "url": "http://192.0.2.31:7878", "key_env": "RADARR_KEY"},
+    {"name": "qBittorrent", "type": "qbittorrent", "url": "http://192.0.2.20:8080", "key_env": "QBIT_API_KEY"}
+  ]
+}

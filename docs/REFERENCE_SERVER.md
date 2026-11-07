@@ -247,6 +247,7 @@ against a fake upstream.
 | `key_env` | none | The **name** of the env variable that holds the key. Other `*_env` keys work the same (`password_env`) |
 | `insecure` | `false` | Skip the TLS certificate check (self-signed Proxmox or TrueNAS). Logged as a warning and flagged in `/info` |
 | `ca_file` | none | A PEM file with the CA that signed the upstream's certificate (better than `insecure`) |
+| `actions` | none | Opt-in, per type, only the listed items: `{"restart": [...]}` (docker), `{"start": [...], "stop": [...]}` (proxmox), `{"pause": [5, 15]}` (pihole, adguard). See [Source actions](#source-actions) |
 | other keys | | Per type, in the module's docstring |
 
 Rules the server enforces for every source:
@@ -256,9 +257,9 @@ Rules the server enforces for every source:
   Put the variables in the systemd `EnvironmentFile` next to `HOMELAB_TOKENS`. A source sees only the variables its
   own `*_env` keys name. Their values are replaced by `***` in every answer and log line, and commands from actions
   and chat don't get them.
-- **Read-only by default.** Buttons on a source's cards and items are removed. Only the docker and proxmox types
-  can act (restart, start, stop), and only for the items their config lists under `actions`: see
-  [Source actions](#source-actions).
+- **Read-only by default.** Buttons on a source's cards and items are removed. Only the docker, proxmox, pihole and
+  adguard types can act (restart, start, stop, pause), and only for the items their config lists under `actions`:
+  see [Source actions](#source-actions).
 - **Ids are prefixed.** A Kuma monitor `m3` becomes the problem `Kuma:m3`, the host `pve1` of the source `Lab`
   becomes `Lab:pve1`. The card ids `today` and `departures` are refused.
 - **A failing source is one warning.** A wrong key, a timeout, an odd answer or a bug in the module gives exactly one
@@ -311,6 +312,43 @@ or item `image`s (the app loads pictures only from the server it talks to). An a
 another machine or a service already serves it over HTTP, when you want problems, hosts or services and not only
 cards, or to show a second Companion server's hosts and problems (pull: gone with a warning when the feed is down).
 `server/examples/sources-json.json` runs it against `server/recordings/json/normal.json`.
+
+### Uptime Kuma
+
+Type `uptime-kuma` reads one public status page, the same two calls the page itself makes
+(`/api/status-page/<slug>` and `/api/status-page/heartbeat/<slug>`). No key and no login: only the monitors on that
+page are visible, so a status page just for the bridge is fine. Tested with Uptime Kuma 2.5.9 and 1.23.16.
+
+```json
+{"name": "Kuma", "type": "uptime-kuma", "url": "http://192.0.2.10:3001", "slug": "home"}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `slug` | required | The part after `/status/` in the status page's address |
+| `slow_ms` | off | A monitor that is up but answered slower than this is a warning |
+| `cert_days` | `14` | A certificate that expires within this many days is a warning (needs "Show Certificate Expiry" on the page; 0: off) |
+| `services` | `false` | Monitors with a public link become launcher entries |
+
+A down monitor is a problem, a pending one a warning, maintenance nothing; a pinned "danger" incident is a problem,
+"warning" a warning. One list card in Lab: "11 of 12 up", a row per monitor with its state and 24 h uptime.
+
+### Gatus
+
+Type `gatus` reads `/api/v1/endpoints/statuses`, the call Gatus' own dashboard makes. Tested with Gatus v5.38.0.
+
+```json
+{"name": "Gatus", "type": "gatus", "url": "http://192.0.2.10:8080", "slow_ms": 2000}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `slow_ms` | off | An endpoint that passes but took longer than this is a warning |
+| `user`, `password_env` | none | Only with Gatus' `security.basic`: that user and the plain password (OIDC can't be used) |
+
+A failing endpoint is a problem with its first failed condition; failing only on `[RESPONSE_TIME]`,
+`[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]` is a warning. One list card in Lab: "11 of 12 up". Gatus' error
+texts are not shown (they hold the endpoint's URL). `server/examples/sources-monitors.json` has both monitor types.
 
 ### Docker
 
@@ -422,6 +460,88 @@ pveum acl modify / --tokens 'monitor@pve!bridge' --roles HomelabBridge
 Put the secret in the bridge's environment as `PVE_TOKEN`, never in the config. With privilege separation the token
 has at most what both the user and the token are given, so it can be revoked or narrowed alone.
 
+### Pi-hole
+
+Type `pihole` reads Pi-hole **v6** (`/api`; v5's `admin/api.php` is not supported). It logs in with an **app password**
+(Settings → Web interface / API → Configure app password; Pi-hole has no read-only login), reads, and logs out again
+after every run, so it never holds one of Pi-hole's few sessions.
+
+```json
+{"name": "Pi-hole", "type": "pihole", "url": "http://192.0.2.53", "key_env": "PIHOLE_APP_PASSWORD"}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `key_env` | none | The variable with the app password. Without it the Pi-hole must have no password |
+| `top` | `5` | Blocked domains in the `dns-top` card (0: no card, no request) |
+| `actions` | none | Opt-in: `{"pause": [5, 15, 30]}` (minutes). See [Source actions](#source-actions) |
+
+It adds the card `dns` in Lab (Queries and Blocked in the last 24 h, Blocking `on`, `off · 4 min` while paused, `off`),
+`dns-top` with the top blocked domains, and a warning while blocking is off for good or failed (a timed pause is not
+a warning).
+
+### AdGuard Home
+
+Type `adguard` reads `/control/status` and `/control/stats` with basic auth. AdGuard Home has no read-only users or
+API keys, so this password can change settings: keep it in the env file only.
+
+```json
+{"name": "AdGuard", "type": "adguard", "url": "http://192.0.2.54:3000", "username": "monitor",
+ "password_env": "ADGUARD_PASSWORD"}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `username`, `password_env` | none | The AdGuard Home user and the variable with its password. Without `username` no auth is sent |
+| `top` | `5` | As for `pihole` |
+| `actions` | none | Opt-in: `{"pause": [5, 15, 30]}` (minutes). See [Source actions](#source-actions) |
+
+It adds the same `dns` and `dns-top` cards (Queries for AdGuard's stats period: "24 h" or "7 days"), a warning while
+protection is off for good and one while the DNS server is not running.
+
+### Sonarr and Radarr
+
+Types `sonarr` and `radarr` read the v3 API (Sonarr v3 and v4, Radarr v3 to v6) with the API key in `X-Api-Key`
+(Settings → General → Security). They only read.
+
+```json
+{"name": "Sonarr", "type": "sonarr", "url": "http://192.0.2.30:8989", "key_env": "SONARR_KEY"}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `key_env` | required | The variable with the API key |
+| `queue` | `10` | Rows in the queue card (0: no queue request, no card) |
+| `calendar_days` | `7` | How far ahead the calendar looks (0: no calendar) |
+
+- `/api/v3/health`: an error is a problem, a warning a warning, notices are left out.
+- `/api/v3/queue`: card `queue` in Lab, one row per download (the episode as "Show S02E05", the movie with its year)
+  with its state and reason ("Import blocked: Not an upgrade ..."), the time left and `progress`. A download that needs
+  a hand (import blocked, failed) is also a warning.
+- `/api/v3/calendar`: card `calendar` on Today (style `countdown`), what is not downloaded yet. Sonarr: each episode at
+  its air time in the bridge's local time. Radarr: each movie's first digital, disc or cinema release in the window.
+
+### qBittorrent
+
+Type `qbittorrent` reads the WebUI API v2. With qBittorrent 5.2 and newer use an **API key** (Preferences → WebUI →
+API key; sent as a bearer token, no login). Older versions log in with a WebUI user; the session cookie is sent back
+as a header and the session is closed after every run.
+
+```json
+{"name": "qBittorrent", "type": "qbittorrent", "url": "http://192.0.2.20:8080", "key_env": "QBIT_API_KEY"}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `key_env` | none | The variable with the API key (5.2 and newer) |
+| `username`, `password_env` | none | A WebUI login instead (older versions) |
+| `limit` | `10` | Rows in the card, problems first, then soonest done |
+
+It adds the card `downloads` in Lab (each running download with progress, speed and time left; the line under the
+title has the total speeds) and warnings for torrents in error or with missing files and for a lost connection.
+
+`server/examples/sources-dns-media.json` has all five of these types.
+
 ### Source actions
 
 Off by default. A source acts only on the items its config lists under `actions`, and nothing else:
@@ -430,17 +550,20 @@ Off by default. A source acts only on the items its config lists under `actions`
 |---|---|---|---|---|
 | `docker` | `"actions": {"restart": ["sonarr"]}` | Restart on the container (host page) and the Actions tab: `restart-container` | `POST /containers/<name>/restart` | a socket proxy that allows exactly that |
 | `proxmox` | `"actions": {"start": [103], "stop": [101]}` | The Actions tab: `guest-start`, `guest-stop` (a clean shutdown) | `POST /nodes/<node>/<qemu or lxc>/<vmid>/status/start` or `shutdown` | `VM.PowerMgmt` on `/vms/<vmid>` for those guests |
+| `pihole`, `adguard` | `"actions": {"pause": [5, 15, 30]}` (minutes) | "Pause 5 min" (the shortest) or "Resume" on the card's Blocking row, and the Actions tab: `dns-pause` with each listed length and Resume | Pi-hole `POST /api/dns/blocking`, AdGuard `POST /control/protection` | nothing more than the read (Pi-hole's app password, AdGuard's user) |
 
 Then the server offers the app's `run-actions` (`GET /actions`, `POST /actions/<name>`); without `actions` there is
 no `/actions` at all. The app asks before each press (a red button for restart and stop). The server checks every
 press again:
 
 - The argument must be exactly one from the list: `<source>:<host>:<container>` for Docker (what the app builds from
-  the prefixed host id), `<source>:<vmid>` for Proxmox. It is looked up, never parsed, put in a shell or used to build
+  the prefixed host id), `<source>:<vmid>` for Proxmox, `<source>:<minutes>` or `<source>:on` for a pause. It is looked up, never parsed, put in a shell or used to build
   a URL from what the app sent.
 - No payload; at most 30 presses an hour in all; one press per item at a time; 404 for an action that isn't offered.
 - The answer says what happened ("Restarted sonarr on nas.") or why not ("Docker: sonarr failed (403)"), without a
-  URL or a key. Every press is logged.
+  URL or a key. Every press is logged. After a press that worked, the source is read again at once.
+- A button on a source's card (the ad blockers' Blocking row) stays only when its action and argument are on
+  the list; every other button from a source is removed.
 
 For a Proxmox stop or start token, give `VM.PowerMgmt` only on those guests:
 

@@ -1,0 +1,36 @@
+{
+  "_about": "Made up. Sonarr answering oddly: unknown health types, junk and duplicate checks, queue records with wrong types, a calendar that is not a list. The source must not crash.",
+  "routes": {
+    "GET /api/v3/health": {
+      "status": 200,
+      "json": [
+        {"type": "error"},
+        {"type": "fatal", "message": "unknown type"},
+        "junk",
+        {"source": 5, "type": "warning", "message": "A check without a name"},
+        {"source": "IndexerStatusCheck", "type": "warning", "message": "first"},
+        {"source": "IndexerStatusCheck", "type": "warning", "message": "second"},
+        null
+      ]
+    },
+    "GET /api/v3/queue": {
+      "status": 200,
+      "json": {
+        "totalRecords": "3",
+        "records": [
+          {"title": null},
+          {"id": "x", "series": "not a dict", "title": "Raw.Release.Name", "size": "big", "sizeleft": null,
+           "timeleft": "garbage", "status": "newStatus", "statusMessages": "nope"},
+          5,
+          {"id": 9, "title": "Zero.Size", "size": 0, "sizeleft": 0, "status": "downloading", "timeleft": "1.02:03:04",
+           "episode": {"seasonNumber": "two"}, "trackedDownloadStatus": "error", "errorMessage": "disk full",
+           "statusMessages": [{"messages": [null, 3]}, "junk"]}
+        ]
+      }
+    },
+    "GET /api/v3/calendar": {
+      "status": 200,
+      "json": {"not": "a list"}
+    }
+  }
+}

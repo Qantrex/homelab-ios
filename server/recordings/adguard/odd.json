@@ -1,0 +1,17 @@
+{
+  "_about": "Made up. AdGuard Home answering oddly: unknown fields, wrong types, junk in the top list, the DNS server not running. The source must not crash.",
+  "routes": {
+    "GET /control/status": {
+      "status": 200,
+      "json": {"protection_enabled": "yes", "protection_disabled_duration": "x", "running": false, "version": 107,
+               "new_field": {"nested": [1]}}
+    },
+    "GET /control/stats": {
+      "status": 200,
+      "json": {"time_units": "weeks", "num_dns_queries": null, "num_blocked_filtering": "4k",
+               "top_blocked_domains": [{"a.example.net": 1, "b.example.net": 2}, {"ads.example.net": "lots"}, "junk",
+                                       {"tracker.example.org": 3}, null],
+               "dns_queries": "n/a"}
+    }
+  }
+}

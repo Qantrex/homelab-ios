@@ -1,0 +1,44 @@
+{
+  "_about": "Made up (torrent names invented), in the shapes of qBittorrent 5.1 / 5.2 (WebUI API v2.11 to v2.14, wiki 'WebUI API (qBittorrent 5.0)'): login with a port cookie, transfer info, three downloading torrents, one in error, logout.",
+  "routes": {
+    "POST /api/v2/auth/login": {
+      "status": 200,
+      "body": "Ok.",
+      "headers": {"Set-Cookie": "QBT_SID_8080=madeUpSession0123456789abcdefABCD; HttpOnly; SameSite=Strict; path=/"}
+    },
+    "GET /api/v2/transfer/info": {
+      "status": 200,
+      "json": {"connection_status": "connected", "dht_nodes": 312, "dl_info_data": 52428800000, "dl_info_speed": 2200000,
+               "dl_rate_limit": 0, "up_info_data": 10485760000, "up_info_speed": 310000, "up_rate_limit": 0}
+    },
+    "GET /api/v2/torrents/info?filter=downloading": {
+      "status": 200,
+      "json": [
+        {"added_on": 1762502400, "amount_left": 536870912, "auto_tmm": true, "availability": 3.2,
+         "category": "tv", "completed": 1610612736, "completion_on": -1, "dl_limit": 0, "dlspeed": 1800000,
+         "downloaded": 1610612736, "eta": 750, "f_l_piece_prio": false, "force_start": false,
+         "hash": "0123456789abcdef0123456789abcdef01234567", "last_activity": 1762510000,
+         "name": "Placeholder.Show.S02E05.1080p.WEB", "num_complete": 40, "num_incomplete": 5, "num_leechs": 2,
+         "num_seeds": 12, "priority": 1, "progress": 0.75, "ratio": 0.01, "save_path": "/downloads/tv",
+         "seq_dl": false, "size": 2147483648, "state": "downloading", "super_seeding": false, "tags": "",
+         "time_active": 1800, "total_size": 2147483648, "tracker": "", "trackers_count": 3, "up_limit": 0,
+         "uploaded": 1048576, "upspeed": 20000, "reannounce": 1200},
+        {"added_on": 1762500000, "amount_left": 2147483648, "category": "movies", "dlspeed": 400000, "eta": 5400,
+         "hash": "89abcdef0123456789abcdef0123456789abcdef", "name": "Sample.Film.2025.1080p.BluRay",
+         "progress": 0.75, "size": 8589934592, "state": "downloading", "num_seeds": 4},
+        {"added_on": 1762490000, "amount_left": 3000000000, "category": "", "dlspeed": 0, "eta": 8640000,
+         "hash": "fedcba9876543210fedcba9876543210fedcba98", "name": "example-os-24.04-amd64.iso",
+         "progress": 0.1, "size": 3333333333, "state": "stalledDL", "num_seeds": 0}
+      ]
+    },
+    "GET /api/v2/torrents/info?filter=errored": {
+      "status": 200,
+      "json": [
+        {"added_on": 1762400000, "amount_left": 1000000000, "category": "movies", "dlspeed": 0, "eta": 8640000,
+         "hash": "aaaabbbbccccddddeeeeffff0000111122223333", "name": "Demo.Picture.2026.720p",
+         "progress": 0.42, "size": 1700000000, "state": "missingFiles"}
+      ]
+    },
+    "POST /api/v2/auth/logout": {"status": 200, "body": ""}
+  }
+}
