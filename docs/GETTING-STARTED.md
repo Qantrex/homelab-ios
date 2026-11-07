@@ -77,7 +77,7 @@ your tailnet (`homelab-bridge`). No port opens on your Docker host.
 | Docker (through a socket proxy) | `docker` | Works |
 | Proxmox VE (an API token, read-only) | `proxmox` | Works |
 | Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | – | Coming (plan M1.6) |
-| A Homepage `services.yaml` | import | Coming (plan M1.8) |
+| A Homepage `services.yaml` | the `homepage` key ([import](SERVER-SETUP.md#import-from-homepage)) | Works: its services in the launcher, its Kuma, Gatus and Proxmox widgets as sources |
 
 Details per source: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources). For Docker, `docker compose --profile docker
 up -d` also starts the socket proxy ([REFERENCE_SERVER.md → Docker](REFERENCE_SERVER.md#docker)). Without Docker,

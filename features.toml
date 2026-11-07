@@ -1413,6 +1413,26 @@ depends_on = ["source-docker", "source-proxmox"]
 notes = "docs/plans/MODULAR.md M1.5. Uses the app's run-actions path (what the container Restart button calls), not pending proposals with signed buttons: a press is the user's own, confirmed in the app."
 
 [[feature]]
+id = "homepage-import"
+name = "Import from Homepage"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "A `homepage` key in the Homelab Bridge's config reads Homepage's services.yaml at start: every service with an http(s) href becomes a launcher entry (name, url, innermost group, an SF Symbol for well-known icon names, description); `uptimekuma`, `gatus` and `proxmox` widgets become sources of those types (more keys per source with `extra`); other widgets are logged as not yet supported. Keys are taken only as the names of their HOMEPAGE_VAR_/HOMEPAGE_FILE_ placeholders; a key written in services.yaml for an imported widget stops the start with a message that never prints it. Needs PyYAML (in the Docker image); without it the start says so."
+server_features = ["services", "status", "cards"]
+endpoints = ["GET /services", "GET /state"]
+api_fields = ["services", "state.problems", "state.cards"]
+sources = ["server/sources/_homepage.py#convert", "server/reference_server.py#Config", "server/test_homepage_import.py",
+           "server/examples/homepage-services.yaml", "server/examples/sources-homepage.json"]
+tests = ["server/test_homepage_import.py::HomepageNormal", "server/test_homepage_import.py::HomepageOdd",
+         "server/test_homepage_import.py::HomepageLiteralKeys", "server/test_homepage_import.py::HomepageConfig",
+         "server/test_homepage_import.py::PyYAMLMissing", "server/test_homepage_import.py::HomepageBridge"]
+docs = ["docs/SERVER-SETUP.md#import-from-homepage", "docs/REFERENCE_SERVER.md#config-keys"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources", "source-uptime-kuma", "source-gatus", "source-proxmox", "pyyaml"]
+notes = "docs/plans/MODULAR.md M1.8. A config pre-processor, not a source type (docs/BRIDGE.md#how-it-runs). PyYAML only in the Docker image (owner decision 3); the YAML tests skip without it. New sources that Homepage has a widget for add a translator to WIDGETS in server/sources/_homepage.py."
+
+[[feature]]
 id = "live-api-check"
 name = "Live API check"
 area = "Server"
