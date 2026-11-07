@@ -45,7 +45,7 @@ to Retry.
 | To-dos | small, medium, lock screen (circular, rectangular) | Your open to-dos |
 | "Leave by" (Live Activity) | lock screen, banner, StandBy | When to leave and the next train, counting down by itself (from the server's `commute`) |
 
-U6 is a metro line in Vienna, the owner's way to school. The widget's name in the gallery is fixed in
+U6 is a metro line in Vienna (the line this app was built for). The widget's name in the gallery is fixed in
 `Sources/HomelabWidget/DeparturesWidget.swift`; the line it shows comes from the `departures` card's title. For your
 own line see [docs/ADAPTING.md](docs/ADAPTING.md).
 
