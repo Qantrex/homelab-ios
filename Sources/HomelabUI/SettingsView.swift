@@ -648,6 +648,10 @@ struct DiagnosticsView: View {
                         }
                     }
                 }
+                // A Homelab Bridge's sources (SourceStatusSection.swift); nothing for a server without them.
+                ForEach(sourceLists) { list in
+                    SourceStatusSection(title: list.title, sources: list.sources)
+                }
                 Section {
                     Button(copied ? "Copied" : "Copy report") {
                         UIPasteboardBridge.copy(report())
@@ -671,6 +675,21 @@ struct DiagnosticsView: View {
         return "\(Format.age(log.date)): \(log.result)"
     }
 
+    private struct SourceList: Identifiable {
+        let id: UUID
+        let title: String
+        let sources: [SourceStatus]
+    }
+
+    /// Each server that sends `sources` in /info (live or cached), in the list's order. Empty for every other server.
+    private var sourceLists: [SourceList] {
+        let servers = model.servers.servers.filter { model.status[$0.id]?.knownInfo?.sources != nil }
+        return servers.map { s in
+            SourceList(id: s.id, title: servers.count > 1 ? "Sources · \(s.name)" : "Sources",
+                       sources: model.status[s.id]?.knownInfo?.sources ?? [])
+        }
+    }
+
     private func report() -> String {
         var lines = ["Homelab \(AppVersion.short) (\(AppVersion.build)), iOS \(UIDeviceInfo.version)",
                      "bundle \(Bundle.main.bundleIdentifier ?? "?"), group \(AppGroup.current ?? "none")"]
@@ -680,6 +699,8 @@ struct DiagnosticsView: View {
         for s in model.servers.servers {
             let st = model.status[s.id]
             lines.append("server \(s.kind.rawValue)/\(s.auth.rawValue) \(s.host): data \(Format.age(st?.snapshot?.fetched)), error \(st?.error?.message ?? "none")")
+            // Only a Homelab Bridge sends sources; masked with the rest below.
+            lines += (st?.knownInfo?.sources ?? []).map { "  " + $0.reportLine() }
         }
         return Redact.hosts(lines.joined(separator: "\n"))
     }

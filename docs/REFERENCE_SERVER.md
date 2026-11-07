@@ -255,7 +255,9 @@ Rules the server enforces for every source:
   Put the variables in the systemd `EnvironmentFile` next to `HOMELAB_TOKENS`. A source sees only the variables its
   own `*_env` keys name. Their values are replaced by `***` in every answer and log line, and commands from actions
   and chat don't get them.
-- **Read-only.** A source can't offer actions; buttons on its cards and items are removed.
+- **Read-only by default.** Buttons on a source's cards and items are removed. Only the docker and proxmox types
+  can act (restart, start, stop), and only for the items their config lists under `actions`: see
+  [Source actions](#source-actions).
 - **Ids are prefixed.** A Kuma monitor `m3` becomes the problem `Kuma:m3`, the host `pve1` of the source `Lab`
   becomes `Lab:pve1`. The card ids `today` and `departures` are refused.
 - **A failing source is one warning.** A wrong key, a timeout, an odd answer or a bug in the module gives exactly one
@@ -266,7 +268,8 @@ Rules the server enforces for every source:
 - Each source runs in its own thread, so a slow upstream never holds up the host checks or another source.
 - **Status in `/info`.** `/info` lists every source under `sources`: `state` (`ok`, `failing`, `never`), the last
   run, the last good run, the short error while failing, and `insecure: true` as a warning. Without `sources` in the
-  config the field is left out. Fields: [API.md → Source status](API.md#source-status-sources-in-info).
+  config the field is left out. Fields: [API.md → Source status](API.md#source-status-sources-in-info). The app
+  shows them in Settings → Diagnostics → Sources.
 
 Writing a new source: [BRIDGE.md](BRIDGE.md).
 
@@ -307,6 +310,144 @@ or item `image`s (the app loads pictures only from the server it talks to). An a
 another machine or a service already serves it over HTTP, when you want problems, hosts or services and not only
 cards, or to show a second Companion server's hosts and problems (pull: gone with a warning when the feed is down).
 `server/examples/sources-json.json` runs it against `server/recordings/json/normal.json`.
+
+### Docker
+
+The `docker` type reads one Docker host through a **socket proxy**: a small container that holds the Docker socket
+and lets through only the API calls you allow. Never mount `/var/run/docker.sock` into the bridge itself: whoever
+can talk to that socket is root on the host. Tested against Docker Engine 29 (API 1.52) and older engines.
+
+```json
+{"name": "Docker", "type": "docker", "url": "http://socket-proxy:2375", "host": "nas", "ignore": ["backup-job"]}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `url` | required | The socket proxy |
+| `host` | the name in lower case | The host id; `host_name` the shown name, `kind` the icon (`server`) |
+| `ignore` | `[]` | Containers that never become problems (one-shot jobs) |
+| `actions` | none | Opt-in: `{"restart": ["sonarr", "gluetun"]}`. See [Source actions](#source-actions) |
+
+It reads `GET /containers/json?all=1` and gives one host with every container in its list (state and health) and
+`containers: {up, total}`. Unhealthy, restarting and dead containers are problems; one that exited with a non-zero
+code is a warning (`exited (137)`); exited with 0 is fine.
+
+The read-only socket proxy, in the compose file next to your containers
+([tecnativa/docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy): only GET, only `/containers`):
+
+```yaml
+services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0   # pin a version
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1     # GET /containers/json; everything else is refused
+      POST: 0           # no changes at all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [socket-proxy]
+  homelab-bridge:
+    # ...the bridge, with "url": "http://socket-proxy:2375"
+    networks: [socket-proxy]
+networks:
+  socket-proxy:
+    internal: true      # no route out, and no published port
+```
+
+For Restart the proxy must also pass `POST /containers/<name>/restart`. Tecnativa's proxy can't do only that:
+`POST: 1` with `CONTAINERS: 1` also lets through `POST /containers/create`, which is root on the host again. Use
+[wollomatic/socket-proxy](https://github.com/wollomatic/socket-proxy) instead, which allows one regular expression
+per method:
+
+```yaml
+  socket-proxy:
+    image: wollomatic/socket-proxy:1.13.2
+    restart: unless-stopped
+    user: "65534:<the docker group id>"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges]
+    command:
+      - -listenip=0.0.0.0
+      - -allowfrom=homelab-bridge
+      - -allowGET=/containers/json
+      - -allowPOST=/containers/(sonarr|gluetun)/restart   # exactly the containers under actions.restart
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [socket-proxy]
+```
+
+Which to pick: `this_host.docker: true` counts the containers of the machine the server runs on with `docker ps`
+(the server's user needs the docker group, which is root-equivalent). The `docker` source reads any Docker host
+through a socket proxy, lists every container, and is the one to use with the bridge in a container. Don't use both
+for the same host, or its containers show twice.
+
+### Proxmox
+
+The `proxmox` type reads a Proxmox VE node or cluster with an **API token**. Tested against Proxmox VE 9.0 (and the
+PVE 8 history format).
+
+```json
+{"name": "Proxmox", "type": "proxmox", "url": "https://192.0.2.20:8006", "token_id": "monitor@pve!bridge",
+ "key_env": "PVE_TOKEN", "ca_file": "/etc/homelab/pve-root-ca.pem", "expect_running": [101]}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `url` | required | `https://<node>:8006` (plain `http://` only to `127.0.0.1` or `localhost`) |
+| `token_id` | required | The token's name, `user@realm!id`. Not secret |
+| `key_env` | required | The env variable with the token's secret (the UUID) |
+| `ca_file` / `insecure` | system CAs | Proxmox's own certificate is self-signed: copy `/etc/pve/pve-root-ca.pem` and name it in `ca_file`. `insecure: true` skips the check instead and is logged and shown as a warning |
+| `expect_running` | `[]` | VMIDs that are a problem while stopped |
+| `disk_warning`, `disk_problem` | `90`, `95` | Percent of a node's root disk |
+| `ui_url` | `url` | The link to the web UI on each node |
+| `actions` | none | Opt-in: `{"start": [103], "stop": [101]}`. See [Source actions](#source-actions) |
+
+Each node becomes a host (reachable, load, cores, memory, root disk) with its last 24 h from `rrddata` (load, memory
+and disk in 5-minute steps, at most 288 points; PVE 8's 30-minute steps stay as they are). Its VMs and containers are
+the host's container list (running, or stopped as exited; templates are left out). Problems: an offline node, a
+full root disk, a stopped guest from `expect_running`, and a warning when the token can't read a node's details.
+
+A read-only token (on any node, as root):
+
+```bash
+pveum role add HomelabBridge --privs "Sys.Audit VM.Audit"     # or use the built-in PVEAuditor
+pveum user add monitor@pve --comment "Homelab Bridge"
+pveum acl modify / --users monitor@pve --roles HomelabBridge
+pveum user token add monitor@pve bridge --privsep 1           # prints the secret once
+pveum acl modify / --tokens 'monitor@pve!bridge' --roles HomelabBridge
+```
+
+Put the secret in the bridge's environment as `PVE_TOKEN`, never in the config. With privilege separation the token
+has at most what both the user and the token are given, so it can be revoked or narrowed alone.
+
+### Source actions
+
+Off by default. A source acts only on the items its config lists under `actions`, and nothing else:
+
+| Type | Config | In the app | Upstream call | Needs |
+|---|---|---|---|---|
+| `docker` | `"actions": {"restart": ["sonarr"]}` | Restart on the container (host page) and the Actions tab: `restart-container` | `POST /containers/<name>/restart` | a socket proxy that allows exactly that |
+| `proxmox` | `"actions": {"start": [103], "stop": [101]}` | The Actions tab: `guest-start`, `guest-stop` (a clean shutdown) | `POST /nodes/<node>/<qemu or lxc>/<vmid>/status/start` or `shutdown` | `VM.PowerMgmt` on `/vms/<vmid>` for those guests |
+
+Then the server offers the app's `run-actions` (`GET /actions`, `POST /actions/<name>`); without `actions` there is
+no `/actions` at all. The app asks before each press (a red button for restart and stop). The server checks every
+press again:
+
+- The argument must be exactly one from the list: `<source>:<host>:<container>` for Docker (what the app builds from
+  the prefixed host id), `<source>:<vmid>` for Proxmox. It is looked up, never parsed, put in a shell or used to build
+  a URL from what the app sent.
+- No payload; at most 30 presses an hour in all; one press per item at a time; 404 for an action that isn't offered.
+- The answer says what happened ("Restarted sonarr on nas.") or why not ("Docker: sonarr failed (403)"), without a
+  URL or a key. Every press is logged.
+
+For a Proxmox stop or start token, give `VM.PowerMgmt` only on those guests:
+
+```bash
+pveum role add HomelabBridgePower --privs "VM.PowerMgmt"
+pveum acl modify /vms/101 --users monitor@pve --roles HomelabBridgePower
+pveum acl modify /vms/101 --tokens 'monitor@pve!bridge' --roles HomelabBridgePower
+```
 
 ## Fixture mode
 
