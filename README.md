@@ -8,6 +8,9 @@ It is built with SwiftPM and [xtool](https://github.com/xtool-org/xtool), so you
 developer account. You install it with a free Apple ID: from a Linux PC or a Mac with xtool, or
 with [SideStore](https://sidestore.io).
 
+New here: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) takes you from nothing to a working app in one of three
+setups (only Home Assistant, the Homelab Bridge with your services, or your own server).
+
 ## What it does
 
 - **Today**: how the lab is doing in two words, your day as a line with a countdown, actions to approve, your Home
@@ -59,15 +62,16 @@ problem text, titles, host names or day (the U6 times stay, they are public).
 
 ## Who it is for
 
-Anyone with a homelab and Tailscale (or another VPN) on the phone. You need one of these:
+Anyone with a homelab and Tailscale (or another VPN) on the phone. You don't need an AI agent or a paid Apple
+account. Pick one of three setups; [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) has the steps for each:
 
-| You have | Use |
-|---|---|
-| Nothing special: a Linux box with some Docker apps | The [reference server](docs/REFERENCE_SERVER.md): one Python file, no dependencies |
-| Home Assistant | Add it directly with a long-lived token: Home tiles on Today, and on its own (no other server) a headline that says what is on and what doesn't answer ("1 light on", "Bedroom fan unavailable") |
-| Your own agent or scripts | Implement the small JSON API in [`server/openapi.yaml`](server/openapi.yaml) |
+| You have | Use | Today then shows |
+|---|---|---|
+| Home Assistant | Add it directly with a long-lived token | Home tiles, and on its own (no other server) a headline that says what is on and what doesn't answer ("1 light on", "Bedroom fan unavailable") |
+| Uptime Kuma, Gatus, Docker, Proxmox, Pi-hole, *arr | The **Homelab Bridge**: the [reference server](docs/REFERENCE_SERVER.md) with sources, in Docker with a Tailscale sidecar ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md#docker)). Sources for Uptime Kuma, Gatus, Docker, Proxmox, Pi-hole, AdGuard, Sonarr, Radarr, qBittorrent and JSON feeds | Problems from your services, Lab with your machines, widgets |
+| Your own agent or scripts | Implement the small JSON API in [`server/openapi.yaml`](server/openapi.yaml) | What your server sends, up to actions and chat |
 
-You can combine them, for example the reference server plus Home Assistant. **Try the demo** on the first screen to
+You can combine them, for example the Homelab Bridge plus Home Assistant. **Try the demo** on the first screen to
 look around without any server.
 
 ## Screenshots
@@ -156,10 +160,12 @@ Docs site: <https://qantrex.github.io/homelab-ios/>, the `docs/` folder as a web
 
 | Doc | For |
 |---|---|
+| [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) | New here: pick a setup (Home Assistant, Homelab Bridge, your own server), steps, limits, troubleshooting |
 | [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) | Installing from a Linux PC over USB (no Mac) |
 | [docs/SIDESTORE.md](docs/SIDESTORE.md) | SideStore (and the -80045 fix), the 7-day refresh, App Group, troubleshooting |
-| [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md) | Connecting a homelab: reference server, Home Assistant, your own server |
-| [docs/REFERENCE_SERVER.md](docs/REFERENCE_SERVER.md) | All options of the reference server |
+| [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md) | Connecting a homelab: reference server and Homelab Bridge, Home Assistant, your own server |
+| [docs/REFERENCE_SERVER.md](docs/REFERENCE_SERVER.md) | All options of the reference server, its sources |
+| [docs/BRIDGE.md](docs/BRIDGE.md) | Writing a Homelab Bridge source for another service |
 | [server/openapi.yaml](server/openapi.yaml) | The Homelab Companion API v1 |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, what the app does, what server operators must do |
 | [docs/SETUP.md](docs/SETUP.md) | Building with xtool, tests, project layout |

@@ -166,3 +166,12 @@ any, and `sources`: `Runner.status()`, per source `state` (`ok`, `failing`, `nev
 and `insecure` ([API.md → Source status](API.md#source-status-sources-in-info); tests in
 `server/test_source_status.py`). With source actions, `GET /actions` serves `Runner.actions.listing()` and
 `POST /actions/<name>` calls `Runner.actions.run()`.
+
+The `homepage` key is a pre-processor, not a source type: at start `Config` hands it to
+`sources/_homepage.py` (the leading `_` keeps it out of the types), which reads Homepage's `services.yaml` with
+PyYAML and returns launcher entries and source configs; they are added to the config's own `services` and
+`sources` before `sources.parse` checks them, so imported sources follow every rule above. A Homepage widget
+becomes a source through the `WIDGETS` table there: when you add a source that Homepage has a widget for, add a
+translator (widget fields to your config keys; keys only through `ctx.secret()`), a row in
+[SERVER-SETUP.md → Import from Homepage](SERVER-SETUP.md#import-from-homepage) and a case in
+`server/test_homepage_import.py`.

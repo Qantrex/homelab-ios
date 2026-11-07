@@ -1,5 +1,8 @@
 # Connecting your homelab
 
+New here? [GETTING-STARTED.md](GETTING-STARTED.md) picks one of the three setups with you and walks through it from
+installing the app to a working Today. This page has every detail.
+
 The app talks to two kinds of server. You can add several of each in Settings → Add server.
 
 | Type in the app | Speaks | What it fills |
@@ -181,6 +184,25 @@ they report on Today and in Lab. Copy the `server/sources/` folder next to `refe
 (`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources),
 one section per type there; each module's docstring has the details. Keys go in env variables, never in the config.
 
+#### Pick your sources
+
+Start with what tells you something is wrong, then add more. One source per service instance; two Kuma status pages
+are two sources with different names.
+
+| You run | Type | Gives you |
+|---|---|---|
+| Uptime Kuma | `uptime-kuma` | Down monitors as problems, a card "11 of 12 up" |
+| Gatus | `gatus` | Failing endpoints as problems, a card |
+| A script or another server that writes JSON | `json` ([REFERENCE_SERVER.md → JSON feed](REFERENCE_SERVER.md#json-feed)) | Whatever it sends: problems, hosts, cards, services. On the bridge's own machine, `cards_dir` is simpler |
+| Docker (through a socket proxy) | `docker` | Unhealthy, restarting and crashed containers as problems |
+| Proxmox VE | `proxmox` | Nodes as hosts with 24 h history, VMs and containers per node |
+| Pi-hole or AdGuard Home | `pihole`, `adguard` | The ad blocking card (queries, blocked, on or off), a warning while it is off |
+| Sonarr, Radarr | `sonarr`, `radarr` | Health problems, the download queue with progress, what comes in the next days |
+| qBittorrent | `qbittorrent` | Running downloads with progress, torrents in error |
+| Homepage (its `services.yaml`) | the `homepage` key | Its services in the launcher, its Kuma, Gatus and Proxmox widgets as sources ([Import from Homepage](#import-from-homepage)) |
+
+Each source, its keys and the access it needs:
+
 | Type | What it reads | Keys | Access it needs | Tested with |
 |---|---|---|---|---|
 | `json` | One URL that answers a subset of `/state` (your own script, or another Companion server) ([JSON feed](REFERENCE_SERVER.md#json-feed)) | `url`; `key_env`, `key_header` | None, or a token sent as a bearer token (or in `key_header`) | the shape of `server/openapi.yaml` |
@@ -208,6 +230,61 @@ and [`sources-json.json`](../server/examples/sources-json.json).
 
 All sources only read. Docker restart, Proxmox start and stop and the ad blockers' pause are off until you list the
 containers, VMIDs or pause lengths under `actions` ([Source actions](REFERENCE_SERVER.md#source-actions)).
+
+### Import from Homepage
+
+If you already run [Homepage](https://gethomepage.dev), the bridge can read its `services.yaml` instead of you
+writing `services` and `sources` again:
+
+```json
+"homepage": {"file": "/homepage/services.yaml"}
+```
+
+- **Launcher.** Every service with an `http(s)` `href` becomes an entry in the app's service launcher: its name,
+  `href`, `description`, the innermost group as its group, and an SF Symbol for well-known icon names
+  (`sonarr.png`, `mdi-jellyfin`, `si-proxmox` and about 100 more; others get the app's globe). Entries already in
+  the config's own `services` (same name and URL) are not repeated.
+- **Sources.** A widget whose `type` the bridge has a source for becomes that source, named after the service
+  (`Uptime Kuma`, a second one `Uptime Kuma 2`), with the `every` of the `homepage` object. All other widgets are
+  listed in the log at start as `not yet supported by the Homelab Bridge`; their keys are never read.
+
+| Homepage widget `type` | Bridge source | From the widget |
+|---|---|---|
+| `uptimekuma` | `uptime-kuma` | `url`, `slug`. The monitors' links are not added to the launcher (Homepage's entries are) |
+| `gatus` | `gatus` | `url`; `username` + `password` (both, as Homepage sends HTTP Basic only then) become `user` + `password_env` |
+| `proxmox` | `proxmox` | `url`; `username` (the API token's id, `user@realm!id`) becomes `token_id`, `password` (its secret) `key_env`. Proxmox mostly has a self-signed certificate and the bridge checks it: add `ca_file` (or `insecure`) with `extra` |
+| `pihole`, `adguard`, `sonarr`, `radarr`, `qbittorrent`, others | not yet | Logged as not yet supported. They follow once their sources exist (M1.6 in [plans/MODULAR.md](plans/MODULAR.md)) |
+
+Docker containers that Homepage shows through `server` and `container` (its `docker.yaml`) are not imported: add a `docker` source through a socket proxy instead.
+
+<!-- {% raw %} -->
+**Keys stay in env variables.** Homepage replaces `{{HOMEPAGE_VAR_X}}` with the env variable `HOMEPAGE_VAR_X` and
+`{{HOMEPAGE_FILE_X}}` with the content of the file that `HOMEPAGE_FILE_X` names. The bridge does the same for
+addresses and descriptions, but for a key it only takes the variable's **name**: `password:
+"{{HOMEPAGE_VAR_GATUS_PASSWORD}}"` becomes `"password_env": "HOMEPAGE_VAR_GATUS_PASSWORD"`, and the value is read
+like any other source key and never answered or logged. So give the bridge the same variables as Homepage (the same
+`env_file`, and the same mounted files for `HOMEPAGE_FILE_`). A key written in `services.yaml` itself, or a user,
+password or key in a widget's `url`, stops the bridge at start for a widget it would import, with a message that
+names the service and the variable to use. The key is never printed. Move it to the env, or leave that service
+out with `skip`. A launcher entry whose address would hold a key is left out.
+<!-- {% endraw %} -->
+
+| Key in `homepage` | Default | Meaning |
+|---|---|---|
+| `file` | required | Homepage's `services.yaml`. A relative path is relative to the directory the bridge runs in |
+| `sources` | `true` | `false`: only the launcher, no sources from widgets |
+| `every` | `60` | Seconds between two reads of each imported source |
+| `skip` | `[]` | Services or groups to leave out, by name (any case) |
+| `extra` | `{}` | More keys for the source made from a service's widget, by service name: `{"Proxmox": {"ca_file": "/config/pve-root-ca.pem", "expect_running": [101]}}`. Checked like any source's keys (no keys in it; `actions` stay opt-in per item) |
+
+With [Docker](#docker), mount Homepage's config folder read-only into the bridge (`- /path/to/homepage/config:/homepage:ro` under the bridge's `volumes` in `server/compose.yaml`) and put the `HOMEPAGE_VAR_` variables in `docker/bridge.env`. The file is read once at start: restart the bridge after editing it. The log says what became what (`homepage:
+Monitoring / Gatus: widget gatus is the source 'Gatus' (gatus)`), and `/info` lists the imported sources like any
+other. Reading YAML needs PyYAML: the Homelab Bridge Docker image has it; `reference_server.py` alone stays
+stdlib-only and, without PyYAML, stops with `homepage: reading services.yaml needs PyYAML, ...` (install
+`python3-yaml` or `pip install pyyaml`, or remove the key).
+[`server/examples/sources-homepage.json`](../server/examples/sources-homepage.json) imports
+[`server/examples/homepage-services.yaml`](../server/examples/homepage-services.yaml); its `_comment` has the
+commands to run it against the fake upstreams.
 
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.

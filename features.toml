@@ -724,7 +724,7 @@ fixtures = ["Sources/HomelabKit/Fixtures/ha-states.json"]
 tests = ["HomeGlanceTests", "OwnerInvarianceTests"]
 device_tests = ["H7"]
 screenshots = ["demo-ha-only"]
-docs = ["README.md#who-it-is-for", "docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased"]
+docs = ["README.md#who-it-is-for", "docs/GETTING-STARTED.md#a-only-home-assistant", "docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased"]
 launch_args = ["-HomelabDemoScene"]
 depends_on = ["home-tiles"]
 notes = "docs/plans/MODULAR.md M2.1. The widgets still need a Companion server (plan, section 7)."
@@ -964,7 +964,7 @@ summary = "Until a server exists: \"Your homelab, in your pocket\", four points,
 sources = ["Sources/HomelabUI/RootView.swift#WelcomeView"]
 tests = ["AppModelTests/demoAndReset"]
 device_tests = ["FS1"]
-docs = ["README.md#who-it-is-for"]
+docs = ["README.md#who-it-is-for", "docs/GETTING-STARTED.md#1-pick-a-setup"]
 
 [[feature]]
 id = "first-run"
@@ -1353,7 +1353,7 @@ endpoints = ["GET /info", "GET /state"]
 sources = ["server/Dockerfile", "server/.dockerignore", "server/requirements-image.txt", "server/compose.yaml",
            "server/docker/serve.json", "server/docker/config.example.json", "server/docker/bridge.env.example",
            "server/docker/tailscale.env.example", "scripts/build-bridge-image"]
-docs = ["docs/SERVER-SETUP.md#docker", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
+docs = ["docs/SERVER-SETUP.md#docker", "docs/GETTING-STARTED.md#b-homelab-bridge", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
 not_needed = { tests = "scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck", device_tests = "server side; the app sees an ordinary Companion server" }
 depends_on = ["server-sources", "reference-server", "bridge-base-image", "pyyaml", "tailscale-image", "docker-socket-proxy", "docker", "tailscale", "gha-checkout", "gha-runners"]
 notes = "docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR."
@@ -1512,6 +1512,26 @@ docs = ["docs/REFERENCE_SERVER.md#qbittorrent", "docs/SERVER-SETUP.md#sources"]
 not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
 depends_on = ["server-sources"]
 notes = "Recordings in the shapes of qBittorrent 5.1 / 5.2, WebUI API v2.11 to v2.14 (made up names)."
+
+[[feature]]
+id = "homepage-import"
+name = "Import from Homepage"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "A `homepage` key in the Homelab Bridge's config reads Homepage's services.yaml at start: every service with an http(s) href becomes a launcher entry (name, url, innermost group, an SF Symbol for well-known icon names, description); `uptimekuma`, `gatus` and `proxmox` widgets become sources of those types (more keys per source with `extra`); other widgets are logged as not yet supported. Keys are taken only as the names of their HOMEPAGE_VAR_/HOMEPAGE_FILE_ placeholders; a key written in services.yaml for an imported widget stops the start with a message that never prints it. Needs PyYAML (in the Docker image); without it the start says so."
+server_features = ["services", "status", "cards"]
+endpoints = ["GET /services", "GET /state"]
+api_fields = ["services", "state.problems", "state.cards"]
+sources = ["server/sources/_homepage.py#convert", "server/reference_server.py#Config", "server/test_homepage_import.py",
+           "server/examples/homepage-services.yaml", "server/examples/sources-homepage.json"]
+tests = ["server/test_homepage_import.py::HomepageNormal", "server/test_homepage_import.py::HomepageOdd",
+         "server/test_homepage_import.py::HomepageLiteralKeys", "server/test_homepage_import.py::HomepageConfig",
+         "server/test_homepage_import.py::PyYAMLMissing", "server/test_homepage_import.py::HomepageBridge"]
+docs = ["docs/SERVER-SETUP.md#import-from-homepage", "docs/REFERENCE_SERVER.md#config-keys"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources", "source-uptime-kuma", "source-gatus", "source-proxmox", "pyyaml"]
+notes = "docs/plans/MODULAR.md M1.8. A config pre-processor, not a source type (docs/BRIDGE.md#how-it-runs). PyYAML only in the Docker image (owner decision 3); the YAML tests skip without it. New sources that Homepage has a widget for add a translator to WIDGETS in server/sources/_homepage.py."
 
 [[feature]]
 id = "live-api-check"
