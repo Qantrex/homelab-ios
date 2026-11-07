@@ -381,7 +381,7 @@ Removed 2026-11-08: Today no longer lists the machines in any detail level (Lab 
 | | |
 |---|---|
 | Server | `hosts`, `GET /state`, `hosts[].history.load` |
-| Sources | [TodayView.swift#MachineList](../Sources/HomelabUI/TodayView.swift), [Sparkline.swift](../Sources/HomelabDesign/Sparkline.swift) |
+| Sources | [Sparkline.swift](../Sources/HomelabDesign/Sparkline.swift) |
 | Tests | `DensityTests/whatEachDensityShows`, `HostHistoryTests/sparklineShape` |
 | Phone (DeviceTest.md) | O8 |
 | CI screenshots | `demo-today-overkill-snarky` |
