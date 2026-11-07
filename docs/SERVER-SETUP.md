@@ -199,7 +199,7 @@ are two sources with different names.
 | Pi-hole or AdGuard Home | `pihole`, `adguard` | The ad blocking card (queries, blocked, on or off), a warning while it is off |
 | Sonarr, Radarr | `sonarr`, `radarr` | Health problems, the download queue with progress, what comes in the next days |
 | qBittorrent | `qbittorrent` | Running downloads with progress, torrents in error |
-| Homepage (its `services.yaml`) | the `homepage` key | Its services in the launcher, its Kuma, Gatus and Proxmox widgets as sources ([Import from Homepage](#import-from-homepage)) |
+| Homepage (its `services.yaml`) | the `homepage` key | Its services in the launcher, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr and qBittorrent widgets as sources ([Import from Homepage](#import-from-homepage)) |
 
 Each source, its keys and the access it needs:
 
@@ -246,14 +246,23 @@ writing `services` and `sources` again:
   the config's own `services` (same name and URL) are not repeated.
 - **Sources.** A widget whose `type` the bridge has a source for becomes that source, named after the service
   (`Uptime Kuma`, a second one `Uptime Kuma 2`), with the `every` of the `homepage` object. All other widgets are
-  listed in the log at start as `not yet supported by the Homelab Bridge`; their keys are never read.
+  listed in the log at start as `not yet supported by the Homelab Bridge`, a Pi-hole v5 as `not supported`; their
+  keys are never read.
 
 | Homepage widget `type` | Bridge source | From the widget |
 |---|---|---|
 | `uptimekuma` | `uptime-kuma` | `url`, `slug`. The monitors' links are not added to the launcher (Homepage's entries are) |
 | `gatus` | `gatus` | `url`; `username` + `password` (both, as Homepage sends HTTP Basic only then) become `user` + `password_env` |
 | `proxmox` | `proxmox` | `url`; `username` (the API token's id, `user@realm!id`) becomes `token_id`, `password` (its secret) `key_env`. Proxmox mostly has a self-signed certificate and the bridge checks it: add `ca_file` (or `insecure`) with `extra` |
-| `pihole`, `adguard`, `sonarr`, `radarr`, `qbittorrent`, others | not yet | Logged as not yet supported. They follow once their sources exist (M1.6 in [plans/MODULAR.md](plans/MODULAR.md)) |
+| `pihole` | `pihole` | `url`; `key` (the password or an app password) becomes `key_env`. Only with `version: 6` or newer: a widget without `version` or with `version: 5` (Homepage then reads the v5 API) is logged as `not supported` (Pi-hole v5 or older) and its key is not read |
+| `adguard` | `adguard` | `url`; `username` + `password` (both, as Homepage sends HTTP Basic only then) become `username` + `password_env` |
+| `sonarr`, `radarr` | `sonarr`, `radarr` | `url`; `key` (the API key) becomes `key_env`. `enableQueue` is Homepage's own view: the bridge's queue card is always on (`"queue": 0` with `extra` turns it off) |
+| `qbittorrent` | `qbittorrent` | `url`; `key` (an API key, qBittorrent 5.2 and newer) becomes `key_env`; without `key`, `username` + `password` become `username` + `password_env`, as Homepage logs in only then |
+| `jellyfin`, `plex`, others | not yet | Logged as not yet supported; their keys are never read |
+
+Imported sources never get `actions`: the pause button of a Pi-hole or AdGuard stays opt-in, written by hand in the
+bridge's config (`"extra": {"Pi-hole": {"actions": {"pause": [5, 15, 30]}}}`), see
+[REFERENCE_SERVER.md → Source actions](REFERENCE_SERVER.md#source-actions).
 
 Docker containers that Homepage shows through `server` and `container` (its `docker.yaml`) are not imported: add a `docker` source through a socket proxy instead.
 

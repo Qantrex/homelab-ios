@@ -37,6 +37,7 @@ GATUS_PASSWORD = "gatus-made-up-password-42"
 PVE_SECRET = "pve-made-up-secret-0000-1111"
 LITERAL = "literal-made-up-key-0123456789"   # a key written in services.yaml: must never come out anywhere
 FILE_KEY = "file-made-up-password-77"
+RADARR_FILE_KEY = "file-made-up-radarr-key-88"
 
 ODD = """
 - Empty group:
@@ -66,7 +67,7 @@ ODD = """
         href: http://192.0.2.10
         icon: https://cdn.example.org/icons/png/plex-light.png
         widget: "gatus"
-        widgets: [7, {url: http://192.0.2.10}, {type: sonarr, url: http://192.0.2.11, key: %(literal)s}]
+        widgets: [7, {url: http://192.0.2.10}, {type: jellyfin, url: http://192.0.2.11, key: %(literal)s}]
     - "Kuma \U0001F7E2 (main)":
         href: http://192.0.2.12:3001
         widget: {type: uptimekuma, url: http://192.0.2.12:3001, slug: home}
@@ -79,6 +80,27 @@ ODD = """
         widget: {type: gatus, url: http://192.0.2.15:8080, username: bridge}
     - Gatus file key:
         widget: {type: gatus, url: http://192.0.2.16:8080, username: bridge, password: {{HOMEPAGE_FILE_GATUS_PW}}}
+    - Pi-hole no version:
+        widget: {type: pihole, url: http://192.0.2.20, key: %(literal)s}
+    - Pi-hole v5:
+        widget: {type: pihole, url: http://192.0.2.21, version: 5, key: "{{HOMEPAGE_VAR_PIHOLE_KEY}}"}
+    - Pi-hole six:
+        widget: {type: pihole, url: http://192.0.2.22, version: six, key: "{{HOMEPAGE_VAR_PIHOLE_KEY}}"}
+    - Pi-hole unset version:
+        widget: {type: pihole, url: http://192.0.2.29, version: "{{HOMEPAGE_VAR_NOT_SET}}"}
+    - Pi-hole open:
+        widget: {type: pihole, url: http://192.0.2.23, version: "6.1"}
+    - AdGuard user only:
+        widget: {type: adguard, url: "http://192.0.2.24:3000", username: monitor}
+    - Sonarr no key:
+        widget: {type: sonarr, url: "http://192.0.2.25:8989", enableQueue: true}
+    - Radarr file key:
+        widget: {type: radarr, url: "http://192.0.2.26:7878", key: "{{HOMEPAGE_FILE_RADARR_KEY}}"}
+    - qBittorrent both:
+        widget: {type: qbittorrent, url: "http://192.0.2.27:8080", username: admin,
+                 password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}", key: "{{HOMEPAGE_VAR_QBIT_KEY}}"}
+    - qBittorrent no password:
+        widget: {type: qbittorrent, url: "http://192.0.2.28:8080", username: admin}
     - Deep:
         - Deeper:
             - Deepest:
@@ -116,11 +138,13 @@ class TmpFiles:
 
 @needs_yaml
 class HomepageNormal(TmpFiles, unittest.TestCase):
-    """server/examples/homepage-services.yaml: every service a launcher entry, Kuma and Gatus widgets sources."""
+    """server/examples/homepage-services.yaml: every service a launcher entry, every supported widget a source."""
 
     ENV = {"HOMEPAGE_VAR_KUMA_HOST": "192.0.2.10:3001", "HOMEPAGE_VAR_GATUS_HOST": "192.0.2.10:8080",
            "HOMEPAGE_VAR_GATUS_PASSWORD": GATUS_PASSWORD, "HOMEPAGE_VAR_PVE_URL": "https://192.0.2.30:8006",
-           "HOMEPAGE_VAR_PVE_SECRET": PVE_SECRET}
+           "HOMEPAGE_VAR_PVE_SECRET": PVE_SECRET, "HOMEPAGE_VAR_SONARR_HOST": "192.0.2.20:8989",
+           "HOMEPAGE_VAR_RADARR_HOST": "192.0.2.20:7878", "HOMEPAGE_VAR_QBIT_HOST": "192.0.2.20:8081",
+           "HOMEPAGE_VAR_PIHOLE_HOST": "192.0.2.2", "HOMEPAGE_VAR_ADGUARD_HOST": "192.0.2.3:3000"}
 
     def test_launcher(self):
         res = self.load(NORMAL, self.ENV)
@@ -129,9 +153,11 @@ class HomepageNormal(TmpFiles, unittest.TestCase):
             ("Gatus", "http://192.0.2.10:8080", "Monitoring", "waveform.path.ecg"),
             ("Jellyfin", "https://nas.tail1234.ts.net:8920", "Media", "play.rectangle"),
             ("Sonarr", "http://192.0.2.20:8989", "Media", "tv"),
+            ("Radarr", "http://192.0.2.20:7878", "Media", "film"),
             ("qBittorrent", "http://192.0.2.20:8081", "Downloads", "arrow.down.circle"),
             ("Proxmox", "https://192.0.2.30:8006", "Servers", "server.rack"),
             ("Pi-hole", "http://192.0.2.2/admin", "Network", "shield"),
+            ("AdGuard Home", "http://192.0.2.3:3000", "Network", "shield"),
             ("Router", "http://192.0.2.1", "Network", "network")])
         self.assertEqual(res.services[0]["description"], "Status of everything")
         self.assertNotIn("description", res.services[1])
@@ -143,25 +169,38 @@ class HomepageNormal(TmpFiles, unittest.TestCase):
              "slug": "home", "services": False},
             {"name": "Gatus", "every": 60, "type": "gatus", "url": "http://192.0.2.10:8080", "user": "bridge",
              "password_env": "HOMEPAGE_VAR_GATUS_PASSWORD"},
+            {"name": "Sonarr", "every": 60, "type": "sonarr", "url": "http://192.0.2.20:8989",
+             "key_env": "HOMEPAGE_VAR_SONARR_KEY"},
+            {"name": "Radarr", "every": 60, "type": "radarr", "url": "http://192.0.2.20:7878",
+             "key_env": "HOMEPAGE_VAR_RADARR_KEY"},
+            {"name": "qBittorrent", "every": 60, "type": "qbittorrent", "url": "http://192.0.2.20:8081",
+             "username": "admin", "password_env": "HOMEPAGE_VAR_QBIT_PASSWORD"},
             {"name": "Proxmox", "every": 60, "type": "proxmox", "url": "https://192.0.2.30:8006",
-             "token_id": "monitor@pve!homepage", "key_env": "HOMEPAGE_VAR_PVE_SECRET"}])
+             "token_id": "monitor@pve!homepage", "key_env": "HOMEPAGE_VAR_PVE_SECRET"},
+            {"name": "Pi-hole", "every": 60, "type": "pihole", "url": "http://192.0.2.2",
+             "key_env": "HOMEPAGE_VAR_PIHOLE_KEY"},
+            {"name": "AdGuard Home", "every": 60, "type": "adguard", "url": "http://192.0.2.3:3000",
+             "username": "monitor", "password_env": "HOMEPAGE_VAR_ADGUARD_PASSWORD"}])
         self.assertEqual(res.env, {})
 
     def test_log_lists_what_is_not_supported(self):
         self.load(NORMAL, self.ENV)
         self.assertEqual(self.logs, [
-            "homepage: 8 launcher entries and 3 sources from homepage-services.yaml",
+            "homepage: 10 launcher entries and 8 sources from homepage-services.yaml",
             "homepage: Monitoring / Uptime Kuma: widget uptimekuma is the source 'Uptime Kuma' (uptime-kuma)",
             "homepage: Monitoring / Gatus: widget gatus is the source 'Gatus' (gatus)",
             "homepage: Media / Jellyfin: widget jellyfin is not yet supported by the Homelab Bridge",
-            "homepage: Media / Sonarr: widget sonarr is not yet supported by the Homelab Bridge",
-            "homepage: Media / Downloads / qBittorrent: widget qbittorrent is not yet supported by the Homelab Bridge",
+            "homepage: Media / Sonarr: widget sonarr is the source 'Sonarr' (sonarr)",
+            "homepage: Media / Radarr: widget radarr is the source 'Radarr' (radarr)",
+            "homepage: Media / Downloads / qBittorrent: widget qbittorrent is the source 'qBittorrent' (qbittorrent)",
             "homepage: Servers / Proxmox: widget proxmox is the source 'Proxmox' (proxmox)",
-            "homepage: Network / Pi-hole: widget pihole is not yet supported by the Homelab Bridge"])
+            "homepage: Network / Pi-hole: widget pihole is the source 'Pi-hole' (pihole)",
+            "homepage: Network / AdGuard Home: widget adguard is the source 'AdGuard Home' (adguard)"])
 
     def test_options(self):
         res = self.load(NORMAL, self.ENV, sources=False, skip=["media", "ROUTER"], every=300)
-        self.assertEqual([s["name"] for s in res.services], ["Uptime Kuma", "Gatus", "Proxmox", "Pi-hole"])
+        self.assertEqual([s["name"] for s in res.services],
+                         ["Uptime Kuma", "Gatus", "Proxmox", "Pi-hole", "AdGuard Home"])
         self.assertEqual(res.sources, [])
         res = self.load(NORMAL, self.ENV, every=300)
         self.assertEqual({s["every"] for s in res.sources}, {300})
@@ -169,9 +208,17 @@ class HomepageNormal(TmpFiles, unittest.TestCase):
     def test_extra_keys_for_a_source(self):
         res = self.load(NORMAL, self.ENV, extra={"proxmox": {"ca_file": "/certs/pve.pem", "_note": "x"},
                                                  "Nothing here": {"insecure": True}})
-        self.assertEqual(res.sources[2]["ca_file"], "/certs/pve.pem")
-        self.assertNotIn("_note", res.sources[2])
+        pve = next(s for s in res.sources if s["name"] == "Proxmox")
+        self.assertEqual(pve["ca_file"], "/certs/pve.pem")
+        self.assertNotIn("_note", pve)
         self.assertIn("homepage: extra: no imported source for the service 'nothing here'", self.logs)
+
+    def test_actions_only_by_hand(self):
+        res = self.load(NORMAL, self.ENV)
+        self.assertEqual([s["name"] for s in res.sources if "actions" in s], [], "the import never adds actions")
+        res = self.load(NORMAL, self.ENV, extra={"Pi-hole": {"actions": {"pause": [5, 15]}}})
+        self.assertEqual([(s["name"], s["actions"]) for s in res.sources if "actions" in s],
+                         [("Pi-hole", {"pause": [5, 15]})], "only the pause written in the bridge's config")
 
     def test_extra_is_checked_like_any_source(self):
         yml = write(self.tmp, "services.yaml", "- S:\n    - Gatus:\n        widget: {type: gatus, url: "
@@ -199,7 +246,8 @@ class HomepageNormal(TmpFiles, unittest.TestCase):
     def test_names_avoid_the_configs_own_sources(self):
         opts = homepage.options({"file": NORMAL})
         res = homepage.convert(homepage.read_yaml(NORMAL), self.ENV, opts, taken_names=["gatus"])
-        self.assertEqual([s["name"] for s in res.sources], ["Uptime Kuma", "Gatus 2", "Proxmox"])
+        self.assertEqual([s["name"] for s in res.sources], ["Uptime Kuma", "Gatus 2", "Sonarr", "Radarr",
+                                                            "qBittorrent", "Proxmox", "Pi-hole", "AdGuard Home"])
 
     def test_own_services_are_not_repeated(self):
         opts = homepage.options({"file": NORMAL})
@@ -223,7 +271,9 @@ class HomepageOdd(TmpFiles, unittest.TestCase):
 
     def run_odd(self):
         path = write(self.tmp, "gatus-pw", FILE_KEY + "\n")
-        return self.load(ODD, {"HOMEPAGE_FILE_GATUS_PW": path}, skip=["Skipped group"])
+        radarr = write(self.tmp, "radarr-key", RADARR_FILE_KEY)
+        return self.load(ODD, {"HOMEPAGE_FILE_GATUS_PW": path, "HOMEPAGE_FILE_RADARR_KEY": radarr},
+                         skip=["Skipped group"])
 
     def test_launcher(self):
         res = self.run_odd()
@@ -241,10 +291,22 @@ class HomepageOdd(TmpFiles, unittest.TestCase):
             ("Kuma main", "uptime-kuma", "http://192.0.2.12:3001"),
             ("Kuma main 2", "uptime-kuma", "http://192.0.2.13:3001"),
             ("Gatus half auth", "gatus", "http://192.0.2.15:8080"),
-            ("Gatus file key", "gatus", "http://192.0.2.16:8080")])
-        self.assertNotIn("user", res.sources[3], "Homepage sends Basic only with username and password")
-        self.assertEqual(res.sources[4]["password_env"], "HOMEPAGE_FILE_GATUS_PW")
-        self.assertEqual(res.env, {"HOMEPAGE_FILE_GATUS_PW": FILE_KEY}, "the file's content, without the newline")
+            ("Gatus file key", "gatus", "http://192.0.2.16:8080"),
+            ("Pi-hole open", "pihole", "http://192.0.2.23"),
+            ("AdGuard user only", "adguard", "http://192.0.2.24:3000"),
+            ("Radarr file key", "radarr", "http://192.0.2.26:7878"),
+            ("qBittorrent both", "qbittorrent", "http://192.0.2.27:8080")])
+        by_name = {s["name"]: s for s in res.sources}
+        self.assertNotIn("user", by_name["Gatus half auth"], "Homepage sends Basic only with username and password")
+        self.assertEqual(by_name["Gatus file key"]["password_env"], "HOMEPAGE_FILE_GATUS_PW")
+        self.assertNotIn("key_env", by_name["Pi-hole open"], "version \"6.1\" is v6; no key: a Pi-hole without one")
+        self.assertNotIn("username", by_name["AdGuard user only"], "no password: no Basic, as in Homepage")
+        self.assertEqual(by_name["Radarr file key"]["key_env"], "HOMEPAGE_FILE_RADARR_KEY")
+        self.assertEqual({k: v for k, v in by_name["qBittorrent both"].items() if k.endswith("_env") or k == "username"},
+                         {"key_env": "HOMEPAGE_VAR_QBIT_KEY"}, "the key first, the login only without it")
+        self.assertEqual([s["name"] for s in res.sources if "actions" in s], [])
+        self.assertEqual(res.env, {"HOMEPAGE_FILE_GATUS_PW": FILE_KEY, "HOMEPAGE_FILE_RADARR_KEY": RADARR_FILE_KEY},
+                         "the files' content, without the newline")
 
     def test_notes(self):
         self.run_odd()
@@ -257,7 +319,15 @@ class HomepageOdd(TmpFiles, unittest.TestCase):
                       "Odd / Unset host: launcher entry skipped, HOMEPAGE_VAR_NOT_SET is not set",
                       "Odd / Not a dict: not a service, skipped",
                       "Odd / Widget junk: a widget without a type skipped",
-                      "Odd / Widget junk: widget sonarr is not yet supported",
+                      "Odd / Widget junk: widget jellyfin is not yet supported",
+                      "Odd / Pi-hole no version: widget pihole is not supported by the Homelab Bridge: Pi-hole v5 or "
+                      "older (no version: 6 in the widget); the bridge reads Pi-hole v6 and newer",
+                      "Odd / Pi-hole v5: widget pihole is not supported by the Homelab Bridge: Pi-hole v5 or older",
+                      "Odd / Pi-hole six: widget pihole is not supported by the Homelab Bridge: its version is not "
+                      "a number",
+                      "Odd / Pi-hole unset version: widget pihole skipped, HOMEPAGE_VAR_NOT_SET is not set",
+                      "Odd / Sonarr no key: widget sonarr skipped (key_env is required",
+                      "Odd / qBittorrent no password: widget qbittorrent skipped (key_env (an API key) or username",
                       "Odd / Kuma (main): widget uptimekuma skipped (slug is required",
                       "Odd / Kuma (main): widget uptimekuma skipped, HOMEPAGE_VAR_NOT_SET is not set",
                       "top: an entry that is not `- Group name: [...]` skipped"]:
@@ -268,6 +338,7 @@ class HomepageOdd(TmpFiles, unittest.TestCase):
         everything = json.dumps([res.services, res.sources]) + "\n".join(self.logs)
         self.assertNotIn(LITERAL, everything)
         self.assertNotIn(FILE_KEY, everything, "a file's key only in res.env, for the source's password_env")
+        self.assertNotIn(RADARR_FILE_KEY, everything)
 
     def test_empty_and_not_a_list(self):
         self.assertEqual(self.load("").services, [])
@@ -311,6 +382,18 @@ class HomepageLiteralKeys(TmpFiles, unittest.TestCase):
         "- M:\n    - Gatus:\n        widget: {type: gatus, url: 'http://bridge:%s@192.0.2.5:8080'}\n" % LITERAL,
         "- M:\n    - PVE:\n        widget: {type: proxmox, url: 'https://192.0.2.30:8006', "
         "username: 'monitor@pve!homepage', password: %s}\n" % LITERAL,
+        "- M:\n    - Pi-hole:\n        widget: {type: pihole, url: http://192.0.2.53, version: 6, key: %s}\n"
+        % LITERAL,
+        "- M:\n    - AdGuard:\n        widget: {type: adguard, url: 'http://192.0.2.54:3000', username: admin, "
+        "password: %s}\n" % LITERAL,
+        "- M:\n    - AdGuard:\n        widget: {type: adguard, url: 'http://192.0.2.54:3000', password: %s}\n"
+        % LITERAL,
+        "- M:\n    - Sonarr:\n        widget: {type: sonarr, url: 'http://192.0.2.20:8989', key: %s}\n" % LITERAL,
+        "- M:\n    - Radarr:\n        widget: {type: radarr, url: 'http://192.0.2.20:7878/?apikey=%s'}\n" % LITERAL,
+        "- M:\n    - qBit:\n        widget: {type: qbittorrent, url: 'http://192.0.2.20:8080', key: qbt_%s}\n"
+        % LITERAL,
+        "- M:\n    - qBit:\n        widget: {type: qbittorrent, url: 'http://192.0.2.20:8080', username: admin, "
+        "password: %s, key: '{{HOMEPAGE_VAR_QBIT_KEY}}'}\n" % LITERAL,
     ]
 
     def test_refused_without_the_key(self):
@@ -338,9 +421,13 @@ class HomepageLiteralKeys(TmpFiles, unittest.TestCase):
         self.assertEqual(res.sources, [])
 
     def test_literal_keys_of_unsupported_widgets_are_never_read(self):
-        res = self.load("- M:\n    - Sonarr:\n        href: http://192.0.2.20:8989\n"
-                        "        widget: {type: sonarr, url: http://192.0.2.20:8989, key: %s}\n" % LITERAL)
-        self.assertEqual([s["name"] for s in res.services], ["Sonarr"])
+        res = self.load("- M:\n    - Jellyfin:\n        href: http://192.0.2.20:8096\n"
+                        "        widget: {type: jellyfin, url: http://192.0.2.20:8096, key: %s}\n"
+                        "    - Old Pi-hole:\n        href: http://192.0.2.53/admin\n"
+                        "        widget: {type: pihole, url: http://192.0.2.53, version: 5, key: %s}\n"
+                        % (LITERAL, LITERAL))
+        self.assertEqual([s["name"] for s in res.services], ["Jellyfin", "Old Pi-hole"])
+        self.assertEqual(res.sources, [], "a Pi-hole v5 is not imported, so its key is not looked at")
         self.assertNotIn(LITERAL, json.dumps(res.services) + "\n".join(self.logs))
 
     def test_server_stops_at_start_and_the_log_has_no_key(self):
@@ -419,57 +506,89 @@ class PyYAMLMissing(TmpFiles, unittest.TestCase):
 
 @needs_yaml
 class HomepageBridge(TmpFiles, unittest.TestCase):
-    """server/examples/sources-homepage.json against the Kuma and Gatus fake upstreams: /services, /state, /info,
-    the key from the env sent to Gatus and never answered, and scripts/check-live-api."""
+    """server/examples/sources-homepage.json against a fake upstream per widget: /services, /state, /info, the keys
+    from the env sent upstream and never answered, no actions, and scripts/check-live-api."""
+
+    # recording folder -> the HOMEPAGE_VAR_ with its address in homepage-services.yaml
+    UPSTREAMS = {"uptime-kuma": "KUMA_HOST", "gatus": "GATUS_HOST", "proxmox": "PVE_URL", "pihole": "PIHOLE_HOST",
+                 "adguard": "ADGUARD_HOST", "sonarr": "SONARR_HOST", "radarr": "RADARR_HOST",
+                 "qbittorrent": "QBIT_HOST"}
+    KEYS = {"HOMEPAGE_VAR_GATUS_PASSWORD": GATUS_PASSWORD, "HOMEPAGE_VAR_PVE_SECRET": PVE_SECRET,
+            "HOMEPAGE_VAR_PIHOLE_KEY": "made-up-pihole-0123456789",
+            "HOMEPAGE_VAR_ADGUARD_PASSWORD": "made-up-adguard-0123456789",
+            "HOMEPAGE_VAR_SONARR_KEY": "made-up-sonarr-0123456789",
+            "HOMEPAGE_VAR_RADARR_KEY": "made-up-radarr-0123456789",
+            "HOMEPAGE_VAR_QBIT_PASSWORD": "made-up-qbit-0123456789"}
 
     def start(self, extra_env=None):
         with open(os.path.join(HERE, "examples", "sources-homepage.json"), encoding="utf-8") as fh:
             raw = json.load(fh)
-        kuma = FakeUpstream(os.path.join(HERE, "recordings", "uptime-kuma", "normal.json")).start()
-        gatus = FakeUpstream(os.path.join(HERE, "recordings", "gatus", "normal.json")).start()
-        pve = FakeUpstream(os.path.join(HERE, "recordings", "proxmox", "normal.json")).start()
-        for up in (kuma, gatus, pve):
+        env = dict(self.KEYS, HOMELAB_TOKENS=TOKEN)
+        self.up = {}
+        for kind, var in self.UPSTREAMS.items():
+            up = FakeUpstream(os.path.join(HERE, "recordings", kind, "normal.json")).start()
             self.addCleanup(up.stop)
-        self.pve = pve
-        self.gatus = gatus
+            self.up[kind] = up
+            env["HOMEPAGE_VAR_" + var] = up.url if var.endswith("_URL") else up.url.split("//", 1)[1]
         raw["listen"] = "127.0.0.1:0"
         raw["homepage"]["file"] = NORMAL
         path = write(self.tmp, "config.json", json.dumps(raw))
-        env = {"HOMELAB_TOKENS": TOKEN, "HOMEPAGE_VAR_KUMA_HOST": kuma.url.split("//", 1)[1],
-               "HOMEPAGE_VAR_GATUS_HOST": gatus.url.split("//", 1)[1],
-               "HOMEPAGE_VAR_GATUS_PASSWORD": GATUS_PASSWORD, "HOMEPAGE_VAR_PVE_URL": pve.url,
-               "HOMEPAGE_VAR_PVE_SECRET": PVE_SECRET}
         env.update(extra_env or {})
         cfg = rs.Config.load(path, env=env)
+        self.assertEqual([s["name"] for s in cfg.sources if s.get("actions")], [], "the import adds no actions")
         app = rs.RealApp(cfg)
         httpd = start_app(app)
         self.addCleanup(stop_app, httpd)
         wait_for(lambda: app.collector.runs >= 1 and all(st.runs >= 1 for st in app.sources.states.values()))
         return httpd.server_address[1]
 
+    def header(self, kind, name):
+        """The header `name` of the first request to that upstream that has it."""
+        for req in self.up[kind].requests:
+            for k, v in req["headers"].items():
+                if k.lower() == name.lower():
+                    return v
+        return None
+
     def test_answers(self):
         port = self.start()
         _, _, services = call(port, "GET", "/api/v1/services", headers=AUTH)
         self.assertEqual([s["name"] for s in services["services"]],
-                         ["Uptime Kuma", "Gatus", "Jellyfin", "Sonarr", "qBittorrent", "Proxmox", "Pi-hole",
-                          "Router"],
+                         ["Uptime Kuma", "Gatus", "Jellyfin", "Sonarr", "Radarr", "qBittorrent", "Proxmox", "Pi-hole",
+                          "AdGuard Home", "Router"],
                          "Kuma's monitor links are not added: Homepage's entries are the launcher")
         _, _, state = call(port, "GET", "/api/v1/state", headers=AUTH)
         ids = [p["id"] for p in state["problems"]]
         self.assertIn("Uptime Kuma:monitor-1", ids)
         self.assertIn("Gatus:endpoint-core_jellyfin", ids)
-        self.assertEqual([c["id"] for c in state["cards"]], ["Uptime Kuma:monitors", "Gatus:monitors"])
+        cards = [c["id"] for c in state["cards"]]
+        for want in ("Uptime Kuma:monitors", "Gatus:monitors", "Pi-hole:dns", "AdGuard Home:dns", "Sonarr:queue",
+                     "Radarr:queue", "qBittorrent:downloads"):
+            self.assertIn(want, cards)
         _, _, info = call(port, "GET", "/api/v1/info", headers=AUTH)
         self.assertIn("services", info["features"])
+        self.assertNotIn("run-actions", info["features"])
         self.assertEqual([(s["name"], s["type"], s["state"]) for s in info["sources"]],
-                         [("Uptime Kuma", "uptime-kuma", "ok"), ("Gatus", "gatus", "ok"), ("Proxmox", "proxmox", "ok")])
+                         [("Uptime Kuma", "uptime-kuma", "ok"), ("Gatus", "gatus", "ok"), ("Sonarr", "sonarr", "ok"),
+                          ("Radarr", "radarr", "ok"), ("qBittorrent", "qbittorrent", "ok"),
+                          ("Proxmox", "proxmox", "ok"), ("Pi-hole", "pihole", "ok"),
+                          ("AdGuard Home", "adguard", "ok")])
         self.assertTrue(any(h["id"].startswith("Proxmox:") for h in state["hosts"]))
-        self.assertEqual(self.pve.requests[0]["headers"].get("Authorization"),
-                         "PVEAPIToken=monitor@pve!homepage=" + PVE_SECRET)
-        self.assertTrue(self.gatus.requests[0]["headers"].get("Authorization", "").startswith("Basic "))
+        self.assertEqual(self.header("proxmox", "Authorization"), "PVEAPIToken=monitor@pve!homepage=" + PVE_SECRET)
+        self.assertTrue(self.header("gatus", "Authorization").startswith("Basic "))
+        self.assertTrue(self.header("adguard", "Authorization").startswith("Basic "))
+        self.assertEqual(self.header("sonarr", "X-Api-Key"), self.KEYS["HOMEPAGE_VAR_SONARR_KEY"])
+        self.assertEqual(self.header("radarr", "X-Api-Key"), self.KEYS["HOMEPAGE_VAR_RADARR_KEY"])
+        logins = {k: [r for r in self.up[k].requests if r["method"] == "POST"][0]["body"]
+                  for k in ("pihole", "qbittorrent")}
+        self.assertIn(self.KEYS["HOMEPAGE_VAR_PIHOLE_KEY"], logins["pihole"])
+        self.assertIn("username=admin", logins["qbittorrent"])
+        self.assertEqual([r["path"] for k in ("pihole", "adguard") for r in self.up[k].requests
+                          if r["path"].startswith(("/api/dns/blocking", "/control/protection"))
+                          and r["method"] == "POST"], [], "read-only: no pause")
         for body in (services, state, info):
-            self.assertNotIn(GATUS_PASSWORD, json.dumps(body))
-            self.assertNotIn(PVE_SECRET, json.dumps(body))
+            for value in self.KEYS.values():
+                self.assertNotIn(value, json.dumps(body))
 
     @unittest.skipUnless(shutil.which("bash"), "needs bash")
     def test_check_live_api_passes(self):

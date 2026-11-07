@@ -22,14 +22,16 @@ of the file that HOMEPAGE_FILE_X names, in the raw text before it parses the YAM
     SF Symbol for well-known Homepage icon names, else none), description}. Placeholders in these fields are
     replaced from the bridge's env; a service whose href would hold a key (a user, a password or a key in the query,
     or a placeholder named like a key) is left out.
-  - a widget whose `type` is in WIDGETS becomes a source of that type. Its keys must be placeholders: the source gets
+  - a widget whose `type` is in WIDGETS (uptimekuma, gatus, proxmox, pihole v6, adguard, sonarr, radarr,
+    qbittorrent) becomes a source of that type, never with `actions`. Its keys must be placeholders: the source gets
     the variable's name (`password_env: HOMEPAGE_VAR_GATUS_PASSWORD`), never the value. A key written in
     services.yaml itself stops the start with a ConfigError that says how to move it to the env; the key is never
-    printed. Other widget types are listed in the log as not yet supported.
+    printed. A Pi-hole v5 widget is logged as not supported; other widget types as not yet supported.
   - PyYAML reads the file. The Docker image of the Homelab Bridge has it; reference_server.py alone stays stdlib-only
     and, without PyYAML, stops with a message that says what is missing (owner decision 3, docs/plans/MODULAR.md).
 """
 
+import math
 import os
 import re
 import urllib.parse
@@ -84,6 +86,11 @@ for _symbol, _names in {
         ICONS[_name] = _symbol
 
 
+class Unsupported(Exception):
+    """Raised by a translator for a widget the bridge can't read (Pi-hole v5): the widget is skipped with this reason
+    in the log, nothing guessed. Its text never holds a key."""
+
+
 class ImportFailed(ValueError):
     """The import can't go on: no PyYAML, an unreadable file, a key written in services.yaml. Its text is shown
     as the reason the server did not start; it never holds a key."""
@@ -113,13 +120,69 @@ def _proxmox(widget, ctx):
             "key_env": ctx.secret(widget, "password")}
 
 
+def _pihole(widget, ctx):
+    # Homepage talks to the v5 API (admin/api.php) unless `version` is 6 or more (`!version || version < 6` in its
+    # proxy); the bridge reads only v6. Checked before the key, so a v5 widget's key is never read. In v6 Homepage's
+    # `key` is the password or an app password; /api/auth takes both.
+    version = ctx.public(widget, "version")
+    if ctx.missing:
+        return {"type": "pihole"}   # a placeholder in version is not set: skipped with that note, not called v5
+    number = 0
+    if version not in (None, "", 0):
+        try:
+            number = float(version) if not isinstance(version, bool) else math.nan
+        except (TypeError, ValueError):
+            number = math.nan
+        if not math.isfinite(number):
+            raise Unsupported("its version is not a number; the bridge reads Pi-hole v6 and newer (version: 6)")
+    if number < 6:
+        raise Unsupported("Pi-hole v5 or older (no version: 6 in the widget); the bridge reads Pi-hole v6 and newer")
+    return {"type": "pihole", "url": ctx.public(widget, "url"), "key_env": ctx.secret(widget, "key")}
+
+
+def _adguard(widget, ctx):
+    # Homepage's generic proxy sends HTTP Basic when username and password are both set, as for gatus.
+    out = {"type": "adguard", "url": ctx.public(widget, "url")}
+    password = ctx.secret(widget, "password")
+    user = ctx.public(widget, "username") if widget.get("username") is not None else ""
+    if user and password:
+        out["username"], out["password_env"] = user, password
+    return out
+
+
+def _arr(kind):
+    def translate(widget, ctx):
+        # Homepage sends `key` as X-Api-Key, as the bridge does; enableQueue only changes Homepage's own view.
+        return {"type": kind, "url": ctx.public(widget, "url"), "key_env": ctx.secret(widget, "key")}
+    return translate
+
+
+def _qbittorrent(widget, ctx):
+    # Homepage sends `key` as a Bearer token (qBittorrent 5.2 and newer) and logs in with username and password only
+    # when there is no key; the bridge does the same. Every key field written is checked, used or not.
+    key = ctx.secret(widget, "key")
+    password = ctx.secret(widget, "password")
+    out = {"type": "qbittorrent", "url": ctx.public(widget, "url")}
+    if key:
+        out["key_env"] = key
+    elif password and widget.get("username") is not None:
+        out["username"], out["password_env"] = ctx.public(widget, "username"), password
+    return out
+
+
 # Homepage widget type -> (bridge source type, translator). A translator returns the source's config without name and
-# every; it reads keys only through ctx.secret(). Types whose bridge source is not in server/sources/ yet are listed
-# as "not yet supported", the same as unknown ones.
+# every; it reads keys only through ctx.secret() and never sets `actions` (pausing an ad blocker stays opt-in by hand
+# in the bridge's config). It raises Unsupported for a widget the bridge can't read (Pi-hole v5). Types whose bridge
+# source is not in server/sources/ yet are listed as "not yet supported", the same as unknown ones.
 WIDGETS = {
     "uptimekuma": ("uptime-kuma", _kuma),
     "gatus": ("gatus", _gatus),
     "proxmox": ("proxmox", _proxmox),
+    "pihole": ("pihole", _pihole),
+    "adguard": ("adguard", _adguard),
+    "sonarr": ("sonarr", _arr("sonarr")),
+    "radarr": ("radarr", _arr("radarr")),
+    "qbittorrent": ("qbittorrent", _qbittorrent),
 }
 
 
@@ -404,7 +467,11 @@ def convert(data, env, opts, taken_names=(), own_services=()):
             return
         bridge_type, translate = mapping
         ctx = _Context(where, name, env, res)
-        cfg = {k: v for k, v in translate(widget, ctx).items() if v is not None}
+        try:
+            cfg = {k: v for k, v in translate(widget, ctx).items() if v is not None}
+        except Unsupported as exc:
+            res.notes.append("%s: widget %s is not supported by the Homelab Bridge: %s" % (where, kind, exc))
+            return
         extra = opts["extra"].get(name.lower())
         if extra is not None:
             used_extra.add(name.lower())
