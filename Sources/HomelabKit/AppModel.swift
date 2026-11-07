@@ -797,6 +797,7 @@ public final class AppModel {
 
     func apply(_ args: LaunchArguments) {
         if args.demoOff { setDemo(false) }
+        if let pins = args.pins, let ha = homeAssistant { setPinned(pins, for: ha.id) }
         if let scene = args.demoScene {
             demoScene = scene
             demo = nil
@@ -868,6 +869,8 @@ struct LaunchArguments {
     var demo = false
     /// `-HomelabDemo NO`: the demo servers go away (phone-shots ends with it, so the owner's daily setup stays clean).
     var demoOff = false
+    /// `-HomelabPins light.a,scene.b`: the Home tiles of the Home tiles server (set up from the laptop over USB).
+    var pins: [String]?
     /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state.
     var demoScene: DemoBackend.Scene?
     var reset = false
@@ -891,6 +894,9 @@ struct LaunchArguments {
         func yes(_ key: String) -> Bool { ["yes", "true", "1"].contains(value(key)?.lowercased() ?? "") }
         demo = yes("HomelabDemo")
         demoOff = ["no", "false", "0"].contains(value("HomelabDemo")?.lowercased() ?? "")
+        pins = value("HomelabPins").map { $0.split(separator: ",").map(String.init) }.flatMap { ids in
+            ids.count <= 12 && ids.allSatisfy({ $0.wholeMatch(of: /[a-z_]{1,32}\.[a-z0-9_]{1,96}/) != nil }) ? ids : nil
+        }
         demoScene = value("HomelabDemoScene").flatMap { DemoBackend.Scene(rawValue: $0.lowercased()) }
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }

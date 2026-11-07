@@ -226,6 +226,10 @@ import Testing
         #expect(LaunchArguments(["-HomelabDemo", "NO"]).demoOff && !LaunchArguments(["-HomelabDemo", "NO"]).demo)
         #expect(!LaunchArguments(["-HomelabDemo", "YES"]).demoOff && !LaunchArguments([]).demoOff)
         #expect(LaunchArguments([]).demoScene == nil)
+        // -HomelabPins: entity ids only, at most 12, anything odd drops the whole list.
+        #expect(LaunchArguments(["-HomelabPins", "light.wohnzimmer_lampen,scene.wohnzimmer_wohnzimmer_tokio"]).pins
+                == ["light.wohnzimmer_lampen", "scene.wohnzimmer_wohnzimmer_tokio"])
+        #expect(LaunchArguments(["-HomelabPins", "light.a,rm -rf"]).pins == nil && LaunchArguments([]).pins == nil)
         let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES", "-HomelabDemoScene", "problem"])
         await m.refresh()
         #expect(m.selectedStatus.snapshot?.state.status == .problem)
