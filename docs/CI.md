@@ -82,7 +82,8 @@ By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release work
 | Script | What it does |
 |---|---|
 | `scripts/test-linux` | Fixture server on the host, `KIT_ONLY=1 swift test` in Docker (`swift:6.4-noble`), Python tests, lint |
-| `scripts/lint` | The source checks from the `linux` job |
+| `scripts/lint` | The source checks from the `linux` job, including `scripts/features check` |
+| `scripts/features [check\|render\|show X\|gaps\|json]` | The feature registry `features.toml`: checks it against the repo, writes `docs/FEATURES.md`, tells which feature a file, test or DeviceTest row belongs to |
 | `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), runs `scripts/verify-ipa` on it, prints the IPA path and size |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
 | `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |

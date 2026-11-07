@@ -4,6 +4,7 @@
 #   - no print( / NSLog( anywhere in Sources/ (use Logger; tests live in Tests/ and may print)
 #   - no os_log/Logger call that interpolates something token-ish (token, secret, password, api key, bearer, authorization)
 #   - no try! or fatalError( in Sources/HomelabKit (shared code must not crash the app or the widget)
+#   - Int( on a Double in HomelabKit, private names in the repo, the feature registry (scripts/features check)
 # A line ending in `// lint:allow` is skipped. Comment lines are skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -63,6 +64,19 @@ if [ -n "$private_hits" ]; then
   echo "lint: private names in the repo (tailnet or a word from $words)"
   echo "$private_hits" | sed 's/^/  /'
   fail=1
+fi
+
+# The feature registry (features.toml): every file, test, DeviceTest row, doc anchor, endpoint and pinned version it
+# names must exist, every source file and test belongs to a feature, and docs/FEATURES.md is current. Needs python3
+# 3.11+ (tomllib); skipped without it.
+if command -v python3 >/dev/null && python3 -c 'import tomllib' 2>/dev/null; then
+  if ! out=$(scripts/features check --quiet 2>&1); then
+    echo "lint: feature registry (features.toml; fix it, then scripts/features render)"
+    echo "$out" | grep -v '^features:' | sed 's/^/  /'
+    fail=1
+  fi
+else
+  echo "lint: skipped the feature registry check (needs python3 3.11+)"
 fi
 
 if [ "$fail" = 0 ]; then echo "lint: ok"; fi

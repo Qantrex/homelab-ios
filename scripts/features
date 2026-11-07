@@ -1,0 +1,748 @@
+#!/usr/bin/env python3
+"""The feature registry: features.toml checked against the repo, and docs/FEATURES.md rendered from it.
+
+Usage:
+  scripts/features [check]          check every reference and that docs/FEATURES.md is current (exit 1 on an error)
+  scripts/features check --strict  gaps count as errors too: a shipped or partial feature without tests, phone rows
+                                    or docs (unless `not_needed` says why), with docs only in the changelog, or with
+                                    `known_gaps`
+  scripts/features render           write docs/FEATURES.md
+  scripts/features gaps             list the gaps only
+  scripts/features show QUERY       the features that match: an id, a file (Sources/...), a DeviceTest row (DL4),
+                                    a test suite (DealsTests), a server feature (deals), a link, a launch argument
+                                    or a dependency id; `show` without QUERY lists all ids
+  scripts/features json             the registry as JSON, with the computed reverse links and gaps (for the vault,
+                                    other tools and agents)
+
+What `check` verifies (an error each):
+  - ids unique and lower-kebab; status, area and kind from the known lists; dates as YYYY-MM-DD
+  - sources exist (`path#Symbol`: the symbol is in that file); fixtures exist
+  - tests exist: `Suite` or `Suite/function` in Tests/ (Swift Testing), `file.py::Class[.method]` for Python
+  - DeviceTest rows exist in DeviceTest.md; docs exist with their #anchor (GitHub's heading slugs)
+  - endpoints are in server/openapi.yaml; server features are cases of `ServerInfo.Feature`
+  - launch arguments, `homelab://` links, widgets, Today sections and card styles exist in the code
+  - depends_on names a dependency or a feature; every dependency pin (`file: text`) is still in that file
+  - coverage: every file under Sources/, scripts/ and server/, every DeviceTest row, every test suite, every API
+    endpoint, every server feature, launch argument, link, widget, Today section and card style is claimed by a
+    feature (or, for files, listed under [shared])
+  - docs/FEATURES.md is what `render` would write now
+Needs python3 3.11+ (tomllib), nothing else.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+REGISTRY = ROOT / "features.toml"
+OUTPUT = ROOT / "docs" / "FEATURES.md"
+
+STATUSES = ["shipped", "partial", "planned", "removed"]
+AREAS = ["Today", "Cards", "Actions", "Scan and share", "Find", "Deals", "Lab", "Chat", "Home", "Widgets",
+         "Notifications", "Links", "Settings", "Security", "Look", "Foundation", "Install", "Server", "Tooling"]
+KINDS = ["toolchain", "sdk", "account", "install", "runtime", "ios-framework", "server-side", "ci", "tooling"]
+LIST_FIELDS = ["server_features", "endpoints", "api_fields", "sources", "fixtures", "tests", "device_tests",
+               "screenshots", "docs", "launch_args", "links", "widgets", "today_sections", "card_styles",
+               "settings", "depends_on", "known_gaps"]
+GAP_FIELDS = {"tests": "no tests", "device_tests": "no DeviceTest row", "docs": "no docs"}
+COVERED_DIRS = ["Sources", "scripts", "server"]
+
+
+def read(path):
+    try:
+        return (ROOT / path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+# ------------------------------------------------------------------------------------------------ what the repo has
+
+def repo_files():
+    """Tracked (and new, not ignored) files under the covered folders, as repo-relative paths."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--cached", "--others", "--exclude-standard", "--",
+                              *COVERED_DIRS], capture_output=True, text=True, check=True).stdout.split("\n")
+        files = [f for f in out if f and (ROOT / f).is_file()]
+    except (OSError, subprocess.CalledProcessError):
+        files = []
+        for d in COVERED_DIRS:
+            for p in (ROOT / d).rglob("*"):
+                if p.is_file() and "__pycache__" not in p.parts and not p.name.startswith("."):
+                    files.append(str(p.relative_to(ROOT)))
+    return sorted(f for f in files if "__pycache__" not in f)
+
+
+def slug_set(text):
+    """GitHub's heading anchors of a Markdown file (code fences skipped, duplicates numbered)."""
+    slugs, seen, fence = set(), {}, False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fence = not fence
+            continue
+        m = None if fence else re.match(r"^#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if not m:
+            continue
+        h = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", m.group(1)).strip().lower()
+        s = re.sub(r"[^\w\- ]", "", h).replace(" ", "-")
+        n = seen.get(s, 0)
+        seen[s] = n + 1
+        slugs.add(s if n == 0 else f"{s}-{n}")
+    return slugs
+
+
+def device_rows():
+    """Row ids of DeviceTest.md in order, and the release-blocking ones (from its first table)."""
+    text = read("DeviceTest.md") or ""
+    rows = re.findall(r"^\| ([A-Z]{1,3}[0-9]+[a-z]?) \|", text, re.M)
+    blocking = set()
+    block = re.search(r"## Release-blocking rows\n(.*?)\n## ", text, re.S)
+    if block:
+        for cell in re.findall(r"^\|[^|]+\| ([^|]+) \|$", block.group(1), re.M):
+            for part in cell.split(","):
+                part = part.strip()
+                r = re.fullmatch(r"([A-Z]+)(\d+) to \1(\d+)", part)
+                if r:
+                    blocking.update(f"{r.group(1)}{i}" for i in range(int(r.group(2)), int(r.group(3)) + 1))
+                elif re.fullmatch(r"[A-Z]{1,3}[0-9]+[a-z]?", part):
+                    blocking.add(part)
+    return rows, blocking
+
+
+def swift_tests():
+    """{suite: (file, {functions})} for every struct in Tests/ (a function belongs to the struct above it)."""
+    suites = {}
+    for path in sorted((ROOT / "Tests").rglob("*.swift")):
+        current, marked = None, False
+        for line in path.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"^(?:@.*?\s)?(?:final\s+)?(?:struct|class)\s+([A-Za-z_]\w*)", line)
+            if m:
+                current = m.group(1)
+                suites.setdefault(current, (str(path.relative_to(ROOT)), set()))
+                continue
+            marked = marked or "@Test" in line   # `@Test` on the line itself or on an attribute line above
+            f = re.search(r"\bfunc\s+([A-Za-z_]\w*)", line)
+            if f:
+                if marked and current:
+                    suites[current][1].add(f.group(1))
+                marked = False
+            elif line.strip() and not line.strip().startswith("@"):
+                marked = False
+    has_tests = {s for s, (_, fns) in suites.items() if fns}   # helpers (fakes, errors) have no @Test
+    return suites, has_tests
+
+
+def py_tests(file):
+    """{Class: {methods}} of a Python unittest file."""
+    out, current = {}, None
+    for line in (read(file) or "").splitlines():
+        m = re.match(r"^class\s+(\w+)\(.*TestCase\)", line)
+        if m:
+            current = m.group(1)
+            out[current] = set()
+        elif re.match(r"^\S", line):
+            current = None   # top-level code ends the class
+        elif current and (f := re.match(r"^    def (test\w*)\(", line)):
+            out[current].add(f.group(1))
+    return out
+
+
+def openapi_endpoints():
+    """{"GET /info", ...} from server/openapi.yaml (paths at indent 2, methods at indent 4)."""
+    eps, path, in_paths = set(), None, False
+    for line in (read("server/openapi.yaml") or "").splitlines():
+        if re.match(r"^\S", line):
+            in_paths = line.startswith("paths:")
+            continue
+        if not in_paths:
+            continue
+        m = re.match(r"^  (/\S*):\s*$", line)
+        if m:
+            path = m.group(1)
+            continue
+        m = re.match(r"^    (get|post|put|delete|patch):", line)
+        if m and path:
+            eps.add(f"{m.group(1).upper()} {path}")
+    return eps
+
+
+def enum_cases(text, header):
+    """Raw values of a Swift enum whose declaration line contains `header` (cases up to the first non-case code)."""
+    i = text.find(header)
+    if i < 0:
+        return []
+    out = []
+    for line in text[i:].splitlines()[1:]:
+        s = line.strip()
+        if s.startswith("///") or s.startswith("//") or not s:
+            continue
+        if not s.startswith("case "):
+            break
+        for item in s[5:].split("//")[0].split(","):
+            item = item.strip()
+            m = re.fullmatch(r"(\w+)\s*=\s*\"([^\"]+)\"", item)
+            out.append(m.group(2) if m else item)
+    return [c for c in out if c]
+
+
+def code_inventory():
+    models = read("Sources/HomelabKit/Models.swift") or ""
+    appmodel = read("Sources/HomelabKit/AppModel.swift") or ""
+    layout = read("Sources/HomelabKit/TodayLayout.swift") or ""
+    bundle = read("Sources/HomelabWidget/HomelabWidget.swift") or ""
+    tabs = enum_cases(appmodel, "public enum AppTab")
+    hosts = set(tabs)
+    alias = re.search(r'case ((?:"\w+",?\s*)+): self = \.today', appmodel)   # older tab names (overview, home)
+    if alias:
+        hosts |= set(re.findall(r'"(\w+)"', alias.group(1)))
+    hosts |= set(re.findall(r'url\.host\?\.lowercased\(\) == "(\w+)"', appmodel))
+    body = re.search(r"WidgetBundle\s*\{.*?var body.*?\{(.*?)\n    \}", bundle, re.S)
+    return {
+        "server_features": enum_cases(models, "public enum Feature: String"),
+        "card_styles": enum_cases(models, "public enum Style: String"),
+        "today_sections": enum_cases(layout, "public enum TodaySection"),
+        "launch_args": sorted({"-" + a for a in re.findall(r'(?:value|yes)\("(Homelab\w+)"\)', appmodel)}),
+        "links": sorted(hosts),
+        "widgets": re.findall(r"^\s*(\w+)\(\)\s*$", body.group(1), re.M) if body else [],
+        "tabs": tabs,
+    }
+
+
+def screenshot_names():
+    text = read("scripts/sim-smoke") or ""
+    names = set(re.findall(r"(?:^|;)\s*(?:scene|live|shot)\s+([a-z0-9][a-z0-9-]*)(?:\s|$)", text, re.M))
+    tabs = re.search(r"^TABS=\(([^)]*)\)", text, re.M)
+    looks = re.search(r"^for look in ([a-z ]+);", text, re.M)
+    if tabs and looks and '"demo-$tab-$look"' in text:
+        names |= {f"demo-{t}-{l}" for t in tabs.group(1).split() for l in looks.group(1).split()}
+    return names
+
+
+def link_host(link):
+    m = re.match(r"homelab://([a-z]+)", link)
+    return m.group(1) if m else None
+
+
+# ------------------------------------------------------------------------------------------------ the registry
+
+def load():
+    with REGISTRY.open("rb") as f:
+        reg = tomllib.load(f)
+    feats = reg.get("feature", [])
+    deps = reg.get("dependency", [])
+    for x in feats:
+        for k in LIST_FIELDS:
+            x.setdefault(k, [])
+        x.setdefault("not_needed", {})
+    for d in deps:
+        d.setdefault("pins", [])
+    return reg, feats, deps
+
+
+def analyse(reg, feats, deps):
+    """Errors, warnings, gaps and the reverse maps."""
+    errors, warnings = [], []
+    inv = code_inventory()
+    suites, real_suites = swift_tests()
+    rows, blocking = device_rows()
+    endpoints = openapi_endpoints()
+    shots = screenshot_names()
+    files = repo_files()
+    slug_cache = {}
+    feat_ids = [x.get("id", "") for x in feats]
+    dep_ids = [d.get("id", "") for d in deps]
+
+    def err(where, msg):
+        errors.append(f"{where}: {msg}")
+
+    for ids, what in ((feat_ids, "feature"), (dep_ids, "dependency")):
+        for i in sorted({i for i in ids if ids.count(i) > 1}):
+            err(what, f"duplicate id {i!r}")
+    for i in set(feat_ids) & set(dep_ids):
+        err("registry", f"{i!r} is both a feature and a dependency id")
+
+    claimed_files, claimed = {}, {k: {} for k in
+                                  ["rows", "suites", "endpoints", "server_features", "launch_args", "links", "widgets",
+                                   "today_sections", "card_styles"]}
+
+    def claim(kind, key, fid):
+        claimed[kind].setdefault(key, []).append(fid)
+
+    for x in feats:
+        fid = x.get("id", "?")
+        w = f"feature {fid}"
+        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", fid):
+            err(w, "id must be lower-kebab-case")
+        for k in ("name", "area", "status", "summary", "since"):
+            if not x.get(k):
+                err(w, f"missing {k}")
+        if x.get("status") and x["status"] not in STATUSES:
+            err(w, f"status {x['status']!r} not in {STATUSES}")
+        if x.get("area") and x["area"] not in AREAS:
+            err(w, f"area {x['area']!r} not in {AREAS}")
+        if x.get("since") and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(x["since"])):
+            err(w, "since must be YYYY-MM-DD")
+        for k in LIST_FIELDS:
+            if not isinstance(x[k], list):
+                err(w, f"{k} must be a list")
+                x[k] = []
+        for k, why in x["not_needed"].items():
+            if k not in GAP_FIELDS or not isinstance(why, str) or not why:
+                err(w, f"not_needed.{k} must be one of {list(GAP_FIELDS)} with a reason")
+        for src in x["sources"] + x["fixtures"]:
+            path, _, sym = src.partition("#")
+            text = read(path)
+            if text is None:
+                err(w, f"file not found: {path}")
+                continue
+            claimed_files.setdefault(path, []).append(fid)
+            if sym and not re.search(rf"\b{re.escape(sym)}\b", text):
+                err(w, f"{sym} not found in {path}")
+        for t in x["tests"]:
+            if "::" in t:
+                file, _, name = t.partition("::")
+                cls, _, meth = name.partition(".")
+                pyt = py_tests(file)
+                if cls not in pyt or (meth and meth not in pyt[cls]):
+                    err(w, f"test not found: {t}")
+                else:
+                    claim("suites", f"{file}::{cls}", fid)
+                continue
+            suite, _, fn = t.partition("/")
+            if suite not in suites or (fn and fn not in suites[suite][1]):
+                err(w, f"test not found: {t}")
+            else:
+                claim("suites", suite, fid)
+        for r in x["device_tests"]:
+            if r not in rows:
+                err(w, f"DeviceTest row {r} not in DeviceTest.md")
+            claim("rows", r, fid)
+        for s in x["screenshots"]:
+            if s not in shots:
+                err(w, f"screenshot {s!r} not taken by scripts/sim-smoke")
+        for d in x["docs"]:
+            path, _, anchor = d.partition("#")
+            text = read(path)
+            if text is None:
+                err(w, f"doc not found: {path}")
+                continue
+            if anchor:
+                if path not in slug_cache:
+                    slug_cache[path] = slug_set(text)
+                if anchor not in slug_cache[path]:
+                    err(w, f"anchor #{anchor} not in {path}")
+        for e in x["endpoints"]:
+            if e not in endpoints:
+                err(w, f"endpoint {e!r} not in server/openapi.yaml")
+            claim("endpoints", e, fid)
+        for k in ("server_features", "launch_args", "widgets", "today_sections", "card_styles"):
+            for v in x[k]:
+                if v not in inv[k]:
+                    err(w, f"{k}: {v!r} not in the code ({', '.join(inv[k])})")
+                claim(k, v, fid)
+        for link in x["links"]:
+            h = link_host(link)
+            if h not in inv["links"]:
+                err(w, f"link {link!r}: host not handled by AppModel.open ({', '.join(inv['links'])})")
+            else:
+                claim("links", h, fid)
+        for d in x["depends_on"]:
+            if d not in dep_ids and d not in feat_ids:
+                err(w, f"depends_on {d!r} is neither a dependency nor a feature")
+
+    for d in deps:
+        did = d.get("id", "?")
+        w = f"dependency {did}"
+        for k in ("name", "kind", "why"):
+            if not d.get(k):
+                err(w, f"missing {k}")
+        if d.get("kind") and d["kind"] not in KINDS:
+            err(w, f"kind {d['kind']!r} not in {KINDS}")
+        for pin in d["pins"]:
+            path, sep, needle = pin.partition(": ")
+            text = read(path)
+            if not sep:
+                err(w, f"pin {pin!r} must be 'file: text'")
+            elif text is None:
+                err(w, f"pin file not found: {path}")
+            elif needle not in text:
+                err(w, f"pin {needle!r} no longer in {path} (bumped? update features.toml)")
+        for k in ("sources",):
+            for src in d.get(k, []):
+                if read(src) is None:
+                    err(w, f"file not found: {src}")
+                else:
+                    claimed_files.setdefault(src, []).append(did)
+
+    shared = reg.get("shared", {}).get("sources", [])
+    for s in shared:
+        if read(s) is None:
+            err("shared", f"file not found: {s}")
+        claimed_files.setdefault(s, []).append("(shared)")
+
+    # coverage
+    for f in files:
+        if f not in claimed_files:
+            err("coverage", f"{f} is claimed by no feature (add it to a feature's sources, or to [shared])")
+    for r in rows:
+        if r not in claimed["rows"]:
+            err("coverage", f"DeviceTest row {r} belongs to no feature")
+    for s in sorted(real_suites):
+        if s not in claimed["suites"]:
+            err("coverage", f"test suite {s} ({suites[s][0]}) belongs to no feature")
+    for cls in py_tests("server/test_reference_server.py"):
+        key = f"server/test_reference_server.py::{cls}"
+        if key not in claimed["suites"]:
+            err("coverage", f"test class {key} belongs to no feature")
+    for e in sorted(endpoints):
+        if e not in claimed["endpoints"]:
+            err("coverage", f"endpoint {e} is used by no feature")
+    for k in ("server_features", "launch_args", "links", "widgets", "today_sections", "card_styles"):
+        for v in inv[k]:
+            if v not in claimed[k]:
+                err("coverage", f"{k}: {v} belongs to no feature")
+
+    # gaps: shipped or partial features that miss something and don't say why
+    gaps = []
+    for x in feats:
+        if x.get("status") not in ("shipped", "partial"):
+            continue
+        miss = [label for k, label in GAP_FIELDS.items() if not x[k] and k not in x["not_needed"]]
+        if x["docs"] and all(d.startswith("CHANGELOG.md") for d in x["docs"]):
+            miss.append("docs only in the changelog")
+        miss += x["known_gaps"]
+        if miss:
+            gaps.append((x["id"], miss))
+        if x.get("unsure"):
+            warnings.append(f"feature {x['id']}: unsure: {x['unsure']}")
+
+    used_by = {d.get("id"): [x["id"] for x in feats if d.get("id") in x["depends_on"]] for d in deps}
+    for did, users in used_by.items():
+        if not users:
+            warnings.append(f"dependency {did}: no feature depends on it")
+
+    # everything a feature needs, also through the features it depends on (a cycle is an error)
+    by_id = {x.get("id"): x for x in feats}
+    needs = {}
+
+    def closure(fid, path=()):
+        if fid in path:
+            err(f"feature {fid}", "depends_on cycle: " + " -> ".join(path + (fid,)))
+            return set()
+        if fid not in needs:
+            out = set()
+            for d in by_id[fid]["depends_on"]:
+                out.add(d)
+                if d in by_id:
+                    out |= closure(d, path + (fid,))
+            needs[fid] = out
+        return needs[fid]
+
+    for fid in by_id:
+        closure(fid)
+    needed_by = {d.get("id"): [fid for fid in by_id if d.get("id") in needs[fid]] for d in deps}
+
+    return {
+        "errors": errors, "warnings": warnings, "gaps": gaps, "used_by": used_by, "needed_by": needed_by,
+        "needs": needs, "blocking": blocking, "rows": rows, "inventory": inv, "claimed": claimed,
+        "claimed_files": claimed_files,
+    }
+
+
+# ------------------------------------------------------------------------------------------------ rendering
+
+def md_link(target, label=None, base="docs"):
+    rel = os.path.relpath(ROOT / target.split("#")[0], ROOT / base)
+    anchor = "#" + target.split("#", 1)[1] if "#" in target else ""
+    return f"[{label or target}]({rel}{anchor})"
+
+
+def code(v):
+    return f"`{v}`"
+
+
+def esc(s):
+    return str(s).replace("|", "\\|").replace("\n", " ").strip()
+
+
+def render(reg, feats, deps, a):
+    app_version = re.search(r"CFBundleShortVersionString</key>\s*<string>([^<]+)", read("App-Info.plist") or "")
+    app_version = app_version.group(1) if app_version else "?"
+    by_area = {area: [x for x in feats if x["area"] == area] for area in AREAS}
+    dep_by_id = {d["id"]: d for d in deps}
+    out = []
+    p = out.append
+    p("# Features")
+    p("")
+    p("<!-- Generated by scripts/features render from features.toml. Edit features.toml, not this file. -->")
+    p("")
+    p(f"Every feature of the Homelab app {app_version}, where it lives, how it is tested, what it needs and where it "
+      "is documented. The source of truth is [`features.toml`](../features.toml); `scripts/features check` (part of "
+      "`scripts/lint`) keeps it honest against the code, the tests, [DeviceTest.md](../DeviceTest.md), the docs and "
+      "[`server/openapi.yaml`](../server/openapi.yaml).")
+    p("")
+    counts = {s: sum(1 for x in feats if x["status"] == s) for s in STATUSES}
+    p("| Features | Shipped | Partial | Planned | Dependencies | Gaps |")
+    p("|---|---|---|---|---|---|")
+    p(f"| {len(feats)} | {counts['shipped']} | {counts['partial']} | {counts['planned']} | {len(deps)} | "
+      f"{len(a['gaps'])} |")
+    p("")
+    p("Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. "
+      "`scripts/features show <id, file, row, suite, feature flag, link>` answers \"which feature is this?\".")
+    p("")
+    p("Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests** = Swift Testing suites or "
+      "tests, **Phone** = rows of DeviceTest.md (bold = release-blocking).")
+    p("")
+
+    # overview
+    p("## Overview")
+    p("")
+    for area in AREAS:
+        items = by_area[area]
+        if not items:
+            continue
+        p(f"### {area} ({len(items)})")   # the count also keeps "Cards" from taking the anchor of feature `cards`
+        p("")
+        p("| Feature | Status | Needs | Tests | Phone | Docs |")
+        p("|---|---|---|---|---|---|")
+        for x in items:
+            needs = ", ".join(code(v) for v in x["server_features"]) or "–"
+            phone = ", ".join(f"**{r}**" if r in a["blocking"] else r for r in x["device_tests"])
+            phone = phone or ("n/a" if "device_tests" in x["not_needed"] else "**none**")
+            tests = str(len(x["tests"])) if x["tests"] else ("n/a" if "tests" in x["not_needed"] else "**none**")
+            docs = str(len(x["docs"])) if x["docs"] else ("n/a" if "docs" in x["not_needed"] else "**none**")
+            status = x["status"] + (" (?)" if x.get("unsure") else "")
+            p(f"| [{esc(x['name'])}](#{x['id']}) | {status} | {needs} | {tests} | {phone} | {docs} |")
+        p("")
+
+    # gaps
+    p("## Gaps")
+    p("")
+    if a["gaps"]:
+        p("Shipped or partial features that miss tests, a phone row or docs (and don't say why in `not_needed`):")
+        p("")
+        p("| Feature | Missing |")
+        p("|---|---|")
+        for fid, miss in a["gaps"]:
+            p(f"| [{fid}](#{fid}) | {', '.join(miss)} |")
+    else:
+        p("None.")
+    p("")
+    unsure = [x for x in feats if x.get("unsure")]
+    if unsure:
+        p("Not verified (the registry says so in `unsure`):")
+        p("")
+        for x in unsure:
+            p(f"- [{x['id']}](#{x['id']}): {esc(x['unsure'])}")
+        p("")
+
+    # code inventories
+    p("## What the code offers, and who uses it")
+    p("")
+    p("Read from the code by `scripts/features`; every entry must belong to a feature.")
+    p("")
+    labels = {
+        "server_features": "Server features (`ServerInfo.Feature`)", "links": "`homelab://` links (`AppModel.open`)",
+        "launch_args": "Launch arguments (`LaunchArguments`)", "widgets": "Widgets (`HomelabWidgets`)",
+        "today_sections": "Today sections (`TodaySection`)", "card_styles": "Card styles (`Card.Style`)",
+    }
+    p("| Kind | Entry | Features |")
+    p("|---|---|---|")
+    for k, label in labels.items():
+        for v in a["inventory"][k]:
+            owners = a["claimed"][k].get(v, [])
+            p(f"| {label} | {code(v)} | {', '.join(f'[{o}](#{o})' for o in owners) or '**none**'} |")
+    for e in sorted(a["claimed"]["endpoints"]):
+        owners = a["claimed"]["endpoints"][e]
+        p(f"| Endpoints (`server/openapi.yaml`) | {code(e)} | {', '.join(f'[{o}](#{o})' for o in owners)} |")
+    p("")
+
+    # details
+    p("## Feature details")
+    p("")
+    for area in AREAS:
+        for x in by_area[area]:
+            p(f"### {x['id']}")
+            p("")
+            p(f"**{esc(x['name'])}** · {area} · {x['status']} · since {x['since']}")
+            p("")
+            p(esc(x["summary"]))
+            p("")
+            rows = []
+            if x["server_features"] or x["endpoints"] or x["api_fields"]:
+                needs = ", ".join(code(v) for v in x["server_features"] + x["endpoints"] + x["api_fields"])
+                rows.append(("Server", needs))
+            rows.append(("Sources", ", ".join(md_link(s.split("#")[0], s.split("/")[-1]) for s in x["sources"])
+                         or "–"))
+            if x["fixtures"]:
+                rows.append(("Fixtures", ", ".join(md_link(s, s.split("/")[-1]) for s in x["fixtures"])))
+            tests = ", ".join(code(t) for t in x["tests"]) or ("n/a: " + x["not_needed"]["tests"]
+                                                              if "tests" in x["not_needed"] else "**none**")
+            rows.append(("Tests", tests))
+            phone = ", ".join(f"**{r}**" if r in a["blocking"] else r for r in x["device_tests"])
+            phone = phone or ("n/a: " + x["not_needed"]["device_tests"]
+                              if "device_tests" in x["not_needed"] else "**none**")
+            rows.append(("Phone (DeviceTest.md)", phone))
+            if x["screenshots"]:
+                rows.append(("CI screenshots", ", ".join(code(s) for s in x["screenshots"])))
+            docs = ", ".join(md_link(d, d) for d in x["docs"]) or ("n/a: " + x["not_needed"]["docs"]
+                                                                  if "docs" in x["not_needed"] else "**none**")
+            rows.append(("Docs", docs))
+            for k, label in (("links", "Links"), ("launch_args", "Launch arguments"), ("widgets", "Widgets"),
+                             ("today_sections", "Today section"), ("card_styles", "Card styles")):
+                if x[k]:
+                    rows.append((label, ", ".join(code(v) for v in x[k])))
+            if x["settings"]:
+                rows.append(("Settings", "; ".join(esc(s) for s in x["settings"])))
+            if x["depends_on"]:
+                rows.append(("Depends on", ", ".join(
+                    f"[{d}](#dep-{d})" if d in dep_by_id else f"[{d}](#{d})" for d in x["depends_on"])))
+                indirect = sorted(d for d in a["needs"].get(x["id"], ()) if d in dep_by_id and d not in x["depends_on"])
+                if indirect:
+                    rows.append(("Through those", ", ".join(f"[{d}](#dep-{d})" for d in indirect)))
+            if x.get("notes"):
+                rows.append(("Notes", esc(x["notes"])))
+            if x.get("unsure"):
+                rows.append(("Unsure", esc(x["unsure"])))
+            p("| | |")
+            p("|---|---|")
+            for k, v in rows:
+                p(f"| {k} | {v} |")
+            p("")
+
+    # dependencies
+    p("## Dependencies")
+    p("")
+    p("Pinned versions are checked: each pin (`file: text`) must still be in its file, so a bump without a registry "
+      "update fails `scripts/features check`.")
+    p("")
+    p("**Used by** names the features that list a dependency themselves; **All** counts every feature that needs it, "
+      "also through another feature (the matrix below).")
+    p("")
+    p("| Dependency | Kind | Version | Pinned in | Used by | All |")
+    p("|---|---|---|---|---|---|")
+    for d in deps:
+        pin_files = list(dict.fromkeys(pin.split(": ")[0] for pin in d["pins"]))
+        pins = ", ".join(md_link(f, f.split("/")[-1]) for f in pin_files) or "–"
+        users = a["used_by"].get(d["id"], [])
+        used = f"{len(users)} features" if len(users) > 6 else ", ".join(f"[{u}](#{u})" for u in users)
+        p(f"| <a id=\"dep-{d['id']}\"></a>**{esc(d['name'])}** | {d['kind']} | {esc(d.get('version', '–'))} | {pins} | "
+          f"{used or '–'} | {len(a['needed_by'].get(d['id'], []))} |")
+    p("")
+    for d in deps:
+        p(f"- **{esc(d['name'])}** (`{d['id']}`): {esc(d['why'])}"
+          + (f" Unsure: {esc(d['unsure'])}" if d.get("unsure") else "")
+          + (f" <{d['url']}>" if d.get("url") else ""))
+    p("")
+
+    # matrix: dependencies x areas
+    p("### Dependency matrix")
+    p("")
+    used_areas = [ar for ar in AREAS if by_area[ar]]
+    p("Features per area that need each dependency, directly or through another feature.")
+    p("")
+    p("| Dependency | " + " | ".join(used_areas) + " |")
+    p("|---|" + "---|" * len(used_areas))
+    for d in deps:
+        cells = []
+        for ar in used_areas:
+            n = sum(1 for x in by_area[ar] if d["id"] in a["needs"].get(x["id"], ()))
+            cells.append(str(n) if n else "")
+        p(f"| {esc(d['name'])} | " + " | ".join(cells) + " |")
+    p("")
+    return "\n".join(out).rstrip() + "\n"
+
+
+# ------------------------------------------------------------------------------------------------ commands
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else "check"
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
+    reg, feats, deps = load()
+    a = analyse(reg, feats, deps)
+
+    if cmd == "render":
+        OUTPUT.write_text(render(reg, feats, deps, a), encoding="utf-8")
+        print(f"features: wrote {OUTPUT.relative_to(ROOT)} ({len(feats)} features, {len(deps)} dependencies, "
+              f"{len(a['gaps'])} gaps)")
+        for e in a["errors"]:   # written anyway, so a new doc can link to it; `check` still fails on these
+            print(f"error: {e}")
+        return 1 if a["errors"] else 0
+
+    if cmd == "check":
+        strict = "--strict" in argv
+        quiet = "--quiet" in argv
+        errors = list(a["errors"])
+        if not errors:
+            want = render(reg, feats, deps, a)
+            if (read("docs/FEATURES.md") or "") != want:
+                errors.append("docs/FEATURES.md is out of date: run scripts/features render")
+        if strict:
+            errors += [f"gap: {fid}: {', '.join(m)}" for fid, m in a["gaps"]]
+        for e in errors:
+            print(f"error: {e}")
+        if not quiet:
+            for w in a["warnings"]:
+                print(f"warning: {w}")
+            for fid, miss in a["gaps"]:
+                if not strict:
+                    print(f"gap: {fid}: {', '.join(miss)}")
+        status = "ok" if not errors else f"{len(errors)} error(s)"
+        print(f"features: {status} ({len(feats)} features, {len(deps)} dependencies, {len(a['gaps'])} gaps)")
+        return 1 if errors else 0
+
+    if cmd == "gaps":
+        for fid, miss in a["gaps"]:
+            print(f"{fid}: {', '.join(miss)}")
+        return 0
+
+    if cmd == "json":
+        data = {
+            "features": feats, "dependencies": deps,
+            "used_by": a["used_by"], "needed_by": a["needed_by"],
+            "needs": {fid: sorted(v) for fid, v in a["needs"].items()}, "gaps": {fid: m for fid, m in a["gaps"]},
+            "release_blocking_rows": sorted(a["blocking"]), "errors": a["errors"],
+        }
+        json.dump(data, sys.stdout, indent=2, ensure_ascii=False)
+        print()
+        return 0
+
+    if cmd == "show":
+        q = argv[2] if len(argv) > 2 else ""
+        if not q:
+            for x in feats:
+                print(f"{x['id']:28} {x['status']:8} {x['area']:15} {x['name']}")
+            return 0
+        hits = []
+        for x in feats:
+            hay = [x["id"]] + x["server_features"] + x["endpoints"] + x["device_tests"] + x["launch_args"] + \
+                  x["widgets"] + x["today_sections"] + x["card_styles"] + x["depends_on"] + \
+                  [s.split("#")[0] for s in x["sources"] + x["fixtures"]] + \
+                  [t.split("/")[0] for t in x["tests"]] + x["tests"] + x["links"] + [link_host(l) or "" for l in x["links"]]
+            if q in hay or (q.startswith("Sources/") and any(s.startswith(q) for s in x["sources"])):
+                hits.append(x)
+        if not hits:
+            owners = a["claimed_files"].get(q)
+            print(f"{q}: " + (", ".join(owners) if owners else "no feature matches"))
+            return 1 if not owners else 0
+        for x in hits:
+            print(f"{x['id']} ({x['status']}, {x['area']}): {x['name']}")
+            print(f"  {x['summary']}")
+            for k in ("server_features", "endpoints", "sources", "tests", "device_tests", "docs", "links",
+                      "launch_args", "depends_on"):
+                if x[k]:
+                    print(f"  {k}: {', '.join(x[k])}")
+            if x.get("unsure"):
+                print(f"  unsure: {x['unsure']}")
+        return 0
+
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

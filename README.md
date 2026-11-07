@@ -165,6 +165,7 @@ More: [docs/SECURITY.md](docs/SECURITY.md).
 | [docs/ADAPTING.md](docs/ADAPTING.md) | Fork it for your homelab: turn modules off, add your own (with Claude) |
 | [docs/DESIGN.md](docs/DESIGN.md) | How every screen and widget looks |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Building, testing, code rules |
+| [docs/FEATURES.md](docs/FEATURES.md) | Every feature: where it lives, its tests, phone checks, docs and dependencies (from `features.toml`) |
 | [DeviceTest.md](DeviceTest.md) | The checks only a real iPhone can do |
 | [docs/RELEASE.md](docs/RELEASE.md) | Building and publishing a release by hand |
 | [CHANGELOG.md](CHANGELOG.md) | What changed |

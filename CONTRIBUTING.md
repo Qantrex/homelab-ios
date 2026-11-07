@@ -50,3 +50,5 @@ there shows up everywhere. Add a new fixture rather than changing one other test
 - [ ] No warnings in the `macos (macos-26)` job
 - [ ] No tokens, real hostnames or tailnet names in code, fixtures or screenshots
 - [ ] `CHANGELOG.md` has a line for anything users notice
+- [ ] A new or changed feature has its entry in `features.toml` (files, tests, DeviceTest rows, docs), and
+      `scripts/features render` was run ([docs/FEATURES.md](docs/FEATURES.md))
