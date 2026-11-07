@@ -44,6 +44,7 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | T3 | Look | True black (dark) or white (light), no blue anywhere, red/yellow only for problems and warnings | | |
 | T4 | Tile names | Today → Home → Edit: each pinned entity has a "Name on the tile" field (the placeholder is Home Assistant's name). Type "Living room", Done: the tile reads "Living room" (not cut off). Empty the field: HA's name is back. 25+ characters are cut at 24 | | |
 | T5 | Tile names: VoiceOver and HA | VoiceOver on a renamed tile says "Living room, <HA's name>". The HA app and its voice assistants still use the HA name. Unpin and re-pin the tile: the field is empty again. After an app update the names are still there | | |
+| T6 | Tile icons | Today → Home → Edit: under a pinned entity, "Icon on the tile" → Floor lamp, Done: the tile shows a floor lamp, filled while the light is on. Back to Automatic: the bulb is back. Unpin and re-pin: Automatic again | | |
 | O1 | Lab header | "All good" or "N problems", "checked … ago", and "N actions waiting" when there are any | | |
 | O2 | Problems | Listed first, with icon and "since …" | | |
 | O3 | Hosts | One tile per host, "x/y up" in the title, load/RAM/disk bars, a sleeping PC shows "Asleep", not red | | |

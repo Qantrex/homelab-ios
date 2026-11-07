@@ -27,6 +27,11 @@ App:
   only, Home Assistant, its voice commands and its app keep their names. VoiceOver says the short name and then
   Home Assistant's name when they differ. Unpinning a tile drops its name; older saved settings still load. Launch
   argument `-HomelabTileNames "light.a=Living room,script.b=Alarm off"` sets them over USB.
+- Home tiles can have an icon of your own: Today → Edit has an "Icon on the tile" menu under each pinned entity
+  (Automatic = the icon for the kind of entity, or one of 16 symbols: lamps, relax, party, night, wake-up, alarm,
+  music, TV and so on; filled while the tile is on). Unpinning drops the icon; older saved settings still load.
+  Launch argument `-HomelabTileIcons "light.a=lamp.floor,script.b=moon.stars"`.
+- A bike day shows a motorcycle (the Live Activity and the demo's commute action), not a bicycle.
 - `scripts/phone-shots` keeps your servers, Home Assistant token and pins: it no longer starts with
   `-HomelabResetState YES` (now `--reset`, opt-in, with `HOMELAB_SERVER`/`HOMELAB_PINS` to set them back at the end).
 - Deals (feature `deals`, optional endpoint `GET /api/v1/deals`): used-market ads the server found clearly below their
