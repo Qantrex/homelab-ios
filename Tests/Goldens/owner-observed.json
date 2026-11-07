@@ -1,0 +1,4829 @@
+{
+  "state-demo.json" : {
+    "detail" : "3 of 3 machines up",
+    "headline" : "All quiet.",
+    "level" : "calm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+          {
+            "icon" : "sparkles",
+            "id" : "recent",
+            "items" : [
+              {
+                "subtitle" : "Movies",
+                "title" : "The Long Quiet",
+                "value" : "today"
+              },
+              {
+                "subtitle" : "TV Shows",
+                "title" : "Nine Floors Up – Season 2",
+                "value" : "yesterday"
+              },
+              {
+                "subtitle" : "TV Shows",
+                "title" : "Salt Road – Season 1",
+                "value" : "2 d ago"
+              },
+              {
+                "subtitle" : "Music",
+                "title" : "Night Signals",
+                "value" : "3 d ago"
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Recently added",
+            "updated" : "21:28"
+          },
+          {
+            "date" : "2026-11-04",
+            "icon" : "sun.max",
+            "id" : "today",
+            "items" : [
+              {
+                "title" : "Wake-up",
+                "value" : "06:20"
+              },
+              {
+                "subtitle" : "U6 07:36",
+                "title" : "Leave by",
+                "value" : "07:31"
+              },
+              {
+                "title" : "First lesson",
+                "value" : "08:00"
+              }
+            ],
+            "style" : "metrics",
+            "tint" : "gray",
+            "title" : "Today"
+          },
+          {
+            "icon" : "cloud.sun",
+            "id" : "weather",
+            "items" : [
+              {
+                "title" : "Now",
+                "value" : "7°C"
+              },
+              {
+                "title" : "Today",
+                "value" : "4–10°C"
+              },
+              {
+                "title" : "Tomorrow",
+                "value" : "3–9°C"
+              }
+            ],
+            "style" : "metrics",
+            "subtitle" : "Partly cloudy, 7 °C now, 4–10 °C today",
+            "tint" : "gray",
+            "title" : "Weather",
+            "updated" : "21:15"
+          },
+          {
+            "icon" : "text.alignleft",
+            "id" : "briefing",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "text" : "School day. Wake-up 06:20, leave by **07:31** for the U6 at 07:36.\n\nWeather: partly cloudy, 4 to 10 °C, no rain. No umbrella needed.\n\nSchool: 08:00 to 13:30, no cancellations or substitutions.\n\nThe project hand-in is due in 3 days. One parcel is out for delivery.\n\nHomelab: all fine. 12 updates wait on server.",
+            "tint" : "gray",
+            "title" : "Morning briefing",
+            "updated" : "06:30"
+          },
+          {
+            "action" : {
+              "label" : "Add",
+              "name" : "todo-add",
+              "payload" : {
+                "list" : "todo"
+              }
+            },
+            "icon" : "checklist",
+            "id" : "todos",
+            "items" : [
+              {
+                "action" : {
+                  "label" : "Tick off",
+                  "name" : "todo-done",
+                  "payload" : {
+                    "item" : "Call the plumber",
+                    "list" : "todo"
+                  }
+                },
+                "due" : "2026-11-05",
+                "subtitle" : "To-dos",
+                "title" : "Call the plumber"
+              },
+              {
+                "action" : {
+                  "label" : "Tick off",
+                  "name" : "todo-done",
+                  "payload" : {
+                    "item" : "Milk",
+                    "list" : "shopping"
+                  }
+                },
+                "subtitle" : "Shopping",
+                "title" : "Milk"
+              },
+              {
+                "action" : {
+                  "label" : "Tick off",
+                  "name" : "todo-done",
+                  "payload" : {
+                    "item" : "Renew the bike lock code",
+                    "list" : "todo"
+                  }
+                },
+                "due" : "2026-11-06",
+                "subtitle" : "To-dos",
+                "title" : "Renew the bike lock code"
+              }
+            ],
+            "style" : "checklist",
+            "tint" : "gray",
+            "title" : "To-dos"
+          },
+          {
+            "icon" : "shippingbox",
+            "id" : "parcels",
+            "items" : [
+              {
+                "action" : {
+                  "arg" : "keyboard-1",
+                  "label" : "Delivered",
+                  "name" : "parcel-done"
+                },
+                "subtitle" : "DHL · out for delivery",
+                "tint" : "orange",
+                "title" : "Keyboard",
+                "url" : "https:\/\/www.dhl.de\/de\/privatkunden\/pakete-empfangen\/verfolgen.html?piececode=00340434161094042557",
+                "value" : "today"
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Parcels"
+          },
+          {
+            "icon" : "hourglass",
+            "id" : "deadlines",
+            "items" : [
+              {
+                "due" : "2026-11-07",
+                "subtitle" : "Software engineering",
+                "title" : "Project hand-in"
+              },
+              {
+                "due" : "2026-11-05",
+                "subtitle" : "Network systems",
+                "title" : "Lab report"
+              },
+              {
+                "due" : "2026-11-10",
+                "subtitle" : "Errands",
+                "title" : "Library books"
+              },
+              {
+                "due" : "2026-11-16",
+                "subtitle" : "Paperwork",
+                "title" : "Tax return"
+              }
+            ],
+            "style" : "countdown",
+            "tint" : "gray",
+            "title" : "Deadlines"
+          },
+          {
+            "icon" : "graduationcap",
+            "id" : "grades",
+            "items" : [
+              {
+                "subtitle" : "Maths",
+                "title" : "Test 2 (written)",
+                "value" : "85 %"
+              },
+              {
+                "subtitle" : "IT project",
+                "title" : "Poster hand-in",
+                "value" : "95 %"
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "New grades",
+            "updated" : "21:00"
+          },
+          {
+            "icon" : "tram.fill",
+            "id" : "departures",
+            "items" : [
+              {
+                "due" : "2026-11-04T21:51:00Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "21:51"
+              },
+              {
+                "due" : "2026-11-04T21:56:00Z",
+                "subtitle" : "Westbahnhof · +2 min",
+                "tint" : "orange",
+                "title" : "Floridsdorf",
+                "value" : "21:56"
+              },
+              {
+                "due" : "2026-11-04T22:01:30Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "22:01"
+              },
+              {
+                "due" : "2026-11-04T22:09:00Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "22:09"
+              },
+              {
+                "due" : "2026-11-04T21:48:52Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "21:48"
+              },
+              {
+                "due" : "2026-11-04T21:54:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "21:54"
+              },
+              {
+                "due" : "2026-11-04T21:59:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "21:59"
+              },
+              {
+                "due" : "2026-11-04T22:04:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "22:04"
+              }
+            ],
+            "style" : "departures",
+            "tint" : "gray",
+            "title" : "U6",
+            "updated" : "21:28"
+          },
+          {
+            "icon" : "network",
+            "id" : "tailnet",
+            "items" : [
+              {
+                "subtitle" : "linux · direct",
+                "title" : "server"
+              },
+              {
+                "subtitle" : "linux · direct",
+                "title" : "media"
+              },
+              {
+                "subtitle" : "linux · relay",
+                "title" : "pi"
+              },
+              {
+                "subtitle" : "linux · key until 26.03.2027",
+                "title" : "laptop",
+                "value" : "seen 3 h ago"
+              },
+              {
+                "subtitle" : "iOS · key until 12.11.2026",
+                "tint" : "yellow",
+                "title" : "phone"
+              },
+              {
+                "subtitle" : "iPadOS · key until 02.02.2027",
+                "title" : "tablet"
+              }
+            ],
+            "place" : "lab",
+            "style" : "list",
+            "subtitle" : "Key expiry off on all servers",
+            "tint" : "gray",
+            "title" : "Tailnet",
+            "updated" : "2026-11-04T21:28:00"
+          },
+          {
+            "icon" : "shield",
+            "id" : "dns",
+            "items" : [
+              {
+                "subtitle" : "24 h, both Pi-holes",
+                "title" : "Queries",
+                "value" : "23.4k"
+              },
+              {
+                "title" : "Blocked",
+                "value" : "18.4 %"
+              },
+              {
+                "action" : {
+                  "arg" : "5",
+                  "label" : "Pause 5 min",
+                  "name" : "dns-pause"
+                },
+                "title" : "Blocking",
+                "value" : "on"
+              }
+            ],
+            "place" : "lab",
+            "style" : "metrics",
+            "tint" : "gray",
+            "title" : "Ad blocking",
+            "updated" : "2026-11-04T21:28:00"
+          },
+          {
+            "icon" : "hand.raised",
+            "id" : "dns-top",
+            "items" : [
+              {
+                "title" : "ads.example.net",
+                "value" : "812"
+              },
+              {
+                "title" : "tracker.example.org",
+                "value" : "640"
+              },
+              {
+                "title" : "telemetry.example.com",
+                "value" : "377"
+              },
+              {
+                "title" : "metrics.example.io",
+                "value" : "214"
+              },
+              {
+                "title" : "beacon.example.net",
+                "value" : "158"
+              },
+              {
+                "title" : "pixel.example.org",
+                "value" : "97"
+              }
+            ],
+            "place" : "lab",
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Top blocked",
+            "updated" : "2026-11-04T21:28:00"
+          },
+          {
+            "icon" : "externaldrive.badge.checkmark",
+            "id" : "backups",
+            "items" : [
+              {
+                "subtitle" : "18 MB",
+                "title" : "pi → GitHub",
+                "value" : "today 04:52"
+              },
+              {
+                "progress" : 0.03,
+                "subtitle" : "21 snapshots · 274 MB of 8 GB",
+                "title" : "pi → cloud",
+                "value" : "today 04:52"
+              },
+              {
+                "subtitle" : "4 MB",
+                "title" : "media → GitHub",
+                "value" : "today 04:40"
+              },
+              {
+                "subtitle" : "not set up",
+                "tint" : "gray",
+                "title" : "media local copy"
+              }
+            ],
+            "place" : "lab",
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Backups",
+            "updated" : "2026-11-04T21:28:00"
+          }
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "commute" : {
+          "date" : "2026-11-04",
+          "first_lesson" : "2026-11-04T22:38:00Z",
+          "leave_by" : "2026-11-04T21:47:00Z",
+          "line" : "U6",
+          "mode" : "u6",
+          "next" : "2026-11-04T21:56:00Z",
+          "train" : "2026-11-04T21:51:00Z",
+          "updated" : "2026-11-04T21:28:00Z"
+        },
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 14,
+              "up" : 14
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 41,
+              "\/tank" : 63
+            },
+            "id" : "server",
+            "kind" : "server",
+            "load" : 0.62,
+            "mem_pct" : 48,
+            "name" : "server",
+            "reachable" : true,
+            "temp" : 52,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 12
+            },
+            "url" : "https:\/\/server.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:40:00",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 11,
+              "up" : 11
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 38,
+              "\/srv\/media" : 71
+            },
+            "id" : "media",
+            "kind" : "raspberry-pi",
+            "load" : 0.85,
+            "mem_pct" : 57,
+            "name" : "media",
+            "reachable" : true,
+            "temp" : 58,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 0
+            }
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 6,
+              "up" : 6
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 22
+            },
+            "id" : "pi",
+            "kind" : "raspberry-pi",
+            "load" : 0.3,
+            "mem_pct" : 40,
+            "name" : "pi",
+            "reachable" : true,
+            "temp" : 48
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "gpu",
+            "kind" : "desktop",
+            "name" : "gaming-pc",
+            "reachable" : false
+          }
+        ],
+        "last_message" : {
+          "cards" : [
+            {
+              "icon" : "server.rack",
+              "id" : "media-now",
+              "items" : [
+                {
+                  "title" : "Streams",
+                  "value" : "1"
+                },
+                {
+                  "title" : "CPU",
+                  "value" : "12%"
+                },
+                {
+                  "title" : "Disk",
+                  "value" : "71%"
+                }
+              ],
+              "style" : "metrics",
+              "tint" : "gray",
+              "title" : "media"
+            }
+          ],
+          "from" : "agent",
+          "id" : 1762290060000000000,
+          "job" : "chat",
+          "status" : "OK",
+          "text" : "Yes. The media server is up, 1 stream (direct play), CPU at 12%.",
+          "ts" : "2026-11-04T21:01:00Z"
+        },
+        "pending" : [
+          {
+            "action" : "apt-upgrade",
+            "arg" : "server",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_cd34_3123456789abcdef",
+              "deny" : "HOMELAB_DENY_cd34_4123456789abcdef"
+            },
+            "created" : "2026-11-04T19:40:00Z",
+            "id" : "cd34",
+            "job" : "updates",
+            "reason" : "12 package updates, 3 of them security."
+          }
+        ],
+        "problems" : [
+
+        ],
+        "status" : "ok",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-departures.json" : {
+    "detail" : null,
+    "headline" : "All quiet.",
+    "level" : "calm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+          {
+            "icon" : "tram.fill",
+            "id" : "departures",
+            "items" : [
+              {
+                "due" : "2026-11-07T06:31:00Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "07:31"
+              },
+              {
+                "due" : "2026-11-07T06:36:00Z",
+                "subtitle" : "Westbahnhof · +3 min",
+                "tint" : "orange",
+                "title" : "Floridsdorf",
+                "value" : "07:36"
+              },
+              {
+                "due" : "2026-11-07T06:41:30Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "07:41"
+              },
+              {
+                "due" : "2026-11-07T06:49:00Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "07:49"
+              },
+              {
+                "due" : "2026-11-07T06:28:52Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "07:28"
+              },
+              {
+                "due" : "2026-11-07T06:34:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "07:34"
+              },
+              {
+                "due" : "2026-11-07T06:39:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "07:39"
+              },
+              {
+                "due" : "2026-11-07T06:44:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "07:44"
+              }
+            ],
+            "style" : "departures",
+            "text" : "U6: Schadhaftes Fahrzeug",
+            "tint" : "red",
+            "title" : "U6",
+            "updated" : "07:12"
+          }
+        ],
+        "checked" : "2026-11-07T07:12:00Z",
+        "commute" : {
+          "date" : "2026-11-07",
+          "disruptions" : [
+            "U6: Schadhaftes Fahrzeug"
+          ],
+          "first_lesson" : "2026-11-07T07:00:00Z",
+          "leave_by" : "2026-11-07T06:26:00Z",
+          "line" : "U6",
+          "mode" : "u6",
+          "next" : "2026-11-07T06:36:00Z",
+          "next_too_late" : true,
+          "train" : "2026-11-07T06:31:00Z",
+          "updated" : "2026-11-07T06:12:00Z"
+        },
+        "hosts" : [
+
+        ],
+        "pending" : [
+
+        ],
+        "problems" : [
+
+        ],
+        "status" : "ok",
+        "time" : "2026-11-07T07:12:30Z"
+      }
+    }
+  },
+  "state-empty.json" : {
+    "detail" : null,
+    "headline" : "Status unknown.",
+    "level" : "unknown",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+
+        ],
+        "hosts" : [
+
+        ],
+        "pending" : [
+
+        ],
+        "problems" : [
+
+        ],
+        "status" : "unknown"
+      }
+    }
+  },
+  "state-huge.json" : {
+    "detail" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk.",
+    "headline" : "13 problems.",
+    "level" : "alarm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 12,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+          "chat",
+          "watchdog",
+          "morning"
+        ],
+        "cards" : [
+          {
+            "icon" : "play.tv",
+            "id" : "card-01",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "gray",
+                "title" : "Item 1.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "blue",
+                "title" : "Item 1.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "green",
+                "title" : "Item 1.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "orange",
+                "title" : "Item 1.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "red",
+                "title" : "Item 1.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "purple",
+                "title" : "Item 1.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "teal",
+                "title" : "Item 1.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "yellow",
+                "title" : "Item 1.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "pink",
+                "title" : "Item 1.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "gray",
+                "title" : "Item 1.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "blue",
+                "title" : "Item 1.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "green",
+                "title" : "Item 1.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/0\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "list",
+            "subtitle" : "Subtitle for card 1, also quite long so it wraps",
+            "tint" : "gray",
+            "title" : "Card 1 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:00"
+          },
+          {
+            "icon" : "arrow.down.circle",
+            "id" : "card-02",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "blue",
+                "title" : "Item 2.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "green",
+                "title" : "Item 2.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "orange",
+                "title" : "Item 2.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "red",
+                "title" : "Item 2.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "purple",
+                "title" : "Item 2.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "teal",
+                "title" : "Item 2.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "yellow",
+                "title" : "Item 2.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "pink",
+                "title" : "Item 2.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "gray",
+                "title" : "Item 2.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "blue",
+                "title" : "Item 2.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "green",
+                "title" : "Item 2.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "orange",
+                "title" : "Item 2.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/1\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "metrics",
+            "subtitle" : "Subtitle for card 2, also quite long so it wraps",
+            "tint" : "blue",
+            "title" : "Card 2 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:03"
+          },
+          {
+            "icon" : "sun.max",
+            "id" : "card-03",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "subtitle" : "Subtitle for card 3, also quite long so it wraps",
+            "text" : "Line 3 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 3 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 3 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 3 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 3 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 3 of **bold** and _italic_ text with a [link](https:\/\/example.com).",
+            "tint" : "green",
+            "title" : "Card 3 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:06"
+          },
+          {
+            "icon" : "text.bubble",
+            "id" : "card-04",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "orange",
+                "title" : "Item 4.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "red",
+                "title" : "Item 4.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "purple",
+                "title" : "Item 4.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "teal",
+                "title" : "Item 4.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "yellow",
+                "title" : "Item 4.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "pink",
+                "title" : "Item 4.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "gray",
+                "title" : "Item 4.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "blue",
+                "title" : "Item 4.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "green",
+                "title" : "Item 4.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "orange",
+                "title" : "Item 4.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "red",
+                "title" : "Item 4.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "purple",
+                "title" : "Item 4.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/3\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "list",
+            "subtitle" : "Subtitle for card 4, also quite long so it wraps",
+            "tint" : "orange",
+            "title" : "Card 4 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:09"
+          },
+          {
+            "icon" : "calendar",
+            "id" : "card-05",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "red",
+                "title" : "Item 5.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "purple",
+                "title" : "Item 5.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "teal",
+                "title" : "Item 5.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "yellow",
+                "title" : "Item 5.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "pink",
+                "title" : "Item 5.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "gray",
+                "title" : "Item 5.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "blue",
+                "title" : "Item 5.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "green",
+                "title" : "Item 5.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "orange",
+                "title" : "Item 5.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "red",
+                "title" : "Item 5.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "purple",
+                "title" : "Item 5.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "teal",
+                "title" : "Item 5.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/4\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "metrics",
+            "subtitle" : "Subtitle for card 5, also quite long so it wraps",
+            "tint" : "red",
+            "title" : "Card 5 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:12"
+          },
+          {
+            "icon" : "tram",
+            "id" : "card-06",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "subtitle" : "Subtitle for card 6, also quite long so it wraps",
+            "text" : "Line 6 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 6 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 6 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 6 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 6 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 6 of **bold** and _italic_ text with a [link](https:\/\/example.com).",
+            "tint" : "purple",
+            "title" : "Card 6 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:15"
+          },
+          {
+            "icon" : "bed.double",
+            "id" : "card-07",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "teal",
+                "title" : "Item 7.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "yellow",
+                "title" : "Item 7.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "pink",
+                "title" : "Item 7.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "gray",
+                "title" : "Item 7.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "blue",
+                "title" : "Item 7.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "green",
+                "title" : "Item 7.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "orange",
+                "title" : "Item 7.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "red",
+                "title" : "Item 7.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "purple",
+                "title" : "Item 7.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "teal",
+                "title" : "Item 7.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "yellow",
+                "title" : "Item 7.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "pink",
+                "title" : "Item 7.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/6\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "list",
+            "subtitle" : "Subtitle for card 7, also quite long so it wraps",
+            "tint" : "teal",
+            "title" : "Card 7 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:18"
+          },
+          {
+            "icon" : "chart.bar",
+            "id" : "card-08",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "yellow",
+                "title" : "Item 8.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "pink",
+                "title" : "Item 8.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "gray",
+                "title" : "Item 8.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "blue",
+                "title" : "Item 8.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "green",
+                "title" : "Item 8.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "orange",
+                "title" : "Item 8.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "red",
+                "title" : "Item 8.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "purple",
+                "title" : "Item 8.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "teal",
+                "title" : "Item 8.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "yellow",
+                "title" : "Item 8.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "pink",
+                "title" : "Item 8.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "gray",
+                "title" : "Item 8.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/7\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "metrics",
+            "subtitle" : "Subtitle for card 8, also quite long so it wraps",
+            "tint" : "yellow",
+            "title" : "Card 8 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:21"
+          },
+          {
+            "icon" : "film",
+            "id" : "card-09",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "subtitle" : "Subtitle for card 9, also quite long so it wraps",
+            "text" : "Line 9 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 9 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 9 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 9 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 9 of **bold** and _italic_ text with a [link](https:\/\/example.com). Line 9 of **bold** and _italic_ text with a [link](https:\/\/example.com).",
+            "tint" : "pink",
+            "title" : "Card 9 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:24"
+          },
+          {
+            "icon" : "no.such.symbol",
+            "id" : "card-10",
+            "items" : [
+              {
+                "icon" : "circle",
+                "progress" : 0,
+                "subtitle" : "subtitle 1",
+                "tint" : "gray",
+                "title" : "Item 10.1 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/0",
+                "value" : "0 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.091,
+                "subtitle" : "subtitle 2",
+                "tint" : "blue",
+                "title" : "Item 10.2 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/1",
+                "value" : "5 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.182,
+                "subtitle" : "subtitle 3",
+                "tint" : "green",
+                "title" : "Item 10.3 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/2",
+                "value" : "10 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.273,
+                "subtitle" : "subtitle 4",
+                "tint" : "orange",
+                "title" : "Item 10.4 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/3",
+                "value" : "15 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.364,
+                "subtitle" : "subtitle 5",
+                "tint" : "red",
+                "title" : "Item 10.5 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/4",
+                "value" : "20 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.455,
+                "subtitle" : "subtitle 6",
+                "tint" : "purple",
+                "title" : "Item 10.6 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/5",
+                "value" : "25 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.545,
+                "subtitle" : "subtitle 7",
+                "tint" : "teal",
+                "title" : "Item 10.7 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/6",
+                "value" : "30 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.636,
+                "subtitle" : "subtitle 8",
+                "tint" : "yellow",
+                "title" : "Item 10.8 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/7",
+                "value" : "35 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.727,
+                "subtitle" : "subtitle 9",
+                "tint" : "pink",
+                "title" : "Item 10.9 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/8",
+                "value" : "40 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.818,
+                "subtitle" : "subtitle 10",
+                "tint" : "gray",
+                "title" : "Item 10.10 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/9",
+                "value" : "45 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 0.909,
+                "subtitle" : "subtitle 11",
+                "tint" : "blue",
+                "title" : "Item 10.11 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/10",
+                "value" : "50 min"
+              },
+              {
+                "icon" : "circle",
+                "progress" : 1,
+                "subtitle" : "subtitle 12",
+                "tint" : "green",
+                "title" : "Item 10.12 with a long title that goes on and on",
+                "url" : "https:\/\/example.com\/9\/11",
+                "value" : "55 min"
+              }
+            ],
+            "style" : "list",
+            "subtitle" : "Subtitle for card 10, also quite long so it wraps",
+            "tint" : "blue",
+            "title" : "Card 10 with a really long title that will not fit on one line of an iPhone SE",
+            "updated" : "21:27"
+          }
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 0
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 0,
+              "\/boot\/firmware" : 0,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 50
+            },
+            "id" : "host-01",
+            "kind" : "server",
+            "load" : 0.1,
+            "mem_pct" : 0,
+            "name" : "host-01-very-long-hostname-in-the-basement-rack-number-1",
+            "reachable" : true,
+            "temp" : 35,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 0
+            },
+            "url" : "https:\/\/host-01.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:01Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 1
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 3,
+              "\/boot\/firmware" : 11,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 53
+            },
+            "flags" : [
+              "undervoltage_now"
+            ],
+            "id" : "host-02",
+            "kind" : "raspberry-pi",
+            "load" : 0.47,
+            "mem_pct" : 7,
+            "name" : "host-02-very-long-hostname-in-the-basement-rack-number-2",
+            "reachable" : true,
+            "temp" : 36.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 2
+            },
+            "url" : "https:\/\/host-02.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:02Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 2
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 6,
+              "\/boot\/firmware" : 22,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 56
+            },
+            "flags" : [
+              "throttled_now"
+            ],
+            "id" : "host-03",
+            "kind" : "laptop",
+            "load" : 0.84,
+            "mem_pct" : 14,
+            "name" : "host-03-very-long-hostname-in-the-basement-rack-number-3",
+            "reachable" : true,
+            "temp" : 38,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 4
+            },
+            "url" : "https:\/\/host-03.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:03Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 3
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 9,
+              "\/boot\/firmware" : 33,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 59
+            },
+            "flags" : [
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-04",
+            "kind" : "desktop",
+            "load" : 1.21,
+            "mem_pct" : 21,
+            "name" : "host-04-very-long-hostname-in-the-basement-rack-number-4",
+            "reachable" : true,
+            "temp" : 39.5,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 6
+            },
+            "url" : "https:\/\/host-04.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:04Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 4
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 12,
+              "\/boot\/firmware" : 44,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 62
+            },
+            "flags" : [
+              "undervoltage_now",
+              "throttled_now",
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-05",
+            "kind" : "nas",
+            "load" : 1.58,
+            "mem_pct" : 28,
+            "name" : "host-05-very-long-hostname-in-the-basement-rack-number-5",
+            "reachable" : true,
+            "temp" : 41,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 8
+            },
+            "url" : "https:\/\/host-05.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:05Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 5
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 15,
+              "\/boot\/firmware" : 55,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 65
+            },
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "host-06",
+            "kind" : "vm",
+            "load" : 1.95,
+            "mem_pct" : 35,
+            "name" : "host-06-very-long-hostname-in-the-basement-rack-number-6",
+            "reachable" : true,
+            "temp" : 42.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 10
+            },
+            "url" : "https:\/\/host-06.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:06Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 6
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 18,
+              "\/boot\/firmware" : 66,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 68
+            },
+            "id" : "host-07",
+            "kind" : "server",
+            "load" : 2.32,
+            "mem_pct" : 42,
+            "name" : "host-07-very-long-hostname-in-the-basement-rack-number-7",
+            "reachable" : false,
+            "temp" : 44,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 12
+            },
+            "url" : "https:\/\/host-07.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:07Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 7
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 21,
+              "\/boot\/firmware" : 77,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 71
+            },
+            "flags" : [
+              "undervoltage_now"
+            ],
+            "id" : "host-08",
+            "kind" : "raspberry-pi",
+            "load" : 2.69,
+            "mem_pct" : 49,
+            "name" : "host-08-very-long-hostname-in-the-basement-rack-number-8",
+            "reachable" : true,
+            "temp" : 45.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 14
+            },
+            "url" : "https:\/\/host-08.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:08Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 8
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 24,
+              "\/boot\/firmware" : 88,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 74
+            },
+            "flags" : [
+              "throttled_now"
+            ],
+            "id" : "host-09",
+            "kind" : "laptop",
+            "load" : 3.06,
+            "mem_pct" : 56,
+            "name" : "host-09-very-long-hostname-in-the-basement-rack-number-9",
+            "reachable" : true,
+            "temp" : 47,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 16
+            },
+            "url" : "https:\/\/host-09.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:09Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 9
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 27,
+              "\/boot\/firmware" : 99,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 77
+            },
+            "flags" : [
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-10",
+            "kind" : "desktop",
+            "load" : 3.43,
+            "mem_pct" : 63,
+            "name" : "host-10-very-long-hostname-in-the-basement-rack-number-10",
+            "reachable" : true,
+            "temp" : 48.5,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 18
+            },
+            "url" : "https:\/\/host-10.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:10Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 10
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 30,
+              "\/boot\/firmware" : 9,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 80
+            },
+            "flags" : [
+              "undervoltage_now",
+              "throttled_now",
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-11",
+            "kind" : "nas",
+            "load" : 3.8,
+            "mem_pct" : 70,
+            "name" : "host-11-very-long-hostname-in-the-basement-rack-number-11",
+            "reachable" : true,
+            "temp" : 50,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 20
+            },
+            "url" : "https:\/\/host-11.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:11Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 11
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 33,
+              "\/boot\/firmware" : 20,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 83
+            },
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "host-12",
+            "kind" : "vm",
+            "load" : 4.17,
+            "mem_pct" : 77,
+            "name" : "host-12-very-long-hostname-in-the-basement-rack-number-12",
+            "reachable" : true,
+            "temp" : 51.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 22
+            },
+            "url" : "https:\/\/host-12.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:12Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 12
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 36,
+              "\/boot\/firmware" : 31,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 86
+            },
+            "id" : "host-13",
+            "kind" : "server",
+            "load" : 4.54,
+            "mem_pct" : 84,
+            "name" : "host-13-very-long-hostname-in-the-basement-rack-number-13",
+            "reachable" : true,
+            "temp" : 53,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 24
+            },
+            "url" : "https:\/\/host-13.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:13Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 13
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 39,
+              "\/boot\/firmware" : 42,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 89
+            },
+            "flags" : [
+              "undervoltage_now"
+            ],
+            "id" : "host-14",
+            "kind" : "raspberry-pi",
+            "load" : 4.91,
+            "mem_pct" : 91,
+            "name" : "host-14-very-long-hostname-in-the-basement-rack-number-14",
+            "reachable" : false,
+            "temp" : 54.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 26
+            },
+            "url" : "https:\/\/host-14.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:14Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 14
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 42,
+              "\/boot\/firmware" : 53,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 92
+            },
+            "flags" : [
+              "throttled_now"
+            ],
+            "id" : "host-15",
+            "kind" : "laptop",
+            "load" : 5.28,
+            "mem_pct" : 98,
+            "name" : "host-15-very-long-hostname-in-the-basement-rack-number-15",
+            "reachable" : true,
+            "temp" : 56,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 28
+            },
+            "url" : "https:\/\/host-15.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:15Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 15
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 45,
+              "\/boot\/firmware" : 64,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 95
+            },
+            "flags" : [
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-16",
+            "kind" : "desktop",
+            "load" : 5.65,
+            "mem_pct" : 4,
+            "name" : "host-16-very-long-hostname-in-the-basement-rack-number-16",
+            "reachable" : true,
+            "temp" : 57.5,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 30
+            },
+            "url" : "https:\/\/host-16.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:16Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 16
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 48,
+              "\/boot\/firmware" : 75,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 98
+            },
+            "flags" : [
+              "undervoltage_now",
+              "throttled_now",
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-17",
+            "kind" : "nas",
+            "load" : 6.02,
+            "mem_pct" : 11,
+            "name" : "host-17-very-long-hostname-in-the-basement-rack-number-17",
+            "reachable" : true,
+            "temp" : 59,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 32
+            },
+            "url" : "https:\/\/host-17.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:17Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 17
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 51,
+              "\/boot\/firmware" : 86,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 0
+            },
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "host-18",
+            "kind" : "vm",
+            "load" : 6.39,
+            "mem_pct" : 18,
+            "name" : "host-18-very-long-hostname-in-the-basement-rack-number-18",
+            "reachable" : true,
+            "temp" : 60.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 34
+            },
+            "url" : "https:\/\/host-18.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:18Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 18
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 54,
+              "\/boot\/firmware" : 97,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 3
+            },
+            "id" : "host-19",
+            "kind" : "server",
+            "load" : 6.76,
+            "mem_pct" : 25,
+            "name" : "host-19-very-long-hostname-in-the-basement-rack-number-19",
+            "reachable" : true,
+            "temp" : 62,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 36
+            },
+            "url" : "https:\/\/host-19.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:19Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 19
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 57,
+              "\/boot\/firmware" : 7,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 6
+            },
+            "flags" : [
+              "undervoltage_now"
+            ],
+            "id" : "host-20",
+            "kind" : "raspberry-pi",
+            "load" : 7.13,
+            "mem_pct" : 32,
+            "name" : "host-20-very-long-hostname-in-the-basement-rack-number-20",
+            "reachable" : true,
+            "temp" : 63.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 38
+            },
+            "url" : "https:\/\/host-20.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:20Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 0
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 60,
+              "\/boot\/firmware" : 18,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 9
+            },
+            "flags" : [
+              "throttled_now"
+            ],
+            "id" : "host-21",
+            "kind" : "laptop",
+            "load" : 7.5,
+            "mem_pct" : 39,
+            "name" : "host-21-very-long-hostname-in-the-basement-rack-number-21",
+            "reachable" : false,
+            "temp" : 65,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 40
+            },
+            "url" : "https:\/\/host-21.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:21Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 1
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 63,
+              "\/boot\/firmware" : 29,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 12
+            },
+            "flags" : [
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-22",
+            "kind" : "desktop",
+            "load" : 7.87,
+            "mem_pct" : 46,
+            "name" : "host-22-very-long-hostname-in-the-basement-rack-number-22",
+            "reachable" : true,
+            "temp" : 66.5,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 42
+            },
+            "url" : "https:\/\/host-22.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:22Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 2
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 66,
+              "\/boot\/firmware" : 40,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 15
+            },
+            "flags" : [
+              "undervoltage_now",
+              "throttled_now",
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-23",
+            "kind" : "nas",
+            "load" : 8.24,
+            "mem_pct" : 53,
+            "name" : "host-23-very-long-hostname-in-the-basement-rack-number-23",
+            "reachable" : true,
+            "temp" : 68,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 44
+            },
+            "url" : "https:\/\/host-23.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:23Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 3
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 69,
+              "\/boot\/firmware" : 51,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 18
+            },
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "host-24",
+            "kind" : "vm",
+            "load" : 8.61,
+            "mem_pct" : 60,
+            "name" : "host-24-very-long-hostname-in-the-basement-rack-number-24",
+            "reachable" : true,
+            "temp" : 69.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 46
+            },
+            "url" : "https:\/\/host-24.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:24Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 4
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 72,
+              "\/boot\/firmware" : 62,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 21
+            },
+            "id" : "host-25",
+            "kind" : "server",
+            "load" : 8.98,
+            "mem_pct" : 67,
+            "name" : "host-25-very-long-hostname-in-the-basement-rack-number-25",
+            "reachable" : true,
+            "temp" : 71,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 48
+            },
+            "url" : "https:\/\/host-25.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:25Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 5
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 75,
+              "\/boot\/firmware" : 73,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 24
+            },
+            "flags" : [
+              "undervoltage_now"
+            ],
+            "id" : "host-26",
+            "kind" : "raspberry-pi",
+            "load" : 9.35,
+            "mem_pct" : 74,
+            "name" : "host-26-very-long-hostname-in-the-basement-rack-number-26",
+            "reachable" : true,
+            "temp" : 72.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 50
+            },
+            "url" : "https:\/\/host-26.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:26Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 6
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 78,
+              "\/boot\/firmware" : 84,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 27
+            },
+            "flags" : [
+              "throttled_now"
+            ],
+            "id" : "host-27",
+            "kind" : "laptop",
+            "load" : 9.72,
+            "mem_pct" : 81,
+            "name" : "host-27-very-long-hostname-in-the-basement-rack-number-27",
+            "reachable" : true,
+            "temp" : 74,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 52
+            },
+            "url" : "https:\/\/host-27.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:27Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 7
+            },
+            "cpu_count" : 16,
+            "disks" : {
+              "\/" : 81,
+              "\/boot\/firmware" : 95,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 30
+            },
+            "flags" : [
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-28",
+            "kind" : "desktop",
+            "load" : 10.09,
+            "mem_pct" : 88,
+            "name" : "host-28-very-long-hostname-in-the-basement-rack-number-28",
+            "reachable" : false,
+            "temp" : 75.5,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 54
+            },
+            "url" : "https:\/\/host-28.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-01T04:45:10",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:28Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 8
+            },
+            "cpu_count" : 2,
+            "disks" : {
+              "\/" : 84,
+              "\/boot\/firmware" : 5,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 33
+            },
+            "flags" : [
+              "undervoltage_now",
+              "throttled_now",
+              "undervoltage_since_boot"
+            ],
+            "id" : "host-29",
+            "kind" : "nas",
+            "load" : 10.46,
+            "mem_pct" : 95,
+            "name" : "host-29-very-long-hostname-in-the-basement-rack-number-29",
+            "reachable" : true,
+            "temp" : 77,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 56
+            },
+            "url" : "https:\/\/host-29.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-02T04:45:10",
+              "result" : "running"
+            },
+            "checked" : "2026-11-04T21:28:29Z",
+            "containers" : {
+              "total" : 20,
+              "up" : 9
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 87,
+              "\/boot\/firmware" : 16,
+              "\/srv\/media\/a-rather-long-mount-point\/for-the-big-pool" : 36
+            },
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "host-30",
+            "kind" : "vm",
+            "load" : 10.83,
+            "mem_pct" : 1,
+            "name" : "host-30-very-long-hostname-in-the-basement-rack-number-30",
+            "reachable" : true,
+            "temp" : 78.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 58
+            },
+            "url" : "https:\/\/host-30.example.ts.net"
+          }
+        ],
+        "last_message" : {
+          "from" : "agent",
+          "id" : 1762290600000000001,
+          "job" : "watchdog",
+          "status" : "ALERT",
+          "text" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk.",
+          "ts" : "2026-11-04T21:10:00Z"
+        },
+        "pending" : [
+          {
+            "action" : "restart",
+            "arg" : "host-01 some-container-with-a-long-name-1",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_hg01_1000000000000002",
+              "approve" : "HOMELAB_APPROVE_hg01_1000000000000001",
+              "deny" : "HOMELAB_DENY_hg01_1000000000000003"
+            },
+            "created" : "2026-11-04T20:00:00Z",
+            "id" : "hg01",
+            "job" : "watchdog",
+            "reason" : "Proposed because something has been wrong for 10 minutes."
+          },
+          {
+            "action" : "apt-upgrade",
+            "arg" : "host-02 some-container-with-a-long-name-2",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_hg02_1000000000000011",
+              "deny" : "HOMELAB_DENY_hg02_1000000000000013"
+            },
+            "created" : "2026-11-04T21:04:00Z",
+            "id" : "hg02",
+            "job" : "updates",
+            "reason" : "Proposed because something has been wrong for 11 minutes. Proposed because something has been wrong for 11 minutes."
+          },
+          {
+            "action" : "prune-docker",
+            "arg" : "host-03 some-container-with-a-long-name-3",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_hg03_1000000000000022",
+              "approve" : "HOMELAB_APPROVE_hg03_1000000000000021",
+              "deny" : "HOMELAB_DENY_hg03_1000000000000023"
+            },
+            "created" : "2026-11-04T20:08:00Z",
+            "id" : "hg03",
+            "job" : "morning",
+            "reason" : "Proposed because something has been wrong for 12 minutes. Proposed because something has been wrong for 12 minutes. Proposed because something has been wrong for 12 minutes."
+          },
+          {
+            "action" : "reboot",
+            "arg" : "host-04 some-container-with-a-long-name-4",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_hg04_1000000000000031",
+              "deny" : "HOMELAB_DENY_hg04_1000000000000033"
+            },
+            "created" : "2026-11-04T21:12:00Z",
+            "id" : "hg04",
+            "job" : "backup",
+            "reason" : "Proposed because something has been wrong for 13 minutes."
+          },
+          {
+            "action" : "restart",
+            "arg" : "host-05 some-container-with-a-long-name-5",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_hg05_1000000000000042",
+              "approve" : "HOMELAB_APPROVE_hg05_1000000000000041",
+              "deny" : "HOMELAB_DENY_hg05_1000000000000043"
+            },
+            "created" : "2026-11-04T20:16:00Z",
+            "id" : "hg05",
+            "job" : "watchdog",
+            "reason" : "Proposed because something has been wrong for 14 minutes. Proposed because something has been wrong for 14 minutes."
+          },
+          {
+            "action" : "apt-upgrade",
+            "arg" : "host-06 some-container-with-a-long-name-6",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_hg06_1000000000000051",
+              "deny" : "HOMELAB_DENY_hg06_1000000000000053"
+            },
+            "created" : "2026-11-04T21:20:00Z",
+            "id" : "hg06",
+            "job" : "updates",
+            "reason" : "Proposed because something has been wrong for 15 minutes. Proposed because something has been wrong for 15 minutes. Proposed because something has been wrong for 15 minutes."
+          },
+          {
+            "action" : "prune-docker",
+            "arg" : "host-07 some-container-with-a-long-name-7",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_hg07_1000000000000062",
+              "approve" : "HOMELAB_APPROVE_hg07_1000000000000061",
+              "deny" : "HOMELAB_DENY_hg07_1000000000000063"
+            },
+            "created" : "2026-11-04T20:24:00Z",
+            "id" : "hg07",
+            "job" : "morning",
+            "reason" : "Proposed because something has been wrong for 16 minutes."
+          },
+          {
+            "action" : "reboot",
+            "arg" : "host-08 some-container-with-a-long-name-8",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_hg08_1000000000000071",
+              "deny" : "HOMELAB_DENY_hg08_1000000000000073"
+            },
+            "created" : "2026-11-04T21:28:00Z",
+            "id" : "hg08",
+            "job" : "backup",
+            "reason" : "Proposed because something has been wrong for 17 minutes. Proposed because something has been wrong for 17 minutes."
+          },
+          {
+            "action" : "restart",
+            "arg" : "host-09 some-container-with-a-long-name-9",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_hg09_1000000000000082",
+              "approve" : "HOMELAB_APPROVE_hg09_1000000000000081",
+              "deny" : "HOMELAB_DENY_hg09_1000000000000083"
+            },
+            "created" : "2026-11-04T20:32:00Z",
+            "id" : "hg09",
+            "job" : "watchdog",
+            "reason" : "Proposed because something has been wrong for 18 minutes. Proposed because something has been wrong for 18 minutes. Proposed because something has been wrong for 18 minutes."
+          },
+          {
+            "action" : "apt-upgrade",
+            "arg" : "host-10 some-container-with-a-long-name-10",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_hg10_1000000000000091",
+              "deny" : "HOMELAB_DENY_hg10_1000000000000093"
+            },
+            "created" : "2026-11-04T21:36:00Z",
+            "id" : "hg10",
+            "job" : "updates",
+            "reason" : "Proposed because something has been wrong for 19 minutes."
+          },
+          {
+            "action" : "prune-docker",
+            "arg" : "host-11 some-container-with-a-long-name-11",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_hg11_10000000000000a2",
+              "approve" : "HOMELAB_APPROVE_hg11_10000000000000a1",
+              "deny" : "HOMELAB_DENY_hg11_10000000000000a3"
+            },
+            "created" : "2026-11-04T20:40:00Z",
+            "id" : "hg11",
+            "job" : "morning",
+            "reason" : "Proposed because something has been wrong for 20 minutes. Proposed because something has been wrong for 20 minutes."
+          },
+          {
+            "action" : "reboot",
+            "arg" : "host-12 some-container-with-a-long-name-12",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_hg12_10000000000000b1",
+              "deny" : "HOMELAB_DENY_hg12_10000000000000b3"
+            },
+            "created" : "2026-11-04T21:44:00Z",
+            "id" : "hg12",
+            "job" : "backup",
+            "reason" : "Proposed because something has been wrong for 21 minutes. Proposed because something has been wrong for 21 minutes. Proposed because something has been wrong for 21 minutes."
+          }
+        ],
+        "problems" : [
+          {
+            "host" : "host-01",
+            "id" : "p-01",
+            "severity" : "problem",
+            "since" : "2026-11-04T08:00:00Z",
+            "text" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk."
+          },
+          {
+            "host" : "host-02",
+            "id" : "p-02",
+            "severity" : "warning",
+            "since" : "2026-11-04T09:01:00Z",
+            "text" : "host-02: problem number 2 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-03",
+            "id" : "p-03",
+            "severity" : "problem",
+            "since" : "2026-11-04T10:02:00Z",
+            "text" : "host-03: problem number 3 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-04",
+            "id" : "p-04",
+            "severity" : "warning",
+            "since" : "2026-11-04T11:03:00Z",
+            "text" : "host-04: problem number 4 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-05",
+            "id" : "p-05",
+            "severity" : "problem",
+            "since" : "2026-11-04T12:04:00Z",
+            "text" : "host-05: problem number 5 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-06",
+            "id" : "p-06",
+            "severity" : "warning",
+            "since" : "2026-11-04T13:05:00Z",
+            "text" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk."
+          },
+          {
+            "host" : "host-07",
+            "id" : "p-07",
+            "severity" : "problem",
+            "since" : "2026-11-04T14:06:00Z",
+            "text" : "host-07: problem number 7 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-08",
+            "id" : "p-08",
+            "severity" : "warning",
+            "since" : "2026-11-04T15:07:00Z",
+            "text" : "host-08: problem number 8 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-09",
+            "id" : "p-09",
+            "severity" : "problem",
+            "since" : "2026-11-04T16:08:00Z",
+            "text" : "host-09: problem number 9 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-10",
+            "id" : "p-10",
+            "severity" : "warning",
+            "since" : "2026-11-04T17:09:00Z",
+            "text" : "host-10: problem number 10 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-11",
+            "id" : "p-11",
+            "severity" : "problem",
+            "since" : "2026-11-04T18:10:00Z",
+            "text" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk."
+          },
+          {
+            "host" : "host-12",
+            "id" : "p-12",
+            "severity" : "warning",
+            "since" : "2026-11-04T19:11:00Z",
+            "text" : "host-12: problem number 12 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-13",
+            "id" : "p-13",
+            "severity" : "problem",
+            "since" : "2026-11-04T08:12:00Z",
+            "text" : "host-13: problem number 13 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-14",
+            "id" : "p-14",
+            "severity" : "warning",
+            "since" : "2026-11-04T09:13:00Z",
+            "text" : "host-14: problem number 14 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-15",
+            "id" : "p-15",
+            "severity" : "problem",
+            "since" : "2026-11-04T10:14:00Z",
+            "text" : "host-15: problem number 15 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-16",
+            "id" : "p-16",
+            "severity" : "warning",
+            "since" : "2026-11-04T11:15:00Z",
+            "text" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk."
+          },
+          {
+            "host" : "host-17",
+            "id" : "p-17",
+            "severity" : "problem",
+            "since" : "2026-11-04T12:16:00Z",
+            "text" : "host-17: problem number 17 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-18",
+            "id" : "p-18",
+            "severity" : "warning",
+            "since" : "2026-11-04T13:17:00Z",
+            "text" : "host-18: problem number 18 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-19",
+            "id" : "p-19",
+            "severity" : "problem",
+            "since" : "2026-11-04T14:18:00Z",
+            "text" : "host-19: problem number 19 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-20",
+            "id" : "p-20",
+            "severity" : "warning",
+            "since" : "2026-11-04T15:19:00Z",
+            "text" : "host-20: problem number 20 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-21",
+            "id" : "p-21",
+            "severity" : "problem",
+            "since" : "2026-11-04T16:20:00Z",
+            "text" : "host-03: disk \/srv\/media\/a-rather-long-mount-point\/for-the-big-pool is at 97% and has been growing by about 4 GB per day for the last week; at this rate it is full in about 2 days. The largest folders are downloads\/incomplete and the Plex transcoder cache. Consider pruning old torrents or moving the cache to another disk."
+          },
+          {
+            "host" : "host-22",
+            "id" : "p-22",
+            "severity" : "warning",
+            "since" : "2026-11-04T17:21:00Z",
+            "text" : "host-22: problem number 22 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-23",
+            "id" : "p-23",
+            "severity" : "problem",
+            "since" : "2026-11-04T18:22:00Z",
+            "text" : "host-23: problem number 23 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-24",
+            "id" : "p-24",
+            "severity" : "warning",
+            "since" : "2026-11-04T19:23:00Z",
+            "text" : "host-24: problem number 24 with a fairly long description so it wraps onto two lines"
+          },
+          {
+            "host" : "host-25",
+            "id" : "p-25",
+            "severity" : "problem",
+            "since" : "2026-11-04T08:24:00Z",
+            "text" : "host-25: problem number 25 with a fairly long description so it wraps onto two lines"
+          }
+        ],
+        "status" : "problem",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-lab-cards.json" : {
+    "detail" : "2 of 2 machines up",
+    "headline" : "All quiet.",
+    "level" : "calm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+          {
+            "icon" : "network",
+            "id" : "tailnet",
+            "items" : [
+              {
+                "subtitle" : "linux · direct",
+                "title" : "pi",
+                "value" : "online"
+              },
+              {
+                "subtitle" : "linux · relay",
+                "title" : "nas",
+                "value" : "online"
+              },
+              {
+                "subtitle" : "linux · key until 26.03.2027",
+                "title" : "laptop",
+                "value" : "seen 3 h ago"
+              },
+              {
+                "subtitle" : "iOS · key until 12.11.2026",
+                "tint" : "yellow",
+                "title" : "phone",
+                "value" : "online"
+              },
+              {
+                "subtitle" : "iOS · key has expired",
+                "tint" : "red",
+                "title" : "tablet",
+                "value" : "offline"
+              }
+            ],
+            "place" : "lab",
+            "style" : "list",
+            "subtitle" : "Key expiry off on all servers",
+            "tint" : "gray",
+            "title" : "Tailnet",
+            "updated" : "2026-11-04T21:28:00"
+          },
+          {
+            "icon" : "shield",
+            "id" : "dns",
+            "items" : [
+              {
+                "subtitle" : "24 h, both Pi-holes",
+                "title" : "Queries",
+                "value" : "23.4k"
+              },
+              {
+                "title" : "Blocked",
+                "value" : "18.4 %"
+              },
+              {
+                "action" : {
+                  "arg" : "5",
+                  "label" : "Pause 5 min",
+                  "name" : "dns-pause"
+                },
+                "title" : "Blocking",
+                "value" : "on"
+              }
+            ],
+            "place" : "lab",
+            "style" : "metrics",
+            "tint" : "gray",
+            "title" : "Ad blocking",
+            "updated" : "2026-11-04T21:28:00"
+          },
+          {
+            "icon" : "hand.raised",
+            "id" : "dns-top",
+            "items" : [
+              {
+                "title" : "ads.example.net",
+                "value" : "812"
+              },
+              {
+                "title" : "tracker.example.org",
+                "value" : "640"
+              },
+              {
+                "title" : "telemetry.example.com",
+                "value" : "377"
+              }
+            ],
+            "place" : "lab",
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Top blocked"
+          },
+          {
+            "icon" : "externaldrive.badge.checkmark",
+            "id" : "backups",
+            "items" : [
+              {
+                "subtitle" : "18 MB, Wed",
+                "title" : "pi → GitHub",
+                "value" : "today 04:52"
+              },
+              {
+                "progress" : 0.03,
+                "subtitle" : "21 snapshots · 274 MB of 8 GB",
+                "title" : "pi → cloud",
+                "value" : "today 04:52"
+              },
+              {
+                "subtitle" : "last run failed",
+                "tint" : "red",
+                "title" : "nas → GitHub",
+                "value" : "2 d ago"
+              },
+              {
+                "subtitle" : "not set up",
+                "title" : "nas local copy",
+                "value" : "–"
+              }
+            ],
+            "place" : "lab",
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Backups",
+            "updated" : "2026-11-04T21:28:00"
+          },
+          {
+            "id" : "mystery",
+            "items" : [
+              {
+                "title" : "Unknown place shows on Today"
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Somewhere else"
+          }
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 12,
+              "up" : 12
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 31,
+              "\/srv\/media" : 64
+            },
+            "id" : "nas",
+            "kind" : "nas",
+            "load" : 0.42,
+            "mem_pct" : 38,
+            "name" : "nas",
+            "reachable" : true,
+            "temp" : 41.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 0
+            }
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 8,
+              "up" : 8
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 47
+            },
+            "id" : "pi",
+            "kind" : "raspberry-pi",
+            "load" : 0.9,
+            "mem_pct" : 55,
+            "name" : "pi",
+            "reachable" : true,
+            "temp" : 52,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 3
+            }
+          }
+        ],
+        "last_message" : {
+          "from" : "agent",
+          "id" : 1762288000000000000,
+          "job" : "digest",
+          "status" : "OK",
+          "text" : "All hosts fine. Backups ran at 04:45.",
+          "ts" : "2026-11-04T06:00:00Z"
+        },
+        "pending" : [
+
+        ],
+        "problems" : [
+
+        ],
+        "status" : "ok",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-legacy.json" : {
+    "detail" : "pi-media: disk \/ at 91%",
+    "headline" : "2 problems.",
+    "level" : "alarm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+          "chat"
+        ],
+        "cards" : [
+          {
+            "id" : "c1",
+            "items" : [
+              {
+                "progress" : 1
+              },
+              {
+                "progress" : 0
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray"
+          }
+        ],
+        "checked" : "2025-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "containers" : {
+              "up" : 3
+            },
+            "disks" : {
+              "\/boot" : 20
+            },
+            "flags" : [
+              "undervoltage_now"
+            ],
+            "id" : "pi-two",
+            "load" : 0.5,
+            "mem_pct" : 13,
+            "name" : "pi-two",
+            "reachable" : true
+          },
+          {
+            "id" : "mediabox",
+            "name" : "mediabox"
+          }
+        ],
+        "pending" : [
+          {
+            "buttons" : {
+
+            },
+            "id" : "ef56"
+          }
+        ],
+        "problems" : [
+          {
+            "id" : "pi-media: disk \/ at 91%",
+            "severity" : "problem",
+            "text" : "pi-media: disk \/ at 91%"
+          },
+          {
+            "id" : "object problem",
+            "severity" : "problem",
+            "text" : "object problem"
+          }
+        ],
+        "status" : "problem",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-ok.json" : {
+    "detail" : "2 of 2 machines up",
+    "headline" : "All quiet.",
+    "level" : "calm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 12,
+              "up" : 12
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 31,
+              "\/srv\/media" : 64
+            },
+            "id" : "nas",
+            "kind" : "nas",
+            "load" : 0.42,
+            "mem_pct" : 38,
+            "name" : "nas",
+            "reachable" : true,
+            "temp" : 41.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 0
+            }
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 8,
+              "up" : 8
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 47
+            },
+            "id" : "pi",
+            "kind" : "raspberry-pi",
+            "load" : 0.9,
+            "mem_pct" : 55,
+            "name" : "pi",
+            "reachable" : true,
+            "temp" : 52,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 3
+            }
+          }
+        ],
+        "last_message" : {
+          "from" : "agent",
+          "id" : 1762288000000000000,
+          "job" : "digest",
+          "status" : "OK",
+          "text" : "All hosts fine. Backups ran at 04:45.",
+          "ts" : "2026-11-04T06:00:00Z"
+        },
+        "pending" : [
+
+        ],
+        "problems" : [
+
+        ],
+        "status" : "ok",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-pending.json" : {
+    "detail" : "server: 12 package updates waiting, 3 security",
+    "headline" : "Heads up.",
+    "level" : "headsUp",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 1,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 9,
+              "up" : 9
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 40,
+              "\/tank" : 72
+            },
+            "id" : "server",
+            "kind" : "server",
+            "load" : 0.62,
+            "mem_pct" : 45,
+            "name" : "server",
+            "reachable" : true,
+            "temp" : 51,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 12
+            }
+          }
+        ],
+        "pending" : [
+          {
+            "action" : "restart",
+            "arg" : "server jellyfin",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_pa01_a000000000000002",
+              "approve" : "HOMELAB_APPROVE_pa01_a000000000000001",
+              "deny" : "HOMELAB_DENY_pa01_a000000000000003"
+            },
+            "created" : "2026-11-04T21:15:00Z",
+            "id" : "pa01",
+            "job" : "watchdog",
+            "reason" : "jellyfin stopped answering 15 minutes ago."
+          },
+          {
+            "action" : "apt-upgrade",
+            "arg" : "server",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_pa02_b000000000000001",
+              "deny" : "HOMELAB_DENY_pa02_b000000000000003"
+            },
+            "created" : "2026-11-04T10:00:00Z",
+            "id" : "pa02",
+            "job" : "updates",
+            "reason" : "12 package updates, 3 security."
+          },
+          {
+            "action" : "prune",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_pa03_c000000000000001",
+              "deny" : "HOMELAB_DENY_pa03_c000000000000003"
+            },
+            "created" : "2026-11-04T04:50:00Z",
+            "id" : "pa03",
+            "job" : "backup",
+            "reason" : "The backup repository is at 7.6 of 8 GB. Pruning keeps 7 daily and 4 weekly snapshots."
+          },
+          {
+            "action" : "reboot",
+            "arg" : "server",
+            "buttons" : {
+
+            },
+            "created" : "2026-11-04T07:00:00Z",
+            "id" : "pa04",
+            "job" : "morning",
+            "reason" : "Shown for information only: the server offers no buttons for this one."
+          }
+        ],
+        "problems" : [
+          {
+            "host" : "server",
+            "id" : "server-updates",
+            "severity" : "warning",
+            "text" : "server: 12 package updates waiting, 3 security"
+          }
+        ],
+        "status" : "warning",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-problem.json" : {
+    "detail" : "media: container sonarr is unhealthy",
+    "headline" : "1 problem.",
+    "level" : "alarm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 1,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+          "chat"
+        ],
+        "cards" : [
+          {
+            "icon" : "play.tv",
+            "id" : "now-playing",
+            "items" : [
+              {
+                "progress" : 0.42,
+                "subtitle" : "alex · Living room TV",
+                "title" : "The Expanse S03E05",
+                "value" : "direct play"
+              }
+            ],
+            "style" : "list",
+            "tint" : "purple",
+            "title" : "Now playing",
+            "updated" : "21:30"
+          },
+          {
+            "icon" : "arrow.down.circle",
+            "id" : "downloads",
+            "items" : [
+              {
+                "progress" : 0.81,
+                "subtitle" : "radarr",
+                "title" : "Dune Part Two (2024)",
+                "value" : "12 min"
+              },
+              {
+                "progress" : 0.2,
+                "subtitle" : "sonarr",
+                "title" : "Severance S02E03",
+                "value" : "1 h"
+              }
+            ],
+            "style" : "list",
+            "tint" : "blue",
+            "title" : "Downloads"
+          },
+          {
+            "date" : "2026-11-04",
+            "icon" : "sun.max",
+            "id" : "today",
+            "items" : [
+              {
+                "title" : "Wake-up",
+                "value" : "06:20"
+              },
+              {
+                "title" : "First lesson",
+                "value" : "08:00"
+              },
+              {
+                "subtitle" : "U6 07:36",
+                "title" : "Leave by",
+                "value" : "07:31"
+              }
+            ],
+            "style" : "metrics",
+            "tint" : "orange",
+            "title" : "Today"
+          },
+          {
+            "date" : "2026-11-04",
+            "icon" : "book",
+            "id" : "lessons",
+            "items" : [
+              {
+                "subtitle" : "R 2.14 · Huber",
+                "title" : "Maths",
+                "value" : "08:00–08:50"
+              },
+              {
+                "subtitle" : "R 3.02 · Maier (for Gruber)",
+                "tint" : "orange",
+                "title" : "Network systems",
+                "value" : "09:00–09:50"
+              },
+              {
+                "cancelled" : true,
+                "subtitle" : "R 1.07 · Smith",
+                "title" : "English",
+                "value" : "10:00–10:50"
+              },
+              {
+                "subtitle" : "Lab 4 (was R 2.20) · Bauer",
+                "tint" : "orange",
+                "title" : "Software engineering",
+                "value" : "11:00–12:40"
+              }
+            ],
+            "style" : "list",
+            "tint" : "teal",
+            "title" : "Lessons"
+          },
+          {
+            "icon" : "tram.fill",
+            "id" : "departures",
+            "items" : [
+              {
+                "due" : "2026-11-04T21:51:00Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "21:51"
+              },
+              {
+                "due" : "2026-11-04T21:56:00Z",
+                "subtitle" : "Westbahnhof · +3 min",
+                "tint" : "orange",
+                "title" : "Floridsdorf",
+                "value" : "21:56"
+              },
+              {
+                "due" : "2026-11-04T22:01:30Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "22:01"
+              },
+              {
+                "due" : "2026-11-04T22:09:00Z",
+                "subtitle" : "Westbahnhof",
+                "title" : "Floridsdorf",
+                "value" : "22:09"
+              },
+              {
+                "due" : "2026-11-04T21:48:52Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "21:48"
+              },
+              {
+                "due" : "2026-11-04T21:54:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "21:54"
+              },
+              {
+                "due" : "2026-11-04T21:59:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "21:59"
+              },
+              {
+                "due" : "2026-11-04T22:04:30Z",
+                "subtitle" : "Jägerstraße",
+                "title" : "Siebenhirten",
+                "value" : "22:04"
+              }
+            ],
+            "style" : "departures",
+            "text" : "U6: Schadhaftes Fahrzeug",
+            "tint" : "red",
+            "title" : "U6",
+            "updated" : "21:28"
+          },
+          {
+            "icon" : "cloud.rain",
+            "id" : "weather",
+            "items" : [
+              {
+                "title" : "Now",
+                "value" : "7°C"
+              },
+              {
+                "title" : "Today",
+                "value" : "4–10°C"
+              },
+              {
+                "tint" : "blue",
+                "title" : "Rain",
+                "value" : "from 15:00"
+              },
+              {
+                "title" : "Tomorrow",
+                "value" : "3–8°C"
+              }
+            ],
+            "style" : "metrics",
+            "subtitle" : "Rain from 15:00, take an umbrella",
+            "tint" : "blue",
+            "title" : "Weather",
+            "updated" : "21:15"
+          },
+          {
+            "icon" : "sunrise",
+            "id" : "briefing",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "text" : "**Good morning.** Two lessons are covered today (network systems, software engineering), English is cancelled. The U6 runs with delays: leave by 07:31. Tax return is due today.",
+            "tint" : "gray",
+            "title" : "Morning briefing"
+          },
+          {
+            "icon" : "text.bubble",
+            "id" : "note",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "text" : "Off-site backup is at **6.1 of 8 GB**.",
+            "tint" : "gray",
+            "title" : "Note"
+          },
+          {
+            "action" : {
+              "label" : "Add",
+              "name" : "todo-add",
+              "payload" : {
+                "list" : "todo"
+              }
+            },
+            "icon" : "checklist",
+            "id" : "todos",
+            "items" : [
+              {
+                "action" : {
+                  "label" : "Tick off",
+                  "name" : "todo-done",
+                  "payload" : {
+                    "item" : "Call the plumber",
+                    "list" : "todo"
+                  }
+                },
+                "due" : "2026-11-04T18:00:00Z",
+                "subtitle" : "To-dos",
+                "title" : "Call the plumber"
+              },
+              {
+                "action" : {
+                  "label" : "Tick off",
+                  "name" : "todo-done",
+                  "payload" : {
+                    "item" : "Milk",
+                    "list" : "shopping"
+                  }
+                },
+                "subtitle" : "Shopping",
+                "title" : "Milk"
+              },
+              {
+                "action" : {
+                  "label" : "Tick off",
+                  "name" : "todo-done",
+                  "payload" : {
+                    "item" : "Renew the bike lock code",
+                    "list" : "todo"
+                  }
+                },
+                "due" : "2026-11-06",
+                "subtitle" : "To-dos",
+                "title" : "Renew the bike lock code"
+              },
+              {
+                "done" : true,
+                "subtitle" : "To-dos",
+                "title" : "Water the plants"
+              }
+            ],
+            "style" : "checklist",
+            "tint" : "gray",
+            "title" : "To-dos"
+          },
+          {
+            "icon" : "hourglass",
+            "id" : "deadlines",
+            "items" : [
+              {
+                "due" : "2026-11-09",
+                "subtitle" : "School",
+                "title" : "Project hand-in"
+              },
+              {
+                "due" : "2026-11-03",
+                "subtitle" : "Errands",
+                "title" : "Library books"
+              },
+              {
+                "due" : "2026-11-04",
+                "subtitle" : "Paperwork",
+                "title" : "Tax return"
+              },
+              {
+                "due" : "2026-11-05T08:00:00Z",
+                "subtitle" : "Errands",
+                "title" : "Driving lesson"
+              }
+            ],
+            "style" : "countdown",
+            "tint" : "gray",
+            "title" : "Deadlines"
+          },
+          {
+            "icon" : "shippingbox",
+            "id" : "parcels",
+            "items" : [
+              {
+                "action" : {
+                  "arg" : "keyboard-1",
+                  "label" : "Delivered",
+                  "name" : "parcel-done"
+                },
+                "subtitle" : "DHL · out for delivery",
+                "tint" : "orange",
+                "title" : "Keyboard",
+                "url" : "https:\/\/www.dhl.de\/de\/privatkunden\/pakete-empfangen\/verfolgen.html?piececode=00340434161094042557",
+                "value" : "today"
+              },
+              {
+                "action" : {
+                  "arg" : "case-2",
+                  "label" : "Delivered",
+                  "name" : "parcel-done"
+                },
+                "subtitle" : "Post · in transit",
+                "title" : "Phone case",
+                "value" : "Fri"
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Parcels"
+          }
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "commute" : {
+          "date" : "2026-11-04",
+          "disruptions" : [
+            "U6: Schadhaftes Fahrzeug"
+          ],
+          "first_lesson" : "2026-11-04T22:38:00Z",
+          "leave_by" : "2026-11-04T21:47:00Z",
+          "line" : "U6",
+          "mode" : "u6",
+          "next" : "2026-11-04T21:56:00Z",
+          "next_too_late" : true,
+          "train" : "2026-11-04T21:51:00Z",
+          "updated" : "2026-11-04T21:28:00Z"
+        },
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 14,
+              "up" : 14
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 58,
+              "\/tank" : 81
+            },
+            "id" : "server",
+            "kind" : "server",
+            "load" : 1.85,
+            "mem_pct" : 71,
+            "name" : "server",
+            "reachable" : true,
+            "temp" : 63,
+            "updates" : {
+              "reboot_required" : true,
+              "upgradable" : 12
+            },
+            "url" : "https:\/\/server.example.ts.net"
+          },
+          {
+            "backup" : {
+              "last" : "2026-11-03T03:00:00",
+              "result" : "failed"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 11,
+              "up" : 10
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 44,
+              "\/srv\/media" : 93
+            },
+            "id" : "media",
+            "kind" : "raspberry-pi",
+            "load" : 3.1,
+            "mem_pct" : 88,
+            "name" : "media",
+            "reachable" : true,
+            "temp" : 71.2,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 0
+            }
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 6,
+              "up" : 6
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 22
+            },
+            "flags" : [
+              "undervoltage_since_boot"
+            ],
+            "id" : "pi",
+            "kind" : "raspberry-pi",
+            "load" : 0.3,
+            "mem_pct" : 40,
+            "name" : "pi",
+            "reachable" : true,
+            "temp" : 48
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "flags" : [
+              "asleep"
+            ],
+            "id" : "gpu",
+            "kind" : "desktop",
+            "name" : "gaming-pc",
+            "reachable" : false
+          }
+        ],
+        "last_message" : {
+          "from" : "agent",
+          "id" : 1762290600000000000,
+          "job" : "watchdog",
+          "pending" : [
+            {
+              "action" : "restart",
+              "arg" : "media sonarr",
+              "buttons" : {
+                "always" : "HOMELAB_ALWAYS_ab12_1123456789abcdef",
+                "approve" : "HOMELAB_APPROVE_ab12_0123456789abcdef",
+                "deny" : "HOMELAB_DENY_ab12_2123456789abcdef"
+              },
+              "created" : "2026-11-04T21:12:00Z",
+              "id" : "ab12",
+              "job" : "watchdog",
+              "reason" : "sonarr has been unhealthy for 20 minutes; a restart usually fixes it."
+            }
+          ],
+          "status" : "ALERT",
+          "text" : "media: sonarr unhealthy. Proposed: restart (ab12).",
+          "ts" : "2026-11-04T21:10:00Z"
+        },
+        "pending" : [
+          {
+            "action" : "restart",
+            "arg" : "media sonarr",
+            "buttons" : {
+              "always" : "HOMELAB_ALWAYS_ab12_1123456789abcdef",
+              "approve" : "HOMELAB_APPROVE_ab12_0123456789abcdef",
+              "deny" : "HOMELAB_DENY_ab12_2123456789abcdef"
+            },
+            "created" : "2026-11-04T21:12:00Z",
+            "id" : "ab12",
+            "job" : "watchdog",
+            "reason" : "sonarr has been unhealthy for 20 minutes; a restart usually fixes it."
+          },
+          {
+            "action" : "apt-upgrade",
+            "arg" : "server",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_cd34_3123456789abcdef",
+              "deny" : "HOMELAB_DENY_cd34_4123456789abcdef"
+            },
+            "created" : "2026-11-04T10:00:00Z",
+            "id" : "cd34",
+            "job" : "updates",
+            "reason" : "12 package updates, 3 security."
+          }
+        ],
+        "problems" : [
+          {
+            "host" : "media",
+            "id" : "media-sonarr",
+            "severity" : "problem",
+            "since" : "2026-11-04T21:10:00Z",
+            "text" : "media: container sonarr is unhealthy"
+          },
+          {
+            "host" : "pi",
+            "id" : "pi-uv",
+            "severity" : "warning",
+            "text" : "pi: under-voltage since boot"
+          }
+        ],
+        "status" : "problem",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-tomorrow.json" : {
+    "detail" : "2 of 2 machines up",
+    "headline" : "All quiet.",
+    "level" : "calm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 0,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+
+        ],
+        "cards" : [
+          {
+            "date" : "2026-11-05",
+            "icon" : "sun.max",
+            "id" : "today",
+            "items" : [
+              {
+                "subtitle" : "one-off",
+                "title" : "Wake-up",
+                "value" : "06:20"
+              },
+              {
+                "subtitle" : "U6 07:36",
+                "title" : "Leave by",
+                "value" : "07:31"
+              },
+              {
+                "title" : "First lesson",
+                "value" : "08:00"
+              },
+              {
+                "subtitle" : "Network systems: Maier",
+                "tint" : "orange",
+                "title" : "Substitution"
+              }
+            ],
+            "style" : "metrics",
+            "tint" : "orange",
+            "title" : "Tomorrow"
+          },
+          {
+            "date" : "2026-11-05",
+            "icon" : "book",
+            "id" : "lessons",
+            "items" : [
+              {
+                "subtitle" : "R 2.14 · Huber",
+                "title" : "Maths",
+                "value" : "08:00–08:50"
+              },
+              {
+                "subtitle" : "R 3.02 · Maier (for Gruber)",
+                "tint" : "orange",
+                "title" : "Network systems",
+                "value" : "09:00–09:50"
+              },
+              {
+                "cancelled" : true,
+                "subtitle" : "R 1.07 · Smith",
+                "title" : "English",
+                "value" : "10:00–10:50"
+              }
+            ],
+            "style" : "list",
+            "tint" : "teal",
+            "title" : "Lessons"
+          },
+          {
+            "icon" : "cloud.sun",
+            "id" : "weather",
+            "items" : [
+              {
+                "title" : "Now",
+                "value" : "5°C"
+              },
+              {
+                "title" : "Tomorrow",
+                "value" : "3–8°C"
+              }
+            ],
+            "style" : "metrics",
+            "subtitle" : "Dry, 3–8°C",
+            "tint" : "blue",
+            "title" : "Weather"
+          },
+          {
+            "icon" : "graduationcap",
+            "id" : "briefing",
+            "items" : [
+
+            ],
+            "style" : "text",
+            "text" : "Three lessons, one **substitution** and **English is cancelled**.",
+            "tint" : "gray",
+            "title" : "Tomorrow at school"
+          }
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:45:10",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 12,
+              "up" : 12
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 31,
+              "\/srv\/media" : 64
+            },
+            "id" : "nas",
+            "kind" : "nas",
+            "load" : 0.42,
+            "mem_pct" : 38,
+            "name" : "nas",
+            "reachable" : true,
+            "temp" : 41.5,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 0
+            }
+          },
+          {
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 8,
+              "up" : 8
+            },
+            "cpu_count" : 4,
+            "disks" : {
+              "\/" : 47
+            },
+            "id" : "pi",
+            "kind" : "raspberry-pi",
+            "load" : 0.9,
+            "mem_pct" : 55,
+            "name" : "pi",
+            "reachable" : true,
+            "temp" : 52,
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 3
+            }
+          }
+        ],
+        "last_message" : {
+          "from" : "agent",
+          "id" : 1762288000000000000,
+          "job" : "digest",
+          "status" : "OK",
+          "text" : "All hosts fine. Backups ran at 04:45.",
+          "ts" : "2026-11-04T06:00:00Z"
+        },
+        "pending" : [
+
+        ],
+        "problems" : [
+
+        ],
+        "status" : "ok",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  },
+  "state-unknown-fields.json" : {
+    "detail" : "nas: disk \/ at 92%",
+    "headline" : "1 problem.",
+    "level" : "alarm",
+    "sections" : {
+      "calm" : [
+        "day",
+        "home"
+      ],
+      "overkill" : [
+        "day",
+        "machines",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
+      "standard" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards"
+      ]
+    },
+    "tabs" : [
+      "actions",
+      "chat",
+      "lab",
+      "settings",
+      "today"
+    ],
+    "warnings" : 1,
+    "widget" : {
+      "fetched" : "<now>",
+      "info" : {
+        "api" : 1,
+        "auth" : "identity",
+        "commands" : [
+          "\/pending",
+          "\/last",
+          "\/memory",
+          "\/usage",
+          "\/help"
+        ],
+        "features" : [
+          "actions",
+          "cards",
+          "chat",
+          "deals",
+          "documents",
+          "hosts",
+          "run-actions",
+          "search",
+          "services",
+          "share",
+          "status"
+        ],
+        "name" : "Demo homelab",
+        "server" : "homelab-demo",
+        "standing_approvals" : true,
+        "version" : "1.0.0"
+      },
+      "serverID" : "0A1B2C3D-0000-4000-8000-000000000001",
+      "serverName" : "Demo homelab",
+      "state" : {
+        "busy" : [
+          "chat",
+          "3"
+        ],
+        "cards" : [
+          {
+            "icon" : "sparkles",
+            "id" : "c1",
+            "items" : [
+              {
+                "progress" : 1,
+                "tint" : "gray",
+                "title" : "a"
+              },
+              {
+                "progress" : 0,
+                "title" : "b",
+                "url" : "https:\/\/example.com\/b",
+                "value" : "12"
+              },
+              {
+                "title" : "c"
+              }
+            ],
+            "style" : "list",
+            "tint" : "gray",
+            "title" : "Future card"
+          },
+          {
+            "id" : "c2",
+            "items" : [
+
+            ],
+            "style" : "metrics",
+            "tint" : "teal"
+          }
+        ],
+        "checked" : "2026-11-04T21:28:00Z",
+        "hosts" : [
+          {
+            "backup" : {
+              "last" : "2026-11-04T04:00:00",
+              "result" : "success"
+            },
+            "checked" : "2026-11-04T21:28:00Z",
+            "containers" : {
+              "total" : 4,
+              "up" : 3
+            },
+            "cpu_count" : 8,
+            "disks" : {
+              "\/" : 92,
+              "\/negative" : 0,
+              "\/over" : 100
+            },
+            "flags" : [
+              "undervoltage_now",
+              "flux_capacitor_low"
+            ],
+            "id" : "nas",
+            "kind" : "quantum-computer",
+            "mem_pct" : 100,
+            "name" : "nas",
+            "updates" : {
+              "reboot_required" : false,
+              "upgradable" : 5
+            }
+          },
+          {
+            "flags" : [
+              "throttled_now"
+            ],
+            "id" : "pi",
+            "load" : 0.3,
+            "mem_pct" : 55,
+            "name" : "pi",
+            "reachable" : true,
+            "temp" : 48.5
+          }
+        ],
+        "last_message" : {
+          "from" : "agent",
+          "id" : 1762290600000000002,
+          "job" : "watchdog",
+          "status" : "ALERT",
+          "text" : "hello",
+          "ts" : "2026-11-04T21:10:00Z"
+        },
+        "pending" : [
+          {
+            "action" : "restart",
+            "arg" : "nas smb",
+            "buttons" : {
+              "approve" : "HOMELAB_APPROVE_u1_d000000000000001",
+              "deny" : "HOMELAB_DENY_u1_d000000000000003"
+            },
+            "created" : "2026-11-04T21:00:00Z",
+            "id" : "u1",
+            "job" : "watchdog",
+            "reason" : "smb down"
+          },
+          {
+            "buttons" : {
+
+            },
+            "id" : "u2"
+          }
+        ],
+        "problems" : [
+          {
+            "host" : "nas",
+            "id" : "p1",
+            "severity" : "problem",
+            "since" : "2026-11-04T20:00:00Z",
+            "text" : "nas: disk \/ at 92%"
+          },
+          {
+            "id" : "p2",
+            "severity" : "warning",
+            "text" : "nas: fan slow"
+          }
+        ],
+        "status" : "warning",
+        "time" : "2026-11-04T21:30:00Z"
+      }
+    }
+  }
+}

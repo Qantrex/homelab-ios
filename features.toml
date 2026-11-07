@@ -1176,6 +1176,19 @@ docs = ["docs/FEATURES.md#features"]
 not_needed = { tests = "it checks itself on every scripts/lint run", device_tests = "runs on a computer" }
 depends_on = ["python3"]
 
+[[feature]]
+id = "owner-invariance"
+name = "Owner invariance goldens"
+area = "Tooling"
+status = "shipped"
+since = "2026-11-07"
+summary = "Golden files freeze the app as its owner uses it (docs/plans/MODULAR.md, M0): an owner-shaped servers.json and settings.json save back byte for byte, and for every state fixture the tabs, Today's sections per density, the headline and the widget snapshot stay the same. A failing golden means stop and ask the owner; `UPDATE_GOLDENS=1 scripts/test-linux` rewrites them only for an approved change."
+sources = ["Tests/Goldens/owner-servers.json", "Tests/Goldens/owner-settings.json", "Tests/Goldens/owner-observed.json"]
+tests = ["OwnerInvarianceTests"]
+docs = ["docs/plans/MODULAR.md#4-owner-invariance-guardrails"]
+not_needed = { device_tests = "kit only; the owner checks the phone with scripts/phone" }
+depends_on = []
+
 # ==================================================================================================== dependencies
 # kind: toolchain | sdk | account | install | runtime | ios-framework | server-side | ci | tooling
 # pins: "file: text" that must still be in that file (a version, a digest, a SHA). A bump without a registry update

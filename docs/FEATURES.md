@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 71 | 68 | 2 | 1 | 36 | 3 |
+| 72 | 69 | 2 | 1 | 36 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -166,7 +166,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
-### Tooling (4)
+### Tooling (5)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -174,6 +174,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Screenshots (simulator in CI, phone over USB)](#screenshots) | shipped | – | n/a | n/a | 1 |
 | [Look at and drive the installed app (scripts/phone)](#phone-cli) | shipped | – | n/a | n/a | 1 |
 | [This feature registry](#feature-registry) | shipped | – | n/a | n/a | 1 |
+| [Owner invariance goldens](#owner-invariance) | shipped | – | 1 | n/a | 1 |
 
 ## Gaps
 
@@ -1428,6 +1429,19 @@ CI (free runners only): Linux job with lint, HomelabKit tests against the fixtur
 | Phone (DeviceTest.md) | n/a: runs on a computer |
 | Docs | [docs/FEATURES.md#features](FEATURES.md#features) |
 | Depends on | [python3](#dep-python3) |
+
+### owner-invariance
+
+**Owner invariance goldens** · Tooling · shipped · since 2026-11-07
+
+Golden files freeze the app as its owner uses it (docs/plans/MODULAR.md, M0): an owner-shaped servers.json and settings.json save back byte for byte, and for every state fixture the tabs, Today's sections per density, the headline and the widget snapshot stay the same. A failing golden means stop and ask the owner; `UPDATE_GOLDENS=1 scripts/test-linux` rewrites them only for an approved change.
+
+| | |
+|---|---|
+| Sources | [owner-servers.json](../Tests/Goldens/owner-servers.json), [owner-settings.json](../Tests/Goldens/owner-settings.json), [owner-observed.json](../Tests/Goldens/owner-observed.json) |
+| Tests | `OwnerInvarianceTests` |
+| Phone (DeviceTest.md) | n/a: kit only; the owner checks the phone with scripts/phone |
+| Docs | [docs/plans/MODULAR.md#4-owner-invariance-guardrails](plans/MODULAR.md#4-owner-invariance-guardrails) |
 
 ## Dependencies
 
