@@ -53,8 +53,9 @@ ensure_ddi() { pmd mounter auto-mount >/dev/null 2>&1 || true; }   # fails harml
 launch() {   # launch BUNDLE ARGS…
   local bundle=$1; shift
   ensure_ddi
+  # return, not die: shot retries a failed launch, and die would end the whole script silently (its stderr is hidden)
   pmd developer dvt launch --userspace "$bundle $*" >/dev/null 2>&1 \
-    || die "launch failed: is the phone unlocked?"
+    || { echo "phone: launch failed: is the phone unlocked?" >&2; return 1; }
 }
 
 shot() {   # shot NAME ARGS…
