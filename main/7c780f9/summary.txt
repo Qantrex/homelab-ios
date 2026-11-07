@@ -1,4 +1,4 @@
-sim-smoke: 28 screenshots ok, 0 failed, 0 crash reports
+sim-smoke: 37 screenshots ok, 0 failed, 0 crash reports
 main simulator:  iPhone 17 Pro
 small simulator: iPhone 17e
 core shots (01-05 demo light): ok
@@ -30,3 +30,12 @@ core shots (01-05 demo light): ok
   ok:     26-demo-form-event-xxl
   ok:     27-demo-host-media-dark
   ok:     28-demo-today-overkill-snarky
+  ok:     29-demo-ha-only
+  ok:     30-first-run-welcome-light
+  ok:     31-first-run-found-light
+  ok:     32-first-run-welcome-dark
+  ok:     33-first-run-found-dark
+  ok:     34-first-run-welcome-xxl
+  ok:     35-first-run-found-xxl
+  ok:     36-demo-rule-hidden
+  ok:     37-demo-rule-shown
