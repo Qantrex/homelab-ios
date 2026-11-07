@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 96 | 70 | 25 | 1 | 41 | 3 |
+| 97 | 70 | 26 | 1 | 41 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -166,7 +166,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, **I2**, **I4**, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (18)
+### Server (19)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -185,8 +185,9 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [AdGuard Home source](#source-adguard) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Sonarr source](#source-sonarr) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Radarr source](#source-radarr) | partial | `status`, `cards` | 2 | n/a | 2 |
+| [Bridge source: game servers](#source-gameserver) | partial | `status`, `cards` | 4 | n/a | 2 |
 | [qBittorrent source](#source-qbittorrent) | partial | `status`, `cards` | 2 | n/a | 2 |
-| [Import from Homepage](#homepage-import) | partial | `services`, `status`, `cards` | 7 | n/a | 2 |
+| [Import from Homepage](#homepage-import) | partial | `services`, `status`, `cards` | 8 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -224,11 +225,11 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 
 | Kind | Entry | Features |
 |---|---|---|
-| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
+| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
+| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
@@ -289,7 +290,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
@@ -1749,6 +1750,23 @@ The bridge's `radarr` type reads the v3 API with an X-Api-Key: health as problem
 | Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
 | Notes | Recordings in the shapes of Radarr v6.4.4, API v3 (made up names). |
 
+### source-gameserver
+
+**Bridge source: game servers** · Server · partial · since 2026-11-07
+
+Source type `gameserver`: Minecraft Java (Server List Ping over TCP) and Valve A2S servers (A2S_INFO, optionally A2S_PLAYER, with the challenge) as one Lab list card, a row per server: Running / Sleeping / Starting / Offline, players, version, a few player names, the MOTD cleaned of formatting codes, control characters and links. Status pings only, never a login, so a sleeping server behind itzg/mc-router is not woken; no wake action. A server that does not answer is a problem only with `expect_up`. Each server gets at most 4 s, answers are capped, hostile replies are just Offline. Homepage's `minecraft` widget imports as one server.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [gameserver.py#collect](../server/sources/gameserver.py), [test_source_gameserver.py](../server/test_source_gameserver.py) |
+| Tests | `server/test_source_gameserver.py::MinecraftSource`, `server/test_source_gameserver.py::A2SSource`, `server/test_source_gameserver.py::MixedAndConfig`, `server/test_sources.py::SourceModuleRules` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#game-servers](REFERENCE_SERVER.md#game-servers), [docs/SERVER-SETUP.md#sources](SERVER-SETUP.md#sources) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | The one source that opens its own sockets: SourceModuleRules.OWN_SOCKETS allows `socket` for it, and its tests use fake TCP and UDP servers on localhost instead of recordings. Left out on purpose: a wake action (a login wakes the backend; owner decision 6 wants actions off by default per item) and Homepage's `gamedig` widget. |
+
 ### source-qbittorrent
 
 **qBittorrent source** · Server · partial · since 2026-11-07
@@ -1770,16 +1788,16 @@ The bridge's `qbittorrent` type reads the WebUI API v2 with an API key (5.2 and 
 
 **Import from Homepage** · Server · partial · since 2026-11-07
 
-A `homepage` key in the Homelab Bridge's config reads Homepage's services.yaml at start: every service with an http(s) href becomes a launcher entry (name, url, innermost group, an SF Symbol for well-known icon names, description); `uptimekuma`, `gatus`, `proxmox`, `pihole` (v6 only; a v5 widget is logged as not supported), `adguard`, `sonarr`, `radarr` and `qbittorrent` widgets become sources of those types, never with actions (more keys per source, a pause too, by hand with `extra`); other widgets are logged as not yet supported. Keys are taken only as the names of their HOMEPAGE_VAR_/HOMEPAGE_FILE_ placeholders; a key written in services.yaml for an imported widget stops the start with a message that never prints it. Needs PyYAML (in the Docker image); without it the start says so.
+A `homepage` key in the Homelab Bridge's config reads Homepage's services.yaml at start: every service with an http(s) href becomes a launcher entry (name, url, innermost group, an SF Symbol for well-known icon names, description); `uptimekuma`, `gatus`, `proxmox`, `pihole` (v6 only; a v5 widget is logged as not supported), `adguard`, `sonarr`, `radarr`, `qbittorrent` and `minecraft` (a `gameserver` source) widgets become sources of those types, never with actions (more keys per source, a pause too, by hand with `extra`); other widgets are logged as not yet supported. Keys are taken only as the names of their HOMEPAGE_VAR_/HOMEPAGE_FILE_ placeholders; a key written in services.yaml for an imported widget stops the start with a message that never prints it. Needs PyYAML (in the Docker image); without it the start says so.
 
 | | |
 |---|---|
 | Server | `services`, `status`, `cards`, `GET /services`, `GET /state`, `services`, `state.problems`, `state.cards` |
 | Sources | [_homepage.py#convert](../server/sources/_homepage.py), [reference_server.py#Config](../server/reference_server.py), [test_homepage_import.py](../server/test_homepage_import.py), [homepage-services.yaml](../server/examples/homepage-services.yaml), [sources-homepage.json](../server/examples/sources-homepage.json) |
-| Tests | `server/test_homepage_import.py::HomepageNormal`, `server/test_homepage_import.py::HomepageOdd`, `server/test_homepage_import.py::HomepageLiteralKeys`, `server/test_homepage_import.py::HomepageConfig`, `server/test_homepage_import.py::PyYAMLMissing`, `server/test_homepage_import.py::HomepageBridge`, `server/test_homepage_import.py::HomepageNormal.test_actions_only_by_hand` |
+| Tests | `server/test_homepage_import.py::HomepageNormal`, `server/test_homepage_import.py::HomepageOdd`, `server/test_homepage_import.py::HomepageLiteralKeys`, `server/test_homepage_import.py::HomepageConfig`, `server/test_homepage_import.py::PyYAMLMissing`, `server/test_homepage_import.py::HomepageBridge`, `server/test_homepage_import.py::HomepageNormal.test_actions_only_by_hand`, `server/test_homepage_import.py::HomepageMinecraft` |
 | Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
 | Docs | [docs/SERVER-SETUP.md#import-from-homepage](SERVER-SETUP.md#import-from-homepage), [docs/REFERENCE_SERVER.md#config-keys](REFERENCE_SERVER.md#config-keys) |
-| Depends on | [server-sources](#server-sources), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent), [pyyaml](#dep-pyyaml) |
+| Depends on | [server-sources](#server-sources), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent), [source-gameserver](#source-gameserver), [pyyaml](#dep-pyyaml) |
 | Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
 | Notes | docs/plans/MODULAR.md M1.8. A config pre-processor, not a source type (docs/BRIDGE.md#how-it-runs). PyYAML only in the Docker image (owner decision 3); the YAML tests skip without it. New sources that Homepage has a widget for add a translator to WIDGETS in server/sources/_homepage.py. |
 
@@ -1900,8 +1918,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 28 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 44 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 29 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 45 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -1919,7 +1937,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 21 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 22 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md), [build-bridge-image](../scripts/build-bridge-image) | [bridge-docker](#bridge-docker), [ci-checks](#ci-checks) | 2 |
 | <a id="dep-bridge-base-image"></a>**Python 3.14 on Alpine (Homelab Bridge base image)** | server-side | python:3.14.10-alpine3.24, pinned by its multi-arch index digest (amd64, arm64) | [Dockerfile](../server/Dockerfile) | [bridge-docker](#bridge-docker) | 1 |
 | <a id="dep-pyyaml"></a>**PyYAML (Homelab Bridge image only)** | server-side | 6.0.3, musllinux wheels for CPython 3.14 (amd64, arm64) by SHA-256 | [requirements-image.txt](../server/requirements-image.txt) | [bridge-docker](#bridge-docker), [homepage-import](#homepage-import) | 2 |
@@ -1990,8 +2008,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 4 |  |  | 1 | 16 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 5 | 1 |  |  | 18 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 4 |  |  | 1 | 17 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 5 | 1 |  |  | 19 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -2009,7 +2027,7 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  | 1 | 17 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  | 1 | 18 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 1 |
 | Python 3.14 on Alpine (Homelab Bridge base image) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
 | PyYAML (Homelab Bridge image only) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |

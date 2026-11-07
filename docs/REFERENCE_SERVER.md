@@ -125,7 +125,7 @@ The config is JSON. Keys that start with `_` are comments and are ignored. Unkno
 | `chat_timeout` | `120` | Seconds the chat command may run |
 | `state_dir` | `~/.local/state/homelab-companion` | Chat history (`messages.jsonl`, last 1000) |
 | `sources[]` | none | Homelab Bridge sources: other services' APIs as problems, hosts, cards and services. See [Sources](#sources) |
-| `homepage` | none | `{"file": "/path/services.yaml"}`: Homepage's services as launcher entries, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr and qBittorrent widgets as sources (never with actions). Needs PyYAML. See [SERVER-SETUP.md → Import from Homepage](SERVER-SETUP.md#import-from-homepage) |
+| `homepage` | none | `{"file": "/path/services.yaml"}`: Homepage's services as launcher entries, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr, qBittorrent and Minecraft widgets as sources (never with actions). Needs PyYAML. See [SERVER-SETUP.md → Import from Homepage](SERVER-SETUP.md#import-from-homepage) |
 
 `insecure: true` skips TLS certificate checks for that one URL (for self-signed local UIs such as Cockpit).
 Checks never use an HTTP proxy from the environment.
@@ -554,6 +554,43 @@ It adds the card `downloads` in Lab (each running download with progress, speed 
 title has the total speeds) and warnings for torrents in error or with missing files and for a lost connection.
 
 `server/examples/sources-dns-media.json` has all five of these types.
+
+### Game servers
+
+Type `gameserver` shows Minecraft Java servers and every server that answers Valve's A2S query (Valheim, Palworld,
+CS2, Rust, ARK and more) as one card. It only **pings** and never wakes or changes anything: Minecraft gets the Server
+List Ping (handshake, status request, read, close; never a login), Valve servers get A2S_INFO. So an
+`itzg/mc-router` in front of a sleeping Paper server answers the ping itself and the backend stays asleep. There is no
+wake action (a login wakes a server, and the bridge never sends one).
+
+```json
+{"name": "Games", "type": "gameserver", "servers": [
+  {"name": "Survival", "type": "minecraft", "host": "mc.example.com", "port": 25565},
+  {"name": "Valheim", "type": "a2s", "host": "nas.tail1234.ts.net", "port": 2457, "players": true, "expect_up": true}
+]}
+```
+
+| Key (per server) | Default | Meaning |
+|---|---|---|
+| `name`, `type`, `host` | required | The shown name (unique in the source); `minecraft` or `a2s`; a host name or IP address |
+| `port` | `25565` / `27015` | For `a2s` the **query** port, which for some games is not the game port (Valheim: game port + 1) |
+| `players` | `false` | `a2s` only: also ask A2S_PLAYER for the player names (Minecraft sends a sample by itself) |
+| `handshake_host` | `host` | `minecraft` only: the address the ping claims to connect to, for a router that picks the backend by name |
+| `expect_up` | `false` | A server that does not answer is a problem. Off by default: game servers sleep and stop, so Offline is normal |
+
+One list card in Lab, "2 of 3 up", a row per server: `Running · 2/10 · Paper 26.3 · alice, bob +3` (at most five
+names), `Sleeping · 0/0 · mc-router · <MOTD>` when the MOTD says the server sleeps (a router answers for it; also
+"Starting" for a MOTD that says starting or waking), `Offline` when nothing answers. Bots in A2S don't count as
+players. A problem exists only for an `expect_up` server that does not answer, and it comes back with the next read
+that fails, so don't set it for a server that restarts nightly. The source itself is never failing because a game
+server is down.
+
+The servers are asked in parallel, each for at most four seconds in all (DNS included), and a reply that is too big,
+cut short, not JSON, not what the protocol says or sent one byte at a time is just Offline. MOTDs, version and player
+names are shown as one line: `§` formatting codes, control characters and invisible characters are removed, links
+become `<url>`. A Valve server since 2020 answers with a challenge first; that is handled. Only the plain ping is
+used, so an `a2s` server must have its query port reachable from the bridge over UDP. `server/sources/gameserver.py`
+has the details. Homepage's `minecraft` widget imports as one server; `gamedig` is not imported.
 
 ### Source actions
 

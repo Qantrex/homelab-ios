@@ -221,13 +221,14 @@ are two sources with different names.
 |---|---|---|
 | Uptime Kuma | `uptime-kuma` | Down monitors as problems, a card "11 of 12 up" |
 | Gatus | `gatus` | Failing endpoints as problems, a card |
+| Game servers (Minecraft Java, Valheim, Palworld, CS2, ...) | `gameserver` | A card with each server's state, players and version. Only pings, never wakes a sleeping server |
 | A script or another server that writes JSON | `json` ([REFERENCE_SERVER.md → JSON feed](REFERENCE_SERVER.md#json-feed)) | Whatever it sends: problems, hosts, cards, services. On the bridge's own machine, `cards_dir` is simpler |
 | Docker (through a socket proxy) | `docker` | Unhealthy, restarting and crashed containers as problems |
 | Proxmox VE | `proxmox` | Nodes as hosts with 24 h history, VMs and containers per node |
 | Pi-hole or AdGuard Home | `pihole`, `adguard` | The ad blocking card (queries, blocked, on or off), a warning while it is off |
 | Sonarr, Radarr | `sonarr`, `radarr` | Health problems, the download queue with progress, what comes in the next days |
 | qBittorrent | `qbittorrent` | Running downloads with progress, torrents in error |
-| Homepage (its `services.yaml`) | the `homepage` key | Its services in the launcher, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr and qBittorrent widgets as sources ([Import from Homepage](#import-from-homepage)) |
+| Homepage (its `services.yaml`) | the `homepage` key | Its services in the launcher, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr, qBittorrent and Minecraft widgets as sources ([Import from Homepage](#import-from-homepage)) |
 
 Each source, its keys and the access it needs:
 
@@ -236,6 +237,7 @@ Each source, its keys and the access it needs:
 | `json` | One URL that answers a subset of `/state` (your own script, or another Companion server) ([JSON feed](REFERENCE_SERVER.md#json-feed)) | `url`; `key_env`, `key_header` | None, or a token sent as a bearer token (or in `key_header`) | the shape of `server/openapi.yaml` |
 | `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services with `services: true` ([Uptime Kuma](REFERENCE_SERVER.md#uptime-kuma)) | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
 | `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab ([Gatus](REFERENCE_SERVER.md#gatus)) | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
+| `gameserver` | Minecraft Java (Server List Ping) and Valve A2S servers: online or offline, players, version, MOTD. A card in Lab; a down server is a problem only with `expect_up`. Status pings only, never a login, so a sleeping server behind `mc-router` stays asleep ([Game servers](REFERENCE_SERVER.md#game-servers)) | `servers` (`name`, `type`, `host`, `port`, `players`, `expect_up`) | None: the servers' public status ports (TCP for Minecraft, UDP for A2S) | Java 1.21 and A2S as documented by Valve |
 | `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems ([Docker](REFERENCE_SERVER.md#docker)) | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers/json` | Engine 29 (API 1.52) and older |
 | `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list ([Proxmox](REFERENCE_SERVER.md#proxmox)) | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) | 9.0 |
 | `pihole` | Queries, blocked and blocking as the `dns` card in Lab, the top blocked domains; blocking off = warning ([Pi-hole](REFERENCE_SERVER.md#pi-hole)) | `url`, `key_env`, `top`, `actions` | A Pi-hole v6 app password | FTL v6.8 |
@@ -286,6 +288,7 @@ writing `services` and `sources` again:
 | `adguard` | `adguard` | `url`; `username` + `password` (both, as Homepage sends HTTP Basic only then) become `username` + `password_env` |
 | `sonarr`, `radarr` | `sonarr`, `radarr` | `url`; `key` (the API key) becomes `key_env`. `enableQueue` is Homepage's own view: the bridge's queue card is always on (`"queue": 0` with `extra` turns it off) |
 | `qbittorrent` | `qbittorrent` | `url`; `key` (an API key, qBittorrent 5.2 and newer) becomes `key_env`; without `key`, `username` + `password` become `username` + `password_env`, as Homepage logs in only then |
+| `minecraft` | `gameserver` | `url` (`udp://host:port`) becomes one server named like the service; the bridge pings over TCP, status only. `gamedig` is not imported (its server types are Gamedig's own names): write an `a2s` server by hand |
 | `jellyfin`, `plex`, others | not yet | Logged as not yet supported; their keys are never read |
 
 Imported sources never get `actions`: the pause button of a Pi-hole or AdGuard stays opt-in, written by hand in the

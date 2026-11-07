@@ -46,6 +46,10 @@ Security review fixes:
   Diagnostics. With sources, identity login needs `allowed_logins`. Uptime Kuma's `services` is off by default. The
   image refuses Tailscale userspace mode with the login header; the socket proxy is wollomatic's with only
   `GET /containers/json`; the compose image tag is `local` or a pinned version, never `latest`.
+- Homelab Bridge: a `gameserver` source for Minecraft Java and Valve A2S servers (Valheim, Palworld, CS2, ...): one
+  Lab card with each server's state, players, version and MOTD. It only sends status pings, never a login, so a
+  sleeping server behind `itzg/mc-router` stays asleep; there is no wake action. A server that is down is only a
+  problem with `expect_up`. Homepage's `minecraft` widget imports as one server.
 
 App:
 

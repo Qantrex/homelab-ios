@@ -80,6 +80,7 @@ your tailnet (`homelab-bridge`). No port opens on your Docker host.
 | AdGuard Home | `adguard` | Works |
 | Sonarr, Radarr (the API key) | `sonarr`, `radarr` | Works |
 | qBittorrent (an API key, or a WebUI login) | `qbittorrent` | Works |
+| Game servers (Minecraft Java, Valheim, Palworld, CS2, ...) | `gameserver` | Works: status ping only, never wakes a sleeping server |
 | A Homepage `services.yaml` | the `homepage` key ([import](SERVER-SETUP.md#import-from-homepage)) | Works: its services in the launcher, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr and qBittorrent widgets as sources |
 
 Details per source: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources). For Docker, `docker compose --profile docker
