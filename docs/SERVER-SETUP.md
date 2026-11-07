@@ -170,6 +170,9 @@ Notes:
   none 60 seconds after the start, the bridge logs an `ERROR` and exits with code 3; Docker
   restarts it and it tries again. If it cannot read `/proc/net/dev`, it refuses the header the same way. `HOMELAB_TAILSCALE_WAIT=<seconds>` changes the 60. `HOMELAB_ALLOW_USERSPACE=1` in
   `docker/bridge.env` turns both into a `WARNING` and starts it anyway; do that only with the ACL below, and with tokens instead of the login header if you can.
+  These checks run only in the image and only for a `Tailscale-…` login header. Running the bridge some other way
+  (or with another header, such as `Remote-User`), make sure nothing but your proxy can reach its port: never behind a
+  userspace Tailscale, which lets any tailnet device past `tailscale serve`.
 - **Tokens** for tagged devices or `curl`: `HOMELAB_TOKENS` in `docker/bridge.env`. Devices with tags get no login
   header from `tailscale serve`.
 - **ACLs.** Let your devices reach only port 443 of the bridge machine. Tag it `tag:bridge` (add the tag below to
