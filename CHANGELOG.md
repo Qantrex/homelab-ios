@@ -22,6 +22,8 @@ Security review fixes:
 
 App:
 
+- `scripts/phone-shots` keeps your servers, Home Assistant token and pins: it no longer starts with
+  `-HomelabResetState YES` (now `--reset`, opt-in, with `HOMELAB_SERVER`/`HOMELAB_PINS` to set them back at the end).
 - Deals (feature `deals`, optional endpoint `GET /api/v1/deals`): used-market ads the server found clearly below their
   market value and judged. A Deals tile on Actions (with "N to act on" in gold when there are fresh strong ones) opens
   the list: "Act now", "Worth a look", "Skipped", each deal with its price, "−50 %" below the market value, the

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Usage: scripts/phone-shots [--no-install] [OUT_DIR]   (default OUT_DIR: shots-phone/)
+# Usage: scripts/phone-shots [--no-install] [--reset] [OUT_DIR]   (default OUT_DIR: shots-phone/)
+# Your own servers, tokens and settings stay: the shots only add the demo servers and take them away again at the end.
+# --reset starts from a clean app (-HomelabResetState YES) and so DELETES your servers and Home Assistant token; then
+# set HOMELAB_SERVER=<your Homelab API URL> (and HOMELAB_PINS=light.a,script.b) to get the server back at the end.
+# The shots do change Today's density and personality and set them to Standard/Off at the end.
 # Screenshots from a real iPhone over USB, from Linux: builds and installs the app (xtool dev), launches it in demo
 # mode on every tab and saves a PNG per tab. About 2 minutes, instead of ~25 for the CI simulator run.
 # Needs once: the iPhone plugged in, unlocked (Auto-Lock off while testing), trusted, Developer Mode on, usbmuxd
@@ -11,7 +15,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 install=1
-if [ "${1:-}" = --no-install ]; then install=0; shift; fi
+reset=0
+while [ $# -gt 0 ]; do
+  case $1 in
+    --no-install) install=0; shift ;;
+    --reset) reset=1; shift ;;
+    *) break ;;
+  esac
+done
 OUT=${1:-shots-phone}
 PMD_VERSION=11.50.0
 WAIT=${WAIT:-4}               # seconds from launch to screenshot
@@ -96,7 +107,11 @@ shot() {   # shot NAME LAUNCH_ARGS...
   echo "FAIL $file (is the phone unlocked?)"
 }
 
-shot demo-today    -HomelabResetState YES -HomelabDemo YES -HomelabTab today
+if [ "$reset" = 1 ]; then
+  shot demo-today -HomelabResetState YES -HomelabDemo YES -HomelabTab today
+else
+  shot demo-today -HomelabDemo YES -HomelabTab today
+fi
 wait_s=$WAIT
 for tab in actions chat lab settings; do
   shot "demo-$tab" -HomelabDemo YES -HomelabTab "$tab"
@@ -115,5 +130,11 @@ shot demo-deals-detail   -HomelabDemo YES -HomelabDeals detail
 # Leave the phone as it was.
 shot demo-today-standard -HomelabDemo YES -HomelabTab today -HomelabDensity standard -HomelabPersonality off
 # Back to the owner's real server: the demo servers go away again (they were added by -HomelabDemo YES).
-pmd developer dvt launch --userspace "$bundle -HomelabDemo NO -HomelabTab today" >/dev/null 2>&1 || true
+back="-HomelabDemo NO -HomelabTab today"
+[ -n "${HOMELAB_SERVER:-}" ] && back="$back -HomelabServer $HOMELAB_SERVER"
+[ -n "${HOMELAB_PINS:-}" ] && back="$back -HomelabPins $HOMELAB_PINS"
+pmd developer dvt launch --userspace "$bundle $back" >/dev/null 2>&1 || true
+if [ "$reset" = 1 ] && [ -z "${HOMELAB_SERVER:-}" ]; then
+  echo "NOTE: --reset deleted your servers; add them again in Settings (or rerun with HOMELAB_SERVER=…)"
+fi
 echo "== done: $OUT/"
