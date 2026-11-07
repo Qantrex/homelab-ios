@@ -1022,8 +1022,11 @@ class RealApp:
         return f
 
     def info(self, query, body):
-        return 200, {"api": 1, "name": self.cfg.name, "server": SERVER_NAME, "version": VERSION,
-                     "features": self.features(), "auth": self.auth.mode}
+        out = {"api": 1, "name": self.cfg.name, "server": SERVER_NAME, "version": VERSION,
+               "features": self.features(), "auth": self.auth.mode}
+        if self.sources:   # only with a `sources` key; without it /info stays as it was (NoSourcesGolden)
+            out["sources"] = self.sources.status()
+        return 200, out
 
     def state(self, query, body):
         snap = self.collector.get()

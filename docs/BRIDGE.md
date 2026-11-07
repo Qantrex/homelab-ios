@@ -120,5 +120,6 @@ start). `RealApp` starts a `sources.Runner`: every 0.25 s it starts each source 
 in its own daemon thread. A run that takes longer than `every + timeout` shows as `<name>: timeout` until it ends.
 `/state` and `/services` add `Runner.merged()`, the last result of every source, after the server's own problems,
 hosts and cards; the status is the worst of all problems. `/info` lists `cards` and `services` when a source sends
-any. `Runner.status()` keeps per source `ok`, `error`, `checked` and `insecure` for `/info` and Diagnostics (task
-M1.2).
+any, and `sources`: `Runner.status()`, per source `state` (`ok`, `failing`, `never`), `error`, `checked`, `last_ok`
+and `insecure` ([API.md → Source status](API.md#source-status-sources-in-info); tests in
+`server/test_source_status.py`).

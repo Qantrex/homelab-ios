@@ -1182,7 +1182,24 @@ tests = ["server/test_sources.py::ConfigRules", "server/test_sources.py::FetchRu
 docs = ["docs/REFERENCE_SERVER.md#sources", "docs/BRIDGE.md#homelab-bridge-adding-a-source"]
 not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
 depends_on = ["python3", "reference-server"]
-notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
+notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is served in /info by source-status (M1.2)."
+
+[[feature]]
+id = "source-status"
+name = "Source status in /info"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "A Homelab Bridge lists its sources in GET /info under an optional `sources`: per source its name, type, state (ok, failing, never), the last run (`checked`), the last good run (`last_ok`), the short error while failing (no URLs, no keys) and `insecure: true` when it skips the TLS check, as a warning. A server without sources leaves the field out; `scripts/check-live-api` warns for failing and insecure sources."
+endpoints = ["GET /info"]
+api_fields = ["info.sources"]
+sources = ["server/sources/__init__.py#status", "server/reference_server.py#info", "server/test_source_status.py"]
+tests = ["server/test_source_status.py::StatusRows", "server/test_source_status.py::InfoSources", "InfoSourcesTests",
+         "server/test_reference_server.py::NoSourcesGolden"]
+docs = ["docs/API.md#source-status-sources-in-info", "docs/REFERENCE_SERVER.md#sources"]
+not_needed = { device_tests = "server side; the app doesn't show it yet (Diagnostics, MODULAR.md M2.4)" }
+depends_on = ["server-sources"]
+notes = "docs/plans/MODULAR.md M1.2. The app ignores the field for now (InfoSourcesTests checks any shape of it leaves ServerInfo unchanged); M2.4 shows it in Diagnostics. Owner decision 5: insecure sources carry the flag here and in Diagnostics."
 
 [[feature]]
 id = "live-api-check"
