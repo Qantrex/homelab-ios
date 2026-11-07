@@ -109,7 +109,9 @@ again at the next tick, so the card shows the change. The `actions` value is per
 - Stdlib only. Import the helpers from `.` (`as_list`, `as_dict`, `as_text`, `SourceError`), nothing from
   `reference_server`.
 - Talk to the upstream only through `fetch`; read keys only with `fetch.secret()`. No `os.environ`, `subprocess`,
-  `urllib`, `socket` or `open(` (a test greps for them).
+  `urllib`, `socket` or `open(` (a test greps for them). The one exception is a type that doesn't speak HTTP:
+  `gameserver` opens its own TCP and UDP sockets (`SourceModuleRules.OWN_SOCKETS`), and its tests use fake servers
+  on localhost instead of a recording.
 - Read-only. `collect` never calls an endpoint that changes something upstream (a login and the logout after it are
   fine: Pi-hole and qBittorrent). Writes happen only in `act`, for an item the config lists (see
   [Actions](#actions-optional-off-by-default)).

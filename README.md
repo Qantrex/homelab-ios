@@ -68,7 +68,7 @@ account. Pick one of three setups; [docs/GETTING-STARTED.md](docs/GETTING-STARTE
 | You have | Use | Today then shows |
 |---|---|---|
 | Home Assistant | Add it directly with a long-lived token | Home tiles, and on its own (no other server) a headline that says what is on and what doesn't answer ("1 light on", "Bedroom fan unavailable") |
-| Uptime Kuma, Gatus, Docker, Proxmox, Pi-hole, *arr | The **Homelab Bridge**: the [reference server](docs/REFERENCE_SERVER.md) with sources, in Docker with a Tailscale sidecar ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md#docker)). Sources for Uptime Kuma, Gatus, Docker, Proxmox, Pi-hole, AdGuard, Sonarr, Radarr, qBittorrent and JSON feeds | Problems from your services, Lab with your machines, widgets |
+| Uptime Kuma, Gatus, Docker, Proxmox, Pi-hole, *arr, game servers | The **Homelab Bridge**: the [reference server](docs/REFERENCE_SERVER.md) with sources, in Docker with a Tailscale sidecar ([docs/SERVER-SETUP.md](docs/SERVER-SETUP.md#docker)). Sources for Uptime Kuma, Gatus, Docker, Proxmox, Pi-hole, AdGuard, Sonarr, Radarr, qBittorrent, game servers and JSON feeds | Problems from your services, Lab with your machines, widgets |
 | Your own agent or scripts | Implement the small JSON API in [`server/openapi.yaml`](server/openapi.yaml) | What your server sends, up to actions and chat |
 
 You can combine them, for example the Homelab Bridge plus Home Assistant. **Try the demo** on the first screen to
