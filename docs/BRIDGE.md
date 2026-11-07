@@ -172,6 +172,7 @@ The `homepage` key is a pre-processor, not a source type: at start `Config` hand
 PyYAML and returns launcher entries and source configs; they are added to the config's own `services` and
 `sources` before `sources.parse` checks them, so imported sources follow every rule above. A Homepage widget
 becomes a source through the `WIDGETS` table there: when you add a source that Homepage has a widget for, add a
-translator (widget fields to your config keys; keys only through `ctx.secret()`), a row in
+translator (widget fields to your config keys; keys only through `ctx.secret()`; never `actions`, which stay opt-in
+by hand; `raise Unsupported(...)` for a widget your source can't read, such as a Pi-hole v5), a row in
 [SERVER-SETUP.md → Import from Homepage](SERVER-SETUP.md#import-from-homepage) and a case in
 `server/test_homepage_import.py`.

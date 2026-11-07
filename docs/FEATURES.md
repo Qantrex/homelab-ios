@@ -186,7 +186,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Sonarr source](#source-sonarr) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Radarr source](#source-radarr) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [qBittorrent source](#source-qbittorrent) | partial | `status`, `cards` | 2 | n/a | 2 |
-| [Import from Homepage](#homepage-import) | partial | `services`, `status`, `cards` | 6 | n/a | 2 |
+| [Import from Homepage](#homepage-import) | partial | `services`, `status`, `cards` | 7 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -1770,16 +1770,16 @@ The bridge's `qbittorrent` type reads the WebUI API v2 with an API key (5.2 and 
 
 **Import from Homepage** · Server · partial · since 2026-11-07
 
-A `homepage` key in the Homelab Bridge's config reads Homepage's services.yaml at start: every service with an http(s) href becomes a launcher entry (name, url, innermost group, an SF Symbol for well-known icon names, description); `uptimekuma`, `gatus` and `proxmox` widgets become sources of those types (more keys per source with `extra`); other widgets are logged as not yet supported. Keys are taken only as the names of their HOMEPAGE_VAR_/HOMEPAGE_FILE_ placeholders; a key written in services.yaml for an imported widget stops the start with a message that never prints it. Needs PyYAML (in the Docker image); without it the start says so.
+A `homepage` key in the Homelab Bridge's config reads Homepage's services.yaml at start: every service with an http(s) href becomes a launcher entry (name, url, innermost group, an SF Symbol for well-known icon names, description); `uptimekuma`, `gatus`, `proxmox`, `pihole` (v6 only; a v5 widget is logged as not supported), `adguard`, `sonarr`, `radarr` and `qbittorrent` widgets become sources of those types, never with actions (more keys per source, a pause too, by hand with `extra`); other widgets are logged as not yet supported. Keys are taken only as the names of their HOMEPAGE_VAR_/HOMEPAGE_FILE_ placeholders; a key written in services.yaml for an imported widget stops the start with a message that never prints it. Needs PyYAML (in the Docker image); without it the start says so.
 
 | | |
 |---|---|
 | Server | `services`, `status`, `cards`, `GET /services`, `GET /state`, `services`, `state.problems`, `state.cards` |
 | Sources | [_homepage.py#convert](../server/sources/_homepage.py), [reference_server.py#Config](../server/reference_server.py), [test_homepage_import.py](../server/test_homepage_import.py), [homepage-services.yaml](../server/examples/homepage-services.yaml), [sources-homepage.json](../server/examples/sources-homepage.json) |
-| Tests | `server/test_homepage_import.py::HomepageNormal`, `server/test_homepage_import.py::HomepageOdd`, `server/test_homepage_import.py::HomepageLiteralKeys`, `server/test_homepage_import.py::HomepageConfig`, `server/test_homepage_import.py::PyYAMLMissing`, `server/test_homepage_import.py::HomepageBridge` |
+| Tests | `server/test_homepage_import.py::HomepageNormal`, `server/test_homepage_import.py::HomepageOdd`, `server/test_homepage_import.py::HomepageLiteralKeys`, `server/test_homepage_import.py::HomepageConfig`, `server/test_homepage_import.py::PyYAMLMissing`, `server/test_homepage_import.py::HomepageBridge`, `server/test_homepage_import.py::HomepageNormal.test_actions_only_by_hand` |
 | Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
 | Docs | [docs/SERVER-SETUP.md#import-from-homepage](SERVER-SETUP.md#import-from-homepage), [docs/REFERENCE_SERVER.md#config-keys](REFERENCE_SERVER.md#config-keys) |
-| Depends on | [server-sources](#server-sources), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-proxmox](#source-proxmox), [pyyaml](#dep-pyyaml) |
+| Depends on | [server-sources](#server-sources), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-qbittorrent](#source-qbittorrent), [pyyaml](#dep-pyyaml) |
 | Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
 | Notes | docs/plans/MODULAR.md M1.8. A config pre-processor, not a source type (docs/BRIDGE.md#how-it-runs). PyYAML only in the Docker image (owner decision 3); the YAML tests skip without it. New sources that Homepage has a widget for add a translator to WIDGETS in server/sources/_homepage.py. |
 

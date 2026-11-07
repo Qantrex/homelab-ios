@@ -1,7 +1,8 @@
 # A made-up Homepage services.yaml (gethomepage.dev) for the Homelab Bridge import:
 # docs/SERVER-SETUP.md#import-from-homepage. server/examples/sources-homepage.json reads it.
-# Every service with an href becomes a launcher entry; the uptimekuma, gatus and proxmox widgets become sources; the other
-# widgets are logged as not yet supported. Keys are Homepage placeholders, never written here.
+# Every service with an href becomes a launcher entry; the uptimekuma, gatus, proxmox, pihole (version 6), adguard,
+# sonarr, radarr and qbittorrent widgets become sources; the other widgets (here jellyfin) are logged as not yet
+# supported. Keys are Homepage placeholders, never written here.
 
 - Monitoring:
     - Uptime Kuma:
@@ -36,17 +37,26 @@
         href: http://192.0.2.20:8989
         widget:
           type: sonarr
-          url: http://192.0.2.20:8989
+          url: http://{{HOMEPAGE_VAR_SONARR_HOST}}
           key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+          enableQueue: true
+    - Radarr:
+        icon: radarr.png
+        href: http://192.0.2.20:7878
+        widget:
+          type: radarr
+          url: http://{{HOMEPAGE_VAR_RADARR_HOST}}
+          key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
     - Downloads:
         - qBittorrent:
             icon: mdi-download
             href: http://192.0.2.20:8081
             widget:
               type: qbittorrent
-              url: http://192.0.2.20:8081
+              url: http://{{HOMEPAGE_VAR_QBIT_HOST}}
               username: admin
               password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+              enableLeechProgress: true
 
 - Servers:
     - Proxmox:
@@ -65,9 +75,17 @@
         href: http://192.0.2.2/admin
         widgets:
           - type: pihole
-            url: http://192.0.2.2
+            url: http://{{HOMEPAGE_VAR_PIHOLE_HOST}}
             version: 6
             key: "{{HOMEPAGE_VAR_PIHOLE_KEY}}"
+    - AdGuard Home:
+        icon: adguard-home.png
+        href: http://192.0.2.3:3000
+        widget:
+          type: adguard
+          url: http://{{HOMEPAGE_VAR_ADGUARD_HOST}}
+          username: monitor
+          password: "{{HOMEPAGE_VAR_ADGUARD_PASSWORD}}"
     - Router:
         icon: router.png
         href: http://192.0.2.1

@@ -80,7 +80,7 @@ your tailnet (`homelab-bridge`). No port opens on your Docker host.
 | AdGuard Home | `adguard` | Works |
 | Sonarr, Radarr (the API key) | `sonarr`, `radarr` | Works |
 | qBittorrent (an API key, or a WebUI login) | `qbittorrent` | Works |
-| A Homepage `services.yaml` | the `homepage` key ([import](SERVER-SETUP.md#import-from-homepage)) | Works: its services in the launcher, its Kuma, Gatus and Proxmox widgets as sources |
+| A Homepage `services.yaml` | the `homepage` key ([import](SERVER-SETUP.md#import-from-homepage)) | Works: its services in the launcher, its Kuma, Gatus, Proxmox, Pi-hole (v6), AdGuard, Sonarr, Radarr and qBittorrent widgets as sources |
 
 Details per source: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources). For Docker, `docker compose --profile docker
 up -d` also starts the socket proxy ([REFERENCE_SERVER.md → Docker](REFERENCE_SERVER.md#docker)). Without Docker,
