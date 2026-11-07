@@ -6,13 +6,17 @@ with a free Apple ID, from Linux or a Mac, or with SideStore. Open source (MIT),
 
 The [README on GitHub](../README.md) has the screenshots, the quick start and the limits.
 
+**New here?** [Getting started](GETTING-STARTED.md): pick one of three setups (only Home Assistant, the Homelab Bridge
+with your services, or your own server), install the app, connect it, and fix what goes wrong.
+
 ## Docs
 
+- [Getting started](GETTING-STARTED.md): from nothing to a working app, three setups, limits, troubleshooting
 - [Features](FEATURES.md): every feature, where it lives, its tests, phone checks, docs and dependencies
 - [Setup](SETUP.md): building with xtool, tests, project layout
 - [Install from Linux](INSTALL-FROM-LINUX.md): onto an iPhone over USB, no Mac
 - [SideStore](SIDESTORE.md): installing and the 7-day refresh, the -80045 fix
-- [Server setup](SERVER-SETUP.md): connecting a homelab (reference server, Home Assistant, your own server)
+- [Server setup](SERVER-SETUP.md): connecting a homelab (reference server and Homelab Bridge, Home Assistant, your own server)
 - [API](API.md): the Companion API in plain words, for writing your own server
 - [Adapting](ADAPTING.md): fork it for your homelab, turn modules off, add your own
 - [Security](SECURITY.md): threat model, what the app does, what server operators must do

@@ -724,7 +724,7 @@ fixtures = ["Sources/HomelabKit/Fixtures/ha-states.json"]
 tests = ["HomeGlanceTests", "OwnerInvarianceTests"]
 device_tests = ["H7"]
 screenshots = ["demo-ha-only"]
-docs = ["README.md#who-it-is-for", "docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased"]
+docs = ["README.md#who-it-is-for", "docs/GETTING-STARTED.md#a-only-home-assistant", "docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased"]
 launch_args = ["-HomelabDemoScene"]
 depends_on = ["home-tiles"]
 notes = "docs/plans/MODULAR.md M2.1. The widgets still need a Companion server (plan, section 7)."
@@ -964,7 +964,7 @@ summary = "Until a server exists: \"Your homelab, in your pocket\", four points,
 sources = ["Sources/HomelabUI/RootView.swift#WelcomeView"]
 tests = ["AppModelTests/demoAndReset"]
 device_tests = ["FS1"]
-docs = ["README.md#who-it-is-for"]
+docs = ["README.md#who-it-is-for", "docs/GETTING-STARTED.md#1-pick-a-setup"]
 
 [[feature]]
 id = "first-run"
@@ -1353,7 +1353,7 @@ endpoints = ["GET /info", "GET /state"]
 sources = ["server/Dockerfile", "server/.dockerignore", "server/requirements-image.txt", "server/compose.yaml",
            "server/docker/serve.json", "server/docker/config.example.json", "server/docker/bridge.env.example",
            "server/docker/tailscale.env.example", "scripts/build-bridge-image"]
-docs = ["docs/SERVER-SETUP.md#docker", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
+docs = ["docs/SERVER-SETUP.md#docker", "docs/GETTING-STARTED.md#b-homelab-bridge", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
 not_needed = { tests = "scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck", device_tests = "server side; the app sees an ordinary Companion server" }
 depends_on = ["server-sources", "reference-server", "bridge-base-image", "pyyaml", "tailscale-image", "docker-socket-proxy", "docker", "tailscale", "gha-checkout", "gha-runners"]
 notes = "docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR."

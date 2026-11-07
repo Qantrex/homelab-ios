@@ -97,7 +97,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Home Assistant tiles on Today](#home-tiles) | shipped | – | 4 | **H1**, **H2**, **H3**, H4, H5, H6, **T7** | 3 |
 | [Tile names of your own](#tile-names) | shipped | – | 2 | **T4**, T5, **T7** | 2 |
 | [Tile icons of your own](#tile-icons) | shipped | – | 1 | **T6** | 2 |
-| [Today with only Home Assistant](#home-only-today) | partial | – | 2 | H7 | 4 |
+| [Today with only Home Assistant](#home-only-today) | partial | – | 2 | H7 | 5 |
 
 ### Widgets (8)
 
@@ -132,7 +132,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Welcome screen](#onboarding) | shipped | – | 1 | **FS1** | 1 |
+| [Welcome screen](#onboarding) | shipped | – | 1 | **FS1** | 2 |
 | [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
 | [Demo mode](#demo-mode) | shipped | – | 9 | **FS2**, **FS3**, **FS4** | 3 |
 | [Servers: add, edit, test, switch](#servers) | shipped | – | 6 | **R1**, **R2**, R3, R6, **R8**, **ST1**, **ST2** | 3 |
@@ -177,7 +177,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [JSON feed source](#source-json) | partial | `status`, `hosts`, `cards`, `services` | 4 | n/a | 1 |
 | [Bridge source: Uptime Kuma](#source-uptime-kuma) | partial | `status`, `cards`, `services` | 2 | n/a | 2 |
 | [Bridge source: Gatus](#source-gatus) | partial | `status`, `cards` | 1 | n/a | 2 |
-| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | n/a | n/a | 3 |
+| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | n/a | n/a | 4 |
 | [Docker source (socket proxy)](#source-docker) | partial | `hosts` | 2 | n/a | 2 |
 | [Proxmox source](#source-proxmox) | partial | `hosts` | 2 | n/a | 2 |
 | [Bridge source actions (opt-in)](#source-actions) | partial | `run-actions` | 2 | n/a | 2 |
@@ -972,7 +972,7 @@ Without a Homelab server, Today's headline reads Home Assistant's states: "Home.
 | Tests | `HomeGlanceTests`, `OwnerInvarianceTests` |
 | Phone (DeviceTest.md) | H7 |
 | CI screenshots | `demo-ha-only` |
-| Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
+| Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/GETTING-STARTED.md#a-only-home-assistant](GETTING-STARTED.md#a-only-home-assistant), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
 | Launch arguments | `-HomelabDemoScene` |
 | Depends on | [home-tiles](#home-tiles) |
 | Through those | [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain) |
@@ -1225,7 +1225,7 @@ Until a server exists: "Your homelab, in your pocket", four points, Add Home Ass
 | Sources | [RootView.swift#WelcomeView](../Sources/HomelabUI/RootView.swift) |
 | Tests | `AppModelTests/demoAndReset` |
 | Phone (DeviceTest.md) | **FS1** |
-| Docs | [README.md#who-it-is-for](../README.md#who-it-is-for) |
+| Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/GETTING-STARTED.md#1-pick-a-setup](GETTING-STARTED.md#1-pick-a-setup) |
 
 ### first-run
 
@@ -1618,7 +1618,7 @@ Source type `gatus`: every Gatus endpoint from GET /api/v1/endpoints/statuses. F
 | Sources | [Dockerfile](../server/Dockerfile), [.dockerignore](../server/.dockerignore), [requirements-image.txt](../server/requirements-image.txt), [compose.yaml](../server/compose.yaml), [serve.json](../server/docker/serve.json), [config.example.json](../server/docker/config.example.json), [bridge.env.example](../server/docker/bridge.env.example), [tailscale.env.example](../server/docker/tailscale.env.example), [build-bridge-image](../scripts/build-bridge-image) |
 | Tests | n/a: scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck |
 | Phone (DeviceTest.md) | n/a: server side; the app sees an ordinary Companion server |
-| Docs | [docs/SERVER-SETUP.md#docker](SERVER-SETUP.md#docker), [docs/RELEASE.md#homelab-bridge-image](RELEASE.md#homelab-bridge-image), [docs/CI.md#workflows](CI.md#workflows) |
+| Docs | [docs/SERVER-SETUP.md#docker](SERVER-SETUP.md#docker), [docs/GETTING-STARTED.md#b-homelab-bridge](GETTING-STARTED.md#b-homelab-bridge), [docs/RELEASE.md#homelab-bridge-image](RELEASE.md#homelab-bridge-image), [docs/CI.md#workflows](CI.md#workflows) |
 | Depends on | [server-sources](#server-sources), [reference-server](#reference-server), [bridge-base-image](#dep-bridge-base-image), [pyyaml](#dep-pyyaml), [tailscale-image](#dep-tailscale-image), [docker-socket-proxy](#dep-docker-socket-proxy), [docker](#dep-docker), [tailscale](#dep-tailscale), [gha-checkout](#dep-gha-checkout), [gha-runners](#dep-gha-runners) |
 | Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3) |
 | Notes | docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR. |
