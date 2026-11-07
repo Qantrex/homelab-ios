@@ -1185,6 +1185,59 @@ depends_on = ["python3", "reference-server"]
 notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
 
 [[feature]]
+id = "source-docker"
+name = "Docker source (socket proxy)"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `docker` source reads one Docker host through a socket proxy (GET /containers/json?all=1, never the raw socket): one host with every container in its list (state, health) and `containers {up, total}`; unhealthy, restarting and dead containers are problems, a non-zero exit a warning; `ignore` for one-shot jobs. Tested against Docker Engine 29 (API 1.52) and older engines."
+server_features = ["hosts"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.hosts", "hosts[].container_list"]
+sources = ["server/sources/docker.py#collect", "server/recordings/docker/normal.json", "server/recordings/docker/odd.json",
+           "server/test_source_docker.py"]
+tests = ["server/test_source_docker.py::DockerSource", "server/test_source_docker.py::DockerBridge"]
+docs = ["docs/REFERENCE_SERVER.md#docker", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "docs/plans/MODULAR.md M1.5. The older `this_host.docker` (docker ps on the server itself) stays; the docs say which to pick."
+
+[[feature]]
+id = "source-proxmox"
+name = "Proxmox source"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "The bridge's `proxmox` source reads Proxmox VE with a read-only API token (Sys.Audit, VM.Audit): every node is a host (reachable, load, cores, memory, root disk) with its last 24 h from rrddata (at most 288 points, PVE 9 minutes averaged to 5-minute steps), its VMs and containers as the host's container list. Problems: an offline node, a full root disk, a stopped guest from `expect_running`. https only (or loopback); self-signed certificates via `ca_file`, or `insecure: true` with a warning. Tested against Proxmox VE 9.0 shapes."
+server_features = ["hosts"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.hosts", "hosts[].history", "hosts[].container_list"]
+sources = ["server/sources/proxmox.py#collect", "server/sources/proxmox.py#history", "server/recordings/proxmox/normal.json",
+           "server/recordings/proxmox/odd.json", "server/test_source_proxmox.py", "server/examples/sources-docker-proxmox.json"]
+tests = ["server/test_source_proxmox.py::ProxmoxSource", "server/test_source_proxmox.py::DockerProxmoxBridge"]
+docs = ["docs/REFERENCE_SERVER.md#proxmox", "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "docs/plans/MODULAR.md M1.5. The normal recording keeps PVE 8's 30-minute rows to stay small; the PVE 9 one-minute day is built in the test."
+
+[[feature]]
+id = "source-actions"
+name = "Bridge source actions (opt-in)"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "Off by default and per item (owner decision 6): only containers or VMIDs listed under a source's `actions` get Docker restart (`restart-container`, the host page's Restart) or Proxmox start and clean shutdown (`guest-start`, `guest-stop`), served as run-actions. The app confirms each press; the server takes only an argument from the list (looked up, never parsed, so prefixed host ids with `:` work), no payload, 30 presses an hour, one per item at a time, and answers without URLs or keys. Without `actions` there is no /actions route."
+server_features = ["run-actions"]
+endpoints = ["GET /actions", "POST /actions/{name}"]
+api_fields = ["hosts[].container_list[].restartable"]
+sources = ["server/sources/__init__.py#SourceActions", "server/sources/docker.py#act", "server/sources/proxmox.py#act"]
+tests = ["server/test_source_docker.py::DockerActions", "server/test_source_proxmox.py::ProxmoxActions"]
+docs = ["docs/REFERENCE_SERVER.md#source-actions", "docs/BRIDGE.md#actions-optional-off-by-default"]
+not_needed = { device_tests = "server side; the app's existing Restart and Actions tab run them" }
+depends_on = ["source-docker", "source-proxmox"]
+notes = "docs/plans/MODULAR.md M1.5. Uses the app's run-actions path (what the container Restart button calls), not pending proposals with signed buttons: a press is the user's own, confirmed in the app."
+
+[[feature]]
 id = "live-api-check"
 name = "Live API check"
 area = "Server"

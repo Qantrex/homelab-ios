@@ -99,7 +99,20 @@ echo '*/5 * * * * root /usr/local/bin/card-containers /var/lib/homelab-companion
 ```
 
 Then set `"cards_dir": "/var/lib/homelab-companion/cards"` in the config. (A script and not a one-line cron job:
-cron cuts a line at every unescaped `%`.)
+cron cuts a line at every unescaped `%`.) Or read them through a socket proxy with the `docker` source below.
+
+### Sources
+
+With a `sources` list the reference server becomes the Homelab Bridge and also reads other services' APIs
+([REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources)). Keys go in env variables, never in the config.
+
+| Type | Reads | Config keys | What the key needs |
+|---|---|---|---|
+| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` ([Docker](REFERENCE_SERVER.md#docker)) |
+| `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) ([Proxmox](REFERENCE_SERVER.md#proxmox)) |
+
+Restart, start and stop are off until you list containers or VMIDs under `actions`
+([Source actions](REFERENCE_SERVER.md#source-actions)).
 
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.

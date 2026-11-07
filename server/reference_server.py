@@ -994,6 +994,12 @@ class RealApp:
             self.routes["messages"] = {"GET": self.messages, "POST": self.post_message}
         if cfg.services or self.sources:
             self.routes["services"] = {"GET": self.services}
+        # Source actions (feature run-actions): only when a source's config lists items under `actions`.
+        if self.sources and self.sources.actions:
+            acts = self.sources.actions
+            self.routes["actions"] = {"GET": lambda q, b: (200, acts.listing())}
+            for name in acts.names():
+                self.routes["actions/" + name] = {"POST": lambda q, b, name=name: acts.run(name, b)}
 
     def start(self):
         self.collector.start()
@@ -1013,6 +1019,8 @@ class RealApp:
         extra = self.sources.merged() if self.sources else None
         if self.actions:
             f.append("actions")
+        if self.sources and self.sources.actions:
+            f.append("run-actions")
         if self.chat:
             f.append("chat")
         if self.cfg.cards_dir or (extra and extra["cards"]):

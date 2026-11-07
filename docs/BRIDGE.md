@@ -62,13 +62,43 @@ the source becomes exactly **one warning** `<name>: <short error>` (id `<name>:s
 `SourceError("short text")` yourself for a known failure ("slug not found"). Never put a URL or a key in the text;
 URLs are cut out anyway.
 
+## Actions (optional, off by default)
+
+A source may offer actions that change something upstream (Docker restart, Proxmox start and stop: owner decision 6
+in [plans/MODULAR.md](plans/MODULAR.md)). They exist only for the items the user lists under `actions` in the
+source's config; without that key the module is read-only like any other. A module that offers actions has three
+more names:
+
+```python
+ACTIONS = {"restart-container": {"label": "Restart a container", "icon": "arrow.clockwise", "destructive": True,
+                                 "hint": "...", "part": "Container"}}
+
+def allowed(cfg):                   # from the config only, never from the upstream
+    return [{"action": "restart-container", "host": "nas", "item": "sonarr", "label": "sonarr"}]
+
+def act(cfg, fetch, action, host, item):   # one press; the bridge calls it only for an allowed item
+    fetch("/containers/%s/restart" % item, method="POST", body=b"")
+    return "Restarted sonarr on nas."
+```
+
+`sources.SourceActions` turns them into the app's run-actions: `GET /actions` lists each action with one argument
+variant per source and host, `POST /actions/<name>` runs one. The argument is `<source>:<host>:<item>` with a host
+(the app's container Restart sends `<host id>:<container>`, and host ids are prefixed) or `<source>:<item>`, at most
+64 characters (checked at start). The bridge only looks it up in the list from `allowed`; it is never parsed, so
+the argv rule `ARG_RE` (no `:`) doesn't apply. It also refuses any payload, takes at most 30 presses an hour and one
+press per item at a time. `restartable: true` is set on exactly the containers `allowed` lists for
+`restart-container`. A `SourceError` or a crash in `act` is `{"ok": false, "text": "<source>: <item> failed (403)"}`.
+`item` and `host` match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`, so they are safe in a URL path; check them in `act`
+anyway. Document the upstream permission each action needs, and keep it to exactly those items.
+
 ## Rules for a source module
 
 - Stdlib only. Import the helpers from `.` (`as_list`, `as_dict`, `as_text`, `SourceError`), nothing from
   `reference_server`.
 - Talk to the upstream only through `fetch`; read keys only with `fetch.secret()`. No `os.environ`, `subprocess`,
   `urllib`, `socket` or `open(` (a test greps for them).
-- Read-only. Never call an endpoint that changes something upstream (Pi-hole's logout after login is fine).
+- Read-only. Never call an endpoint that changes something upstream (Pi-hole's logout after login is fine), except
+  in `act` for an item the config lists (see [Actions](#actions-optional-off-by-default)).
 - Lenient: every upstream field may be missing or have another type. Use `as_list`, `as_dict`, `as_text`; skip what
   doesn't fit. The odd recording must never crash the source.
 - Ids from the upstream's stable ids (monitor id, VM id), not from list positions, so `since` stays put.

@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 77 | 70 | 6 | 1 | 37 | 3 |
+| 80 | 70 | 9 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -161,13 +161,16 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (4)
+### Server (7)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
+| [Docker source (socket proxy)](#source-docker) | partial | `hosts` | 2 | n/a | 2 |
+| [Proxmox source](#source-proxmox) | partial | `hosts` | 2 | n/a | 2 |
+| [Bridge source actions (opt-in)](#source-actions) | partial | `run-actions` | 2 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -205,12 +208,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Kind | Entry | Features |
 |---|---|---|
 | Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources) |
-| Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources) |
+| Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources), [source-docker](#source-docker), [source-proxmox](#source-proxmox) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources) |
-| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart) |
+| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `search` | [find](#find) |
@@ -259,15 +262,15 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `checklist` | [checklist-card](#checklist-card) |
 | Card styles (`Card.Style`) | `countdown` | [countdown-card](#countdown-card) |
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
-| Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions) |
+| Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
 | Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources) |
-| Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-docker](#source-docker), [source-proxmox](#source-proxmox) |
+| Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
 | Endpoints (`server/openapi.yaml`) | `POST /messages` | [chat](#chat) |
@@ -1431,6 +1434,57 @@ A `sources` list in the reference server's config reads other services' APIs (on
 | Through those | [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale) |
 | Notes | docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet. |
 
+### source-docker
+
+**Docker source (socket proxy)** · Server · partial · since 2026-11-07
+
+The bridge's `docker` source reads one Docker host through a socket proxy (GET /containers/json?all=1, never the raw socket): one host with every container in its list (state, health) and `containers {up, total}`; unhealthy, restarting and dead containers are problems, a non-zero exit a warning; `ignore` for one-shot jobs. Tested against Docker Engine 29 (API 1.52) and older engines.
+
+| | |
+|---|---|
+| Server | `hosts`, `GET /state`, `state.problems`, `state.hosts`, `hosts[].container_list` |
+| Sources | [docker.py#collect](../server/sources/docker.py), [normal.json](../server/recordings/docker/normal.json), [odd.json](../server/recordings/docker/odd.json), [test_source_docker.py](../server/test_source_docker.py) |
+| Tests | `server/test_source_docker.py::DockerSource`, `server/test_source_docker.py::DockerBridge` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#docker](REFERENCE_SERVER.md#docker), [docs/SERVER-SETUP.md#sources](SERVER-SETUP.md#sources) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.5. The older `this_host.docker` (docker ps on the server itself) stays; the docs say which to pick. |
+
+### source-proxmox
+
+**Proxmox source** · Server · partial · since 2026-11-07
+
+The bridge's `proxmox` source reads Proxmox VE with a read-only API token (Sys.Audit, VM.Audit): every node is a host (reachable, load, cores, memory, root disk) with its last 24 h from rrddata (at most 288 points, PVE 9 minutes averaged to 5-minute steps), its VMs and containers as the host's container list. Problems: an offline node, a full root disk, a stopped guest from `expect_running`. https only (or loopback); self-signed certificates via `ca_file`, or `insecure: true` with a warning. Tested against Proxmox VE 9.0 shapes.
+
+| | |
+|---|---|
+| Server | `hosts`, `GET /state`, `state.problems`, `state.hosts`, `hosts[].history`, `hosts[].container_list` |
+| Sources | [proxmox.py#collect](../server/sources/proxmox.py), [proxmox.py#history](../server/sources/proxmox.py), [normal.json](../server/recordings/proxmox/normal.json), [odd.json](../server/recordings/proxmox/odd.json), [test_source_proxmox.py](../server/test_source_proxmox.py), [sources-docker-proxmox.json](../server/examples/sources-docker-proxmox.json) |
+| Tests | `server/test_source_proxmox.py::ProxmoxSource`, `server/test_source_proxmox.py::DockerProxmoxBridge` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/REFERENCE_SERVER.md#proxmox](REFERENCE_SERVER.md#proxmox), [docs/SERVER-SETUP.md#sources](SERVER-SETUP.md#sources) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.5. The normal recording keeps PVE 8's 30-minute rows to stay small; the PVE 9 one-minute day is built in the test. |
+
+### source-actions
+
+**Bridge source actions (opt-in)** · Server · partial · since 2026-11-07
+
+Off by default and per item (owner decision 6): only containers or VMIDs listed under a source's `actions` get Docker restart (`restart-container`, the host page's Restart) or Proxmox start and clean shutdown (`guest-start`, `guest-stop`), served as run-actions. The app confirms each press; the server takes only an argument from the list (looked up, never parsed, so prefixed host ids with `:` work), no payload, 30 presses an hour, one per item at a time, and answers without URLs or keys. Without `actions` there is no /actions route.
+
+| | |
+|---|---|
+| Server | `run-actions`, `GET /actions`, `POST /actions/{name}`, `hosts[].container_list[].restartable` |
+| Sources | [__init__.py#SourceActions](../server/sources/__init__.py), [docker.py#act](../server/sources/docker.py), [proxmox.py#act](../server/sources/proxmox.py) |
+| Tests | `server/test_source_docker.py::DockerActions`, `server/test_source_proxmox.py::ProxmoxActions` |
+| Phone (DeviceTest.md) | n/a: server side; the app's existing Restart and Actions tab run them |
+| Docs | [docs/REFERENCE_SERVER.md#source-actions](REFERENCE_SERVER.md#source-actions), [docs/BRIDGE.md#actions-optional-off-by-default](BRIDGE.md#actions-optional-off-by-default) |
+| Depends on | [source-docker](#source-docker), [source-proxmox](#source-proxmox) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.5. Uses the app's run-actions path (what the container Restart button calls), not pending proposals with signed buttons: a press is the user's own, confirmed in the app. |
+
 ### live-api-check
 
 **Live API check** · Server · shipped · since 2026-11-06
@@ -1548,8 +1602,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 12 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 28 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 15 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 31 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 4 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -1567,7 +1621,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 6 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 9 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
@@ -1630,8 +1684,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 2 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 4 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 5 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 7 |  |
 | Home Assistant REST API |  |  |  |  |  |  |  |  | 4 |  |  |  |  |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1649,7 +1703,7 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 3 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 6 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
