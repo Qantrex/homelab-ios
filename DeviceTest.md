@@ -206,6 +206,8 @@ Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has 
 | H5 | Unavailable | An unavailable device shows "Unavailable" (sensor) or a greyed-out toggle, no crash | | |
 | H6 | Wrong token | Edit HA, paste a wrong token: a clear error text in the Home section on Today, no crash. Put the right one back | | |
 | H7 | Home Assistant only | Only a Home Assistant server, no Homelab server (or the demo: `-HomelabResetState YES -HomelabDemo YES -HomelabDemoScene ha-only`). Today's headline is "Home." with what is true under it ("1 light on", "All lights off", "Front door open"). While a light, switch, fan, lock or pinned tile is unavailable: a gold triangle with "Bedroom fan unavailable" (one) or "2 unavailable" and a gold glow; else a white tick. Switch a light in the HA app: the count follows within 30 s. Only Today and Settings as tabs, no "Lab ›". With a wrong token the headline is a grey "Home." again | | |
+| H8 | Where you are | Settings → Today → "Where you are" (only with a Home Assistant server) says "Off" on a fresh setup. Open it: "Off" ticked, then the people of Home Assistant, then its device trackers, each with its id and state ("person.alex · Home", "… · Away"). iOS asks for no location. Pick yours: the row shows its id; "Off" removes it again. Nothing else on Today changes | | |
+| H9 | At home and Away | With Where you are set, a section with an "Away" rule (M3.2 rule sheet) is gone within a minute of Home Assistant showing you home, also with the Home section hidden; "At home" the other way round. Tailscale off for over 30 minutes, then open the app: both sections show (unknown presence passes) | | |
 
 ## Widgets
 
@@ -257,6 +259,8 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | B9 | Already answered | Approve the proposal in the app or chat first, then press Approve on its old notification: "`<server>`: no longer valid" (with the app lock on: "That didn't go through. Open the app to see why.") | | |
 | B10 | App lock and buttons | Lock on, iOS Settings → Notifications → Show Previews "When Unlocked" (the default). Lock the phone, wait for a new proposal notification: the locked lock screen shows only "Homelab" with no text. Look at it so Face ID unlocks: it names the action ("`<server>`: approve …?"). Long-press it: Approve and Deny. Approve asks for Face ID / the passcode if the phone isn't unlocked, then runs (no "open Homelab" refusal); the result notification only says "Approved. Open the app for the answer." A problem notification with the lock on still says only "Something needs a look." | | |
 | B11 | Press with the app killed | Swipe the app away, then Approve on a notification: the result notification still comes (iOS starts the app in the background) | | |
+| B12 | Quiet hours row | Settings → Notifications: no "Quiet hours" row while all toggles are off. Turn one on: "Quiet hours · Off". Turn quiet hours on: From 22:00, To 07:00, the row says "22–7". Turn it off again: Off | | |
+| B13 | Quiet hours hold | Quiet hours around now (From an hour ago, To in an hour), then make a problem: no notification; Diagnostics → Background → Result ends with ", quiet hours"; Today and the widget show the problem. After the window the same problem doesn't notify, a new one does | | |
 
 ## Face ID lock
 

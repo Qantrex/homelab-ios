@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 78 | 70 | 7 | 1 | 37 | 3 |
+| 80 | 70 | 9 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (10)
+### Today (11)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -23,6 +23,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 6 | n/a | 1 |
+| [Where you are (presence from Home Assistant)](#presence) | partial | – | 2 | H8, H9 | 3 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
@@ -110,12 +111,13 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Widget data: snapshot, self-fetch, stale marks, lock redaction](#widget-data) | shipped | `status` | 7 | **W6**, W11, **W12** | 3 |
 | ["Leave by" Live Activity](#live-activity) | shipped | `status` | 8 | LA1, LA2, LA3, LA4 | 2 |
 
-### Notifications (3)
+### Notifications (4)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Background refresh](#background-refresh) | shipped (?) | – | 1 | **B1**, **B3** | 2 |
 | [Local notifications for new problems and actions](#notifications) | shipped | `status`, `actions` | 3 | B2, **B4**, B5, **B6** | 2 |
+| [Quiet hours for notifications](#quiet-hours) | partial | – | 1 | B12, B13 | 3 |
 | [Approve and Deny on the notification](#notification-actions) | shipped | `actions` | 1 | B7, B8, B9, B10, B11 | 2 |
 
 ### Links (2)
@@ -361,6 +363,24 @@ One optional rule per Today section says when it shows: Always (the default, and
 | Phone (DeviceTest.md) | n/a: kit only; the rule editor (M3.2) brings the DeviceTest rows |
 | Docs | [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Depends on | [today-layout](#today-layout) |
+
+### presence
+
+**Where you are (presence from Home Assistant)** · Today · partial · since 2026-11-07
+
+Settings → Today → "Where you are" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass.
+
+| | |
+|---|---|
+| Server | `Home Assistant GET /api/states: person.* and device_tracker.* state` |
+| Sources | [HomePresence.swift](../Sources/HomelabKit/HomePresence.swift), [PresenceSettings.swift](../Sources/HomelabUI/PresenceSettings.swift), [HomeTiles.swift#fetched](../Sources/HomelabUI/HomeTiles.swift), [TodayView.swift#presenceRefresh](../Sources/HomelabUI/TodayView.swift) |
+| Tests | `HomePresenceTests`, `PresenceModelTests` |
+| Phone (DeviceTest.md) | H8, H9 |
+| Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
+| Settings | Settings → Today → Where you are |
+| Depends on | [show-rules](#show-rules), [home-tiles](#home-tiles), [home-assistant-api](#dep-home-assistant-api) |
+| Through those | [keychain](#dep-keychain) |
+| Notes | docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), HomeModel.presence(_:)). |
 
 ### last-report
 
@@ -1100,6 +1120,23 @@ Optional, off by default: one notification per new problem or new action to appr
 | Depends on | [background-refresh](#background-refresh), [usernotifications](#dep-usernotifications) |
 | Through those | [backgroundtasks](#dep-backgroundtasks) |
 
+### quiet-hours
+
+**Quiet hours for notifications** · Notifications · partial · since 2026-11-07
+
+Settings → Notifications → "Quiet hours" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with ", quiet hours". Without it nothing changes.
+
+| | |
+|---|---|
+| Sources | [QuietHours.swift](../Sources/HomelabKit/QuietHours.swift), [QuietHoursSettings.swift](../Sources/HomelabUI/QuietHoursSettings.swift), [Background.swift#notificationsToPost](../Sources/HomelabUI/Background.swift) |
+| Tests | `QuietHoursTests` |
+| Phone (DeviceTest.md) | B12, B13 |
+| Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
+| Settings | Settings → Notifications → Quiet hours |
+| Depends on | [notifications](#notifications), [show-rules](#show-rules) |
+| Through those | [backgroundtasks](#dep-backgroundtasks), [usernotifications](#dep-usernotifications) |
+| Notes | docs/plans/MODULAR.md M3.3. The window is a TimeWindow (ShowRule.swift), every day, by the phone's time zone. |
+
 ### notification-actions
 
 **Approve and Deny on the notification** · Notifications · shipped · since 2026-11-06
@@ -1571,7 +1608,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 13 |
 | <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 29 |
-| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 5 |
+| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 6 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
 | <a id="dep-seerr"></a>**Seerr (server side)** | server-side | – | [API.md](API.md) | [find](#find) | 1 |
@@ -1580,10 +1617,10 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widgetkit"></a>**WidgetKit** | ios-framework | iOS 18 SDK | [HomelabWidget.swift](../Sources/HomelabWidget/HomelabWidget.swift) | [widget-status](#widget-status), [widget-day](#widget-day), [widget-hosts](#widget-hosts), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos) | 6 |
 | <a id="dep-activitykit"></a>**ActivityKit** | ios-framework | iOS 18 SDK | [LeaveActivityController.swift](../Sources/HomelabUI/LeaveActivityController.swift), [App-Info.plist](../App-Info.plist) | [live-activity](#live-activity) | 1 |
 | <a id="dep-visionkit"></a>**VisionKit document camera** | ios-framework | iOS 18 SDK | [DocumentScanner.swift](../Sources/HomelabUI/DocumentScanner.swift), [App-Info.plist](../App-Info.plist), [Package.swift](../Package.swift) | [scan](#scan) | 1 |
-| <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 8 |
-| <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 3 |
+| <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 9 |
+| <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 4 |
 | <a id="dep-localauthentication"></a>**LocalAuthentication (Face ID)** | ios-framework | iOS 18 SDK | [Components.swift](../Sources/HomelabUI/Components.swift), [App-Info.plist](../App-Info.plist) | [app-lock](#app-lock) | 1 |
-| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 6 |
+| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 7 |
 | <a id="dep-app-group-entitlement"></a>**App Group entitlement** | runtime | group.com.qantrex.homelab (renamed by SideStore and xtool) | [App.entitlements](../App.entitlements), [Widget.entitlements](../Widget.entitlements), [Share.entitlements](../Share.entitlements) | [app-group](#app-group) | 12 |
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
@@ -1653,7 +1690,7 @@ Features per area that need each dependency, directly or through another feature
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 2 |  |
 | Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 4 |  |
-| Home Assistant REST API |  |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
+| Home Assistant REST API | 1 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Seerr (server side) |  |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1662,10 +1699,10 @@ Features per area that need each dependency, directly or through another feature
 | WidgetKit |  |  |  |  |  |  |  |  |  | 6 |  |  |  |  |  |  |  |  |
 | ActivityKit |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |  |  |
 | VisionKit document camera |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 3 |  |  |  |  |  |  |  |
-| UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 2 |  |  |  |  |  |  |  |
+| BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 4 |  |  |  |  |  |  |  |
+| UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 3 |  |  |  |  |  |  |  |
 | LocalAuthentication (Face ID) |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |
-| Keychain (Security framework) |  |  |  |  |  |  |  |  | 4 |  |  |  | 1 | 1 |  |  |  |  |
+| Keychain (Security framework) | 1 |  |  |  |  |  |  |  | 4 |  |  |  | 1 | 1 |  |  |  |  |
 | App Group entitlement |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  |  |  |  |
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

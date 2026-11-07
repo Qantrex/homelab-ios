@@ -127,6 +127,22 @@ not_needed = { device_tests = "kit only; the rule editor (M3.2) brings the Devic
 depends_on = ["today-layout"]
 
 [[feature]]
+id = "presence"
+name = "Where you are (presence from Home Assistant)"
+area = "Today"
+status = "partial"
+since = "2026-11-07"
+summary = "Settings → Today → \"Where you are\" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass."
+api_fields = ["Home Assistant GET /api/states: person.* and device_tracker.* state"]
+sources = ["Sources/HomelabKit/HomePresence.swift", "Sources/HomelabUI/PresenceSettings.swift", "Sources/HomelabUI/HomeTiles.swift#fetched", "Sources/HomelabUI/TodayView.swift#presenceRefresh"]
+tests = ["HomePresenceTests", "PresenceModelTests"]
+device_tests = ["H8", "H9"]
+docs = ["docs/SECURITY.md#what-the-app-does", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
+settings = ["Settings → Today → Where you are"]
+depends_on = ["show-rules", "home-tiles", "home-assistant-api"]
+notes = "docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), HomeModel.presence(_:))."
+
+[[feature]]
 id = "last-report"
 name = "Last report on Today"
 area = "Today"
@@ -859,6 +875,21 @@ device_tests = ["B2", "B4", "B5", "B6"]
 docs = ["docs/SECURITY.md#what-the-app-does", "docs/ADAPTING.md#the-modules"]
 settings = ["Settings → Notifications → \"New problems\", \"New actions to approve\""]
 depends_on = ["background-refresh", "usernotifications"]
+
+[[feature]]
+id = "quiet-hours"
+name = "Quiet hours for notifications"
+area = "Notifications"
+status = "partial"
+since = "2026-11-07"
+summary = "Settings → Notifications → \"Quiet hours\" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with \", quiet hours\". Without it nothing changes."
+sources = ["Sources/HomelabKit/QuietHours.swift", "Sources/HomelabUI/QuietHoursSettings.swift", "Sources/HomelabUI/Background.swift#notificationsToPost"]
+tests = ["QuietHoursTests"]
+device_tests = ["B12", "B13"]
+docs = ["docs/SECURITY.md#what-the-app-does", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
+settings = ["Settings → Notifications → Quiet hours"]
+depends_on = ["notifications", "show-rules"]
+notes = "docs/plans/MODULAR.md M3.3. The window is a TimeWindow (ShowRule.swift), every day, by the phone's time zone."
 
 [[feature]]
 id = "notification-actions"
