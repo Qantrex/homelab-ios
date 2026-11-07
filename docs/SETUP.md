@@ -35,11 +35,19 @@ swiftly install 6.4 && swift --version
 
 ### xtool and the iOS SDK (both distros)
 
+Pin the version, and check the file before you install it:
+
 ```bash
+XTOOL_VERSION=1.24.0   # the newest release on 2026-11-07; it needs the App Group patch below
 mkdir -p ~/.local/bin
-curl -fL "https://github.com/xtool-org/xtool/releases/latest/download/xtool-$(uname -m).AppImage" -o ~/.local/bin/xtool
-chmod +x ~/.local/bin/xtool
+curl -fL "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool-$(uname -m).AppImage" \
+  -o ~/Downloads/xtool-$XTOOL_VERSION.AppImage
+sha256sum ~/Downloads/xtool-$XTOOL_VERSION.AppImage
+# Compare with <sha256 of xtool-1.24.0-x86_64.AppImage, recorded at the first download>. Different: don't install it.
+install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 ```
+
+Record the checksum the first time (with the version and the date), so a later download can be compared with it.
 
 Download **Xcode 27.1** in the browser (Apple login) from https://developer.apple.com/download/all/?q=Xcode, then:
 
@@ -89,18 +97,35 @@ widgets never see the app's data:
 
 xtool fixed it on `main` in [#284](https://github.com/xtool-org/xtool/pull/284) (merged 2026-10-30, one App Group
 per app on a free team, which is what Homelab uses). Use the first release after 1.24.0. Until then, build 1.24.0
-with the one line from #284 (what this project used on 2026-11-07; `main` itself didn't compile on Linux then):
+with the one line from #284 (what this project used on 2026-11-07; `main` itself didn't compile on Linux then).
+
+Save this as `build-xtool.sh` and run `bash build-xtool.sh`. It stops when the source is not the pinned commit or the
+patch changes anything but that one line:
 
 ```sh
+set -eu
+# Tag 1.24.0 is this commit (`git ls-remote https://github.com/xtool-org/xtool.git refs/tags/1.24.0`, 2026-11-07).
+XTOOL_COMMIT=70e1568fdfcb20b560774057cd783f02361293b9
 git clone --branch 1.24.0 https://github.com/xtool-org/xtool.git xtool-124 && cd xtool-124
-sed -i 's/(.appGroups, isFree: false)/(.appGroups, isFree: true)/' \
-  "Sources/XKit/DeveloperServices/App IDs/Entitlements/DeveloperServicesCapability.swift"
+[ "$(git rev-parse HEAD)" = "$XTOOL_COMMIT" ] || { echo "1.24.0 is not $XTOOL_COMMIT, stop"; exit 1; }
+
+f="Sources/XKit/DeveloperServices/App IDs/Entitlements/DeveloperServicesCapability.swift"
+[ "$(grep -c '(.appGroups, isFree: false)' "$f")" = 1 ] || { echo "not exactly one appGroups line, stop"; exit 1; }
+sed -i 's/(.appGroups, isFree: false)/(.appGroups, isFree: true)/' "$f"
+[ "$(git diff --numstat | cut -f1,2 | tr '\t' ' ')" = "1 1" ] || { echo "the patch changed more than one line, stop"; exit 1; }
+
+# The Dockerfile fetches some dependencies by branch or tag name, not by commit. Keep this list with your notes.
+grep -n '^ADD' Dockerfile
 # Docker without buildx: the Dockerfile's `ADD <git url>` lines need BuildKit, so clone instead
 sed -i -E 's#^ADD --keep-git-dir=true (https://[^ ]+\.git)\#([^ ]+) (/[^ ]+)$#RUN git clone -q --branch \2 \1 \3#' Dockerfile
 docker build --target build-xtool -t xtool-appgroups .
 cid=$(docker create xtool-appgroups) && docker cp "$cid:/xtool/Linux/packages/xtool-x86_64.AppImage" . && docker rm "$cid"
+sha256sum xtool-x86_64.AppImage   # write it down: <sha256 of your build>
 cp ~/.local/bin/xtool ~/.local/bin/xtool-1.24.0-original && install -m 755 xtool-x86_64.AppImage ~/.local/bin/xtool
 ```
+
+Keep the commit, the `ADD` list and the AppImage's sha256 together. Before a later install, `sha256sum
+~/.local/bin/xtool` must still show the same value.
 
 It reports itself as `xtool unversioned`. The first install may stop with "An Application Group with Identifier …
 is not available": run it again, the group exists by then.

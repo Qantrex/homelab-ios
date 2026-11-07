@@ -12,8 +12,13 @@ first release, or to run the newest code.
 sudo pacman -S --needed git usbmuxd libimobiledevice fuse2
 ```
 
+Get xtool as in [SETUP.md](SETUP.md) ("xtool and the iOS SDK": a pinned version, its sha256 checked):
+
 ```bash
-mkdir -p ~/.local/bin && curl -fL "https://github.com/xtool-org/xtool/releases/latest/download/xtool-$(uname -m).AppImage" -o ~/.local/bin/xtool && chmod +x ~/.local/bin/xtool
+XTOOL_VERSION=1.24.0
+mkdir -p ~/.local/bin && curl -fL "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool-$(uname -m).AppImage" -o ~/Downloads/xtool-$XTOOL_VERSION.AppImage
+sha256sum ~/Downloads/xtool-$XTOOL_VERSION.AppImage   # compare with the value you recorded, then:
+install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 ```
 
 `xtool --version` must be newer than 1.24.0, or 1.24.0 patched as in [SETUP.md](SETUP.md) ("Known xtool bug: no
