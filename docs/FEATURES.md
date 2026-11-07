@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 77 | 70 | 6 | 1 | 37 | 3 |
+| 78 | 70 | 7 | 1 | 41 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -161,13 +161,14 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (4)
+### Server (5)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
+| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | n/a | n/a | 3 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -197,6 +198,7 @@ Not verified (the registry says so in `unsure`):
 - [widget-status](#widget-status): Widget views are not unit-tested (WidgetKit doesn't build on Linux); only the data rules are.
 - [background-refresh](#background-refresh): The BGTask itself only runs on a device; no test covers BackgroundRefresh.run (HomelabUI doesn't build on Linux).
 - [install-sidestore](#install-sidestore): Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release.
+- [bridge-docker](#bridge-docker): That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here.
 
 ## What the code offers, and who uses it
 
@@ -204,8 +206,8 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 
 | Kind | Entry | Features |
 |---|---|---|
-| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources) |
-| Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources) |
+| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [bridge-docker](#bridge-docker) |
+| Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources), [bridge-docker](#bridge-docker) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources) |
@@ -261,12 +263,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
 | Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
-| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
+| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [bridge-docker](#bridge-docker) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [bridge-docker](#bridge-docker) |
 | Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
@@ -1431,6 +1433,24 @@ A `sources` list in the reference server's config reads other services' APIs (on
 | Through those | [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale) |
 | Notes | docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet. |
 
+### bridge-docker
+
+**Homelab Bridge in Docker (image, compose with a Tailscale sidecar)** · Server · partial · since 2026-11-07
+
+`docker compose up` in server/ runs the Homelab Bridge next to a Tailscale sidecar that is its own tailnet machine: the bridge listens on 127.0.0.1 in the namespace it shares only with the sidecar, `tailscale serve` (HTTPS, login header, never Funnel) is the only way in, keys come from env files, both have a healthcheck. The image (ghcr.io/qantrex/homelab-bridge, non-root, read-only, PyYAML only here) is built and pushed by hand with scripts/build-bridge-image; CI builds and tests it and never pushes.
+
+| | |
+|---|---|
+| Server | `status`, `hosts`, `GET /info`, `GET /state` |
+| Sources | [Dockerfile](../server/Dockerfile), [.dockerignore](../server/.dockerignore), [requirements-image.txt](../server/requirements-image.txt), [compose.yaml](../server/compose.yaml), [serve.json](../server/docker/serve.json), [config.example.json](../server/docker/config.example.json), [bridge.env.example](../server/docker/bridge.env.example), [tailscale.env.example](../server/docker/tailscale.env.example), [build-bridge-image](../scripts/build-bridge-image) |
+| Tests | n/a: scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck |
+| Phone (DeviceTest.md) | n/a: server side; the app sees an ordinary Companion server |
+| Docs | [docs/SERVER-SETUP.md#docker](SERVER-SETUP.md#docker), [docs/RELEASE.md#homelab-bridge-image](RELEASE.md#homelab-bridge-image), [docs/CI.md#workflows](CI.md#workflows) |
+| Depends on | [server-sources](#server-sources), [reference-server](#reference-server), [bridge-base-image](#dep-bridge-base-image), [pyyaml](#dep-pyyaml), [tailscale-image](#dep-tailscale-image), [docker-socket-proxy](#dep-docker-socket-proxy), [docker](#dep-docker), [tailscale](#dep-tailscale), [gha-checkout](#dep-gha-checkout), [gha-runners](#dep-gha-runners) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3) |
+| Notes | docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR. |
+| Unsure | That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here. |
+
 ### live-api-check
 
 **Live API check** · Server · shipped · since 2026-11-06
@@ -1450,7 +1470,7 @@ A `sources` list in the reference server's config reads other services' APIs (on
 
 **CI and local checks** · Tooling · shipped · since 2026-11-04
 
-CI (free runners only): Linux job with lint, HomelabKit tests against the fixture server and the reference server's tests; macOS jobs (macos-26, xcode-27) with a simulator build, screenshots, Kit tests on the simulator and a no-warnings check. `scripts/test-linux` runs the Linux job locally in Docker.
+CI (free runners only): Linux job with lint, HomelabKit tests against the fixture server and the reference server's tests; macOS jobs (macos-26, xcode-27) with a simulator build, screenshots, Kit tests on the simulator and a no-warnings check; a `bridge-image` job that builds and tests the Homelab Bridge image and never pushes it. `scripts/test-linux` runs the Linux job locally in Docker.
 
 | | |
 |---|---|
@@ -1548,8 +1568,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 12 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 28 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 13 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 29 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 4 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -1567,14 +1587,18 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 6 |
-| <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 7 |
+| <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md), [build-bridge-image](../scripts/build-bridge-image) | [bridge-docker](#bridge-docker), [ci-checks](#ci-checks) | 2 |
+| <a id="dep-bridge-base-image"></a>**Python 3.14 on Alpine (Homelab Bridge base image)** | server-side | python:3.14.10-alpine3.24, pinned by its multi-arch index digest (amd64, arm64) | [Dockerfile](../server/Dockerfile) | [bridge-docker](#bridge-docker) | 1 |
+| <a id="dep-pyyaml"></a>**PyYAML (Homelab Bridge image only)** | server-side | 6.0.3, musllinux wheels for CPython 3.14 (amd64, arm64) by SHA-256 | [requirements-image.txt](../server/requirements-image.txt) | [bridge-docker](#bridge-docker) | 1 |
+| <a id="dep-tailscale-image"></a>**tailscale/tailscale container image** | server-side | v1.104.4, pinned by digest | [compose.yaml](../server/compose.yaml) | [bridge-docker](#bridge-docker) | 1 |
+| <a id="dep-docker-socket-proxy"></a>**Tecnativa docker-socket-proxy** | server-side | v0.5.0, pinned by digest | [compose.yaml](../server/compose.yaml) | [bridge-docker](#bridge-docker) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
-| <a id="dep-gha-checkout"></a>**actions/checkout** | ci | v7.0.1, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [ci-checks](#ci-checks) | 1 |
+| <a id="dep-gha-checkout"></a>**actions/checkout** | ci | v7.0.1, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [bridge-docker](#bridge-docker), [ci-checks](#ci-checks) | 2 |
 | <a id="dep-gha-artifacts"></a>**actions/upload-artifact and download-artifact** | ci | upload v7.0.2, download v8.0.2, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [screenshots](#screenshots) | 1 |
 | <a id="dep-github-pages"></a>**GitHub Pages (classic Jekyll build)** | ci | Jekyll 3.10.0, kramdown 2.4.0 with GFM input, Liquid 4.0.4, jekyll-relative-links 0.6.1 (as of 2026-11-07) | – | [docs-site](#docs-site) | 1 |
-| <a id="dep-gha-runners"></a>**GitHub-hosted runners** | ci | ubuntu-latest (job runs in the pinned Swift container), macos-26, xcode-27 | [ci.yml](../.github/workflows/ci.yml) | [ci-checks](#ci-checks), [screenshots](#screenshots) | 2 |
+| <a id="dep-gha-runners"></a>**GitHub-hosted runners** | ci | ubuntu-latest (job runs in the pinned Swift container), macos-26, xcode-27 | [ci.yml](../.github/workflows/ci.yml) | [bridge-docker](#bridge-docker), [ci-checks](#ci-checks), [screenshots](#screenshots) | 3 |
 
 - **Swift 6.4 toolchain** (`swift`): Builds the package; Swift 6 strict concurrency, Swift Testing. Linux builds only HomelabKit (KIT_ONLY=1). Unsure: scripts/test-linux uses the tag swift:6.4-noble without the digest that CI pins, so local runs can drift from CI. <https://www.swift.org/install/linux/>
 - **iOS 18 or newer** (`ios-18`): Minimum OS of app, widget and extension. The noSwiftUICore linker flag keeps iOS 18 working with the iOS 26/27 SDK.
@@ -1606,7 +1630,11 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 - **Share extension target** (`share-extension-target`): The share sheet entry (one App ID); its principal class is kept from dead-stripping by a linker flag.
 - **homelab:// URL scheme and the scan quick action** (`url-scheme`): Links from widgets, pushes, Shortcuts and the static Scan quick action.
 - **Python 3** (`python3`): The reference server, its tests, check-live-api, make-source and this registry.
-- **Docker** (`docker`): scripts/test-linux runs the Swift tests in the CI image; the patched xtool is built in Docker.
+- **Docker** (`docker`): scripts/test-linux runs the Swift tests in the CI image; the patched xtool is built in Docker; scripts/build-bridge-image builds the Homelab Bridge image (buildx for --push).
+- **Python 3.14 on Alpine (Homelab Bridge base image)** (`bridge-base-image`): The base of the Homelab Bridge image (server/Dockerfile): small (about 60 MB with the bridge), BusyBox ping works without root. <https://hub.docker.com/_/python>
+- **PyYAML (Homelab Bridge image only)** (`pyyaml`): Only in the image (owner, 2026-11-07), for the Homepage import (M1.8). The single-file server stays stdlib-only. <https://pypi.org/project/PyYAML/>
+- **tailscale/tailscale container image** (`tailscale-image`): The sidecar in server/compose.yaml: the bridge's tailnet machine, `tailscale serve` from docker/serve.json (TS_SERVE_CONFIG), kernel networking. <https://hub.docker.com/r/tailscale/tailscale>
+- **Tecnativa docker-socket-proxy** (`docker-socket-proxy`): Optional (compose profile `docker`): read-only container list for the bridge's Docker source, so the Docker socket never goes into the bridge. <https://github.com/Tecnativa/docker-socket-proxy>
 - **pymobiledevice3** (`pymobiledevice3`): scripts/phone-shots takes screenshots on the iPhone over USB without root.
 - **GitHub CLI** (`gh`): Releases: check CI on the commit, create the release with the IPA, its SHA-256 and source.json.
 - **actions/checkout** (`gha-checkout`): Checks the repo out in every CI job (persist-credentials off where nothing is pushed).
@@ -1630,8 +1658,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 2 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 4 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 3 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 5 |  |
 | Home Assistant REST API |  |  |  |  |  |  |  |  | 4 |  |  |  |  |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1649,11 +1677,15 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 3 | 2 |
-| Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 4 | 2 |
+| Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 1 |
+| Python 3.14 on Alpine (Homelab Bridge base image) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
+| PyYAML (Homelab Bridge image only) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
+| tailscale/tailscale container image |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
+| Tecnativa docker-socket-proxy |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| actions/checkout |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
+| actions/checkout |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 1 |
 | actions/upload-artifact and download-artifact |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | GitHub Pages (classic Jekyll build) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
-| GitHub-hosted runners |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
+| GitHub-hosted runners |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 2 |

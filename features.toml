@@ -1185,6 +1185,24 @@ depends_on = ["python3", "reference-server"]
 notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
 
 [[feature]]
+id = "bridge-docker"
+name = "Homelab Bridge in Docker (image, compose with a Tailscale sidecar)"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "`docker compose up` in server/ runs the Homelab Bridge next to a Tailscale sidecar that is its own tailnet machine: the bridge listens on 127.0.0.1 in the namespace it shares only with the sidecar, `tailscale serve` (HTTPS, login header, never Funnel) is the only way in, keys come from env files, both have a healthcheck. The image (ghcr.io/qantrex/homelab-bridge, non-root, read-only, PyYAML only here) is built and pushed by hand with scripts/build-bridge-image; CI builds and tests it and never pushes."
+server_features = ["status", "hosts"]
+endpoints = ["GET /info", "GET /state"]
+sources = ["server/Dockerfile", "server/.dockerignore", "server/requirements-image.txt", "server/compose.yaml",
+           "server/docker/serve.json", "server/docker/config.example.json", "server/docker/bridge.env.example",
+           "server/docker/tailscale.env.example", "scripts/build-bridge-image"]
+docs = ["docs/SERVER-SETUP.md#docker", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
+not_needed = { tests = "scripts/build-bridge-image --test (CI job bridge-image): the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck", device_tests = "server side; the app sees an ordinary Companion server" }
+depends_on = ["server-sources", "reference-server", "bridge-base-image", "pyyaml", "tailscale-image", "docker-socket-proxy", "docker", "tailscale", "gha-checkout", "gha-runners"]
+notes = "docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR."
+unsure = "That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here."
+
+[[feature]]
 id = "live-api-check"
 name = "Live API check"
 area = "Server"
@@ -1204,7 +1222,7 @@ name = "CI and local checks"
 area = "Tooling"
 status = "shipped"
 since = "2026-11-04"
-summary = "CI (free runners only): Linux job with lint, HomelabKit tests against the fixture server and the reference server's tests; macOS jobs (macos-26, xcode-27) with a simulator build, screenshots, Kit tests on the simulator and a no-warnings check. `scripts/test-linux` runs the Linux job locally in Docker."
+summary = "CI (free runners only): Linux job with lint, HomelabKit tests against the fixture server and the reference server's tests; macOS jobs (macos-26, xcode-27) with a simulator build, screenshots, Kit tests on the simulator and a no-warnings check; a `bridge-image` job that builds and tests the Homelab Bridge image and never pushes it. `scripts/test-linux` runs the Linux job locally in Docker."
 sources = ["scripts/lint", "scripts/test-linux"]
 docs = ["docs/CI.md#workflows", "docs/SETUP.md#tests", "CONTRIBUTING.md#build-and-test"]
 not_needed = { tests = "it is the test runner", device_tests = "runs on a computer" }
@@ -1543,8 +1561,48 @@ id = "docker"
 name = "Docker"
 kind = "tooling"
 version = "–"
-why = "scripts/test-linux runs the Swift tests in the CI image; the patched xtool is built in Docker."
-pins = ["scripts/test-linux: docker run", "docs/SETUP.md: docker build --target build-xtool"]
+why = "scripts/test-linux runs the Swift tests in the CI image; the patched xtool is built in Docker; scripts/build-bridge-image builds the Homelab Bridge image (buildx for --push)."
+pins = ["scripts/test-linux: docker run", "docs/SETUP.md: docker build --target build-xtool", "scripts/build-bridge-image: docker buildx build"]
+
+[[dependency]]
+id = "bridge-base-image"
+name = "Python 3.14 on Alpine (Homelab Bridge base image)"
+kind = "server-side"
+version = "python:3.14.10-alpine3.24, pinned by its multi-arch index digest (amd64, arm64)"
+why = "The base of the Homelab Bridge image (server/Dockerfile): small (about 60 MB with the bridge), BusyBox ping works without root."
+pins = ["server/Dockerfile: python:3.14.10-alpine3.24@sha256:a18b20ad69e74df6cf6d2e1b1a260d7a1ecf5380fd83b310f83ba88c461cf894"]
+url = "https://hub.docker.com/_/python"
+
+[[dependency]]
+id = "pyyaml"
+name = "PyYAML (Homelab Bridge image only)"
+kind = "server-side"
+version = "6.0.3, musllinux wheels for CPython 3.14 (amd64, arm64) by SHA-256"
+why = "Only in the image (owner, 2026-11-07), for the Homepage import (M1.8). The single-file server stays stdlib-only."
+pins = [
+  "server/requirements-image.txt: PyYAML==6.0.3",
+  "server/requirements-image.txt: sha256:5190d403f121660ce8d1d2c1bb2ef1bd05b5f68533fc5c2ea899bd15f4399b35",
+  "server/requirements-image.txt: sha256:7c6610def4f163542a622a73fb39f534f8c101d690126992300bf3207eab9764",
+]
+url = "https://pypi.org/project/PyYAML/"
+
+[[dependency]]
+id = "tailscale-image"
+name = "tailscale/tailscale container image"
+kind = "server-side"
+version = "v1.104.4, pinned by digest"
+why = "The sidecar in server/compose.yaml: the bridge's tailnet machine, `tailscale serve` from docker/serve.json (TS_SERVE_CONFIG), kernel networking."
+pins = ["server/compose.yaml: tailscale/tailscale:v1.104.4@sha256:ed6480b33c6eb67c9cbd203ed42b9fb57e361986725b6856def71b7a3d9e276c"]
+url = "https://hub.docker.com/r/tailscale/tailscale"
+
+[[dependency]]
+id = "docker-socket-proxy"
+name = "Tecnativa docker-socket-proxy"
+kind = "server-side"
+version = "v0.5.0, pinned by digest"
+why = "Optional (compose profile `docker`): read-only container list for the bridge's Docker source, so the Docker socket never goes into the bridge."
+pins = ["server/compose.yaml: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459"]
+url = "https://github.com/Tecnativa/docker-socket-proxy"
 
 [[dependency]]
 id = "pymobiledevice3"

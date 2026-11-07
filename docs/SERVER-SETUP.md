@@ -9,7 +9,8 @@ The app talks to two kinds of server. You can add several of each in Settings �
 
 There are three ways to connect your homelab:
 
-- (a) the reference server from this repo: a Homelab API server for any Linux box,
+- (a) the reference server from this repo: a Homelab API server for any Linux box, also as the Homelab Bridge in
+  [Docker](#docker) with a Tailscale sidecar,
 - (b) Home Assistant on its own: only the Home tiles on Today,
 - (c) your own agent or script that speaks the Homelab API.
 
@@ -86,6 +87,78 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
 
 5. In the app: Add server → Type **Homelab API** → Address `https://<machine>.<tailnet>.ts.net:7443` → Login
    **Tailscale / proxy** → Test connection ("Connected to homeserver: status and hosts.") → Save.
+
+### Docker
+
+Run the **Homelab Bridge** (the reference server with its [sources](REFERENCE_SERVER.md#sources)) with Docker
+Compose: the bridge and a Tailscale sidecar. The sidecar is a machine of its own in your tailnet, `homelab-bridge`.
+The bridge listens on `127.0.0.1:8791` in the network namespace it shares with the sidecar, and nothing else; no port
+is opened on the Docker host. `tailscale serve` in the sidecar is the only way in: it adds HTTPS and your login
+(`Tailscale-User-Login`). **Never use Tailscale Funnel for it**: Funnel puts it on the public internet.
+
+You need Docker with Compose 2.17 or newer on Linux (`/dev/net/tun`), and in the Tailscale admin console MagicDNS and
+HTTPS certificates turned on (DNS page).
+
+1. Get the files and make your copies (they stay out of git):
+
+   ```bash
+   git clone https://github.com/Qantrex/homelab-ios
+   cd homelab-ios/server
+   cp docker/config.example.json docker/config.json
+   cp docker/bridge.env.example docker/bridge.env
+   cp docker/tailscale.env.example docker/tailscale.env
+   chmod 600 docker/bridge.env docker/tailscale.env
+   ```
+
+2. In `docker/config.json` set `name`, `allowed_logins` (your Tailscale login: the e-mail, or `name@github`) and your
+   `sources`. The config names each key's env variable (`"key_env": "KUMA_KEY"`); the key itself goes in
+   `docker/bridge.env` (`KUMA_KEY=...`).
+3. In the admin console: Settings → Keys → **Generate auth key** (not reusable, not ephemeral; pre-approved if your
+   tailnet approves devices). Put it in `docker/tailscale.env` as `TS_AUTHKEY=`. It is read once; the login then
+   stays in the volume `tailscale-state`, and you can delete the key from the file.
+4. Start it:
+
+   ```bash
+   docker compose up -d --build     # builds the image from this checkout
+   docker compose ps                # both "healthy" after a minute
+   docker compose logs bridge       # "listening on http://127.0.0.1:8791 (RealApp)"
+   ```
+
+5. Test it from another tailnet device:
+
+   ```bash
+   curl https://homelab-bridge.<tailnet>.ts.net/api/v1/info
+   ```
+
+   A 403 means your login is not in `allowed_logins`; `docker compose logs bridge` shows the refused login.
+6. In the app: Add server → Type **Homelab API** → Address `https://homelab-bridge.<tailnet>.ts.net` → Login
+   **Tailscale / proxy** → Test connection → Save.
+
+Notes:
+
+- **What it can reach.** Your LAN and the internet through the sidecar (`http://192.0.2.10:3001`), and other tailnet
+  machines by their `100.x` address. `127.0.0.1` is the container itself, not the Docker host: use the host's LAN
+  address for services on the same machine (a service bound only to the host's `127.0.0.1` can't be reached).
+- **This machine** in the app is the container: load and memory are the Docker host's (same kernel), `/` is Docker's
+  disk. The image has no `docker` CLI and no `apt`, so keep `this_host.docker` and `updates` off. For containers, the
+  Docker source reads them through the socket proxy: `docker compose --profile docker up -d` starts it (read-only,
+  container list only); the bridge reaches it at `http://socket-proxy:2375`. Never mount the Docker socket into the
+  bridge.
+- **Why the sidecar needs `NET_ADMIN` and `/dev/net/tun`.** It runs Tailscale with kernel networking
+  (`TS_USERSPACE=false`). In userspace mode, tailscaled hands tailnet connections to the namespace's `127.0.0.1`
+  ports, so any tailnet device could reach the bridge on `:8791` past `tailscale serve` and fake the login header.
+- **Tokens** for tagged devices or `curl`: `HOMELAB_TOKENS` in `docker/bridge.env`. Devices with tags get no login
+  header from `tailscale serve`.
+- **ACLs.** If your tailnet has an ACL policy, allow port 443 of `homelab-bridge` for your phone.
+- **Hardened.** The bridge runs as user 10001 with a read-only root, no capabilities and `no-new-privileges`; its
+  only writable places are `/tmp` (in memory) and the `bridge-state` volume (chat history). Actions and chat run
+  commands inside that container, which has only Python and BusyBox.
+- **Health.** Each container has a healthcheck. The bridge's asks `/api/v1/info` once a minute, so its log has one
+  `GET /api/v1/info 401` line a minute.
+- **Updates.** `git pull && docker compose up -d --build`. The Tailscale image is pinned by digest in
+  `compose.yaml`; a newer one is a change to that line. The published image `ghcr.io/qantrex/homelab-bridge` (built
+  by hand, see [RELEASE.md](RELEASE.md#homelab-bridge-image)) works too: `docker compose pull bridge && docker compose
+  up -d`, and `BRIDGE_TAG=<version>` in `server/.env` pins a version.
 
 ### Containers without the docker group
 
