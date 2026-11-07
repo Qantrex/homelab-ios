@@ -198,6 +198,11 @@ public final class AppModel {
     public internal(set) var firstRun: FirstRun?
     /// After a first run, Today ends with a line pointing to Settings → Today, until the app quits. In memory only.
     public internal(set) var showsStartTip = false
+    /// Today sections the user tapped "Show" for on the "Hidden now" line: they pass their rules until the app
+    /// closes (`showAnyway`, ShowRuleEditing.swift). Never stored.
+    public internal(set) var shownAnyway: Set<TodaySection> = []
+    /// `-HomelabTime 14:00`: the clock time Today's show rules check (screenshots of a rule); nil = the real time.
+    @ObservationIgnored public private(set) var fixedTime: Int?
 
     public let storage: Storage
     public let tokens: any TokenStore
@@ -978,6 +983,9 @@ public final class AppModel {
             request(.lab)
         }
         if let d = args.density { settings.todayDensity = d }
+        // Stored like the setting: `-HomelabRules deals=always` removes the Deals rule again.
+        for (section, rule) in args.rules ?? [] { settings.todayLayout.setRule(rule, for: section) }
+        if let t = args.time { fixedTime = t }
         if let p = args.personality { settings.voice = p }
         // Found and "Start with" over the demo (screenshots). Only when every server is a demo one: never over real ones.
         if args.firstRun, hasServers, firstRun == nil, servers.servers.allSatisfy({ $0.kind == .demo }) {
@@ -1052,6 +1060,10 @@ struct LaunchArguments {
     var deals: String?
     /// `-HomelabFirstRun YES` with `-HomelabDemo YES`: the first run's Found step over the demo servers (screenshots).
     var firstRun = false
+    /// `-HomelabRules "deals=evenings,cards=18:00-22:00"`: show rules for Today's sections (`ShowRuleArgument`).
+    var rules: [(TodaySection, ShowRule?)]?
+    /// `-HomelabTime 14:00`: the clock time the show rules check, in minutes after midnight.
+    var time: Int?
 
     /// A host id as servers send them: letters, digits, `.`, `_`, `-`, at most 64.
     static func isHostID(_ s: String) -> Bool {
@@ -1081,5 +1093,7 @@ struct LaunchArguments {
         deals = value("HomelabDeals").flatMap { ["list", "detail"].contains($0) ? $0 : nil }
         host = value("HomelabHost").flatMap { Self.isHostID($0) ? $0 : nil }
         firstRun = yes("HomelabFirstRun")
+        rules = value("HomelabRules").flatMap(ShowRuleArgument.parse)
+        time = value("HomelabTime").flatMap(ShowRuleArgument.minutes)
     }
 }

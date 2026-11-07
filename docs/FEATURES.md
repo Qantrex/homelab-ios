@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 80 | 70 | 9 | 1 | 37 | 3 |
+| 81 | 70 | 10 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (11)
+### Today (12)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -24,6 +24,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 6 | n/a | 1 |
 | [Where you are (presence from Home Assistant)](#presence) | partial | – | 2 | H8, H9 | 3 |
+| [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
@@ -238,10 +239,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Launch arguments (`LaunchArguments`) | `-HomelabPersonality` | [personality](#personality) |
 | Launch arguments (`LaunchArguments`) | `-HomelabPins` | [home-tiles](#home-tiles) |
 | Launch arguments (`LaunchArguments`) | `-HomelabResetState` | [launch-arguments](#launch-arguments), [reset-everything](#reset-everything) |
+| Launch arguments (`LaunchArguments`) | `-HomelabRules` | [show-rule-editor](#show-rule-editor) |
 | Launch arguments (`LaunchArguments`) | `-HomelabServer` | [launch-arguments](#launch-arguments) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTab` | [launch-arguments](#launch-arguments) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTileIcons` | [tile-icons](#tile-icons) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTileNames` | [tile-names](#tile-names) |
+| Launch arguments (`LaunchArguments`) | `-HomelabTime` | [show-rule-editor](#show-rule-editor) |
 | Widgets (`HomelabWidgets`) | `StatusWidget` | [widget-status](#widget-status) |
 | Widgets (`HomelabWidgets`) | `DayWidget` | [widget-day](#widget-day) |
 | Widgets (`HomelabWidgets`) | `HostsWidget` | [widget-hosts](#widget-hosts) |
@@ -354,13 +357,13 @@ In Overkill, Today lists every host's numbers in one dense list with a 24 h load
 
 **Show rules (kit)** · Today · partial · since 2026-11-07
 
-One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" come in M3.2.
+One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" are the feature show-rule-editor.
 
 | | |
 |---|---|
 | Sources | [ShowRule.swift](../Sources/HomelabKit/ShowRule.swift) |
 | Tests | `TimeWindowTests`, `ShowRuleTests`, `ShowRuleLayoutTests`, `ShowRuleCodingTests`, `NeedsMeTests`, `ShowRuleOwnerTests` |
-| Phone (DeviceTest.md) | n/a: kit only; the rule editor (M3.2) brings the DeviceTest rows |
+| Phone (DeviceTest.md) | n/a: kit only; the rows are the editor's (show-rule-editor: T9, T10) |
 | Docs | [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Depends on | [today-layout](#today-layout) |
 
@@ -381,6 +384,25 @@ Settings → Today → "Where you are" (only with a Home Assistant server, off b
 | Depends on | [show-rules](#show-rules), [home-tiles](#home-tiles), [home-assistant-api](#dep-home-assistant-api) |
 | Through those | [keychain](#dep-keychain) |
 | Notes | docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), HomeModel.presence(_:)). |
+
+### show-rule-editor
+
+**Show rules: editor and "Hidden now"** · Today · partial · since 2026-11-07
+
+Settings → Today → Sections shows each section's rule in words under its name ("Always", "Evenings", Machines "Only in Overkill"; "Not on your servers" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line "Hidden now: Deals (evenings) · Show"; Show brings them back until the app closes. Without rules Today is exactly as before.
+
+| | |
+|---|---|
+| Sources | [ShowRuleEditing.swift](../Sources/HomelabKit/ShowRuleEditing.swift), [ShowRuleEditor.swift](../Sources/HomelabUI/ShowRuleEditor.swift), [SettingsView.swift#SectionRuleRow](../Sources/HomelabUI/SettingsView.swift), [TodayView.swift#HiddenNowLine](../Sources/HomelabUI/TodayView.swift), [AppModel.swift#shownAnyway](../Sources/HomelabKit/AppModel.swift) |
+| Tests | `RuleOptionTests`, `TimeWindowEditingTests`, `HiddenNowTests`, `ShowRuleModelTests`, `ShowRuleOwnerTests`, `OwnerInvarianceTests` |
+| Phone (DeviceTest.md) | T9, T10 |
+| CI screenshots | `demo-rule-hidden`, `demo-rule-shown` |
+| Docs | [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
+| Launch arguments | `-HomelabRules`, `-HomelabTime` |
+| Settings | Settings → Today → Sections → tap a section |
+| Depends on | [show-rules](#show-rules), [today-layout](#today-layout), [presence](#presence) |
+| Through those | [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain) |
+| Notes | docs/plans/MODULAR.md M3.2. The sheet offers what AppModel.ruleKinds(for:) allows (At home and Away once Where you are is set, feature presence). The rule clock ticks every 30 s on Today only while a rule is set. |
 
 ### last-report
 
@@ -1608,7 +1630,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 13 |
 | <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 29 |
-| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 6 |
+| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
 | <a id="dep-seerr"></a>**Seerr (server side)** | server-side | – | [API.md](API.md) | [find](#find) | 1 |
@@ -1620,7 +1642,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 9 |
 | <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 4 |
 | <a id="dep-localauthentication"></a>**LocalAuthentication (Face ID)** | ios-framework | iOS 18 SDK | [Components.swift](../Sources/HomelabUI/Components.swift), [App-Info.plist](../App-Info.plist) | [app-lock](#app-lock) | 1 |
-| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 7 |
+| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 8 |
 | <a id="dep-app-group-entitlement"></a>**App Group entitlement** | runtime | group.com.qantrex.homelab (renamed by SideStore and xtool) | [App.entitlements](../App.entitlements), [Widget.entitlements](../Widget.entitlements), [Share.entitlements](../Share.entitlements) | [app-group](#app-group) | 12 |
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
@@ -1690,7 +1712,7 @@ Features per area that need each dependency, directly or through another feature
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 2 |  |
 | Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 4 |  |
-| Home Assistant REST API | 1 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
+| Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Seerr (server side) |  |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1702,7 +1724,7 @@ Features per area that need each dependency, directly or through another feature
 | BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 4 |  |  |  |  |  |  |  |
 | UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 3 |  |  |  |  |  |  |  |
 | LocalAuthentication (Face ID) |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |
-| Keychain (Security framework) | 1 |  |  |  |  |  |  |  | 4 |  |  |  | 1 | 1 |  |  |  |  |
+| Keychain (Security framework) | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 | 1 |  |  |  |  |
 | App Group entitlement |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  |  |  |  |
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

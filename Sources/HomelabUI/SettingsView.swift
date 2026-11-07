@@ -710,7 +710,7 @@ struct AboutView: View {
     }
 }
 
-/// Settings → Today: show or hide each section, drag to reorder.
+/// Settings → Today: show or hide each section, choose when it shows, drag to reorder.
 struct TodayLayoutEditor: View {
     let model: AppModel
 
@@ -718,14 +718,11 @@ struct TodayLayoutEditor: View {
         List {
             Group {
                 Section {
-                    ForEach(model.settings.todayLayout.sections) { s in
-                        Toggle(s.title, isOn: Binding(
-                            get: { model.settings.todayLayout.isVisible(s) },
-                            set: { model.settings.todayLayout.setVisible(s, $0) }))
-                    }
+                    // Each row: the switch, and when it shows (a tap picks the rule; ShowRuleEditor.swift).
+                    ForEach(model.settings.todayLayout.sections) { SectionRuleRow(model: model, section: $0) }
                     .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
                 } footer: {
-                    SettingsFooter("The headline with your lab's status always stays on top. Drag the handles to change the order.")
+                    SettingsFooter("The headline with your lab's status always stays on top. Tap a section to choose when it shows. Drag the handles to change the order.")
                 }
                 Section {
                     Button("Standard layout") { model.settings.todayLayout = .standard }
