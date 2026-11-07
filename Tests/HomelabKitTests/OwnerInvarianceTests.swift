@@ -122,16 +122,16 @@ import Testing
         for fixture in Self.stateFixtures { all[fixture] = try await observe(fixture) }
         let now = try Self.pretty(all)
         let golden = try Self.golden("owner-observed.json", now)
-        if now != golden {
-            // Name the fixtures that differ, so the failure says what changed.
-            let old = (try? JSONSerialization.jsonObject(with: golden) as? [String: Any]) ?? [:]
-            for fixture in Self.stateFixtures {
-                let a = try Self.pretty(all[fixture] ?? NSNull())
-                let b = try Self.pretty(old[fixture] ?? NSNull())
-                #expect(a == b, "owner view changed for \(fixture): see Tests/Goldens/owner-observed.json")
-            }
+        // Compared by content, not bytes: Apple's and Linux's JSONSerialization may print the same number differently
+        // (48 vs 48.0). Each fixture on its own, so a failure names what changed.
+        let current = try JSONSerialization.jsonObject(with: now) as? [String: Any] ?? [:]
+        let old = try JSONSerialization.jsonObject(with: golden) as? [String: Any] ?? [:]
+        #expect(Set(current.keys) == Set(old.keys))
+        for fixture in Self.stateFixtures {
+            let a = (current[fixture] as? NSDictionary) ?? [:]
+            let b = (old[fixture] as? NSDictionary) ?? [:]
+            #expect(a.isEqual(b), "owner view changed for \(fixture): see Tests/Goldens/owner-observed.json")
         }
-        #expect(now == golden)
     }
 
     @Test func goldensAreNotEmpty() throws {
