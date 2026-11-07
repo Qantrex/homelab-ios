@@ -85,8 +85,22 @@ widgets never see the app's data:
   `keychain-access-groups`, `get-task-allow` and the team ID.
 
 xtool fixed it on `main` in [#284](https://github.com/xtool-org/xtool/pull/284) (merged 2026-10-30, one App Group
-per app on a free team, which is what Homelab uses). Use the first release after 1.24.0, or build xtool from `main`
-(its `Dockerfile`, target `build-xtool`, makes the AppImage in `Linux/packages/`) and put it in `~/.local/bin/xtool`.
+per app on a free team, which is what Homelab uses). Use the first release after 1.24.0. Until then, build 1.24.0
+with the one line from #284 (what this project used on 2026-11-07; `main` itself didn't compile on Linux then):
+
+```sh
+git clone --branch 1.24.0 https://github.com/xtool-org/xtool.git xtool-124 && cd xtool-124
+sed -i 's/(.appGroups, isFree: false)/(.appGroups, isFree: true)/' \
+  "Sources/XKit/DeveloperServices/App IDs/Entitlements/DeveloperServicesCapability.swift"
+# Docker without buildx: the Dockerfile's `ADD <git url>` lines need BuildKit, so clone instead
+sed -i -E 's#^ADD --keep-git-dir=true (https://[^ ]+\.git)\#([^ ]+) (/[^ ]+)$#RUN git clone -q --branch \2 \1 \3#' Dockerfile
+docker build --target build-xtool -t xtool-appgroups .
+cid=$(docker create xtool-appgroups) && docker cp "$cid:/xtool/Linux/packages/xtool-x86_64.AppImage" . && docker rm "$cid"
+cp ~/.local/bin/xtool ~/.local/bin/xtool-1.24.0-original && install -m 755 xtool-x86_64.AppImage ~/.local/bin/xtool
+```
+
+It reports itself as `xtool unversioned`. The first install may stop with "An Application Group with Identifier …
+is not available": run it again, the group exists by then.
 `scripts/install-dev` and `scripts/phone-shots` warn when `xtool --version` is 1.24.0 or older. SideStore installs
 are not affected: SideStore registers the group itself ([SIDESTORE.md](SIDESTORE.md)).
 
