@@ -74,7 +74,7 @@ white space one space, and does not ask for less or more); the server answers 40
 No cards (or cards without items) means nothing was found. Errors: 400 (bad `q`, with `error`), 429, and 5xx with
 `{"error": "..."}` (the app shows that text, e.g. "Seerr did not answer"). The app shows the answered cards like any
 card, so the server can answer with other styles too. The app asks 400 ms after the last key. The request button is the
-item's `action` with the usual confirm ("Request <title>?"), `POST /actions/<name>`; after it ran, the poster shows
+item's `action` with the usual confirm (`Request <title>?`), `POST /actions/<name>`; after it ran, the poster shows
 "requested" and no button. Without `search` in `features` the app has no search screen; the Actions tab shows for
 `search` alone.
 

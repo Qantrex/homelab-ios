@@ -83,10 +83,10 @@ By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release work
 |---|---|
 | `scripts/test-linux` | Fixture server on the host, `KIT_ONLY=1 swift test` in Docker (`swift:6.4-noble`), Python tests, lint |
 | `scripts/lint` | The source checks from the `linux` job, including `scripts/features check` |
-| `scripts/features [check\|render\|show X\|gaps\|json]` | The feature registry `features.toml`: checks it against the repo, writes `docs/FEATURES.md`, tells which feature a file, test or DeviceTest row belongs to |
+| <code>scripts/features [check&#124;render&#124;show X&#124;gaps&#124;json]</code> | The feature registry `features.toml`: checks it against the repo, writes `docs/FEATURES.md`, tells which feature a file, test or DeviceTest row belongs to |
 | `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), runs `scripts/verify-ipa` on it, prints the IPA path and size |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
 | `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |
 | `scripts/phone-shots [--no-install] [OUT]` | Linux or macOS: build, install on the iPhone over USB, open every tab in demo mode, save screenshots (`shots-phone/`). About 1 minute. Needs the phone unlocked, trusted, Developer Mode on; uses `pymobiledevice3` in `.venv/` (no root) |
-| `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. `--pick main\|small` prints a simulator UDID |
+| `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. <code>--pick main&#124;small</code> prints a simulator UDID |
 | `scripts/make-source` | Builds the SideStore/AltStore `source.json` (`--help` for options) |

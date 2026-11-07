@@ -4,7 +4,8 @@
 #   - no print( / NSLog( anywhere in Sources/ (use Logger; tests live in Tests/ and may print)
 #   - no os_log/Logger call that interpolates something token-ish (token, secret, password, api key, bearer, authorization)
 #   - no try! or fatalError( in Sources/HomelabKit (shared code must not crash the app or the widget)
-#   - Int( on a Double in HomelabKit, private names in the repo, the feature registry (scripts/features check)
+#   - Int( on a Double in HomelabKit, private names in the repo, Liquid tags in docs/ (the Pages site), the feature
+#     registry (scripts/features check)
 # A line ending in `// lint:allow` is skipped. Comment lines are skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -63,6 +64,20 @@ fi
 if [ -n "$private_hits" ]; then
   echo "lint: private names in the repo (tailnet or a word from $words)"
   echo "$private_hits" | sed 's/^/  /'
+  fail=1
+fi
+
+# The docs site (docs/CI.md#docs-site): GitHub Pages runs every docs/*.md through Liquid (Jekyll 3.10, which has no
+# render_with_liquid: false), so a {{ ... }} or {% ... %} in a doc is eaten or breaks the build. Put such lines
+# between <!-- {% raw %} --> and <!-- {% endraw %} --> (HTML comments, so GitHub's own view hides them).
+liquid_hits=$(find docs -name '*.md' -print0 | sort -z | xargs -0 awk '
+  FNR == 1 { raw = 0 }
+  /\{%-?[[:space:]]*raw[[:space:]]*-?%\}/ { raw = 1 }
+  !raw && /\{\{|\{%/ { print FILENAME ":" FNR ":" $0 }
+  /\{%-?[[:space:]]*endraw[[:space:]]*-?%\}/ { raw = 0 }' || true)
+if [ -n "$liquid_hits" ]; then
+  echo "lint: Liquid tags in docs outside {% raw %} (the Pages build eats them; see docs/CI.md#docs-site)"
+  echo "$liquid_hits" | sed 's/^/  /'
   fail=1
 fi
 

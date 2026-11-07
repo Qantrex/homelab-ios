@@ -1062,7 +1062,7 @@ A "waiting for you" notification has Approve and Deny (not Always), both behind 
 
 **homelab:// links to tabs and hosts** · Links · shipped · since 2026-11-04
 
-`homelab://today\|actions\|chat\|lab\|settings` open a tab (older `overview` and `home` open Today), `homelab://lab/<host-id>` a host. A requested tab, form or host waits until the data is there; picking another tab by hand drops it, a newer link replaces it. Widgets and pushes use them.
+`homelab://today|actions|chat|lab|settings` open a tab (older `overview` and `home` open Today), `homelab://lab/<host-id>` a host. A requested tab, form or host waits until the data is there; picking another tab by hand drops it, a newer link replaces it. Widgets and pushes use them.
 
 | | |
 |---|---|
