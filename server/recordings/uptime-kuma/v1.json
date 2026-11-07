@@ -1,0 +1,34 @@
+{
+  "_about": "Made up, in the shape of Uptime Kuma 1.23.16: one `incident` object (null when none) instead of `incidents`, no `active` on it, heartbeat lists of at most 50. Status page `home`, three monitors, one down, a warning incident.",
+  "routes": {
+    "GET /api/status-page/home": {
+      "status": 200,
+      "json": {
+        "config": {"slug": "home", "title": "Status", "description": null, "icon": "/icon.svg", "theme": "light",
+                   "published": true, "showTags": false, "domainNameList": [], "customCSS": "", "footerText": null,
+                   "showPoweredBy": true, "googleAnalyticsId": null, "showCertificateExpiry": false},
+        "incident": {"id": 1, "style": "warning", "title": "Slow uplink tonight", "content": "", "pin": 1,
+                     "createdDate": "2026-11-06 20:00:00", "lastUpdatedDate": null},
+        "publicGroupList": [
+          {"id": 1, "name": "Services", "weight": 1, "monitorList": [
+            {"id": 11, "name": "Home Assistant", "sendUrl": 0, "type": "http"},
+            {"id": 12, "name": "Pi-hole", "sendUrl": 1, "type": "http", "url": "http://192.0.2.53/admin"},
+            {"id": 13, "name": "Printer", "sendUrl": 0, "type": "ping"}
+          ]}
+        ],
+        "maintenanceList": []
+      }
+    },
+    "GET /api/status-page/heartbeat/home": {
+      "status": 200,
+      "json": {
+        "heartbeatList": {
+          "11": [{"status": 1, "time": "2026-11-07 09:59:00.000", "msg": "", "ping": 25}],
+          "12": [{"status": 1, "time": "2026-11-07 09:59:00.000", "msg": "", "ping": 12}],
+          "13": [{"status": 0, "time": "2026-11-07 09:59:00.000", "msg": "", "ping": null}]
+        },
+        "uptimeList": {"11_24": 1, "12_24": 0.9999, "13_24": 0.5}
+      }
+    }
+  }
+}

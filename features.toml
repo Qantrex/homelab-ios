@@ -1185,6 +1185,44 @@ depends_on = ["python3", "reference-server"]
 notes = "docs/plans/MODULAR.md M1.1: the interface, the template source `example` and the fake upstream. Each real source (M1.3 to M1.6) is its own feature that depends on this one. Runner.status() is there for M1.2 (/info sources) but not served yet."
 
 [[feature]]
+id = "source-uptime-kuma"
+name = "Bridge source: Uptime Kuma"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "Source type `uptime-kuma`: the monitors of one Uptime Kuma status page (its public JSON, no key). Down is a problem; pending, slower than `slow_ms` and a certificate expiring within `cert_days` are warnings; a pinned danger or warning incident too. One list card in Lab (\"11 of 12 up\", state and 24 h uptime per monitor), monitors with a public link as services. Tested against Uptime Kuma 2.5.9 and 1.23.16."
+server_features = ["status", "cards", "services"]
+endpoints = ["GET /state", "GET /services"]
+api_fields = ["state.problems", "state.cards", "services"]
+sources = ["server/sources/uptime_kuma.py#collect", "server/test_source_uptime_kuma.py",
+           "server/recordings/uptime-kuma/normal.json", "server/recordings/uptime-kuma/odd.json",
+           "server/recordings/uptime-kuma/v1.json", "server/recordings/uptime-kuma/not-found.json",
+           "server/examples/sources-monitors.json"]
+tests = ["server/test_source_uptime_kuma.py::UptimeKumaSource", "server/test_source_uptime_kuma.py::MonitorsSampleConfig"]
+docs = ["docs/SERVER-SETUP.md#sources", "docs/REFERENCE_SERVER.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "docs/plans/MODULAR.md M1.4. Reads GET /api/status-page/<slug> and /api/status-page/heartbeat/<slug>, not /metrics (Prometheus text behind HTTP Basic with an API key as the password, made by an admin; the plan prefers no key). Kuma 1.23 never answers an unknown slug, so that shows as `Kuma: timeout`; 2.x gives `status page <slug> not found`."
+
+[[feature]]
+id = "source-gatus"
+name = "Bridge source: Gatus"
+area = "Server"
+status = "partial"
+since = "2026-11-07"
+summary = "Source type `gatus`: every Gatus endpoint from GET /api/v1/endpoints/statuses. Failing is a problem with the first failed condition; failing only on [RESPONSE_TIME], [CERTIFICATE_EXPIRATION] or [DOMAIN_EXPIRATION], or slower than `slow_ms`, is a warning. One list card in Lab (\"11 of 12 up\"). Optional HTTP Basic (`user` + `password_env`) for security.basic. Tested against Gatus v5.38.0."
+server_features = ["status", "cards"]
+endpoints = ["GET /state"]
+api_fields = ["state.problems", "state.cards"]
+sources = ["server/sources/gatus.py#collect", "server/test_source_gatus.py", "server/recordings/gatus/normal.json",
+           "server/recordings/gatus/odd.json", "server/recordings/gatus/auth-failed.json"]
+tests = ["server/test_source_gatus.py::GatusSource"]
+docs = ["docs/SERVER-SETUP.md#sources", "docs/REFERENCE_SERVER.md#sources"]
+not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
+depends_on = ["server-sources"]
+notes = "docs/plans/MODULAR.md M1.4. Gatus' `errors` texts are not shown (they hold the endpoint's URL). The sample config server/examples/sources-monitors.json and its check-live-api test are in source-uptime-kuma."
+
+[[feature]]
 id = "live-api-check"
 name = "Live API check"
 area = "Server"

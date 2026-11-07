@@ -1,0 +1,12 @@
+{
+  "_comment": "Homelab Bridge with the two monitor sources (docs/REFERENCE_SERVER.md#sources). Against the fake upstreams: python3 server/fake_upstream.py server/recordings/uptime-kuma/normal.json --port 8796 and python3 server/fake_upstream.py server/recordings/gatus/normal.json --port 8797, then HOMELAB_TOKENS=<16+ characters> python3 server/reference_server.py --config server/examples/sources-monitors.json. For a real Uptime Kuma, set url to its address and slug to a status page's slug; for a real Gatus, its address.",
+
+  "name": "bridge monitors",
+  "listen": "127.0.0.1:8791",
+  "this_host": {"id": "bridge", "kind": "server", "disks": ["/"]},
+
+  "sources": [
+    {"name": "Kuma", "type": "uptime-kuma", "url": "http://127.0.0.1:8796", "slug": "home", "every": 60},
+    {"name": "Gatus", "type": "gatus", "url": "http://127.0.0.1:8797", "every": 60, "slow_ms": 2000}
+  ]
+}
