@@ -132,6 +132,23 @@ settings = ["Settings → Today → \"Last report\""]
 unsure = "No test checks the last_message section itself; FixtureDecoding only decodes it."
 
 [[feature]]
+id = "start-presets"
+name = "Start presets (Home, Watch, Everything)"
+area = "Today"
+status = "partial"
+since = "2026-11-07"
+summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. Kit only; the first-run screens that offer it come with M2.3."
+server_features = []
+endpoints = ["GET /info"]
+api_fields = ["info.features"]
+sources = ["Sources/HomelabKit/StartPreset.swift#StartPreset", "Sources/HomelabKit/StartPreset.swift#StartLayout"]
+tests = ["StartPresetTests"]
+docs = ["docs/plans/MODULAR.md#m2-app-side"]
+not_needed = { device_tests = "kit only, no screen yet; M2.3 adds the first-run screens and their DeviceTest rows" }
+depends_on = ["today-layout"]
+notes = "Sections the servers offer come first in the preset's order; the others stay on behind them, so they appear once a server offers them. A preset that matches the defaults (the demo with Everything) stores nil for the layout."
+
+[[feature]]
 id = "weather-line"
 name = "Weather line under the headline"
 area = "Today"

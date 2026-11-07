@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 73 | 70 | 2 | 1 | 37 | 3 |
+| 74 | 70 | 3 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (8)
+### Today (9)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -23,6 +23,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
+| [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | n/a | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | **X2** | 3 |
 | [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | partial | – | 4 | DL10 | 3 |
@@ -257,7 +258,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
 | Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
-| Endpoints (`server/openapi.yaml`) | `GET /info` | [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
+| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
@@ -358,6 +359,22 @@ The agent's last chat report (morning, watchdog, …) at the end of Today; tap o
 | Today section | `report` |
 | Settings | Settings → Today → "Last report" |
 | Unsure | No test checks the last_message section itself; FixtureDecoding only decodes it. |
+
+### start-presets
+
+**Start presets (Home, Watch, Everything)** · Today · partial · since 2026-11-07
+
+For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. Kit only; the first-run screens that offer it come with M2.3.
+
+| | |
+|---|---|
+| Server | `GET /info`, `info.features` |
+| Sources | [StartPreset.swift#StartPreset](../Sources/HomelabKit/StartPreset.swift), [StartPreset.swift#StartLayout](../Sources/HomelabKit/StartPreset.swift) |
+| Tests | `StartPresetTests` |
+| Phone (DeviceTest.md) | n/a: kit only, no screen yet; M2.3 adds the first-run screens and their DeviceTest rows |
+| Docs | [docs/plans/MODULAR.md#m2-app-side](plans/MODULAR.md#m2-app-side) |
+| Depends on | [today-layout](#today-layout) |
+| Notes | Sections the servers offer come first in the preset's order; the others stay on behind them, so they appear once a server offers them. A preset that matches the defaults (the demo with Everything) stores nil for the layout. |
 
 ### weather-line
 
