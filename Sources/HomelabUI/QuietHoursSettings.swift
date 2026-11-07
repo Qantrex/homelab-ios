@@ -8,7 +8,7 @@ struct QuietHoursRow: View {
     let model: AppModel
 
     var body: some View {
-        if model.settings.notificationsOn || model.settings.quietHours != nil {
+        if model.settings.showsQuietHoursRow {
             NavigationLink {
                 QuietHoursEditor(model: model)
             } label: {
@@ -24,6 +24,7 @@ struct QuietHoursRow: View {
 /// Quiet hours on or off, and from when to when (every day; an end before the start runs past midnight).
 struct QuietHoursEditor: View {
     let model: AppModel
+    @Environment(\.calendar) private var calendar
 
     var body: some View {
         List {
@@ -47,15 +48,14 @@ struct QuietHoursEditor: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// A time of the window as a date today, for the picker; minutes after midnight in the settings.
+    /// A time of the window as the picker's date (a fixed day, so 2:30 stays 2:30 on the day the clocks go forward);
+    /// minutes after midnight in the settings.
     private func time(_ key: WritableKeyPath<TimeWindow, Int>) -> Binding<Date> {
         Binding(get: {
-            let minutes = (model.settings.quietHours?[keyPath: key] ?? 0) % (24 * 60)
-            return Calendar.current.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: Date()) ?? Date()
+            TimeWindow.pickerDate(minutes: model.settings.quietHours?[keyPath: key] ?? 0, calendar: calendar)
         }, set: { date in
             guard var w = model.settings.quietHours else { return }
-            let c = Calendar.current.dateComponents([.hour, .minute], from: date)
-            w[keyPath: key] = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+            w[keyPath: key] = TimeWindow.minutes(of: date, calendar: calendar)
             model.settings.quietHours = TimeWindow(from: w.from, to: w.to, days: w.days)
         })
     }

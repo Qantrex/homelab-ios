@@ -7,12 +7,14 @@ import SwiftUI
 struct TodayView: View {
     let model: AppModel
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.scenePhase) private var scenePhase
     /// Taps on the voice line (each one: the next comment).
     @State private var pokes = 0
     /// A pull to refresh runs or just ended: the hero says where the data is from (`showsFacts`).
     @State private var pulled = false
     @State private var pulls = 0
-    /// Home Assistant's states, loaded by the Home tiles; without a Companion server the headline reads them too.
+    /// Home Assistant's states, read by `homePoll` for the Home tiles, a Home "When it needs me" rule, Where you are and
+    /// (without a Companion server) the headline.
     @State private var home = HomeModel()
     /// The time the show rules check (Settings → Today → Sections); ticks every 30 s while a rule is set.
     @State private var ruleClock = Date.now
@@ -25,6 +27,11 @@ struct TodayView: View {
     private var dayCard: Card? { state?.dayCard }
 
     var body: some View {
+        // Once per redraw; without rules and Where you are it doesn't read Home Assistant's states (`todaySections`).
+        let today = model.todaySections(now: ruleClock, homeEntities: { home.entities }, fetched: { home.fetched })
+        let shown = today.sections
+        let pollKey = HomePollKey(server: model.homeAssistant?.target, active: scenePhase == .active,
+                                  polls: model.pollsHome(shown: shown))
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Space.section) {
@@ -56,13 +63,13 @@ struct TodayView: View {
                     }
                     // In my order, without the hidden ones and those a rule hides now (Settings → Today).
                     ForEach(shown) { section(for: $0) }
-                    if model.settings.todayLayout.rules != nil {
-                        HiddenNowLine(model: model, context: ruleContext, now: ruleClock)
+                    if model.settings.todayLayout.rules != nil, let context = today.context {
+                        HiddenNowLine(model: model, context: context, now: ruleClock)
                     }
                     // Only right after a first run (never for the owner): where Today is changed.
                     if model.showsStartTip { startTip }
                 }
-                .motion(.snappy, value: shape)
+                .motion(.snappy, value: shape(shown))
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
@@ -72,7 +79,7 @@ struct TodayView: View {
             .refreshable { await pullToRefresh() }
             .toolbar(.hidden, for: .navigationBar)
             .pollingState(model)
-            .presenceRefresh(model, home: home)   // only with Settings → Today → Where you are
+            .task(id: pollKey) { await homePoll(pollKey) }
             .task(id: model.settings.todayLayout.rules != nil) {
                 guard model.settings.todayLayout.rules != nil else { return }
                 while !Task.isCancelled {
@@ -89,19 +96,33 @@ struct TodayView: View {
 
     /// What decides which panels show: when it changes (an action approved elsewhere, a download done, a section
     /// turned off), panels slide instead of jumping.
-    private var shape: [String] {
+    private func shape(_ shown: [TodaySection]) -> [String] {
         shown.map(\.rawValue)
             + (state?.pending.map { "p:" + $0.id } ?? [])
             + (state?.cards.map { "c:\($0.id):\($0.items.count)" } ?? [])
             + [state == nil ? "empty" : "loaded"]
     }
 
-    /// What the show rules are checked against. Without rules the sections are exactly `density.sections(layout)`.
-    private var ruleContext: ShowContext {
-        model.todayContext(now: ruleClock, homeEntities: home.entities, presence: home.presence(model))
+    /// Identity of the Home Assistant loop: another Home Assistant, the app going to the background or coming back,
+    /// or Today starting or stopping to need the states (`AppModel.pollsHome`) restarts it.
+    private struct HomePollKey: Hashable {
+        var server: String?
+        var active: Bool
+        var polls: Bool
     }
 
-    private var shown: [TodaySection] { density.sections(model.settings.todayLayout, ruleContext) }
+    /// The one loop that reads Home Assistant while Today is open, every 30 s, while anything on Today needs the
+    /// states: the Home tiles shown, a Home "When it needs me" rule, the headline without a Companion server, or Where
+    /// you are (`HomePoll.shouldPoll`). With Home shown (the owner's Today) it is the one request the tiles made.
+    private func homePoll(_ key: HomePollKey) async {
+        let ha = model.homeAssistant
+        home.reset(for: ha)
+        guard key.active, key.polls, let ha else { return }
+        while !Task.isCancelled {
+            await home.load(model.homeAssistantAPI(for: ha), host: ha.host)
+            try? await Task.sleep(for: .seconds(HomePoll.interval))
+        }
+    }
 
     /// The footer after a first run, until the app quits or it is tapped: Settings → Today changes the sections and
     /// how much they show.
@@ -129,10 +150,9 @@ struct TodayView: View {
     }
 
     /// Without a Companion server: Home Assistant at a glance ("Home." · "1 light on" · gold "Bedroom fan
-    /// unavailable"), once the tiles loaded its states without an error; else nil ("Home." in grey).
+    /// unavailable"), from states read without an error in the last 2 minutes; else nil ("Home." in grey).
     private var homeGlance: HomeGlance? {
-        guard let ha = model.homeAssistant, home.error == nil, !home.entities.isEmpty else { return nil }
-        return HomeGlance(entities: home.entities, pinned: ha.pinnedEntities)
+        model.homeGlance(entities: home.entities, fetched: home.fetched, failed: home.error != nil, now: .now)
     }
 
     /// The big "now" (docs/DESIGN.md): the date, how the lab is doing in two words (white; the mood is the light

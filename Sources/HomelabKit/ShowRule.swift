@@ -53,9 +53,10 @@ public struct TimeWindow: Codable, Equatable, Hashable, Sendable {
         ("Mornings", mornings), ("Daytime", daytime), ("Evenings", evenings), ("Weekdays", weekdays), ("Weekends", weekends),
     ]
 
-    /// "Evenings", "Weekdays 6–10", "Sat, Sun 9:30–12", "22–2".
-    public func words(calendar: Calendar) -> String {
-        if let name = Self.named.first(where: { $0.window == self })?.name { return name }
+    /// "Evenings", "Weekdays 6–10", "Sat, Sun 9:30–12", "22–2". `named` false gives a named window's times too
+    /// ("18–24" for Evenings).
+    public func words(calendar: Calendar, named: Bool = true) -> String {
+        if named, let name = Self.named.first(where: { $0.window == self })?.name { return name }
         let allDay = from == to || (from == 0 && to == 1440)
         let time = allDay ? nil : "\(Self.clock(from))–\(Self.clock(to))"
         var day: String?

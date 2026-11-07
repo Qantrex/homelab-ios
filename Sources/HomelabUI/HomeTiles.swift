@@ -70,10 +70,9 @@ final class HomeModel {
 struct HomeTiles: View {
     let model: AppModel
     let server: ServerConfig
-    /// Owned by Today, so its headline can read the states too (Home Assistant without a Companion server).
+    /// Owned and kept fresh by Today, so its headline and rules read the states too.
     let home: HomeModel
     @State private var picking = false
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var pinned: [HAEntity] {
@@ -122,14 +121,8 @@ struct HomeTiles: View {
         } message: {
             Text(home.actionError ?? "")
         }
-        .task(id: PollKey(server: server.target, active: scenePhase == .active)) {
-            home.reset(for: server)
-            guard scenePhase == .active else { return }
-            while !Task.isCancelled {
-                await load()
-                try? await Task.sleep(for: .seconds(30))
-            }
-        }
+        // No loop of its own: Today reads Home Assistant every 30 s while anything on it needs the states
+        // (`TodayView.homePoll`), also while this section is hidden.
     }
 
     private func load() async {

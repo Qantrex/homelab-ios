@@ -22,8 +22,8 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
-| [Show rules (kit)](#show-rules) | partial | – | 6 | n/a | 1 |
-| [Where you are (presence from Home Assistant)](#presence) | partial | – | 2 | H8, H9 | 3 |
+| [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
+| [Where you are (presence from Home Assistant)](#presence) | partial | – | 4 | H8, H9 | 3 |
 | [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
@@ -94,10 +94,10 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Home Assistant tiles on Today](#home-tiles) | shipped | – | 4 | **H1**, **H2**, **H3**, H4, H5, H6, **T7** | 3 |
+| [Home Assistant tiles on Today](#home-tiles) | shipped | – | 6 | **H1**, **H2**, **H3**, H4, H5, H6, **T7** | 3 |
 | [Tile names of your own](#tile-names) | shipped | – | 2 | **T4**, T5, **T7** | 2 |
 | [Tile icons of your own](#tile-icons) | shipped | – | 1 | **T6** | 2 |
-| [Today with only Home Assistant](#home-only-today) | partial | – | 2 | H7 | 5 |
+| [Today with only Home Assistant](#home-only-today) | partial | – | 3 | H7 | 5 |
 
 ### Widgets (8)
 
@@ -118,7 +118,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 |---|---|---|---|---|---|
 | [Background refresh](#background-refresh) | shipped (?) | – | 1 | **B1**, **B3** | 2 |
 | [Local notifications for new problems and actions](#notifications) | shipped | `status`, `actions` | 3 | B2, **B4**, B5, **B6** | 2 |
-| [Quiet hours for notifications](#quiet-hours) | partial | – | 1 | B12, B13 | 3 |
+| [Quiet hours for notifications](#quiet-hours) | partial | – | 4 | B12, B13 | 3 |
 | [Approve and Deny on the notification](#notification-actions) | shipped | `actions` | 1 | B7, B8, B9, B10, B11 | 2 |
 
 ### Links (2)
@@ -378,7 +378,7 @@ One optional rule per Today section says when it shows: Always (the default, and
 | | |
 |---|---|
 | Sources | [ShowRule.swift](../Sources/HomelabKit/ShowRule.swift) |
-| Tests | `TimeWindowTests`, `ShowRuleTests`, `ShowRuleLayoutTests`, `ShowRuleCodingTests`, `NeedsMeTests`, `ShowRuleOwnerTests` |
+| Tests | `TimeWindowTests`, `ShowRuleTests`, `ShowRuleLayoutTests`, `ShowRuleCodingTests`, `NeedsMeTests`, `ShowRuleOwnerTests`, `ModularReviewFixTests/homeNeedsMeShowsOnceAPinnedTileIsUnavailable`, `ModularReviewFixTests/todayWithoutRulesReadsNoStates`, `ModularReviewFixTests/badTodayRulesKeepOtherSettings` |
 | Phone (DeviceTest.md) | n/a: kit only; the rows are the editor's (show-rule-editor: T9, T10) |
 | Docs | [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Depends on | [today-layout](#today-layout) |
@@ -392,14 +392,14 @@ Settings → Today → "Where you are" (only with a Home Assistant server, off b
 | | |
 |---|---|
 | Server | `Home Assistant GET /api/states: person.* and device_tracker.* state` |
-| Sources | [HomePresence.swift](../Sources/HomelabKit/HomePresence.swift), [PresenceSettings.swift](../Sources/HomelabUI/PresenceSettings.swift), [HomeTiles.swift#fetched](../Sources/HomelabUI/HomeTiles.swift), [TodayView.swift#presenceRefresh](../Sources/HomelabUI/TodayView.swift) |
-| Tests | `HomePresenceTests`, `PresenceModelTests` |
+| Sources | [HomePresence.swift](../Sources/HomelabKit/HomePresence.swift), [PresenceSettings.swift](../Sources/HomelabUI/PresenceSettings.swift), [HomeTiles.swift#fetched](../Sources/HomelabUI/HomeTiles.swift), [TodayView.swift#homePoll](../Sources/HomelabUI/TodayView.swift) |
+| Tests | `HomePresenceTests`, `PresenceModelTests`, `ModularReviewFixTests/homePollsWhileAnythingOnTodayNeedsIt`, `ModularReviewFixTests/badPresenceEntityKeepsOtherSettings` |
 | Phone (DeviceTest.md) | H8, H9 |
 | Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Settings | Settings → Today → Where you are |
 | Depends on | [show-rules](#show-rules), [home-tiles](#home-tiles), [home-assistant-api](#dep-home-assistant-api) |
 | Through those | [keychain](#dep-keychain) |
-| Notes | docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), HomeModel.presence(_:)). |
+| Notes | docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), AppModel.todaySections). Today reads Home Assistant in one loop (TodayView.homePoll, HomePoll.shouldPoll), also while the Home section is hidden. |
 
 ### show-rule-editor
 
@@ -920,9 +920,9 @@ Add Home Assistant with a long-lived token, pin lights, switches, fans, toggles,
 | | |
 |---|---|
 | Server | `Home Assistant GET /api/states, POST /api/services/<domain>/<service>` |
-| Sources | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift), [HomeTiles.swift](../Sources/HomelabUI/HomeTiles.swift) |
+| Sources | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift), [HomeTiles.swift](../Sources/HomelabUI/HomeTiles.swift), [HomePoll.swift](../Sources/HomelabKit/HomePoll.swift), [TodayView.swift#homePoll](../Sources/HomelabUI/TodayView.swift) |
 | Fixtures | [ha-states.json](../Sources/HomelabKit/Fixtures/ha-states.json) |
-| Tests | `HomeAssistantTests`, `ServerListTests`, `DemoBackendTests/toggles`, `AppReviewFixTests/duplicatePinsAreDropped` |
+| Tests | `HomeAssistantTests`, `ServerListTests`, `DemoBackendTests/toggles`, `AppReviewFixTests/duplicatePinsAreDropped`, `ModularReviewFixTests/homePollsWhileAnythingOnTodayNeedsIt`, `ModularReviewFixTests/ownerShapedTodayPollsOnlyWithHomeShown` |
 | Phone (DeviceTest.md) | **H1**, **H2**, **H3**, H4, H5, H6, **T7** |
 | Docs | [docs/SERVER-SETUP.md#b-home-assistant](SERVER-SETUP.md#b-home-assistant), [README.md#limits](../README.md#limits), [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules) |
 | Links | `homelab://home` |
@@ -975,7 +975,7 @@ Without a Homelab server, Today's headline reads Home Assistant's states: "Home.
 | Server | `Home Assistant GET /api/states: state, device_class, friendly_name` |
 | Sources | [HomeGlance.swift](../Sources/HomelabKit/HomeGlance.swift), [Mood.swift#warningText](../Sources/HomelabKit/Mood.swift), [TodayView.swift#homeGlance](../Sources/HomelabUI/TodayView.swift), [Demo.swift#haOnly](../Sources/HomelabKit/Demo.swift) |
 | Fixtures | [ha-states.json](../Sources/HomelabKit/Fixtures/ha-states.json) |
-| Tests | `HomeGlanceTests`, `OwnerInvarianceTests` |
+| Tests | `HomeGlanceTests`, `OwnerInvarianceTests`, `ModularReviewFixTests/homeHeadlineNeedsRecentStates` |
 | Phone (DeviceTest.md) | H7 |
 | CI screenshots | `demo-ha-only` |
 | Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/GETTING-STARTED.md#a-only-home-assistant](GETTING-STARTED.md#a-only-home-assistant), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
@@ -1167,7 +1167,7 @@ Settings → Notifications → "Quiet hours" (shown while a notification is on, 
 | | |
 |---|---|
 | Sources | [QuietHours.swift](../Sources/HomelabKit/QuietHours.swift), [QuietHoursSettings.swift](../Sources/HomelabUI/QuietHoursSettings.swift), [Background.swift#notificationsToPost](../Sources/HomelabUI/Background.swift) |
-| Tests | `QuietHoursTests` |
+| Tests | `QuietHoursTests`, `ModularReviewFixTests/badQuietHoursKeepsOtherSettings`, `ModularReviewFixTests/theModelKeepsSettingsWithABadNewKey`, `TimeWindowEditingTests/pickerTimesSurviveClockChanges` |
 | Phone (DeviceTest.md) | B12, B13 |
 | Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Settings | Settings → Notifications → Quiet hours |

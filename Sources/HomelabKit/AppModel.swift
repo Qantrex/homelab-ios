@@ -90,6 +90,34 @@ public struct AppSettings: Codable, Sendable, Equatable {
     }
 
     public var notificationsOn: Bool { notifyProblems || notifyPending || notifyDeals }
+
+    /// Every stored field; the encoder is the synthesized one, so a saved file stays byte for byte as before.
+    enum CodingKeys: String, CodingKey {
+        case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
+        case today, density, personality, leaveActivity, presenceEntity, quietHours
+    }
+}
+
+extension AppSettings {
+    /// Field by field: one value this version can't read (a newer version's quiet hours, a hand edit) falls back to
+    /// its default alone, instead of failing the whole file and losing Face ID lock, notifications and the layout.
+    /// Readable values come out exactly as the synthesized decoder read them.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        notifyProblems = c.lenient(Bool.self, .notifyProblems) ?? false
+        notifyPending = c.lenient(Bool.self, .notifyPending) ?? false
+        dealNotifications = c.lenient(Bool.self, .dealNotifications)
+        faceIDLock = c.lenient(Bool.self, .faceIDLock) ?? false
+        lastBackgroundRun = c.lenient(Date.self, .lastBackgroundRun)
+        lastBackgroundResult = c.lenient(String.self, .lastBackgroundResult)
+        today = c.lenient(TodayLayout.self, .today)
+        density = c.lenient(Density.self, .density)
+        personality = c.lenient(Personality.self, .personality)
+        leaveActivity = c.lenient(Bool.self, .leaveActivity)
+        presenceEntity = c.lenient(String.self, .presenceEntity)
+        quietHours = c.lenient(TimeWindow.self, .quietHours)
+    }
 }
 
 /// The live state of one Companion server.

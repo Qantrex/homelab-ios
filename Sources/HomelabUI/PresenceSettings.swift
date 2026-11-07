@@ -18,7 +18,7 @@ struct PresenceRow: View {
                         .foregroundStyle(Palette.secondary).lineLimitAtStandardSizes(1).truncationMode(.middle)
                 }
             }
-        } else if model.settings.presenceEntity != nil {
+        } else if model.showsPresenceRow {
             // No Home Assistant to read it from (removed, or only the demo): presence is unknown (rules pass), and it
             // can still be turned off.
             Button("Where you are: turn off") { model.setPresenceEntity(nil) }
@@ -107,46 +107,5 @@ struct PresencePicker: View {
             let e = APIError.from(error, host: server.host)
             if e != .cancelled { self.error = e }
         }
-    }
-}
-
-extension HomeModel {
-    /// Where I am, from the states Today holds (M3.2 passes it to `AppModel.showContext(presence:)`).
-    func presence(_ model: AppModel) -> Presence? { model.presence(in: entities, fetched: fetched) }
-}
-
-/// Keeps Home Assistant's states fresh for the presence rules while Today is open, also when the Home section (whose
-/// tiles poll every 30 s) is hidden. Nothing happens unless "Where you are" is set.
-struct PresenceRefresh: ViewModifier {
-    let model: AppModel
-    let home: HomeModel
-    @Environment(\.scenePhase) private var scenePhase
-
-    private struct Key: Hashable {
-        var entity: String?
-        var server: String?
-        var active: Bool
-    }
-
-    func body(content: Content) -> some View {
-        content.task(id: Key(entity: model.settings.presenceEntity, server: model.homeAssistant?.target,
-                             active: scenePhase == .active)) {
-            guard scenePhase == .active, model.presenceSetUp, let ha = model.homeAssistant else { return }
-            while !Task.isCancelled {
-                // Only when the tiles haven't fetched in the last minute.
-                if !home.loading, home.fetched.map({ Date().timeIntervalSince($0) > 60 }) ?? true {
-                    home.reset(for: ha)
-                    await home.load(model.homeAssistantAPI(for: ha), host: ha.host)
-                }
-                try? await Task.sleep(for: .seconds(60))
-            }
-        }
-    }
-}
-
-extension View {
-    /// Today: fetch Home Assistant for "Where you are" (`PresenceRefresh`).
-    func presenceRefresh(_ model: AppModel, home: HomeModel) -> some View {
-        modifier(PresenceRefresh(model: model, home: home))
     }
 }

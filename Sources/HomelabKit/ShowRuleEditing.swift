@@ -100,6 +100,48 @@ public enum RuleOption: Hashable, Sendable, Identifiable {
     }
 }
 
+/// What the rule sheet holds while it is open: the rule, and whether Custom is the chosen option. Custom is its own
+/// state, not read back from the window: choosing Custom while Evenings is chosen keeps 18–24 to start from and shows
+/// the pickers, and Custom edited into a named window's times (18 to 0:00) stays Custom. Opened again, a stored
+/// window shows as its name (`RuleOption.current`).
+public struct RuleChoice: Equatable, Sendable {
+    public let section: TodaySection
+    public private(set) var rule: ShowRule?
+    public private(set) var isCustom: Bool
+
+    public init(_ rule: ShowRule?, for section: TodaySection) {
+        self.section = section
+        self.rule = rule
+        isCustom = RuleOption.current(rule, for: section) == .custom
+    }
+
+    /// The option with the checkmark.
+    public var chosen: RuleOption { isCustom ? .custom : RuleOption.current(rule, for: section) }
+
+    /// An option tapped.
+    public mutating func choose(_ option: RuleOption) {
+        rule = option.rule(from: rule)
+        isCustom = option == .custom
+    }
+
+    /// The window the pickers and day chips edit, while Custom is chosen.
+    public var custom: TimeWindow? {
+        if isCustom, case .times(let w) = rule { return w }
+        return nil
+    }
+
+    /// A picker or day chip changed the Custom window (ignored unless Custom is chosen).
+    public mutating func edit(_ window: TimeWindow) {
+        guard isCustom else { return }
+        rule = .times(window)
+    }
+
+    /// The meta line under Custom while it is chosen: its times, also when they match a named window ("18–24").
+    public func customWords(calendar: Calendar) -> String? {
+        custom?.words(calendar: calendar, named: false)
+    }
+}
+
 extension TodaySection {
     /// What "When it needs me" means for this section, in the rule sheet (`needsMe(state:home:deals:now:)`).
     public var needsMeWords: String? {
@@ -125,10 +167,20 @@ extension TimeWindow {
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
 
-    /// `minutes` on the day of `day`, for a time picker (24:00 shows as 0:00).
+    /// `minutes` on the day of `day` (24:00 is 0:00). On the day the clocks go forward a time in the gap moves on
+    /// (2:30 becomes 3:30): a time picker uses `pickerDate(minutes:calendar:)`.
     public static func date(minutes: Int, on day: Date, calendar: Calendar) -> Date {
         let m = ((minutes % 1440) + 1440) % 1440
         return calendar.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: day) ?? day
+    }
+
+    /// `minutes` as a time picker's date (24:00 shows as 0:00), on a fixed day without a clock change (15 January
+    /// 2001), so every time of the day reads back as itself whatever today is: 2:30 stays 2:30 on the day the clocks
+    /// go forward. Read back with `minutes(of:calendar:)`.
+    public static func pickerDate(minutes: Int, calendar: Calendar) -> Date {
+        let day = calendar.date(from: DateComponents(year: 2001, month: 1, day: 15, hour: 12))
+            ?? Date(timeIntervalSinceReferenceDate: 14 * 86_400 + 12 * 3600)
+        return date(minutes: minutes, on: day, calendar: calendar)
     }
 
     /// With a new start from a time picker.

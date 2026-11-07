@@ -58,7 +58,8 @@ struct SectionRuleRow: View {
 struct ShowRuleSheet: View {
     let model: AppModel
     let section: TodaySection
-    @State private var rule: ShowRule?
+    /// The rule being edited and whether Custom is chosen (Custom stays Custom on a named window's times).
+    @State private var choice: RuleChoice
     @Environment(\.dismiss) private var dismiss
     @Environment(\.calendar) private var calendar
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -66,22 +67,16 @@ struct ShowRuleSheet: View {
     init(model: AppModel, section: TodaySection) {
         self.model = model
         self.section = section
-        _rule = State(initialValue: model.settings.todayLayout.rule(for: section))
+        _choice = State(initialValue: RuleChoice(model.settings.todayLayout.rule(for: section), for: section))
     }
 
-    private var chosen: RuleOption { RuleOption.current(rule, for: section) }
+    private var chosen: RuleOption { choice.chosen }
 
     /// The kinds the app allows, plus the stored rule's own (an At home rule stays visible after Where you are is
     /// turned off, so it can be changed).
     private var options: [RuleOption] {
         let offered = RuleOption.options(for: section, kinds: model.ruleKinds(for: section))
         return offered.contains(chosen) ? offered : offered + [chosen]
-    }
-
-    /// The window Custom edits, while Custom is chosen.
-    private var custom: TimeWindow? {
-        if chosen == .custom, case .times(let w) = rule { return w }
-        return nil
     }
 
     var body: some View {
@@ -95,7 +90,7 @@ struct ShowRuleSheet: View {
                     } footer: {
                         SettingsFooter("Overkill shows every section. In Calm, a section set to \"When it needs me\" joins the day and Home while it needs you.")
                     }
-                    if let w = custom {
+                    if let w = choice.custom {
                         Section {
                             DatePicker("From", selection: time(w.from) { w.with(from: $0) }, displayedComponents: .hourAndMinute)
                             DatePicker("To", selection: time(w.to) { w.with(to: $0) }, displayedComponents: .hourAndMinute)
@@ -118,7 +113,7 @@ struct ShowRuleSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        model.settings.todayLayout.setRule(rule, for: section)
+                        model.settings.todayLayout.setRule(choice.rule, for: section)
                         dismiss()
                     }
                 }
@@ -130,8 +125,8 @@ struct ShowRuleSheet: View {
 
     private func optionRow(_ option: RuleOption) -> some View {
         let on = option == chosen
-        let detail = option == .custom && on ? rule?.words(calendar: calendar) : option.detail(for: section)
-        return Button { rule = option.rule(from: rule) } label: {
+        let detail = option == .custom && on ? choice.customWords(calendar: calendar) : option.detail(for: section)
+        return Button { choice.choose(option) } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.title).font(Typo.body).foregroundStyle(Palette.text)
@@ -152,10 +147,11 @@ struct ShowRuleSheet: View {
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// A time picker's value: `minutes` as a time today; a new time sets the rule through `change`.
+    /// A time picker's value: `minutes` on the picker's fixed day (2:30 stays 2:30 on the day the clocks go forward);
+    /// a new time edits the Custom window through `change`.
     private func time(_ minutes: Int, _ change: @escaping @Sendable (Int) -> TimeWindow) -> Binding<Date> {
-        Binding(get: { TimeWindow.date(minutes: minutes, on: .now, calendar: calendar) },
-                set: { rule = .times(change(TimeWindow.minutes(of: $0, calendar: calendar))) })
+        Binding(get: { TimeWindow.pickerDate(minutes: minutes, calendar: calendar) },
+                set: { choice.edit(change(TimeWindow.minutes(of: $0, calendar: calendar))) })
     }
 
     /// Monday to Friday in the first row, Saturday and Sunday in the second; filled = on.
@@ -166,7 +162,7 @@ struct ShowRuleSheet: View {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
                 ForEach(TimeWindow.mondayFirst, id: \.self) { day in
                     let on = w.includes(day: day)
-                    Button { rule = .times(w.toggling(day: day)) } label: {
+                    Button { choice.edit(w.toggling(day: day)) } label: {
                         Text(verbatim: calendar.shortWeekdaySymbols[day - 1])
                             .font(Typo.secondary.weight(.semibold))
                             .lineLimit(1)
