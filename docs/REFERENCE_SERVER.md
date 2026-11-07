@@ -266,7 +266,8 @@ Rules the server enforces for every source:
 - Each source runs in its own thread, so a slow upstream never holds up the host checks or another source.
 - **Status in `/info`.** `/info` lists every source under `sources`: `state` (`ok`, `failing`, `never`), the last
   run, the last good run, the short error while failing, and `insecure: true` as a warning. Without `sources` in the
-  config the field is left out. Fields: [API.md → Source status](API.md#source-status-sources-in-info).
+  config the field is left out. Fields: [API.md → Source status](API.md#source-status-sources-in-info). The app
+  shows them in Settings → Diagnostics → Sources.
 
 Writing a new source: [BRIDGE.md](BRIDGE.md).
 
