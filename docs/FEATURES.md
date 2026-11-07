@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 73 | 70 | 2 | 1 | 37 | 3 |
+| 74 | 70 | 3 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (8)
+### Today (9)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -22,6 +22,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
+| [Show rules (kit)](#show-rules) | partial | – | 6 | n/a | 1 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | **X2** | 3 |
@@ -340,6 +341,20 @@ In Overkill, Today lists every host's numbers in one dense list with a 24 h load
 | Docs | [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules) |
 | Today section | `machines` |
 | Settings | Settings → Today → Detail → Overkill |
+| Depends on | [today-layout](#today-layout) |
+
+### show-rules
+
+**Show rules (kit)** · Today · partial · since 2026-11-07
+
+One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" come in M3.2.
+
+| | |
+|---|---|
+| Sources | [ShowRule.swift](../Sources/HomelabKit/ShowRule.swift) |
+| Tests | `TimeWindowTests`, `ShowRuleTests`, `ShowRuleLayoutTests`, `ShowRuleCodingTests`, `NeedsMeTests`, `ShowRuleOwnerTests` |
+| Phone (DeviceTest.md) | n/a: kit only; the rule editor (M3.2) brings the DeviceTest rows |
+| Docs | [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Depends on | [today-layout](#today-layout) |
 
 ### last-report
