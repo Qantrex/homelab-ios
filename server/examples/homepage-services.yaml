@@ -1,0 +1,74 @@
+# A made-up Homepage services.yaml (gethomepage.dev) for the Homelab Bridge import:
+# docs/SERVER-SETUP.md#import-from-homepage. server/examples/sources-homepage.json reads it.
+# Every service with an href becomes a launcher entry; the uptimekuma, gatus and proxmox widgets become sources; the other
+# widgets are logged as not yet supported. Keys are Homepage placeholders, never written here.
+
+- Monitoring:
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: http://192.0.2.10:3001
+        description: Status of everything
+        widget:
+          type: uptimekuma
+          url: http://{{HOMEPAGE_VAR_KUMA_HOST}}
+          slug: home
+    - Gatus:
+        icon: gatus.svg
+        href: http://192.0.2.10:8080
+        widget:
+          type: gatus
+          url: http://{{HOMEPAGE_VAR_GATUS_HOST}}
+          username: bridge
+          password: {{HOMEPAGE_VAR_GATUS_PASSWORD}}
+
+- Media:
+    - Jellyfin:
+        icon: si-jellyfin
+        href: https://nas.tail1234.ts.net:8920
+        description: Films and shows
+        widget:
+          type: jellyfin
+          url: http://192.0.2.20:8096
+          key: {{HOMEPAGE_VAR_JELLYFIN_KEY}}
+          enableBlocks: true
+    - Sonarr:
+        icon: sonarr.png
+        href: http://192.0.2.20:8989
+        widget:
+          type: sonarr
+          url: http://192.0.2.20:8989
+          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+    - Downloads:
+        - qBittorrent:
+            icon: mdi-download
+            href: http://192.0.2.20:8081
+            widget:
+              type: qbittorrent
+              url: http://192.0.2.20:8081
+              username: admin
+              password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+
+- Servers:
+    - Proxmox:
+        icon: proxmox.png
+        href: https://192.0.2.30:8006
+        widget:
+          type: proxmox
+          url: {{HOMEPAGE_VAR_PVE_URL}}
+          username: monitor@pve!homepage
+          password: {{HOMEPAGE_VAR_PVE_SECRET}}
+          node: pve1
+
+- Network:
+    - Pi-hole:
+        icon: pi-hole.png
+        href: http://192.0.2.2/admin
+        widgets:
+          - type: pihole
+            url: http://192.0.2.2
+            version: 6
+            key: "{{HOMEPAGE_VAR_PIHOLE_KEY}}"
+    - Router:
+        icon: router.png
+        href: http://192.0.2.1
+        description: The one in the hall

@@ -253,7 +253,7 @@ def probe(target, timeout=5.0, expect=None, insecure=False):
 KNOWN_KEYS = {
     "name", "listen", "allow_remote", "allowed_hosts", "tokens", "trust_identity_header", "allowed_logins", "interval",
     "this_host", "hosts", "checks", "thresholds", "cards_dir", "services", "pending_dir", "actions",
-    "action_timeout", "chat_command", "chat_timeout", "state_dir", "sources",
+    "action_timeout", "chat_command", "chat_timeout", "state_dir", "sources", "homepage",
 }
 
 
@@ -396,13 +396,31 @@ class Config:
 
         self.button_secret = env.get("HOMELAB_BUTTON_SECRET", "").encode() or secrets.token_bytes(32)
 
-        # Homelab Bridge sources (docs/REFERENCE_SERVER.md#sources). Without the key nothing below runs and the
-        # sources package is never imported.
+        # Homelab Bridge sources (docs/REFERENCE_SERVER.md#sources). Without the keys `sources` and `homepage` nothing
+        # below runs and the sources package is never imported.
         self.sources = []
-        if raw.get("sources"):
+        raw_sources = raw.get("sources") or []
+        source_env = env
+        if raw.get("homepage") is not None:
+            # Import from Homepage (docs/SERVER-SETUP.md#import-from-homepage): its services.yaml adds launcher
+            # entries and sources. Needs PyYAML; without it the start stops with a message that says so.
+            from sources import _homepage  # noqa: E402
+            if not isinstance(raw_sources, list):
+                raise ConfigError("sources must be a list of objects")
+            taken = [s.get("name") for s in raw_sources if isinstance(s, dict) and isinstance(s.get("name"), str)]
+            try:
+                imported = _homepage.load(raw["homepage"], env, taken, self.services, log)
+            except _homepage.ImportFailed as exc:
+                raise ConfigError(str(exc))
+            self.services += imported.services
+            raw_sources = list(raw_sources) + imported.sources
+            if imported.env:
+                source_env = dict(env)
+                source_env.update(imported.env)
+        if raw_sources:
             import sources as bridge_sources  # noqa: E402 - optional, next to this file
             try:
-                self.sources = bridge_sources.parse(raw["sources"], env)
+                self.sources = bridge_sources.parse(raw_sources, source_env)
             except ValueError as exc:
                 raise ConfigError(str(exc))
             SOURCE_SECRET_ENV.update(bridge_sources.env_names(self.sources))

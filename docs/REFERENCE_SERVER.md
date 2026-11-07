@@ -125,6 +125,7 @@ The config is JSON. Keys that start with `_` are comments and are ignored. Unkno
 | `chat_timeout` | `120` | Seconds the chat command may run |
 | `state_dir` | `~/.local/state/homelab-companion` | Chat history (`messages.jsonl`, last 1000) |
 | `sources[]` | none | Homelab Bridge sources: other services' APIs as problems, hosts, cards and services. See [Sources](#sources) |
+| `homepage` | none | `{"file": "/path/services.yaml"}`: Homepage's services as launcher entries, its Kuma, Gatus and Proxmox widgets as sources. Needs PyYAML. See [SERVER-SETUP.md → Import from Homepage](SERVER-SETUP.md#import-from-homepage) |
 
 `insecure: true` skips TLS certificate checks for that one URL (for self-signed local UIs such as Cockpit).
 Checks never use an HTTP proxy from the environment.
