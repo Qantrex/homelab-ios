@@ -1502,7 +1502,7 @@ Import the IPA (or, after the first release, add the source) in SideStore; it si
 
 **Releases by hand (IPA, SHA-256, SideStore source)** · Install · planned · since 2026-11-04
 
-Bump the version in the three Info.plists, CI green, build locally, `scripts/make-source` writes source.json, install and run the release-blocking DeviceTest rows, then tag and `gh release create`. No release yet.
+Bump the version in the three Info.plists, CI green, build locally, `scripts/make-source` writes source.json, install and run the release-blocking DeviceTest rows, then tag and `gh release create`.
 
 | | |
 |---|---|
