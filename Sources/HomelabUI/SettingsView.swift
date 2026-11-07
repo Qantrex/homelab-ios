@@ -129,6 +129,9 @@ struct SettingsView: View {
             .screenBackground()
             .navigationTitle("Settings")
             .sheet(item: $editing) { ServerEditor(model: model, server: $0) }
+            // "Edit server" on an error banner elsewhere: open that server's editor here.
+            .onAppear { openRequestedEditor() }
+            .onChange(of: model.editServerRequest) { _, _ in openRequestedEditor() }
             .sheet(isPresented: $adding) { ServerEditor(model: model, server: nil) }
             .confirmationDialog("Delete \(deleting?.name ?? "server")?", isPresented: Binding(
                 get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { s in
@@ -143,6 +146,12 @@ struct SettingsView: View {
                 Text("All servers, tokens, Home tiles, cached data and settings are deleted from this phone. Your servers keep their data.")
             }
         }
+    }
+
+    private func openRequestedEditor() {
+        guard let id = model.editServerRequest else { return }
+        model.editServerRequest = nil
+        if let s = model.servers.servers.first(where: { $0.id == id }), s.kind != .demo { editing = s }
     }
 
     /// "Show data from  lab ›": opens the list of servers that can be chosen, each with its kind in words. Without any,
@@ -581,6 +590,9 @@ struct DiagnosticsView: View {
                 Section("App") {
                     DataRow("Version", "\(AppVersion.short) (\(AppVersion.build))")
                     DataRow("Bundle ID", Bundle.main.bundleIdentifier ?? "?")
+                    if let expires = AppExpiry.current {
+                        DataRow("Install expires", expires.formatted(date: .abbreviated, time: .shortened))
+                    }
                     DataRow("iOS", UIDeviceInfo.version)
                 }
                 Section("Shared storage") {

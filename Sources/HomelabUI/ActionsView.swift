@@ -47,9 +47,9 @@ struct ActionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.section) {
                     if let error = model.selectedStatus.error {
-                        ErrorBanner(error: error, snapshotAge: model.selectedStatus.snapshot?.fetched) {
-                            Task { await model.refresh() }
-                        }
+                        ErrorBanner(error: error, snapshotAge: model.selectedStatus.snapshot?.fetched,
+                                    retry: { Task { await model.refresh() } },
+                                    edit: model.selected.map { s in { model.requestEdit(s.id) } })
                     }
                     // What waits for me first (it is time-critical), then what I can start (research #7).
                     if approves { approveSection }

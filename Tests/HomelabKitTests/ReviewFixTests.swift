@@ -116,3 +116,21 @@ import Testing
         #expect(!quick.contains("pick") && !quick.contains("two") && !quick.contains("note"))
     }
 }
+
+@Suite struct AppExpiryTests {
+    let profile = Data(("garbage\u{0}\u{1}<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+        + "<plist version=\"1.0\"><dict><key>Name</key><string>XTL profile</string><key>ExpirationDate</key><date>2026-11-14T12:31:29Z</date></dict></plist>\u{0}signature").utf8)
+
+    @Test func readsTheDateFromTheProfile() {
+        #expect(AppExpiry.date(fromProfile: profile) == ISO8601DateFormatter().date(from: "2026-11-14T12:31:29Z"))
+        #expect(AppExpiry.date(fromProfile: Data("no plist here".utf8)) == nil)
+    }
+
+    @Test func warnsOnlyInTheLastTwoDays() throws {
+        let expires = try #require(ISO8601DateFormatter().date(from: "2026-11-14T12:31:29Z"))
+        #expect(AppExpiry.warning(expires: expires, now: expires.addingTimeInterval(-3 * 24 * 3600)) == nil)
+        #expect(AppExpiry.warning(expires: expires, now: expires.addingTimeInterval(-36 * 3600))?.contains("in 1 day") == true)
+        #expect(AppExpiry.warning(expires: expires, now: expires.addingTimeInterval(-5 * 3600))?.contains("in 5 hours") == true)
+        #expect(AppExpiry.warning(expires: nil) == nil)
+    }
+}

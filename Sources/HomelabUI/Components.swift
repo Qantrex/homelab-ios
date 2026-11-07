@@ -37,7 +37,11 @@ struct ErrorBanner: View {
     let error: APIError
     let snapshotAge: Date?
     let retry: () -> Void
+    /// "Edit server" for a setup error (token, address, certificate): Retry alone can't fix those.
+    var edit: (() -> Void)? = nil
     @Environment(\.dynamicTypeSize) private var typeSize
+
+    private var showsEdit: Bool { edit != nil && !error.isTransient }
 
     var body: some View {
         Group {
@@ -46,14 +50,18 @@ struct ErrorBanner: View {
                     icon
                     texts
                     retryButton
+                    if showsEdit { editButton }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                HStack(alignment: .top, spacing: 10) {
-                    icon
-                    texts
-                    Spacer(minLength: 0)
-                    retryButton
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 10) {
+                        icon
+                        texts
+                        Spacer(minLength: 0)
+                        retryButton
+                    }
+                    if showsEdit { editButton.padding(.leading, 34) }
                 }
             }
         }
@@ -80,6 +88,20 @@ struct ErrorBanner: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
+    }
+
+    private var editButton: some View {
+        Button { edit?() } label: {
+            Text("Edit server")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Palette.text)
+                .padding(.horizontal, 16)
+                .frame(minWidth: 44, minHeight: 44)
+                .background(Palette.raised, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.press)
+        .accessibilityHint(Text("Opens this server's settings"))
     }
 
     private var retryButton: some View {

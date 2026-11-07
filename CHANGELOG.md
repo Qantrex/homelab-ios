@@ -32,6 +32,11 @@ App:
   music, TV and so on; filled while the tile is on). Unpinning drops the icon; older saved settings still load.
   Launch argument `-HomelabTileIcons "light.a=lamp.floor,script.b=moon.stars"`.
 - A bike day shows a motorcycle (the Live Activity and the demo's commute action), not a bicycle.
+- Two days before a free-Apple-ID install stops opening, Today says so ("This install stops opening in 2 days …
+  reinstall; your data stays"); Diagnostics shows the date. Read from the app's own provisioning profile.
+- Setup errors (token, address, certificate) have an "Edit server" button next to Retry that opens the server's
+  editor in Settings. Lab's header says "No problems · 2 hosts with a warning" instead of "All good" above gold
+  host dots (Today stays calm). Widgets follow the text size up to xxLarge.
 - App review of 2026-11-07 (functional, intuitiveness, accessibility, Settings):
   - Fixed: editing the Home Assistant server (a new token or name) dropped the tiles' names and icons; Reset
     everything could bring deleted servers back from the copy made before the App Group; a swiped-away demo server

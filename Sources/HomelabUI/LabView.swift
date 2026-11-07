@@ -19,7 +19,8 @@ struct LabView: View {
                 LazyVStack(alignment: .leading, spacing: Space.section) {
                     header
                     if let error = status.error {
-                        ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched) { refresh() }
+                        ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched, retry: { refresh() },
+                                    edit: model.selected.map { s in { model.requestEdit(s.id) } })
                     }
                     if let state {
                         content(state)
@@ -111,7 +112,13 @@ struct LabView: View {
     private var headline: String {
         guard let state else { return String(localized: "Not loaded") }
         switch state.status {
-        case .ok: return String(localized: "All good")
+        case .ok:
+            // The server says ok, but hosts below may still carry a gold note (an accepted under-voltage): say so,
+            // so the header doesn't read "All good" right above gold dots. Today stays calm.
+            let noted = state.hosts.filter { state.health(of: $0) == .warning }.count
+            if noted == 0 { return String(localized: "All good") }
+            return noted == 1 ? String(localized: "No problems · 1 host with a warning")
+                              : String(localized: "No problems · \(noted) hosts with a warning")
         case .unknown: return String(localized: "Status unknown")
         case .warning, .problem:
             let t = ProblemTally(state)

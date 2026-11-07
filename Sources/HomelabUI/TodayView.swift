@@ -25,9 +25,22 @@ struct TodayView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Space.section) {
                     hero
+                    // Free Apple ID: the install stops opening after 7 days. Two days ahead, Today says so.
+                    if let warning = AppExpiry.warning(expires: AppExpiry.current) {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.gold).accessibilityHidden(true)
+                            Text(warning).font(Typo.secondary).foregroundStyle(Palette.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .accessibilityElement(children: .combine)
+                    }
                     if model.selected != nil {
                         if let error = status.error {
-                            ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched) { Task { await model.refresh() } }
+                            ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched, retry: { Task { await model.refresh() } },
+                                        edit: model.selected.map { s in { model.requestEdit(s.id) } })
                         }
                         if state == nil {
                             if status.loading {

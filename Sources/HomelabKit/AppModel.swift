@@ -138,6 +138,14 @@ public final class AppModel {
     /// The shown tab. The user's picks go through `pick(_:)`, which also ends a waiting request; `validateTab` and
     /// `open(_:)` set it directly.
     public var tab: AppTab = .today
+    /// A server whose editor Settings should open (an error banner's "Edit server"); Settings clears it.
+    public var editServerRequest: UUID?
+
+    /// Opens Settings with this server's editor: the way out of a setup error (wrong token, address, certificate).
+    public func requestEdit(_ id: UUID) {
+        editServerRequest = id
+        tab = .settings
+    }
     /// A tab a launch argument or link asked for before the server's features were known (right after a reset, the
     /// Chat and Actions tabs only appear once /info has answered). `validateTab` switches to it once it is there, and
     /// drops it once the info is known without it.

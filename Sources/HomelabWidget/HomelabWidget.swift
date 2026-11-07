@@ -164,6 +164,7 @@ struct StatusWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabStatus", provider: Provider()) { entry in
             StatusView(entry: entry)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // grows with the text size, but fits the widget
                 .containerBackground(for: .widget) { MoodGlow(level: entry.stale ? .unknown : entry.mood.level, reach: 220) }
         }
         .configurationDisplayName("Homelab status")
@@ -224,7 +225,8 @@ struct StatusView: View {
             }
             Spacer(minLength: 0)
             Text(mood.headline)
-                .font(.system(size: 26, weight: .heavy))
+                .font(.title.weight(.heavy))   // follows the text size (capped for widgets below)
+                .minimumScaleFactor(0.7)
                 .tracking(-0.8)
                 .foregroundStyle(Palette.text)
                 .lineLimit(2)
@@ -261,6 +263,7 @@ struct DayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabDay", provider: Provider(follows: .day)) { entry in
             DayView(entry: entry)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // grows with the text size, but fits the widget
                 .containerBackground(Palette.background, for: .widget)
                 .widgetURL(URL(string: "homelab://today"))
         }
@@ -319,7 +322,7 @@ struct DayView: View {
             if let stop = focus, let line {
                 Text(stop.item.title ?? "").font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary).lineLimit(1)
                 Text(stop.item.value ?? "")
-                    .font(.system(size: 34, weight: .semibold).monospacedDigit())
+                    .font(.largeTitle.weight(.semibold).monospacedDigit())
                     .minimumScaleFactor(0.6).lineLimit(1)
                     .foregroundStyle(stop.phase == .past ? Palette.tertiary : Palette.text)
                 Text(detail(stop, line)).font(.footnote.weight(stop.phase == .next ? .semibold : .regular))
@@ -389,6 +392,7 @@ struct HostsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabHosts", provider: Provider()) { entry in
             HostsView(entry: entry)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // grows with the text size, but fits the widget
                 .containerBackground(for: .widget) { MoodGlow(level: entry.stale ? .unknown : entry.mood.level, reach: 300) }
                 .widgetURL(URL(string: "homelab://lab"))
         }
@@ -409,7 +413,7 @@ struct HostsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 StatusIcon(level: level)
-                Text(mood.headline).font(.system(size: 20, weight: .heavy)).tracking(-0.5)
+                Text(mood.headline).font(.title3.weight(.heavy)).tracking(-0.5)
                     .foregroundStyle(Palette.text).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 6)
                 Meta([entry.snapshot?.serverName ?? "Homelab",

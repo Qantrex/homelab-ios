@@ -80,7 +80,7 @@ struct HomeTiles: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle(text: "Home", action: home.entities.isEmpty ? nil : ("Edit", { picking = true }))
             if let error = home.error {
-                ErrorBanner(error: error, snapshotAge: nil) { Task { await load() } }
+                ErrorBanner(error: error, snapshotAge: nil, retry: { Task { await load() } }, edit: { model.requestEdit(server.id) })
             }
             if pinned.isEmpty {
                 if home.loading && home.entities.isEmpty {
