@@ -159,6 +159,8 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabAction <name>` | Opens the Actions tab with that action's form (once the server lists it; dropped when it doesn't). Names as in `GET /actions`: `[a-z0-9][a-z0-9_-]*` |
 | `-HomelabHost <host-id>` | Opens Lab with that host's details (once the state has the host; dropped when a newer state lacks it) |
 | `-HomelabDeals list\|detail` | Opens the Deals screen (`detail`: with the first deal's detail). Needs a server with deals (the demo has them) |
+| `-HomelabPins <ids>` | Sets the Home tiles of the Home Assistant server: entity ids separated by commas (`light.a,script.b`), at most 12; anything odd drops the whole argument |
+| `-HomelabTileNames "<id>=<name>,…"` | Sets custom names for pinned Home tiles, for example `"light.wohnzimmer_lampen=Living room,script.homelab_radio_off=Alarm off"`. Ids as for `-HomelabPins`, names trimmed to one line of at most 24 characters and without commas; a bad id, an empty name or more than 12 entries drops the whole argument. Names only stick to pinned entities, so give `-HomelabPins` first (an earlier launch is enough). Home Assistant keeps its own names |
 | `-HomelabDensity <detail>` | Today's detail: `calm`, `standard` or `overkill` (stored like the setting) |
 | `-HomelabPersonality <voice>` | The headline's personality: `off`, `dry` or `snarky` (stored like the setting) |
 

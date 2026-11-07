@@ -42,6 +42,8 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | T1 | Today header | Weekday, date and server name; the status line says "All fine" or "N problems" with the first problem, "x/y up · checked … ago". Tap opens Lab | | |
 | T2 | Today content | The "today" card in big numbers, "Waiting for you" with up to 3 actions (tap opens Actions), Home tiles, the other cards, the last report (tap opens Chat) | | |
 | T3 | Look | True black (dark) or white (light), no blue anywhere, red/yellow only for problems and warnings | | |
+| T4 | Tile names | Today → Home → Edit: each pinned entity has a "Name on the tile" field (the placeholder is Home Assistant's name). Type "Living room", Done: the tile reads "Living room" (not cut off). Empty the field: HA's name is back. 25+ characters are cut at 24 | | |
+| T5 | Tile names: VoiceOver and HA | VoiceOver on a renamed tile says "Living room, <HA's name>". The HA app and its voice assistants still use the HA name. Unpin and re-pin the tile: the field is empty again. After an app update the names are still there | | |
 | O1 | Lab header | "All good" or "N problems", "checked … ago", and "N actions waiting" when there are any | | |
 | O2 | Problems | Listed first, with icon and "since …" | | |
 | O3 | Hosts | One tile per host, "x/y up" in the title, load/RAM/disk bars, a sleeping PC shows "Asleep", not red | | |

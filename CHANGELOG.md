@@ -22,6 +22,11 @@ Security review fixes:
 
 App:
 
+- Home tiles on Today can have a short name of your own: Today → Edit has a "Name on the tile" field under each
+  pinned entity (empty shows Home Assistant's name; trimmed, one line, at most 24 characters). It is set in the app
+  only, Home Assistant, its voice commands and its app keep their names. VoiceOver says the short name and then
+  Home Assistant's name when they differ. Unpinning a tile drops its name; older saved settings still load. Launch
+  argument `-HomelabTileNames "light.a=Living room,script.b=Alarm off"` sets them over USB.
 - `scripts/phone-shots` keeps your servers, Home Assistant token and pins: it no longer starts with
   `-HomelabResetState YES` (now `--reset`, opt-in, with `HOMELAB_SERVER`/`HOMELAB_PINS` to set them back at the end).
 - Deals (feature `deals`, optional endpoint `GET /api/v1/deals`): used-market ads the server found clearly below their
