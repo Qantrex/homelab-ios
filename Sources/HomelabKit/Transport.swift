@@ -122,6 +122,9 @@ public enum APIError: Error, Equatable, Sendable {
     case cannotFindHost(host: String)
     case timeout
     case unauthorized
+    /// Home Assistant answered 401 (or there is no token): its long-lived token is wrong or was deleted. Not the
+    /// Tailscale message of `.unauthorized`, which would send the user to `tailscale serve`.
+    case homeAssistantToken
     case forbidden
     /// 403 with the server's own reason ("host not allowed", "forged or outdated button").
     case refused(String)
@@ -148,6 +151,7 @@ public enum APIError: Error, Equatable, Sendable {
         case .cannotFindHost(let host): "Can't find \(host). Check the address."
         case .timeout: "The server took too long to answer."
         case .unauthorized: "No login reached the server. With Tailscale: is it behind `tailscale serve`, and is this phone logged in (tagged devices get no login)? With a token: check it in Settings."
+        case .homeAssistantToken: "Home Assistant refused the token. Create a new long-lived token (your profile → Security) and paste it under Edit server."
         case .forbidden: "The server refused access. Is this login or token allowed?"
         case .refused(let why): "The server refused access: \(why)"
         case .notFound: "The server doesn't offer this. Is the address right, and does it speak the Homelab API?"
@@ -179,7 +183,7 @@ public enum APIError: Error, Equatable, Sendable {
     /// would be a guess.
     public var mayHaveRun: Bool {
         switch self {
-        case .notOnTailnet, .cannotFindHost, .tls, .unauthorized, .forbidden, .refused, .notFound, .tooManyRequests,
+        case .notOnTailnet, .cannotFindHost, .tls, .unauthorized, .homeAssistantToken, .forbidden, .refused, .notFound, .tooManyRequests,
              .badRequest, .unsupportedVersion, .redirected, .serverSaid:
             false
         case .offline, .timeout, .cancelled, .server, .invalidResponse, .decoding, .tooLarge, .other:

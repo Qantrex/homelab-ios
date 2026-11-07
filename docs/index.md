@@ -6,6 +6,8 @@ with a free Apple ID, from Linux or a Mac, or with SideStore. Open source (MIT),
 
 The [README on GitHub](../README.md) has the screenshots, the quick start and the limits.
 
+![Today in the demo](img/today.png){: width="280"}
+
 **New here?** [Getting started](GETTING-STARTED.md): pick one of three setups (only Home Assistant, the Homelab Bridge
 with your services, or your own server), install the app, connect it, and fix what goes wrong.
 

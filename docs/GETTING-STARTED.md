@@ -27,9 +27,9 @@ Not sure? Install the app and tap **Try the demo** on the first screen. It needs
 |---|---|
 | A Linux PC and a USB cable | [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md) |
 | A Mac | [SETUP.md](SETUP.md) (the same xtool steps) |
-| SideStore on the phone | [SIDESTORE.md](SIDESTORE.md) |
+| SideStore on the phone | [SIDESTORE.md](SIDESTORE.md): until the first release you still need one Linux PC or Mac once, to build the IPA (`scripts/build-ipa`, [SETUP.md](SETUP.md)) that you then import in SideStore. After the first release SideStore needs no computer for Homelab |
 
-There is no release yet, so for now you build the app yourself (`xtool dev`; the first build takes a few minutes).
+There is no release yet, so for now you build the app yourself (the first build takes a few minutes).
 
 ## A. Only Home Assistant
 
@@ -53,7 +53,7 @@ There is no release yet, so for now you build the app yourself (`xtool dev`; the
    Home Assistant OS: the Tailscale add-on can serve HA over HTTPS too (see the add-on's docs), or use HA's own TLS.
 2. In HA: your profile → Security → **Long-lived access tokens** → Create token. Copy it; HA shows it only once. A
    separate HA user for the phone makes it easy to revoke.
-3. In the app: **Add Home Assistant** → Address `https://ha.tail1234.ts.net:8443` → paste the token → **Save**.
+3. In the app: **Add Home Assistant** (a button on the welcome screen, which only shows on the first start; later: Settings → Add server → Type **Home Assistant**) → Address `https://ha.tail1234.ts.net:8443` → paste the token → **Save**.
 4. "Found" lists your devices in words ("12 lights, 4 switches and 3 scenes"). **Home** is checked → **Start**.
 5. The tile picker opens: tap the lights, scenes or scripts you use most → **Done**.
 
@@ -115,14 +115,18 @@ You need Docker with Compose 2.17 or newer on Linux.
 4. Start it and check it:
 
    ```bash
-   docker compose up -d --build     # builds the image from this checkout
+   docker compose up -d --build     # builds the image from this checkout (add `--profile docker` if you use the `docker` source)
    docker compose ps                # both "healthy" after a minute
-   curl https://homelab-bridge.tail1234.ts.net/api/v1/info   # from another tailnet device
+   curl https://homelab-bridge.tail1234.ts.net/api/v1/info   # from another tailnet device, with your login
    ```
 
    `{"api": 1, "name": "Homelab Bridge", ...}` means it works. A 403 means your login is not in `allowed_logins`
-   (`docker compose logs bridge` shows the refused one).
-5. In the app: **Add a Homelab server** → Address `https://homelab-bridge.tail1234.ts.net` → Login **Tailscale /
+   (`docker compose logs bridge` shows the refused one). A 401 means the request didn't come through the bridge's
+   `tailscale serve` address (`https://homelab-bridge.…`): use that address, not an IP or a port. If `docker compose
+   ps` never shows `healthy` and the machine doesn't appear in your tailnet, `docker compose logs tailscale` shows an
+   expired or already used auth key: generate a new one (step 3), put it in `docker/tailscale.env` and run
+   `docker compose up -d` again.
+5. In the app: **Add a Homelab server** (first start only; later: Settings → Add server → Type **Homelab API**, the app's name for this kind of server) → Address `https://homelab-bridge.tail1234.ts.net` → Login **Tailscale /
    proxy** → **Save**. "Found" lists what it offers; **Watch** is checked → **Start**.
 
 What you see: Today says "All quiet." or "1 problem."; a down monitor is a problem ("Jellyfin: down"). Lab
@@ -152,11 +156,30 @@ you want actions, chat or a launcher.
    scripts/check-live-api https://nas.tail1234.ts.net:7444
    ```
 
-4. In the app: **Add a Homelab server** → your address → Login **Tailscale / proxy** or **Token** → **Save**.
+4. In the app: **Add a Homelab server** (first start only; later Settings → Add server → Type **Homelab API**) → your address → Login **Tailscale / proxy** or **Token** → **Save**.
 
 What you see depends on `features` in `/info`: `status` and `hosts` give Today and Lab; `actions` adds the Actions
 tab, `chat` the Chat tab, `cards` the cards. A feature you leave out is a tab or section the app doesn't show. To
 change the app itself: [ADAPTING.md](ADAPTING.md).
+
+## Show rules
+
+Every section of Today can have a rule for when it shows. Settings → Today → **Sections**: each row says its rule in
+words ("Always", "Evenings", "Not on your servers"); tap it and choose when it shows:
+
+- **Always**, or **When it needs me** (it appears as soon as it has something for you).
+- A time: **Mornings**, **Daytime**, **Evenings**, **Weekdays** or **Weekends**, or **Custom** with From, To and the
+  days. A time that ends before it starts runs past midnight.
+- **At home** or **Away**, once **Where you are** is set (Settings → Today → Where you are). It follows one person or
+  device tracker in Home Assistant, so it needs a Home Assistant server. Homelab asks for no location. When Home
+  Assistant hasn't answered for 30 minutes, both rules show their sections.
+
+Done saves, Cancel keeps the old rule. The switch on the row still hides a section for good. While a rule hides
+something that has content, Today ends with "Hidden now: Deals and Cards (evenings) · Show". Tap **Show** to let those
+sections through until you close the app; the rule stays.
+
+Related: Settings → Notifications → **Quiet hours** mutes the app's own notifications in a time window (from, to).
+It doesn't hide anything on Today.
 
 ## Limits
 
@@ -176,7 +199,12 @@ change the app itself: [ADAPTING.md](ADAPTING.md).
 |---|---|
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Turn Tailscale on. On the server: `tailscale serve status`, and the `curl` above from another tailnet device |
 | "The server refused access. …" (403) | Your login is not in `allowed_logins`. The server log shows the refused login |
-| "No login reached the server. …" (401) | The request didn't come through `tailscale serve`, or the Home Assistant token is wrong |
+| "No login reached the server. …" (401) | The request didn't come through `tailscale serve` (or the phone isn't logged in, or it is a tagged device), or the Token is wrong |
+| "Home Assistant refused the token. …" | Create a new long-lived token (HA profile → Security) and paste it under Edit server |
+| "Can't find `<host>`. Check the address." | Typo in the address, or the name isn't known (MagicDNS off for a `.ts.net` name). Check it in the Tailscale app |
+| "The server answered with a redirect (HTTP 301). Enter the final address: often https:// or another port." | Enter the address the redirect leads to, often `https://` instead of `http://`, or the other port |
+| "The secure connection failed (certificate?)." | Self-signed or expired certificate. Use `tailscale serve` (real certificates) |
+| "Too many requests. Try again in a minute." | The server limits requests. Wait a minute |
 | Home Assistant: "The server rejected the request." (400) | HA doesn't trust the proxy: `use_x_forwarded_for` and `trusted_proxies` as in A, step 1 |
 | "This server uses a token over plain http. …" | Use the `https://….ts.net` address from `tailscale serve` |
 | "The server's answer couldn't be read. …" | The address points at a web page. Use the base address; the app adds `/api/v1` |
@@ -184,5 +212,5 @@ change the app itself: [ADAPTING.md](ADAPTING.md).
 | The widgets stay empty | Open the app once. With only Home Assistant they have nothing to show (see A) |
 | The app doesn't open | It expired after 7 days: install it again |
 
-Every message the app shows, with its fix: [SIDESTORE.md → Troubleshooting](SIDESTORE.md#troubleshooting). In the
+SideStore and widget problems, and every message with more detail: [SIDESTORE.md → Troubleshooting](SIDESTORE.md#troubleshooting). In the
 app, Settings → Diagnostics → **Copy report** gives a report without tokens to paste into an issue.
