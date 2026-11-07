@@ -127,6 +127,10 @@ HTTPS certificates turned on (DNS page).
    docker compose logs bridge       # "listening on http://127.0.0.1:8791 (RealApp)"
    ```
 
+   If `docker compose ps` shows `bridge` restarting and `docker compose logs bridge` says `ERROR: no tailscale0 interface in this network namespace 60 s after the start`, the
+   Tailscale sidecar is not up with kernel networking (the bridge exits with code 3 on purpose, see the notes below).
+   Check `docker compose logs tailscale`, and that the host has `/dev/net/tun` (missing in some LXC and NAS setups).
+
 5. Test it from another tailnet device:
 
    ```bash

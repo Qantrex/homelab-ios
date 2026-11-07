@@ -4,7 +4,7 @@ The app is a SwiftPM package. [xtool](https://github.com/xtool-org/xtool) turns 
 extension, on Linux or macOS. There is no Xcode project. `xtool.yml` names the bundle ID, the Info.plists, the
 entitlements, the icon and the widget extension.
 
-There is no release yet, so for now you build and install it yourself: from Linux see
+Until the first release ([Install](../README.md#install)) you build and install it yourself: from Linux see
 [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md). After the first release you can take the release IPA instead
 ([SIDESTORE.md](SIDESTORE.md), tested 2026-11-07).
 
