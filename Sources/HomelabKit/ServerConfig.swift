@@ -32,7 +32,7 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     }
 
     /// Settings saved before custom tile names existed have no `tileNames`: they still decode.
-    public init(from decoder: Decoder) throws {
+    public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
         name = try c.decode(String.self, forKey: .name)
