@@ -19,7 +19,7 @@
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
 
-usage() { sed -n '2,18p' "$0"; exit 2; }
+usage() { sed -n '2,19p' "$0"; exit 2; }
 [ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
 
 # pick_udid main|small [EXCLUDE_UDID]
