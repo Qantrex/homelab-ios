@@ -1,0 +1,29 @@
+# The docs site: https://qantrex.github.io/homelab-ios/
+# GitHub Pages builds this folder (branch main, folder /docs) with its classic Jekyll build: Jekyll 3.10, kramdown
+# with GFM input, and the default plugins (jekyll-relative-links turns links to .md files into links to their pages,
+# jekyll-optional-front-matter and jekyll-titles-from-headings make every .md a page titled by its first heading).
+# No CI workflow, no theme: the one layout is _layouts/default.html. See docs/CI.md#docs-site.
+title: Homelab iOS
+description: A native iPhone app for a self-hosted homelab. Docs.
+url: https://qantrex.github.io
+baseurl: /homelab-ios
+# Links that leave docs/ (../README.md, ../Sources/...) open the file on GitHub instead (see the layout).
+repo_url: https://github.com/Qantrex/homelab-ios
+repo_blob: https://github.com/Qantrex/homelab-ios/blob/main/
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Not part of the site: the icon's render notes, the README screenshots (3 MB; the README shows them on GitHub).
+# icon/AppIcon.svg stays: it is the favicon.
+exclude:
+  - icon/README.md
+  - screenshots

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+{%- if page.url == "/" %}
+<title>{{ site.title }}</title>
+{%- else %}
+<title>{{ page.title | default: page.name | escape }} · {{ site.title }}</title>
+{%- endif %}
+<meta name="description" content="{{ site.description | escape }}">
+<link rel="icon" href="{{ '/icon/AppIcon.svg' | relative_url }}" type="image/svg+xml">
+<style>
+  /* True black, white and grey; no blue anywhere. One sans typeface, monospace only for code. */
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --text: #e6e6e6;
+    --strong: #ffffff;
+    --dim: #9a9a9a;
+    --line: #262626;
+    --code-bg: #111111;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 var(--sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection { background: #3a3a3a; color: var(--strong); }
+  .wrap { max-width: 54rem; margin: 0 auto; padding: 0 16px; }
+  header.site { border-bottom: 1px solid var(--line); }
+  header.site .wrap, footer.site .wrap { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; padding-top: 14px; padding-bottom: 14px; }
+  header.site .home { color: var(--strong); font-weight: 600; text-decoration: none; margin-right: auto; }
+  header.site nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  header.site nav a, footer.site a { color: var(--dim); }
+  main { padding-top: 8px; padding-bottom: 40px; }
+  main p, main li, main blockquote, main dd, main h1, main h2, main h3, main h4 { overflow-wrap: anywhere; }
+
+  a { color: var(--strong); text-decoration: underline; text-decoration-color: #6a6a6a; text-underline-offset: 2px; }
+  a:hover { text-decoration-color: var(--strong); }
+  a:focus-visible { outline: 2px solid var(--strong); outline-offset: 2px; border-radius: 2px; }
+
+  h1, h2, h3, h4, h5, h6 { color: var(--strong); line-height: 1.25; margin: 2em 0 0.6em; scroll-margin-top: 16px; }
+  h1 { font-size: 1.85rem; margin-top: 1.2em; }
+  h2 { font-size: 1.4rem; padding-bottom: 0.3em; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.15rem; }
+  h4, h5, h6 { font-size: 1rem; }
+  strong { color: var(--strong); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+  img { max-width: 100%; height: auto; }
+  blockquote { margin: 1em 0; padding: 0 0 0 14px; border-left: 3px solid #444; color: var(--dim); }
+  blockquote strong { color: var(--text); }
+  ul, ol { padding-left: 1.4em; }
+
+  code, pre, kbd { font-family: var(--mono); font-size: 0.875em; }
+  code { background: var(--code-bg); border-radius: 4px; padding: 0.1em 0.35em; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; line-height: 1.45; }
+  pre code { background: none; padding: 0; font-size: 0.875rem; }
+  .highlight, .highlight * { color: inherit; background: none; font-style: normal; font-weight: normal; }
+  div.highlighter-rouge { margin: 1em 0; }
+
+  /* Wide tables scroll inside their own box, never the page. */
+  table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 1em 0; font-size: 0.9375rem; }
+  th, td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--strong); font-weight: 600; background: #0a0a0a; }
+  td code, th code { font-size: 0.85em; }
+
+  footer.site { border-top: 1px solid var(--line); color: var(--dim); font-size: 0.875rem; }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="home" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+    <nav>
+      <a href="{{ '/FEATURES.html' | relative_url }}">Features</a>
+      <a href="{{ '/SETUP.html' | relative_url }}">Setup</a>
+      <a href="{{ '/API.html' | relative_url }}">API</a>
+      <a href="{{ site.repo_url }}">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+{%- comment -%}
+  Links that leave docs/ (../README.md, ../Sources/X.swift, ../../DeviceTest.md from docs/plans/) don't exist on the
+  site: point them at the file on GitHub. Links to other docs were already rewritten to their pages by
+  jekyll-relative-links, so every href that still climbs out of the site root is one of these.
+{%- endcomment -%}
+{%- assign depth = page.dir | split: "/" | size | minus: 1 | at_least: 0 -%}
+{%- capture up -%}{%- for i in (0..depth) -%}../{%- endfor -%}{%- endcapture -%}
+{%- assign out_of_site = 'href="' | append: up -%}
+{%- assign to_github = 'href="' | append: site.repo_blob -%}
+{{ content | replace: out_of_site, to_github }}
+</main>
+<footer class="site">
+  <div class="wrap">
+    <span>Built by GitHub Pages from <code>docs/</code> on <code>main</code>.</span>
+    <a href="{{ site.repo_blob }}docs/{{ page.path }}">This page on GitHub</a>
+  </div>
+</footer>
+</body>
+</html>
