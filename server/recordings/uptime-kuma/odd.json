@@ -1,0 +1,44 @@
+{
+  "_about": "Made up. The status page JSON answering oddly: unknown fields, wrong types, junk entries, a monitor in two groups, heartbeats with unknown or junk statuses, an empty heartbeat list, incident null and incidents not a list. The source must not crash.",
+  "routes": {
+    "GET /api/status-page/home": {
+      "status": 200,
+      "json": {
+        "config": "not an object",
+        "incident": null,
+        "incidents": {"id": 9},
+        "new_field": [1, 2, 3],
+        "publicGroupList": [
+          {"id": 1, "name": null, "monitorList": [
+            {"id": 21, "name": "Router", "type": "ping", "certExpiryDaysRemaining": "soon"},
+            {"id": 22, "name": 404, "url": "javascript:alert(1)", "sendUrl": true},
+            {"id": true, "name": "Bool id"},
+            {"id": null, "name": "No id"},
+            {"id": 23},
+            {"id": 24, "name": "No beats yet"},
+            {"id": 25, "name": "Junk beats", "url": ["http://192.0.2.1"]},
+            "a string",
+            null
+          ]},
+          {"id": 2, "name": "Again", "monitorList": [{"id": 21, "name": "Router (twice)"}]},
+          {"id": 3, "name": "Empty", "monitorList": "none"},
+          "junk"
+        ]
+      }
+    },
+    "GET /api/status-page/heartbeat/home": {
+      "status": 200,
+      "json": {
+        "heartbeatList": {
+          "21": [{"status": 1, "ping": "fast"}, {"status": 7}, {"status": true}, "beat", null],
+          "22": {"status": 0},
+          "24": [],
+          "25": [{"status": "0"}, {"ping": 5}],
+          "99": [{"status": 0}]
+        },
+        "uptimeList": {"21_24": "99 %", "22_24": 1.7, "25_24": null},
+        "extra": true
+      }
+    }
+  }
+}

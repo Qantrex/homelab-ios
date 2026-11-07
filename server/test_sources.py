@@ -455,10 +455,10 @@ class RunnerRules(unittest.TestCase):
     def test_status_rows(self):
         s = spec("Kuma", "t-crash", key_env="LAB_KEY")
         runner = sources.Runner([s])
-        self.assertEqual(runner.status(), [{"name": "Kuma", "type": "t-crash", "ok": None}])
+        self.assertEqual(runner.status(), [{"name": "Kuma", "type": "t-crash", "state": "never"}])
         runner.run_one(s)
         row = runner.status()[0]
-        self.assertEqual((row["ok"], row["error"]), (False, "RuntimeError: boom with *** inside"))
+        self.assertEqual((row["state"], row["error"]), ("failing", "RuntimeError: boom with *** inside"))
 
     def test_merged_is_a_copy(self):
         s = spec("Lab", "t-static", result={"hosts": [{"id": "h"}]})

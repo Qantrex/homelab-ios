@@ -3,7 +3,8 @@
 The Homelab Bridge is the [reference server](REFERENCE_SERVER.md) with `sources`: small modules that read another
 service's API and add problems, hosts, cards and services to its answers. This page is the recipe for writing one.
 What users configure: [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources). Why it is built this way:
-[plans/MODULAR.md](plans/MODULAR.md) (decisions D1, D5, D6).
+[plans/MODULAR.md](plans/MODULAR.md) (decisions D1, D5, D6). Running it in Docker with a Tailscale sidecar:
+[SERVER-SETUP.md → Docker](SERVER-SETUP.md#docker).
 
 ## The contract
 
@@ -11,7 +12,7 @@ A source is one file, `server/sources/<type>.py`. A `-` in the type is a `_` in 
 `uptime_kuma.py`). The server finds it by that name; there is no list to edit.
 
 ```python
-"""Uptime Kuma: down monitors as problems, one card. Tested against Uptime Kuma 2.0.2 (recordings/uptime-kuma/).
+"""Uptime Kuma: down monitors as problems, one card. Tested against Uptime Kuma 2.5.9 (recordings/uptime-kuma/).
 
 Config: {"name": "Kuma", "type": "uptime-kuma", "url": "http://192.0.2.10:3001", "slug": "home"}
 """
@@ -57,33 +58,47 @@ Anything that is not a dict with the needed fields is skipped (and logged). Dupl
 problems, 100 hosts, 50 cards and 100 services. Fields named like a secret (`token`, `password`, `api_key`, ...) are
 dropped at any depth, and the values of the source's env variables become `***` wherever they appear.
 
-### Opt-in actions
-
-A source may offer actions (pause ad blocking; later container restarts). They stay off until the user lists them in
-the source's `actions` ([REFERENCE_SERVER.md](REFERENCE_SERVER.md#opt-in-source-actions)). The module adds two
-functions:
-
-```python
-def actions(cfg):                    # what it offers: short name -> ActionSpec without `name`
-    return {"pause": {"label": "Pause %s" % cfg["name"], "icon": "shield.slash",
-                      "arg": [{"label": "Pause", "parts": [{"kind": "choice", "label": "For",
-                               "options": [{"value": "5", "label": "5 min"}, {"value": "on", "label": "Resume"}]}]}]}}
-
-
-def act(cfg, fetch, name, arg):      # runs one; the bridge checked name and arg already
-    fetch("/api/dns/blocking", method="POST", body={"blocking": arg == "on"})
-    return "Blocking paused"         # a short text for the app; raise SourceError("...") on failure
-```
-
-`collect` puts the button on an item with the short name, `{"action": {"name": "pause", "label": "Pause 5 min", "arg":
-"5"}}`; the bridge keeps it only when the config lists `pause` and renames it to `<source name>-pause`. The `arg`
-variants may only use `choice` and `literal` parts, so the bridge can check every argument (at most 50). Shared code
-of several types goes in a module whose name starts with `_` (`_dns.py`, `_arr.py`): it is not a type.
+Shared code of several types goes in a module whose name starts with `_` (`_dns.py`, `_arr.py`): it is not a type.
 
 When `collect` raises (a `SourceError` from `fetch`, or any bug), or returns something that is not a JSON object,
 the source becomes exactly **one warning** `<name>: <short error>` (id `<name>:source`) and nothing else. Raise
 `SourceError("short text")` yourself for a known failure ("slug not found"). Never put a URL or a key in the text;
 URLs are cut out anyway.
+
+## Actions (optional, off by default)
+
+A source may offer actions that change something upstream (Docker restart, Proxmox start and stop, the ad blockers'
+pause: owner decision 6 in [plans/MODULAR.md](plans/MODULAR.md)). They exist only for the items the user lists under `actions` in the
+source's config; without that key the module is read-only like any other. A module that offers actions has three
+more names:
+
+```python
+ACTIONS = {"restart-container": {"label": "Restart a container", "icon": "arrow.clockwise", "destructive": True,
+                                 "hint": "...", "part": "Container"}}
+
+def allowed(cfg):                   # from the config only, never from the upstream
+    return [{"action": "restart-container", "host": "nas", "item": "sonarr", "label": "sonarr"}]
+
+def act(cfg, fetch, action, host, item):   # one press; the bridge calls it only for an allowed item
+    fetch("/containers/%s/restart" % item, method="POST", body=b"")
+    return "Restarted sonarr on nas."
+```
+
+`sources.SourceActions` turns them into the app's run-actions: `GET /actions` lists each action with one argument
+variant per source and host, `POST /actions/<name>` runs one. The argument is `<source>:<host>:<item>` with a host
+(the app's container Restart sends `<host id>:<container>`, and host ids are prefixed) or `<source>:<item>`, at most
+64 characters (checked at start). The bridge only looks it up in the list from `allowed`; it is never parsed, so
+the argv rule `ARG_RE` (no `:`) doesn't apply. It also refuses any payload, takes at most 30 presses an hour and one
+press per item at a time. `restartable: true` is set on exactly the containers `allowed` lists for
+`restart-container`. A `SourceError` or a crash in `act` is `{"ok": false, "text": "<source>: <item> failed (403)"}`.
+`item` and `host` match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`, so they are safe in a URL path; check them in `act`
+anyway. Document the upstream permission each action needs, and keep it to exactly those items.
+
+A button on a card item works the same way: `collect` sends `{"action": {"name": "dns-pause", "label": "Pause 5 min",
+"arg": "Pi-hole:5"}}` with the full argument, and the bridge keeps it only when that action and argument are on the
+`allowed` list (any other `action` is removed, like the card's own). After a press that worked, the source is read
+again at the next tick, so the card shows the change. The `actions` value is per type (`{"restart": [...]}`,
+`{"pause": [5, 15]}`); check its shape in `check(cfg)`.
 
 ## Rules for a source module
 
@@ -92,7 +107,8 @@ URLs are cut out anyway.
 - Talk to the upstream only through `fetch`; read keys only with `fetch.secret()`. No `os.environ`, `subprocess`,
   `urllib`, `socket` or `open(` (a test greps for them).
 - Read-only. `collect` never calls an endpoint that changes something upstream (a login and the logout after it are
-  fine: Pi-hole and qBittorrent). Writes happen only in `act`, for an action the config opted in to.
+  fine: Pi-hole and qBittorrent). Writes happen only in `act`, for an item the config lists (see
+  [Actions](#actions-optional-off-by-default)).
 - A session cookie (qBittorrent) is read from the login's `set-cookie` header and sent back as a `Cookie` header;
   `fetch` keeps no cookies itself. Log out at the end of the run, also when a read failed (`try`/`finally`).
 - Lenient: every upstream field may be missing or have another type. Use `as_list`, `as_dict`, `as_text`; skip what
@@ -119,7 +135,7 @@ URLs are cut out anyway.
 4. **Registry.** One `[[feature]]` in `features.toml`, area `Server`, `status = "partial"`, `depends_on =
    ["server-sources"]`, its module, recordings and test file in `sources`, the test classes in `tests`, `not_needed =
    { device_tests = "server side; the app sees ordinary Companion data" }`. Then `scripts/features render`.
-5. **Docs.** A row in the sources table of [SERVER-SETUP.md](SERVER-SETUP.md#sources-homelab-bridge) with the config
+5. **Docs.** A row in the sources table of [SERVER-SETUP.md](SERVER-SETUP.md#sources) with the config
    keys and what the key needs (read-only token, role).
 6. **Check.** `python3 -m unittest -v server/test_*.py`, `scripts/features`, `scripts/lint`, and
    [try it](#try-it) with `scripts/check-live-api`.
@@ -145,7 +161,8 @@ For your own source, copy the config, change `type` and `url`, and replay your r
 start). `RealApp` starts a `sources.Runner`: every 0.25 s it starts each source that is due and not still running,
 in its own daemon thread. A run that takes longer than `every + timeout` shows as `<name>: timeout` until it ends.
 `/state` and `/services` add `Runner.merged()`, the last result of every source, after the server's own problems,
-hosts and cards; the status is the worst of all problems. With opt-in actions, `GET /actions` serves
-`Runner.action_specs()` and `POST /actions/<name>` calls `Runner.act()`. `/info` lists `cards` and `services` when a source sends
-any. `Runner.status()` keeps per source `ok`, `error`, `checked` and `insecure` for `/info` and Diagnostics (task
-M1.2).
+hosts and cards; the status is the worst of all problems. `/info` lists `cards` and `services` when a source sends
+any, and `sources`: `Runner.status()`, per source `state` (`ok`, `failing`, `never`), `error`, `checked`, `last_ok`
+and `insecure` ([API.md → Source status](API.md#source-status-sources-in-info); tests in
+`server/test_source_status.py`). With source actions, `GET /actions` serves `Runner.actions.listing()` and
+`POST /actions/<name>` calls `Runner.actions.run()`.

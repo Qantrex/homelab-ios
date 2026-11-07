@@ -77,18 +77,22 @@ class PiholeSource(unittest.TestCase):
     def test_no_pause_button_unless_listed(self):
         with FakeUpstream(recording("normal")) as up:
             plain = run(up).merged()["cards"][0]["items"][2]
-            opted = run(up, actions=["pause"]).merged()["cards"][0]["items"][2]
+            opted = run(up, actions={"pause": [30, 5, 15]}).merged()["cards"][0]["items"][2]
+            longer = run(up, actions={"pause": [60]}).merged()["cards"][0]["items"][2]
+            empty = run(up, actions={"pause": []}).merged()["cards"][0]["items"][2]
         self.assertNotIn("action", plain)
-        self.assertEqual(opted["action"], {"name": "pi-hole-pause", "label": "Pause 5 min", "arg": "5"})
+        self.assertNotIn("action", empty)
+        self.assertEqual(opted["action"], {"name": "dns-pause", "label": "Pause 5 min", "arg": "Pi-hole:5"})
+        self.assertEqual(longer["action"], {"name": "dns-pause", "label": "Pause 1 h", "arg": "Pi-hole:60"})
 
     def test_paused_and_off(self):
         paused = routes(**{"GET /api/dns/blocking": {"json": {"blocking": "disabled", "timer": 239.4}}})
         with FakeUpstream(paused) as up:
-            out = run(up, actions=["pause"]).merged()
+            out = run(up, actions={"pause": [5]}).merged()
         self.assertEqual(out["problems"], [])
         self.assertEqual(out["cards"][0]["items"][2], {"title": "Blocking", "value": "off · 4 min", "tint": "orange",
-                                                       "action": {"name": "pi-hole-pause", "label": "Resume",
-                                                                  "arg": "on"}})
+                                                       "action": {"name": "dns-pause", "label": "Resume",
+                                                                  "arg": "Pi-hole:on"}})
         off = routes(**{"GET /api/dns/blocking": {"json": {"blocking": "disabled", "timer": None}}})
         with FakeUpstream(off) as up:
             out = run(up).merged()
@@ -168,21 +172,25 @@ class PiholeSource(unittest.TestCase):
     def test_pause_and_resume(self):
         with FakeUpstream(recording("normal")) as up:
             spec = sources.parse([{"name": "Pi-hole", "type": "pihole", "url": up.url, "key_env": "PIHOLE_PW",
-                                   "actions": ["pause"]}], ENV)[0]
+                                   "actions": {"pause": [5, 15]}}], ENV)[0]
             runner = sources.Runner([spec])
-            self.assertEqual(runner.act("pi-hole-pause", "15"),
+            self.assertEqual(runner.actions.run("dns-pause", {"arg": "Pi-hole:15"}),
                              (200, {"ok": True, "text": "Pi-hole: blocking paused for 15 min"}))
             self.assertEqual([(r["method"], r["path"]) for r in up.requests],
                              [("POST", "/api/auth"), ("POST", "/api/dns/blocking"), ("DELETE", "/api/auth")])
             self.assertEqual(json.loads(up.requests[1]["body"]), {"blocking": False, "timer": 900})
             self.assertEqual(header(up.requests[1], "X-FTL-SID"), SID)
-            code, body = runner.act("pi-hole-pause", "on")
+            code, body = runner.actions.run("dns-pause", {"arg": "Pi-hole:on"})
             self.assertEqual((code, body["text"]), (200, "Pi-hole: blocking is on again"))
             self.assertEqual(json.loads(up.requests[4]["body"]), {"blocking": True, "timer": None})
+            self.assertEqual(runner.actions.run("dns-pause", {"arg": "Pi-hole:30"})[0], 400)   # not listed
+            self.assertEqual(len(up.requests), 6)
 
     def test_config_checks(self):
         for raw, words in [({"top": -1}, "top"), ({"top": "5"}, "top"), ({"url": None}, "url is required"),
-                           ({"actions": ["restart"]}, "not an action of type pihole")]:
+                           ({"actions": ["pause"]}, "actions must be"), ({"actions": {"stop": [1]}}, "actions must be"),
+                           ({"actions": {"pause": [0]}}, "minutes"), ({"actions": {"pause": ["5"]}}, "minutes"),
+                           ({"actions": {"pause": [241]}}, "minutes")]:
             with self.subTest(raw=raw):
                 cfg = dict({"name": "Pi-hole", "type": "pihole", "url": "http://192.0.2.53"}, **raw)
                 with self.assertRaisesRegex(ValueError, words):

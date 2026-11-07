@@ -1,5 +1,5 @@
 {
-  "_comment": "Homelab Bridge with the DNS and media sources (docs/REFERENCE_SERVER.md#dns-and-media-sources). Keys only in env variables: HOMELAB_TOKENS=<16+ characters> PIHOLE_APP_PASSWORD=... ADGUARD_PASSWORD=... SONARR_KEY=... RADARR_KEY=... QBIT_API_KEY=... python3 server/reference_server.py --config server/examples/sources-dns-media.json. Read-only: add \"actions\": [\"pause\"] to an ad blocker only if you want its pause button.",
+  "_comment": "Homelab Bridge with the DNS and media sources (docs/SERVER-SETUP.md#sources). Keys only in env variables: HOMELAB_TOKENS=<16+ characters> PIHOLE_APP_PASSWORD=... ADGUARD_PASSWORD=... SONARR_KEY=... RADARR_KEY=... QBIT_API_KEY=... python3 server/reference_server.py --config server/examples/sources-dns-media.json. Read-only: add \"actions\": {\"pause\": [5, 15, 30]} (minutes) to an ad blocker only if you want its pause button (docs/REFERENCE_SERVER.md#source-actions).",
 
   "name": "bridge media",
   "listen": "127.0.0.1:8791",

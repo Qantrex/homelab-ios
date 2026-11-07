@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Tests for opt-in source actions (the `actions` key of a source; server/sources/__init__.py Runner.act, the
-reference server's /actions routes) and the DNS and media sample config. Run from the repo root:
+"""Tests for the ad blockers' opt-in `dns-pause` through the bridge's SourceActions (server/sources/__init__.py, the
+same mechanism as Docker restart and Proxmox start/stop), item buttons that survive only when listed, and the DNS and
+media sample config. Run from the repo root:
 
     python3 -m unittest -v server/test_source_actions.py
 
-Actions are off by default (MODULAR.md, owner decision 6): only a source whose config lists an action offers it, the
-app confirms each press, and the bridge checks the name and the argument again.
+Actions are off by default (MODULAR.md, owner decision 6): only what a source's `actions` lists is offered, the app
+confirms each press, and the bridge looks the argument up in that list.
 """
 
 import json
@@ -14,21 +15,20 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import types
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import reference_server as rs  # noqa: E402
 import sources  # noqa: E402
-from sources import _dns  # noqa: E402
 from fake_upstream import FakeUpstream  # noqa: E402
 from test_reference_server import AUTH, TOKEN, call, start_app, stop_app, wait_for  # noqa: E402
 
 rs.log = lambda msg: None
 
 PASSWORD = "made-up-app-password-0123456789"
-ENV = {"PIHOLE_PW": PASSWORD}
+AG_PASSWORD = "made-up-adguard-password-0123"
+ENV = {"PIHOLE_PW": PASSWORD, "ADGUARD_PW": AG_PASSWORD}
 
 
 def recording(kind, case):
@@ -39,103 +39,81 @@ def pihole(url, **extra):
     return dict({"name": "Pi-hole", "type": "pihole", "url": url, "key_env": "PIHOLE_PW"}, **extra)
 
 
-# A test-only type with one action, to see what the bridge does around act().
-_calls = []
+def adguard(url, **extra):
+    return dict({"name": "AdGuard", "type": "adguard", "url": url, "username": "monitor",
+                 "password_env": "ADGUARD_PW"}, **extra)
 
 
-def _act(cfg, fetch, name, arg):
-    _calls.append((name, arg))
-    if arg == "fail":
-        raise sources.SourceError("refused for key %s" % fetch.secret())
-    if arg == "crash":
-        raise RuntimeError("boom " + fetch.secret())
-    return "did %s %s" % (name, arg)
+def blocking_posts(up):
+    return [json.loads(r["body"]) for r in up.requests if r["method"] == "POST" and r["path"] == "/api/dns/blocking"]
 
 
-def _offers(cfg):
-    return {"poke": {"label": "Poke", "arg": [{"parts": [{"kind": "choice", "options": [
-        {"value": "ok"}, {"value": "fail"}, {"value": "crash"}]}]}]}}
-
-
-sources.register("t-act", types.SimpleNamespace(collect=lambda cfg, fetch: {}, actions=_offers, act=_act))
-sources.register("t-act-date", types.SimpleNamespace(
-    collect=lambda cfg, fetch: {}, act=_act,
-    actions=lambda cfg: {"later": {"arg": [{"parts": [{"kind": "date"}]}]}}))
-
-
-class SourceActionRules(unittest.TestCase):
+class DnsPauseRules(unittest.TestCase):
     def test_off_by_default(self):
         spec = sources.parse([pihole("http://192.0.2.53")], ENV)[0]
-        self.assertEqual((spec["actions"], spec["cfg"]["actions"]), ({}, []))
-        self.assertEqual(sources.Runner([spec]).offered, {})
+        self.assertEqual(spec["actions"], [])
+        runner = sources.Runner([spec])
+        self.assertFalse(runner.actions)
+        self.assertEqual(runner.actions.run("dns-pause", {"arg": "Pi-hole:5"})[0], 404)
         self.assertIsNone(rs.RealApp(rs.Config({"tokens": [TOKEN], "sources": [pihole("http://192.0.2.53")]},
                                                env=ENV)).routes.get("actions"))
 
-    def test_only_listed_item_actions_survive(self):
-        result = {"cards": [{"id": "dns", "action": {"name": "pause"},
-                             "items": [{"title": "a", "action": {"name": "pause", "label": "Pause 5 min", "arg": "5",
-                                                                 "payload": {"x": "y"}, "extra": 1}},
-                                       {"title": "b", "action": {"name": "restart", "arg": "web"}},
-                                       {"title": "c", "action": "pause"}]}]}
-        card = sources.normalize("Pi-hole", result, actions={"pause": "pi-hole-pause"})["cards"][0]
+    def test_the_list_is_built_from_the_config(self):
+        spec = sources.parse([pihole("http://192.0.2.53", actions={"pause": [30, 5, 5]})], ENV)[0]
+        self.assertEqual([(a["action"], a["arg"], a["label"]) for a in spec["actions"]], [
+            ("dns-pause", "Pi-hole:5", "5 min"), ("dns-pause", "Pi-hole:30", "30 min"),
+            ("dns-pause", "Pi-hole:on", "Resume")])
+
+    def test_only_listed_item_buttons_survive(self):
+        result = {"cards": [{"id": "dns", "action": {"name": "dns-pause", "arg": "Pi-hole:5"},
+                             "items": [{"title": "a", "action": {"name": "dns-pause", "label": "Pause 5 min",
+                                                                 "arg": "Pi-hole:5", "payload": {"x": "y"}}},
+                                       {"title": "b", "action": {"name": "dns-pause", "arg": "Pi-hole:60"}},
+                                       {"title": "c", "action": {"name": "restart-container", "arg": "Pi-hole:5"}},
+                                       {"title": "d", "action": "dns-pause"}]}]}
+        listed = {("dns-pause", "Pi-hole:5")}
+        card = sources.normalize("Pi-hole", result, item_actions=listed)["cards"][0]
         self.assertNotIn("action", card)
         self.assertEqual(card["items"], [
-            {"title": "a", "action": {"name": "pi-hole-pause", "label": "Pause 5 min", "arg": "5"}},
-            {"title": "b"}, {"title": "c"}])
+            {"title": "a", "action": {"name": "dns-pause", "label": "Pause 5 min", "arg": "Pi-hole:5"}},
+            {"title": "b"}, {"title": "c"}, {"title": "d"}])
         plain = sources.normalize("Pi-hole", result)["cards"][0]
-        self.assertEqual(plain["items"], [{"title": "a"}, {"title": "b"}, {"title": "c"}])
+        self.assertEqual(plain["items"], [{"title": "a"}, {"title": "b"}, {"title": "c"}, {"title": "d"}])
 
-    def test_names_and_collisions(self):
-        self.assertEqual(sources.action_name("Pi-hole", "pause"), "pi-hole-pause")
-        self.assertEqual(sources.action_name("My DNS.1", "pause"), "my-dns-1-pause")
-        self.assertEqual(sources.action_name("__", "pause"), "source-pause")
-        with self.assertRaisesRegex(ValueError, "taken by another source"):
-            sources.parse([pihole("http://192.0.2.53", actions=["pause"]),
-                           pihole("http://192.0.2.54", name="Pi hole", actions=["pause"])], ENV)
+    def test_two_ad_blockers_share_one_action(self):
+        specs = sources.parse([pihole("http://192.0.2.53", actions={"pause": [5]}),
+                               adguard("http://192.0.2.54:3000", actions={"pause": [5, 15]})], ENV)
+        [action] = sources.SourceActions(specs).listing()["actions"]
+        self.assertEqual((action["name"], action["label"], action["icon"]), ("dns-pause", "Pause ad blocking",
+                                                                              "shield.slash"))
+        self.assertNotIn("destructive", action)
+        self.assertEqual([(v["label"], v["parts"][0]["text"], [o["value"] for o in v["parts"][1]["options"]])
+                          for v in action["arg"]],
+                         [("Pi-hole", "Pi-hole:", ["5", "on"]), ("AdGuard", "AdGuard:", ["5", "15", "on"])])
 
-    def test_bad_configs(self):
-        for raw, words in [(pihole("http://192.0.2.53", actions="pause"), "must be a list"),
-                           (pihole("http://192.0.2.53", actions=[1]), "must be a list"),
-                           (pihole("http://192.0.2.53", actions=["stop"]), "not an action of type pihole"),
-                           ({"name": "Sonarr", "type": "sonarr", "url": "http://192.0.2.30", "key_env": "PIHOLE_PW",
-                             "actions": ["pause"]}, r"offers: none"),
-                           ({"name": "Lab", "type": "t-act-date", "actions": ["later"]}, "can't check")]:
-            with self.subTest(raw=raw):
-                with self.assertRaisesRegex(rs.ConfigError, words):
-                    rs.Config({"tokens": [TOKEN], "sources": [raw]}, env=ENV)
+    def test_types_without_actions_refuse_the_key(self):
+        with self.assertRaisesRegex(rs.ConfigError, "has no actions"):
+            rs.Config({"tokens": [TOKEN], "sources": [{"name": "Sonarr", "type": "sonarr", "url": "http://192.0.2.30",
+                                                       "key_env": "PIHOLE_PW", "actions": {"pause": [5]}}]}, env=ENV)
 
-    def test_action_args(self):
-        self.assertEqual(sources.action_args(_dns.pause_spec({"name": "Pi-hole"})), {"5", "15", "30", "on"})
-        self.assertEqual(sources.action_args({}), {""})
-        self.assertEqual(sources.action_args({"arg": [{"parts": [
-            {"kind": "choice", "options": [{"value": "a"}, {"value": "b"}, "junk"]}, {"kind": "literal", "text": ":"},
-            {"kind": "choice", "options": [{"value": "1"}]}]}]}), {"a:1", "b:1"})
-        self.assertIsNone(sources.action_args({"arg": [{"parts": [{"kind": "number"}]}]}))
-        many = {"arg": [{"parts": [{"kind": "choice", "options": [{"value": str(i)} for i in range(60)]}]}]}
-        self.assertIsNone(sources.action_args(many))
-
-    def test_act(self):
-        spec = sources.parse([{"name": "Lab", "type": "t-act", "key_env": "PIHOLE_PW", "actions": ["poke"]}], ENV)[0]
-        runner = sources.Runner([spec])
-        self.assertEqual(runner.action_specs(), [dict(_offers({})["poke"], name="lab-poke")])
-        del _calls[:]
-        runner.states["Lab"].next_due = 99.0
-        self.assertEqual(runner.act("lab-poke", "ok"), (200, {"ok": True, "text": "did poke ok"}))
-        self.assertEqual(runner.states["Lab"].next_due, 0.0)
-        self.assertEqual(runner.act("lab-poke", "other")[0], 400)
-        self.assertEqual(runner.act("lab-poke", None)[0], 400)
-        self.assertEqual(runner.act("lab-nope", "ok")[0], 404)
-        self.assertEqual(_calls, [("poke", "ok")])
-        for arg in ("fail", "crash"):
-            code, body = runner.act("lab-poke", arg)
-            self.assertEqual(code, 502)
-            self.assertNotIn(PASSWORD, json.dumps(body))
-            self.assertIn("***", body["error"])
-            self.assertTrue(body["error"].startswith("Lab: ") and body["error"].endswith("(it may not have run)"))
+    def test_a_press_reads_the_source_again(self):
+        with FakeUpstream(recording("pihole", "normal")) as up:
+            spec = sources.parse([pihole(up.url, actions={"pause": [5]})], ENV)[0]
+            runner = sources.Runner([spec])
+            runner.states["Pi-hole"].next_due = 1e12
+            self.assertEqual(runner.actions.run("dns-pause", {"arg": "Pi-hole:5"})[1]["ok"], True)
+            self.assertEqual(runner.states["Pi-hole"].next_due, 0.0)
+            runner.states["Pi-hole"].next_due = 1e12
+        with FakeUpstream({"routes": {}}) as up:
+            spec = sources.parse([pihole(up.url, actions={"pause": [5]})], ENV)[0]
+            runner = sources.Runner([spec])
+            runner.states["Pi-hole"].next_due = 1e12
+            self.assertEqual(runner.actions.run("dns-pause", {"arg": "Pi-hole:5"})[1]["ok"], False)
+            self.assertEqual(runner.states["Pi-hole"].next_due, 1e12)
 
 
-class BridgeActionsEndToEnd(unittest.TestCase):
-    """The reference server with a Pi-hole that opted in to `pause`."""
+class DnsPauseEndToEnd(unittest.TestCase):
+    """The reference server with a Pi-hole that opted in to pausing."""
 
     def start(self, raw_sources, env=ENV):
         cfg = rs.Config({"name": "bridge", "tokens": [TOKEN], "interval": 60,
@@ -156,34 +134,30 @@ class BridgeActionsEndToEnd(unittest.TestCase):
 
     def test_opted_in(self):
         up = self.upstream(recording("pihole", "normal"))
-        port = self.start([pihole(up.url, actions=["pause"])])
+        port = self.start([pihole(up.url, actions={"pause": [5, 15, 30]})])
         _, _, info = call(port, "GET", "/api/v1/info", headers=AUTH)
         self.assertIn("run-actions", info["features"])
         _, _, actions = call(port, "GET", "/api/v1/actions", headers=AUTH)
-        self.assertEqual([a["name"] for a in actions["actions"]], ["pi-hole-pause"])
-        self.assertEqual(actions["actions"][0]["label"], "Pause Pi-hole")
+        self.assertEqual([a["name"] for a in actions["actions"]], ["dns-pause"])
         _, _, state = call(port, "GET", "/api/v1/state", headers=AUTH)
         blocking = state["cards"][0]["items"][2]
-        self.assertEqual(blocking["action"], {"name": "pi-hole-pause", "label": "Pause 5 min", "arg": "5"})
-        before = len(up.requests)
-        code, _, obj = call(port, "POST", "/api/v1/actions/pi-hole-pause", body={"arg": "5", "payload": {}},
+        self.assertEqual(blocking["action"], {"name": "dns-pause", "label": "Pause 5 min", "arg": "Pi-hole:5"})
+        code, _, obj = call(port, "POST", "/api/v1/actions/dns-pause", body={"arg": "Pi-hole:5", "payload": {}},
                             headers=AUTH)
         self.assertEqual((code, obj), (200, {"ok": True, "text": "Pi-hole: blocking paused for 5 min"}))
-        sent = [r for r in up.requests[before:] if r["method"] == "POST" and r["path"] == "/api/dns/blocking"]
-        self.assertEqual([json.loads(r["body"]) for r in sent], [{"blocking": False, "timer": 300}])
+        self.assertEqual(blocking_posts(up), [{"blocking": False, "timer": 300}])
 
     def test_the_server_checks_again(self):
         up = self.upstream(recording("pihole", "normal"))
-        port = self.start([pihole(up.url, actions=["pause"])])
-        before = len(up.requests)
-        for body, want in [({"arg": "60"}, 400), ({"arg": "5", "payload": {"x": "1"}}, 400), ({"arg": 5}, 400),
-                           ({}, 400)]:
+        port = self.start([pihole(up.url, actions={"pause": [5]})])
+        for body, want in [({"arg": "Pi-hole:60"}, 400), ({"arg": "5"}, 400), ({"arg": "Pi-hole:5 "}, 400),
+                           ({"arg": "Pi-hole:5", "payload": {"x": "1"}}, 400), ({"arg": 5}, 400), ({}, 400)]:
             with self.subTest(body=body):
-                self.assertEqual(call(port, "POST", "/api/v1/actions/pi-hole-pause", body=body, headers=AUTH)[0], want)
-        self.assertEqual(call(port, "POST", "/api/v1/actions/pi-hole-stop", body={"arg": "5"}, headers=AUTH)[0], 404)
-        self.assertEqual(call(port, "GET", "/api/v1/actions/pi-hole-pause", headers=AUTH)[0], 405)
-        self.assertEqual(call(port, "POST", "/api/v1/actions/pi-hole-pause", body={"arg": "5"})[0], 401)
-        self.assertFalse([r for r in up.requests[before:] if r["path"] == "/api/dns/blocking" and r["method"] == "POST"])
+                self.assertEqual(call(port, "POST", "/api/v1/actions/dns-pause", body=body, headers=AUTH)[0], want)
+        self.assertEqual(call(port, "POST", "/api/v1/actions/pi-hole-pause", body={"arg": "5"}, headers=AUTH)[0], 404)
+        self.assertEqual(call(port, "GET", "/api/v1/actions/dns-pause", headers=AUTH)[0], 405)
+        self.assertEqual(call(port, "POST", "/api/v1/actions/dns-pause", body={"arg": "Pi-hole:5"})[0], 401)
+        self.assertEqual(blocking_posts(up), [])
 
     def test_not_offered_without_the_key(self):
         up = self.upstream(recording("pihole", "normal"))
@@ -191,21 +165,23 @@ class BridgeActionsEndToEnd(unittest.TestCase):
         _, _, info = call(port, "GET", "/api/v1/info", headers=AUTH)
         self.assertNotIn("run-actions", info["features"])
         self.assertEqual(call(port, "GET", "/api/v1/actions", headers=AUTH)[0], 404)
-        self.assertEqual(call(port, "POST", "/api/v1/actions/pi-hole-pause", body={"arg": "5"}, headers=AUTH)[0], 404)
+        self.assertEqual(call(port, "POST", "/api/v1/actions/dns-pause", body={"arg": "Pi-hole:5"}, headers=AUTH)[0],
+                         404)
         _, _, state = call(port, "GET", "/api/v1/state", headers=AUTH)
         self.assertNotIn("action", state["cards"][0]["items"][2])
 
     def test_a_failed_pause_says_so_without_the_key(self):
         up = self.upstream({"routes": {"POST /api/auth": {"status": 401, "body": "no " + PASSWORD}}})
-        port = self.start([pihole(up.url, actions=["pause"])])
-        code, resp, obj = call(port, "POST", "/api/v1/actions/pi-hole-pause", body={"arg": "on"}, headers=AUTH)
-        self.assertEqual((code, obj), (502, {"error": "Pi-hole: 401 (check the app password) (it may not have run)"}))
-        self.assertNotIn(PASSWORD, json.dumps(dict(resp.getheaders())))
+        port = self.start([pihole(up.url, actions={"pause": [5]})])
+        code, resp, obj = call(port, "POST", "/api/v1/actions/dns-pause", body={"arg": "Pi-hole:on"}, headers=AUTH)
+        self.assertEqual((code, obj), (200, {"ok": False, "text": "Pi-hole: Resume failed (401 (check the app password))"}))
+        self.assertNotIn(PASSWORD, json.dumps(obj) + json.dumps(dict(resp.getheaders())))
 
     @unittest.skipUnless(shutil.which("bash"), "needs bash")
     def test_check_live_api_accepts_the_actions(self):
         up = self.upstream(recording("pihole", "normal"))
-        port = self.start([pihole(up.url, actions=["pause"])])
+        ag = self.upstream(recording("adguard", "normal"))
+        port = self.start([pihole(up.url, actions={"pause": [5, 15, 30]}), adguard(ag.url, actions={"pause": [5]})])
         res = check_live_api(port)
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
 
@@ -253,7 +229,7 @@ class DnsMediaSample(unittest.TestCase):
             self.assertIn(want, ids)
         res = check_live_api(port)
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
-        text = json.dumps(state) + res.stdout + res.stderr
+        text = json.dumps(state) + json.dumps(info) + res.stdout + res.stderr
         for value in self.KEYS.values():
             self.assertNotIn(value, text)
 

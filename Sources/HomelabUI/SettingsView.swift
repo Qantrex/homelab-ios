@@ -60,6 +60,7 @@ struct SettingsView: View {
                                     .font(Typo.secondary).foregroundStyle(Palette.secondary)
                             }
                         }
+                        PresenceRow(model: model)
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
@@ -78,6 +79,7 @@ struct SettingsView: View {
                         if model.selectedStatus.hasDeals || model.settings.notifyDeals {
                             Toggle("New deals to act on", isOn: notifyBinding(\.notifyDeals))
                         }
+                        QuietHoursRow(model: model)
                     } header: {
                         Text("Notifications")
                     } footer: {
@@ -371,14 +373,22 @@ struct ServerEditor: View {
     @State private var testResult: Result<String, APIError>?
     @State private var saveError: String?
     @State private var confirmDelete = false
+    /// Called after a successful Save, before the editor closes (the first run goes on to Found).
+    private let onSaved: ((ServerConfig) -> Void)?
 
-    init(model: AppModel, server: ServerConfig?) {
+    /// `kind` is the type a new server starts with (the first run's "Add Home Assistant"); an existing server keeps
+    /// its own.
+    init(model: AppModel, server: ServerConfig?, kind newKind: ServerConfig.Kind? = nil,
+         onSaved: ((ServerConfig) -> Void)? = nil) {
         self.model = model
         original = server
+        self.onSaved = onSaved
+        let startKind: ServerConfig.Kind = server.map { $0.kind == .homeAssistant ? .homeAssistant : .companion }
+            ?? (newKind == .homeAssistant ? .homeAssistant : .companion)
         _name = State(initialValue: server?.name ?? "")
-        _kind = State(initialValue: server?.kind == .homeAssistant ? .homeAssistant : .companion)
+        _kind = State(initialValue: startKind)
         _address = State(initialValue: server.map { $0.kind == .demo ? "" : $0.baseURL.absoluteString } ?? "")
-        _auth = State(initialValue: server?.auth ?? .identity)
+        _auth = State(initialValue: server?.auth ?? (startKind == .homeAssistant ? .token : .identity))
         _tokenStored = State(initialValue: server.map { model.tokens.token(for: $0.id) != nil } ?? false)
     }
 
@@ -576,6 +586,7 @@ struct ServerEditor: View {
         do {
             try model.save(c, token: typed.isEmpty ? nil : typed)
             if c.speaksCompanionAPI { Task { await model.refresh(c) } }
+            onSaved?(c)
             dismiss()
         } catch {
             saveError = error.localizedDescription
@@ -637,6 +648,10 @@ struct DiagnosticsView: View {
                         }
                     }
                 }
+                // A Homelab Bridge's sources (SourceStatusSection.swift); nothing for a server without them.
+                ForEach(sourceLists) { list in
+                    SourceStatusSection(title: list.title, sources: list.sources)
+                }
                 Section {
                     Button(copied ? "Copied" : "Copy report") {
                         UIPasteboardBridge.copy(report())
@@ -660,6 +675,21 @@ struct DiagnosticsView: View {
         return "\(Format.age(log.date)): \(log.result)"
     }
 
+    private struct SourceList: Identifiable {
+        let id: UUID
+        let title: String
+        let sources: [SourceStatus]
+    }
+
+    /// Each server that sends `sources` in /info (live or cached), in the list's order. Empty for every other server.
+    private var sourceLists: [SourceList] {
+        let servers = model.servers.servers.filter { model.status[$0.id]?.knownInfo?.sources != nil }
+        return servers.map { s in
+            SourceList(id: s.id, title: servers.count > 1 ? "Sources · \(s.name)" : "Sources",
+                       sources: model.status[s.id]?.knownInfo?.sources ?? [])
+        }
+    }
+
     private func report() -> String {
         var lines = ["Homelab \(AppVersion.short) (\(AppVersion.build)), iOS \(UIDeviceInfo.version)",
                      "bundle \(Bundle.main.bundleIdentifier ?? "?"), group \(AppGroup.current ?? "none")"]
@@ -669,6 +699,8 @@ struct DiagnosticsView: View {
         for s in model.servers.servers {
             let st = model.status[s.id]
             lines.append("server \(s.kind.rawValue)/\(s.auth.rawValue) \(s.host): data \(Format.age(st?.snapshot?.fetched)), error \(st?.error?.message ?? "none")")
+            // Only a Homelab Bridge sends sources; masked with the rest below.
+            lines += (st?.knownInfo?.sources ?? []).map { "  " + $0.reportLine() }
         }
         return Redact.hosts(lines.joined(separator: "\n"))
     }
@@ -699,7 +731,7 @@ struct AboutView: View {
     }
 }
 
-/// Settings → Today: show or hide each section, drag to reorder.
+/// Settings → Today: show or hide each section, choose when it shows, drag to reorder.
 struct TodayLayoutEditor: View {
     let model: AppModel
 
@@ -707,14 +739,11 @@ struct TodayLayoutEditor: View {
         List {
             Group {
                 Section {
-                    ForEach(model.settings.todayLayout.sections) { s in
-                        Toggle(s.title, isOn: Binding(
-                            get: { model.settings.todayLayout.isVisible(s) },
-                            set: { model.settings.todayLayout.setVisible(s, $0) }))
-                    }
+                    // Each row: the switch, and when it shows (a tap picks the rule; ShowRuleEditor.swift).
+                    ForEach(model.settings.todayLayout.sections) { SectionRuleRow(model: model, section: $0) }
                     .onMove { model.settings.todayLayout.move(fromOffsets: $0, toOffset: $1) }
                 } footer: {
-                    SettingsFooter("The headline with your lab's status always stays on top. Drag the handles to change the order.")
+                    SettingsFooter("The headline with your lab's status always stays on top. Tap a section to choose when it shows. Drag the handles to change the order.")
                 }
                 Section {
                     Button("Standard layout") { model.settings.todayLayout = .standard }

@@ -1,0 +1,45 @@
+{
+  "_about": "Made up, in the shape of Gatus v5.38.0 (GET /api/v1/endpoints/statuses, endpoint.Status with endpoint.Result; checked against its public demo's answer). Seven endpoints in two groups: one down on a status code, one not connected, one failing only on response time, one only on its certificate, one external endpoint, one without results yet. Results oldest first, duration in nanoseconds.",
+  "routes": {
+    "GET /api/v1/endpoints/statuses": {
+      "status": 200,
+      "json": [
+        {"name": "api", "group": "core", "key": "core_api", "results": [
+          {"status": 200, "hostname": "nas.tail1234.ts.net", "duration": 41230000, "conditionResults": [
+            {"condition": "[STATUS] == 200", "success": true}, {"condition": "[BODY].status == UP", "success": true}],
+           "success": true, "timestamp": "2026-11-07T08:58:00.112Z"},
+          {"status": 200, "hostname": "nas.tail1234.ts.net", "duration": 38004112, "conditionResults": [
+            {"condition": "[STATUS] == 200", "success": true}, {"condition": "[BODY].status == UP", "success": true}],
+           "success": true, "timestamp": "2026-11-07T08:59:00.110Z"}
+        ]},
+        {"name": "jellyfin", "group": "core", "key": "core_jellyfin", "results": [
+          {"status": 200, "hostname": "192.0.2.10", "duration": 12000000, "conditionResults": [
+            {"condition": "[STATUS] == 200", "success": true}], "success": true, "timestamp": "2026-11-07T08:58:00.000Z"},
+          {"status": 502, "hostname": "192.0.2.10", "duration": 9000000, "conditionResults": [
+            {"condition": "[STATUS] (502) == 200", "success": false}], "success": false,
+           "timestamp": "2026-11-07T08:59:00.000Z"}
+        ]},
+        {"name": "website", "group": "core", "key": "core_website", "results": [
+          {"status": 200, "hostname": "nas.tail1234.ts.net", "duration": 812000000, "conditionResults": [
+            {"condition": "[STATUS] == 200", "success": true},
+            {"condition": "[RESPONSE_TIME] (812) < 500", "success": false}],
+           "success": false, "timestamp": "2026-11-07T08:59:00.000Z"}
+        ]},
+        {"name": "vault", "group": "core", "key": "core_vault", "results": [
+          {"status": 200, "hostname": "nas.tail1234.ts.net", "duration": 25000000, "conditionResults": [
+            {"condition": "[STATUS] == 200", "success": true},
+            {"condition": "[CERTIFICATE_EXPIRATION] (48h0m0s) > 72h", "success": false}],
+           "success": false, "timestamp": "2026-11-07T08:59:00.000Z"}
+        ]},
+        {"name": "nas", "group": "infra", "key": "infra_nas", "results": [
+          {"duration": 10000000000, "conditionResults": [{"condition": "[CONNECTED] (false) == true", "success": false}],
+           "errors": ["dial tcp 192.0.2.20:443: i/o timeout"], "success": false, "timestamp": "2026-11-07T08:59:00.000Z"}
+        ]},
+        {"name": "backup-job", "group": "infra", "key": "infra_backup-job", "results": [
+          {"duration": 0, "success": true, "timestamp": "2026-11-07T03:00:12.000Z"}
+        ]},
+        {"name": "printer", "group": "infra", "key": "infra_printer", "results": []}
+      ]
+    }
+  }
+}

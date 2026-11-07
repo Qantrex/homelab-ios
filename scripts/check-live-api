@@ -791,6 +791,15 @@ def main():
         warn("info", "info.commands", "%d commands; the app shows the first 8" % len(info["commands"]))
     if a.token and info.get("auth") == "identity":
         warn("info", "info.auth", "says identity, but a token was needed/sent")
+    # A Homelab Bridge's source status (optional): a failing or insecure source is worth a look, not an error.
+    for i, s in enumerate(info.get("sources") if isinstance(info.get("sources"), list) else []):
+        if isinstance(s, dict):
+            name = s.get("name") if isinstance(s.get("name"), str) else "#%d" % i
+            if s.get("state") == "failing":
+                error = s.get("error") if isinstance(s.get("error"), str) else "no error text"
+                warn("info", "info.sources[%d]" % i, "source %s is failing: %s" % (name, error[:120]))
+            if s.get("insecure") is True:
+                warn("info", "info.sources[%d]" % i, "source %s skips the TLS certificate check (insecure: true)" % name)
     has = lambda f: f in features
 
     state = get_json("state", base, "/state", a.token, a.timeout)

@@ -1,0 +1,45 @@
+{
+  "_about": "Made up. A JSON feed in the Companion /state shape (server/openapi.yaml State): what a backup script or a small status service could serve. One problem as an object, one as a plain string, two hosts, two cards, two services, plus keys the source ignores.",
+  "routes": {
+    "GET /homelab.json": {
+      "status": 200,
+      "json": {
+        "time": "2026-11-07T08:00:00+01:00",
+        "status": "problem",
+        "problems": [
+          {"id": "backup-nas", "text": "Backup of nas failed (disk full)", "host": "nas", "severity": "problem",
+           "since": "2026-11-07T03:10:00+01:00"},
+          "Certificate for nas.tail1234.ts.net expires in 9 days"
+        ],
+        "hosts": [
+          {"id": "nas", "name": "NAS", "kind": "nas", "reachable": true, "checked": "2026-11-07T07:59:30+01:00",
+           "load": 0.8, "cpu_count": 4, "mem_pct": 41, "temp": 44.5, "disks": {"/": 63, "/srv/tank": 97},
+           "containers": {"up": 2, "total": 3}, "updates": {"upgradable": 5, "reboot_required": false},
+           "backup": {"last": "2026-11-07T03:10:00+01:00", "result": "failed"}, "url": "https://nas.tail1234.ts.net",
+           "history": {"step": 300, "end": "2026-11-07T07:55:00+01:00", "load": [0.5, 0.7, null, 0.8]},
+           "container_list": [
+             {"name": "restic", "state": "exited", "health": null, "restarts": 0},
+             {"name": "web", "state": "running", "health": "healthy", "restarts": 1}
+           ]},
+          {"id": "pi1", "name": "Pi", "kind": "raspberry-pi", "reachable": false, "flags": ["asleep"]}
+        ],
+        "cards": [
+          {"id": "backups", "title": "Backups", "icon": "externaldrive", "tint": "orange", "style": "list",
+           "place": "lab", "updated": "2026-11-07T08:00:00+01:00",
+           "items": [
+             {"title": "nas", "subtitle": "restic", "value": "failed", "tint": "red"},
+             {"title": "pi1", "subtitle": "restic", "value": "ok", "tint": "green", "progress": 1}
+           ]},
+          {"id": "renewals", "title": "Renewals", "style": "countdown",
+           "items": [{"title": "TLS certificate", "due": "2026-11-16"}]}
+        ],
+        "services": [
+          {"name": "NAS", "url": "https://nas.tail1234.ts.net", "group": "Storage", "icon": "externaldrive"},
+          {"name": "Backup report", "url": "http://192.0.2.20:8080/report.html", "description": "last run"}
+        ],
+        "pending": [{"id": "ab12", "action": "restart", "buttons": {"approve": "signed"}}],
+        "busy": ["chat"]
+      }
+    }
+  }
+}

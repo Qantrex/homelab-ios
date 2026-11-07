@@ -1,0 +1,11 @@
+{
+  "_comment": "Homelab Bridge with a json feed source, against the fake upstream (docs/REFERENCE_SERVER.md#json-feed). Start: python3 server/fake_upstream.py server/recordings/json/normal.json --port 8796, then HOMELAB_TOKENS=<16+ characters> FEED_KEY=any-made-up-key python3 server/reference_server.py --config server/examples/sources-json.json",
+
+  "name": "bridge json example",
+  "listen": "127.0.0.1:8791",
+  "this_host": {"id": "bridge", "kind": "server", "disks": ["/"]},
+
+  "sources": [
+    {"name": "Backups", "type": "json", "url": "http://127.0.0.1:8796/homelab.json", "key_env": "FEED_KEY", "every": 60}
+  ]
+}

@@ -75,10 +75,10 @@ public enum BackgroundRefresh {
                                         options: .init(problems: settings.notifyProblems, pending: settings.notifyPending,
                                                        deals: settings.notifyDeals))
             try? storage.write(tracker, AlertTracker.fileName)
-            if settings.notificationsOn {
-                for a in alerts {
-                    await Notifier.post(a, server: server.id, private: settings.faceIDLock, voice: settings.voice)
-                }
+            // None while notifications are off or quiet hours hold (the tracker has learned them all the same).
+            let now = Date()
+            for a in settings.notificationsToPost(alerts, now: now) {
+                await Notifier.post(a, server: server.id, private: settings.faceIDLock, voice: settings.voice)
             }
             // The Start list for the Home-screen quick actions (the app writes it too; the action list itself
             // isn't cached): only from a server known to offer it.
@@ -86,7 +86,8 @@ public enum BackgroundRefresh {
                 var usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
                 if usage.setOffered(list, server: server.id) { try? storage.write(usage, ActionUsage.fileName) }
             }
-            result = "ok, \(state.problems.count) problems, \(state.pending.count) pending, \(alerts.count) alerts"
+            result = settings.backgroundResult(problems: state.problems.count, pending: state.pending.count,
+                                               alerts: alerts.count, now: now)
         } catch {
             result = APIError.from(error, host: server.host).message
         }

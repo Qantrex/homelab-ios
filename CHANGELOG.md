@@ -10,6 +10,12 @@ Highlights:
   and the server's cards.
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
   "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
+- Show rules: Settings → Today → Sections says under each section when it shows, and a tap picks Always, When it
+  needs me, a time (Mornings, Daytime, Evenings, Weekdays, Weekends) or Custom (from, to, days). While a rule hides
+  something, Today ends with "Hidden now: Deals (evenings) · Show". Without rules Today is as before.
+- Where you are and quiet hours (both off by default): Today's "At home" and "Away" rules follow a person or device
+  tracker in Home Assistant (no location permission), and Settings → Notifications → Quiet hours holds back the app's
+  notifications in a window such as 22–7.
 - Actions: approve, always allow or deny proposals; start your own actions from small forms; Deals, Scan and Find.
 - Lab: hosts, 24 h history, containers with Restart, web UIs.
 - Chat with your homelab agent, with proposals and cards in the replies.

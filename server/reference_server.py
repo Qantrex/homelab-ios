@@ -994,11 +994,12 @@ class RealApp:
             self.routes["messages"] = {"GET": self.messages, "POST": self.post_message}
         if cfg.services or self.sources:
             self.routes["services"] = {"GET": self.services}
-        # Opt-in source actions (a source's `actions` list, off by default): GET /actions and one POST route each.
-        if self.sources and self.sources.offered:
-            self.routes["actions"] = {"GET": lambda q, b: (200, {"actions": self.sources.action_specs()})}
-            for name in self.sources.offered:
-                self.routes["actions/" + name] = {"POST": lambda q, b, name=name: self.source_action(name, b)}
+        # Source actions (feature run-actions): only when a source's config lists items under `actions`.
+        if self.sources and self.sources.actions:
+            acts = self.sources.actions
+            self.routes["actions"] = {"GET": lambda q, b: (200, acts.listing())}
+            for name in acts.names():
+                self.routes["actions/" + name] = {"POST": lambda q, b, name=name: acts.run(name, b)}
 
     def start(self):
         self.collector.start()
@@ -1018,7 +1019,7 @@ class RealApp:
         extra = self.sources.merged() if self.sources else None
         if self.actions:
             f.append("actions")
-        if self.sources and self.sources.offered:
+        if self.sources and self.sources.actions:
             f.append("run-actions")
         if self.chat:
             f.append("chat")
@@ -1029,8 +1030,11 @@ class RealApp:
         return f
 
     def info(self, query, body):
-        return 200, {"api": 1, "name": self.cfg.name, "server": SERVER_NAME, "version": VERSION,
-                     "features": self.features(), "auth": self.auth.mode}
+        out = {"api": 1, "name": self.cfg.name, "server": SERVER_NAME, "version": VERSION,
+               "features": self.features(), "auth": self.auth.mode}
+        if self.sources:   # only with a `sources` key; without it /info stays as it was (NoSourcesGolden)
+            out["sources"] = self.sources.status()
+        return 200, out
 
     def state(self, query, body):
         snap = self.collector.get()
@@ -1070,15 +1074,6 @@ class RealApp:
         if not self.actions:
             return 403, {"error": "this server has no actions"}
         return self.actions.press(action)
-
-    def source_action(self, name, body):
-        """POST /actions/<name> for a source's opt-in action: the app confirmed it; the arg is checked again."""
-        arg, payload = body.get("arg") or "", body.get("payload") or {}
-        if not isinstance(arg, str) or not isinstance(payload, dict):
-            raise BadRequest("arg must be text and payload an object")
-        if payload:
-            raise BadRequest("unknown payload field '%s'" % sorted(payload)[0])
-        return self.sources.act(name, arg)
 
     def messages(self, query, body):
         return 200, self.chat.page(_after(query))

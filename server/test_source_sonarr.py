@@ -139,7 +139,7 @@ class SonarrSource(unittest.TestCase):
 
     def test_config_checks(self):
         for raw, words in [({"key_env": None}, "key_env is required"), ({"queue": 99}, "queue"),
-                           ({"calendar_days": -1}, "calendar_days"), ({"actions": ["pause"]}, "not an action")]:
+                           ({"calendar_days": -1}, "calendar_days"), ({"actions": {"pause": [5]}}, "has no actions")]:
             with self.subTest(raw=raw):
                 cfg = dict({"name": "Sonarr", "type": "sonarr", "url": "http://192.0.2.30:8989",
                             "key_env": "SONARR_KEY"}, **raw)

@@ -6,21 +6,21 @@ Upstream (HTTP basic auth on every request):
     GET  /control/status   -> {"protection_enabled": true, "protection_disabled_duration": 0, "running": true, ...}
     GET  /control/stats    -> {"num_dns_queries": 23410, "num_blocked_filtering": 4300, "time_units": "hours",
                                "top_blocked_domains": [{"ads.example.net": 812}], ...}
-    POST /control/protection {"enabled": false, "duration": 300000}   only the opt-in action `pause`
+    POST /control/protection {"enabled": false, "duration": 300000}   only the opt-in action `dns-pause`
 
 Config:
     {"name": "AdGuard", "type": "adguard", "url": "http://192.0.2.54:3000", "username": "monitor",
-     "password_env": "ADGUARD_PASSWORD", "top": 5, "actions": ["pause"]}
+     "password_env": "ADGUARD_PASSWORD", "top": 5, "actions": {"pause": [5, 15, 30]}}
 
 username and password_env: an AdGuard Home user (AdGuard has no read-only users or API keys, so the password can
 change settings: keep it in the env file only). Without username no auth is sent. `top`: how many blocked domains
-(0: no `dns-top` card). `actions`: off unless listed; `["pause"]` as for pihole.
+(0: no `dns-top` card). `actions`: off unless set; `{"pause": [minutes, ...]}` as for pihole.
 """
 
 import base64
 
 from . import as_dict, as_text
-from ._dns import PAUSE, minutes, number, pause_spec, result, top_pairs
+from ._dns import ACTIONS, allowed, check_actions, minutes, number, pause_seconds, result, top_pairs  # noqa: F401
 
 
 def check(cfg):
@@ -31,10 +31,7 @@ def check(cfg):
     top = cfg.get("top", 5)
     if isinstance(top, bool) or not isinstance(top, int) or not 0 <= top <= 20:
         raise ValueError("top must be a whole number from 0 to 20")
-
-
-def actions(cfg):
-    return {"pause": pause_spec(cfg)}
+    check_actions(cfg)
 
 
 def _headers(cfg, fetch):
@@ -63,9 +60,9 @@ def collect(cfg, fetch):
     return out
 
 
-def act(cfg, fetch, name, arg):
-    """`pause`: arg "5", "15", "30" (minutes) or "on"."""
-    seconds = PAUSE[arg]
+def act(cfg, fetch, action, host, item):
+    """`dns-pause` with a listed item: minutes ("5") or "on" (resume). The bridge only calls it for listed items."""
+    seconds = pause_seconds(action, item)
     body = {"enabled": True} if seconds is None else {"enabled": False, "duration": seconds * 1000}
     fetch("/control/protection", method="POST", headers=_headers(cfg, fetch), body=body)
     return "%s: protection is on again" % cfg["name"] if seconds is None else \

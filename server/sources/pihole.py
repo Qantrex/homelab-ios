@@ -8,20 +8,20 @@ Upstream:
     GET    /api/dns/blocking                        -> {"blocking": "enabled", "timer": null}
     GET    /api/stats/top_domains?blocked=true&count=N
     DELETE /api/auth                                logout after every run: Pi-hole allows only a few sessions
-    POST   /api/dns/blocking {"blocking": false, "timer": 300}   only the opt-in action `pause`
+    POST   /api/dns/blocking {"blocking": false, "timer": 300}   only the opt-in action `dns-pause`
 
 Config:
     {"name": "Pi-hole", "type": "pihole", "url": "http://192.0.2.53", "key_env": "PIHOLE_APP_PASSWORD",
-     "top": 5, "actions": ["pause"]}
+     "top": 5, "actions": {"pause": [5, 15, 30]}}
 
 key_env names the variable with an **app password** (Settings > Web interface / API > Configure app password), not
 the login password. Without key_env the Pi-hole must have no password. `top`: how many blocked domains (0: no
-`dns-top` card). `actions`: off unless listed; `["pause"]` puts a "Pause 5 min" (or "Resume") button on the
-Blocking row and offers 5, 15 or 30 minutes and "Resume" under Actions.
+`dns-top` card). `actions`: off unless set; `{"pause": [5, 15, 30]}` (minutes) offers the action `dns-pause` with
+those lengths and Resume, and puts "Pause 5 min" (the shortest) or "Resume" on the Blocking row.
 """
 
 from . import SourceError, as_dict, as_list, as_text
-from ._dns import PAUSE, minutes, number, pause_spec, result, top_pairs
+from ._dns import ACTIONS, allowed, check_actions, minutes, number, pause_seconds, result, top_pairs  # noqa: F401
 
 STATES = {"enabled": "on", "disabled": "off", "failed": "failed"}
 
@@ -32,10 +32,7 @@ def check(cfg):
     top = cfg.get("top", 5)
     if isinstance(top, bool) or not isinstance(top, int) or not 0 <= top <= 20:
         raise ValueError("top must be a whole number from 0 to 20")
-
-
-def actions(cfg):
-    return {"pause": pause_spec(cfg)}
+    check_actions(cfg)
 
 
 def _login(cfg, fetch):
@@ -88,9 +85,9 @@ def collect(cfg, fetch):
                   top=top_pairs(as_list(domains.get("domains")), top))
 
 
-def act(cfg, fetch, name, arg):
-    """`pause`: arg "5", "15", "30" (minutes) or "on"."""
-    seconds = PAUSE[arg]
+def act(cfg, fetch, action, host, item):
+    """`dns-pause` with a listed item: minutes ("5") or "on" (resume). The bridge only calls it for listed items."""
+    seconds = pause_seconds(action, item)
     body = {"blocking": True, "timer": None} if seconds is None else {"blocking": False, "timer": seconds}
     _session(cfg, fetch, lambda h: fetch("/api/dns/blocking", method="POST", headers=h, body=body))
     return "%s: blocking is on again" % cfg["name"] if seconds is None else \

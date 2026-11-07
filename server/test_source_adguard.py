@@ -80,11 +80,11 @@ class AdGuardSource(unittest.TestCase):
         paused = routes(**{"GET /control/status": {"json": {"protection_enabled": False, "running": True,
                                                             "protection_disabled_duration": 600000}}})
         with FakeUpstream(paused) as up:
-            out = run(up, actions=["pause"]).merged()
+            out = run(up, actions={"pause": [5]}).merged()
         self.assertEqual(out["problems"], [])
         self.assertEqual(out["cards"][0]["items"][2], {"title": "Blocking", "value": "off · 10 min", "tint": "orange",
-                                                       "action": {"name": "adguard-pause", "label": "Resume",
-                                                                  "arg": "on"}})
+                                                       "action": {"name": "dns-pause", "label": "Resume",
+                                                                  "arg": "AdGuard:on"}})
         off = routes(**{"GET /control/status": {"json": {"protection_enabled": False, "running": True,
                                                          "protection_disabled_duration": 0}}})
         with FakeUpstream(off) as up:
@@ -120,18 +120,19 @@ class AdGuardSource(unittest.TestCase):
 
     def test_pause_and_resume(self):
         with FakeUpstream(recording("normal")) as up:
-            spec = parse(up.url, actions=["pause"])
+            spec = parse(up.url, actions={"pause": [5, 15, 30]})
             runner = sources.Runner([spec])
-            self.assertEqual(runner.act("adguard-pause", "5"),
+            self.assertEqual(runner.actions.run("dns-pause", {"arg": "AdGuard:5"}),
                              (200, {"ok": True, "text": "AdGuard: protection paused for 5 min"}))
             self.assertEqual((up.requests[0]["method"], up.requests[0]["path"]), ("POST", "/control/protection"))
             self.assertEqual(json.loads(up.requests[0]["body"]), {"enabled": False, "duration": 300000})
             self.assertTrue(header(up.requests[0], "Authorization").startswith("Basic "))
-            runner.act("adguard-pause", "on")
+            runner.actions.run("dns-pause", {"arg": "AdGuard:on"})
             self.assertEqual(json.loads(up.requests[1]["body"]), {"enabled": True})
 
     def test_config_checks(self):
         for raw, words in [({"password_env": None}, "username needs password_env"), ({"top": 99}, "top"),
+                           ({"actions": {"pause": True}}, "minutes"),
                            ({"url": None}, "url is required"), ({"password": "x"}, "looks like a secret")]:
             with self.subTest(raw=raw):
                 with self.assertRaisesRegex(ValueError, words):

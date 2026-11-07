@@ -1,0 +1,24 @@
+{
+  "_about": "Made up. The same list answering oddly: an older engine (API 1.47, no Health, health only in Status), legacy link names, unknown fields, wrong types, junk entries, a duplicate, an unknown state, a secret-named field. The source must not crash.",
+  "routes": {
+    "GET /containers/json": {
+      "status": 200,
+      "headers": {"Api-Version": "1.47"},
+      "json": [
+        {"Names": ["/web/db", "/db"], "State": "running", "Status": "Up 3 hours (health: starting)"},
+        {"Names": ["/web"], "State": "Running", "Status": "Up 3 hours (unhealthy)", "NewField": {"x": [1, 2]}},
+        {"Names": ["/web"], "State": "exited", "Status": "Exited (1) 1 minute ago"},
+        {"Names": "/not-a-list", "State": "running"},
+        {"Names": [], "State": "running"},
+        {"Names": [42, null, "/odd"], "State": 7, "Status": "Up 1 second"},
+        {"Names": ["/paused-one"], "State": "paused", "Status": "Up 2 hours (Paused)", "Health": "healthy"},
+        {"Names": ["/strange"], "State": "hibernating", "Status": "Who knows", "Health": {"Status": "sick"}},
+        {"Names": ["/crashed"], "State": "exited", "Status": "Exited (-1) 2 days ago", "password": "not-a-real-one"},
+        {"Names": ["/gone"], "State": "dead", "Status": "Dead"},
+        "a string",
+        null,
+        [1, 2]
+      ]
+    }
+  }
+}

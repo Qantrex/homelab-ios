@@ -18,9 +18,10 @@ The Runner here runs every source on its own `every`, each run in its own thread
 into /state and /services (`merged()`). Rules it enforces, whatever the module returns:
   - ids get the prefix "<source name>:"; a problem's `host` too (dropped unless the source sent that host)
   - a failing, crashing or hanging source is exactly one warning problem "<name>: <short error>", nothing else
-  - no actions unless the config lists them: `action` on cards and `restartable` on containers are removed, and an
-    item's `action` stays only when its name is in the source's `actions` list (opt-in, per source; the module offers
-    them with actions(cfg) and runs them with act(cfg, fetch, name, arg); see Runner.act)
+  - no actions by default: `action` on cards and items and `restartable` on containers are removed. A source type
+    may offer actions (docker: restart, proxmox: start and stop, pihole and adguard: pause). They exist only for the
+    items its config lists under `actions`; SourceActions serves them as the app's run-actions (GET /actions,
+    POST /actions/<name>). An item's `action` stays only when its name and arg are on that list
   - the card ids `today` and `departures` are refused (the app gives those ids a meaning)
   - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values are replaced by
     "***" in everything the source returns and in every error; fields named like a secret are dropped
@@ -32,12 +33,13 @@ import http.client
 import datetime
 import hashlib
 import importlib
-import itertools
+import importlib.util
 import json
 import os
 import re
 import socket
 import ssl
+import sys
 import threading
 import time
 import traceback
@@ -67,9 +69,15 @@ SECRET_QUERY = re.compile(r"(?i)(^|[&;])[^=&;]*(key|token|password|passwd|secret
 RESERVED_CARD_IDS = ("today", "departures")
 RESERVED_ENV = ("HOMELAB_TOKENS", "HOMELAB_BUTTON_SECRET")
 SEVERITIES = ("problem", "warning")
-COMMON_KEYS = ("name", "type", "url", "every", "timeout", "insecure", "ca_file", "actions")
-ACTION_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")   # Companion API action names (openapi.yaml ActionSpec)
-MAX_ARGS = 50   # argument choices an opt-in action may have
+COMMON_KEYS = ("name", "type", "url", "every", "timeout", "insecure", "ca_file")
+# Source actions (opt-in per item): what an item or host id in an action's argument may look like, the app's limit
+# on an argument, how many presses an hour the bridge takes in all, and how long one press may take.
+ITEM_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+ACTION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+RESTART = "restart-container"   # the action the app's container list uses, with "<host id>:<container>"
+MAX_ARG = 64
+ACTIONS_PER_HOUR = 30
+ACTION_TIMEOUT = 60.0
 
 _URL_RE = re.compile(r"[a-z][a-z0-9+.-]*://\S+", re.I)
 _NO_PROXY = urllib.request.ProxyHandler({})
@@ -165,11 +173,33 @@ def load_type(kind):
     if not isinstance(kind, str) or not TYPE_RE.fullmatch(kind):
         raise ValueError("type must be lower-case letters, digits and -, got %r" % (kind,))
     here = os.path.dirname(os.path.abspath(__file__))
-    if not os.path.isfile(os.path.join(here, module_name(kind) + ".py")):
+    path = os.path.join(here, module_name(kind) + ".py")
+    if not os.path.isfile(path):
         raise ValueError("unknown type %r (known: %s)" % (kind, ", ".join(known_types()) or "none"))
-    mod = importlib.import_module("." + module_name(kind), __name__)
+    mod = _import_source(module_name(kind), path)
     if not callable(getattr(mod, "collect", None)):
         raise ValueError("type %r has no collect(cfg, fetch)" % kind)
+    return mod
+
+
+_IMPORT_LOCK = threading.Lock()
+
+
+def _import_source(mod_name, path):
+    """Import server/sources/<mod_name>.py as `sources.<mod_name>` without setting it as an attribute of this package:
+    importlib.import_module would, and a type named like a module imported here (`json`) would then replace it."""
+    full = "%s.%s" % (__name__, mod_name)
+    with _IMPORT_LOCK:
+        mod = sys.modules.get(full)
+        if mod is None:
+            spec = importlib.util.spec_from_file_location(full, path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[full] = mod
+            try:
+                spec.loader.exec_module(mod)
+            except BaseException:
+                del sys.modules[full]
+                raise
     return mod
 
 
@@ -212,7 +242,7 @@ def parse(raw, env):
     the variables its *_env keys name, and nothing else)}."""
     if not isinstance(raw, list):
         raise ValueError("sources must be a list of objects")
-    specs, names, action_names = [], set(), set()
+    specs, names = [], set()
     for i, item in enumerate(raw):
         if not isinstance(item, dict):
             raise ValueError("sources[%d] must be an object" % i)
@@ -265,67 +295,47 @@ def parse(raw, env):
                 check(copy.deepcopy(cfg))
             except ValueError as exc:
                 raise ValueError("%s: %s" % (where, exc))
-        actions = _parse_actions(item, cfg, module, where, action_names)
-        cfg["actions"] = list(actions)
+        try:
+            allowed = _allowed(name, module, cfg)
+        except ValueError as exc:
+            raise ValueError("%s: %s" % (where, exc))
         specs.append({"name": name, "type": item["type"], "every": cfg["every"], "timeout": cfg["timeout"],
-                      "cfg": cfg, "module": module, "env": values, "actions": actions})
+                      "cfg": cfg, "module": module, "env": values, "actions": allowed})
     return specs
 
 
-def action_name(source_name, short):
-    """The Companion action name of a source's opt-in action: "Pi-hole" + "pause" -> "pi-hole-pause"."""
-    slug = re.sub(r"[^a-z0-9]+", "-", source_name.lower()).strip("-")
-    return "%s-%s" % (slug or "source", short)
+def _allowed(name, module, cfg):
+    """What a source's config allows it to do: [{"action", "host", "item", "label", "host_label", "arg"}], checked.
 
-
-def action_args(aspec):
-    """Every argument an opt-in action takes: its `arg` variants, built from `choice` and `literal` parts only (a
-    source action has a short, fixed list). No variants: only "". None when a part has another kind."""
-    variants = as_list(aspec.get("arg"))
-    if not variants:
-        return {""}
-    out = set()
-    for v in variants:
-        parts = []
-        for part in as_list(as_dict(v).get("parts")):
-            part = as_dict(part)
-            if part.get("kind") == "literal" and isinstance(part.get("text"), str):
-                parts.append([part["text"]])
-            elif part.get("kind") == "choice":
-                parts.append([o["value"] for o in as_list(part.get("options"))
-                              if isinstance(o, dict) and isinstance(o.get("value"), str)])
-            else:
-                return None
-        for combo in itertools.product(*parts):
-            out.add("".join(combo))
-            if len(out) > MAX_ARGS:
-                return None
-    return out
-
-
-def _parse_actions(item, cfg, module, where, taken):
-    """The `actions` key: this source's opt-in actions, {short name: Companion name}. Empty (off) by default."""
-    wanted = item.get("actions", [])
-    if not isinstance(wanted, list) or not all(isinstance(a, str) for a in wanted):
-        raise ValueError("%s.actions must be a list of action names" % where)
-    if not wanted:
-        return {}
-    offer = getattr(module, "actions", None)
-    offered = as_dict(offer(copy.deepcopy(cfg))) if callable(offer) and callable(getattr(module, "act", None)) else {}
-    out = {}
-    for short in wanted:
-        if short not in offered:
-            raise ValueError("%s.actions: %r is not an action of type %s (it offers: %s)"
-                             % (where, short, item.get("type"), ", ".join(sorted(offered)) or "none"))
-        full = action_name(item["name"], short)
-        if not ACTION_RE.fullmatch(full):
-            raise ValueError("%s.actions: %r gives the action name %r, which is not allowed" % (where, short, full))
-        if full in taken:
-            raise ValueError("%s.actions: the action name %r is taken by another source (rename one)" % (where, full))
-        if action_args(as_dict(offered[short])) is None:
-            raise ValueError("%s.actions: %r takes an argument the bridge can't check" % (where, short))
-        taken.add(full)
-        out[short] = full
+    Empty without an `actions` key. The module's allowed(cfg) lists them from the config only (never from the
+    upstream); its ACTIONS describes each action name. The argument the app sends is "<name>:<host>:<item>" with a host
+    (the app's container Restart builds "<host id>:<container>", and host ids are prefixed) or "<name>:<item>". The
+    bridge only looks it up in this list and never parses it, so ARG_RE (for argv commands) doesn't apply."""
+    if cfg.get("actions") is None:
+        return []
+    meta = getattr(module, "ACTIONS", None)
+    if not callable(getattr(module, "allowed", None)) or not callable(getattr(module, "act", None)) \
+            or not isinstance(meta, dict):
+        raise ValueError("type %r has no actions" % cfg["type"])
+    out, args = [], set()
+    for a in module.allowed(copy.deepcopy(cfg)):
+        action, host, item = a.get("action"), a.get("host"), a.get("item")
+        if action not in meta or not isinstance(action, str) or not ACTION_NAME_RE.fullmatch(action):
+            raise ValueError("unknown action %r" % (action,))
+        if not isinstance(item, str) or not ITEM_RE.fullmatch(item):
+            raise ValueError("actions: %r is not a valid name (A-Z a-z 0-9 _ . -)" % (item,))
+        if host is not None and (not isinstance(host, str) or not ITEM_RE.fullmatch(host)):
+            raise ValueError("actions: host %r is not a valid id" % (host,))
+        arg = "%s:%s:%s" % (name, host, item) if host is not None else "%s:%s" % (name, item)
+        if len(arg) > MAX_ARG:
+            raise ValueError("actions: %r is longer than %d characters, so the app can't send it (use a shorter "
+                             "source name or host)" % (arg, MAX_ARG))
+        if (action, arg) in args:
+            continue
+        args.add((action, arg))
+        out.append({"action": action, "host": host, "item": item, "arg": arg,
+                    "label": as_text(a.get("label")) or item,
+                    "host_label": as_text(a.get("host_label")) or host or ""})
     return out
 
 
@@ -480,23 +490,23 @@ def _pick(items, limit, valid, kind, name, logf):
     return out
 
 
-def _no_actions(card, actions=None):
-    """Remove every action, except an item action the config opted in to (renamed to its Companion name)."""
+def _no_actions(card, allowed=frozenset()):
+    """Remove every action, except an item's `action` whose (name, arg) is on the source's list (`allowed`); it keeps
+    only name, label and arg."""
     card.pop("action", None)
     for item in card.get("items", []):
         act = item.pop("action", None)
-        full = (actions or {}).get(act.get("name")) if isinstance(act, dict) else None
-        if isinstance(full, str):
-            kept = {"name": full}
-            kept.update({k: act[k] for k in ("label", "arg") if isinstance(act.get(k), str)})
-            item["action"] = kept
+        if isinstance(act, dict) and (act.get("name"), act.get("arg")) in allowed:
+            item["action"] = {k: act[k] for k in ("name", "label", "arg") if isinstance(act.get(k), str)}
     return card
 
 
-def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, actions=None):
+def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, restartable=frozenset(),
+              item_actions=frozenset()):
     """A source's raw result → {"problems", "hosts", "cards", "services"} as the app may see it (rules in the
-    module docstring). `actions`: the source's opt-in actions, {short name: Companion name}. Raises SourceError when
-    the result is not a JSON object."""
+    module docstring). `restartable`: the (host id, container name) pairs on the source's restart list; only those
+    get `restartable: true`. `item_actions`: the (action, arg) pairs on the source's actions list; only those stay
+    as an item's button. Raises SourceError when the result is not a JSON object."""
     if not isinstance(result, dict):
         raise SourceError("collect() returned %s, not a dict" % type(result).__name__)
     try:
@@ -512,8 +522,9 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, actio
     hosts = []
     for h in _pick(result.get("hosts"), MAX_HOSTS, has_id, "host", name, logf):
         h = dict(h)
-        h.setdefault("name", h["id"])
-        h["id"] = prefix + h["id"]
+        raw_id = h["id"]
+        h.setdefault("name", raw_id)
+        h["id"] = prefix + raw_id
         hist = h.get("history")
         if isinstance(hist, dict):
             for k, v in hist.items():
@@ -523,6 +534,8 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, actio
             h["container_list"] = [c for c in h["container_list"] if isinstance(c, dict)]
             for c in h["container_list"]:
                 c.pop("restartable", None)
+                if (raw_id, c.get("name")) in restartable:
+                    c["restartable"] = True
         hosts.append(h)
     host_ids = {h["id"] for h in hosts}
 
@@ -561,7 +574,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, actio
                 del c["items"]
         if checked and "updated" not in c:
             c["updated"] = checked
-        cards.append(_no_actions(c, actions))
+        cards.append(_no_actions(c, item_actions))
 
     services = []
     for s in _pick(result.get("services"), MAX_SERVICES,
@@ -580,6 +593,7 @@ class _State:
         self.result = None       # normalized contribution of the last good run
         self.error = None        # short text of the last failed run
         self.checked = None      # ISO time of the last finished run
+        self.last_ok = None      # ISO time of the last good run (kept while the source fails)
         self.running_since = None
         self.next_due = 0.0
         self.since = {}          # problem id -> since
@@ -598,14 +612,8 @@ class Runner:
         self.log = logf
         self.tick_seconds = tick
         self.secrets = sorted({v for s in specs for v in s["env"].values() if v}, key=len, reverse=True)
+        self.actions = SourceActions(specs, self.secrets, logf, after=self.read_soon)
         self.states = {s["name"]: _State() for s in specs}
-        # Opt-in actions: Companion name -> (spec, short name, ActionSpec for GET /actions). Empty by default.
-        self.offered = {}
-        for s in specs:
-            for short, full in (s.get("actions") or {}).items():
-                aspec = dict(as_dict(as_dict(s["module"].actions(copy.deepcopy(s["cfg"]))).get(short)))
-                aspec["name"] = full
-                self.offered[full] = (s, short, aspec)
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
         self.thread = None
@@ -617,6 +625,12 @@ class Runner:
                     logf("source %s: env %s is shorter than %d characters" % (s["name"], var, MIN_SCRUB))
             if s["cfg"].get("insecure"):
                 logf("source %s: warning: insecure: true, TLS certificates are not checked" % s["name"])
+
+    def read_soon(self, name):
+        """Read this source again at the next tick (after an action changed something upstream)."""
+        with self.lock:
+            if name in self.states:
+                self.states[name].next_due = 0.0
 
     def start(self):
         self.thread = threading.Thread(target=self._loop, name="sources", daemon=True)
@@ -660,7 +674,9 @@ class Runner:
         result, error = None, None
         try:
             raw = spec["module"].collect(copy.deepcopy(spec["cfg"]), fetch)
-            result = normalize(name, raw, self.secrets, now_iso(), self.log, spec.get("actions"))
+            restartable = {(a["host"], a["item"]) for a in spec.get("actions", ()) if a["action"] == RESTART}
+            listed = {(a["action"], a["arg"]) for a in spec.get("actions", ())}
+            result = normalize(name, raw, self.secrets, now_iso(), self.log, restartable, listed)
         except SourceError as exc:
             error = scrub(exc, self.secrets)
         except Exception as exc:  # noqa: BLE001 - a crash is one warning, not a dead server
@@ -672,7 +688,7 @@ class Runner:
             st.checked = stamp
             st.runs += 1
             if error is None:
-                st.result, st.error, st.logged = result, None, None
+                st.result, st.error, st.logged, st.last_ok = result, None, None, stamp
                 since = {}
                 for p in result["problems"]:
                     since[p["id"]] = st.since.get(p["id"], stamp)
@@ -685,37 +701,6 @@ class Runner:
                 st.logged = error
                 pid = name + ":source"
                 st.since = {pid: st.since.get(pid, stamp)}
-
-    def action_specs(self):
-        """The opt-in actions for GET /actions (feature run-actions), in config order."""
-        return [copy.deepcopy(entry[2]) for entry in self.offered.values()]
-
-    def act(self, full, arg):
-        """Run one opt-in action now (the app asked, after its confirm): (HTTP code, body). The name and the argument
-        are checked again here; the module's act(cfg, fetch, name, arg) does the one write and returns a short text.
-        A failure is a 502 with a short, scrubbed reason. Afterwards the source is read again at the next tick."""
-        entry = self.offered.get(full)
-        if entry is None:
-            return 404, {"error": "not an action of this server"}
-        spec, short, aspec = entry
-        if not isinstance(arg, str) or arg not in (action_args(aspec) or ()):
-            return 400, {"error": "%s: that choice is not offered" % as_text(aspec.get("label"), full)}
-        name = spec["name"]
-        self.log("source %s: action %s %s" % (name, full, arg))
-        fetch = Fetch(spec["cfg"], spec["env"], deadline=time.monotonic() + 3 * spec["timeout"])
-        try:
-            text = spec["module"].act(copy.deepcopy(spec["cfg"]), fetch, short, arg)
-        except SourceError as exc:
-            error = scrub(exc, self.secrets)
-        except Exception as exc:  # noqa: BLE001 - a crash is an error answer, not a dead server
-            error = scrub(short_error(exc), self.secrets)
-            self.log("source %s action %s crashed:\n%s" % (name, full, self._scrub_log(traceback.format_exc())))
-        else:
-            with self.lock:
-                self.states[name].next_due = 0.0
-            return 200, {"ok": True, "text": scrub(as_text(text) or "Done", self.secrets)}
-        self.log("source %s: action %s failed: %s" % (name, full, error))
-        return 502, {"error": "%s: %s (it may not have run)" % (name, error)}
 
     def _failure(self, name, st, error):
         pid = name + ":source"
@@ -742,7 +727,12 @@ class Runner:
         return out
 
     def status(self):
-        """Per source: name, type, ok, error, checked (and insecure). For /info and Diagnostics (MODULAR.md M1.2)."""
+        """Per source, in config order: what /info lists under `sources` (MODULAR.md M1.2; Diagnostics in the app, M2.4).
+
+        {"name", "type", "state": "ok" | "failing" | "never", "error" (only while failing: the warning's short,
+        scrubbed text), "checked" (the last finished run), "last_ok" (the last good run, kept while failing),
+        "insecure" (only when true: TLS certificates are not checked; clients show it as a warning)}. "never": no run
+        has finished yet. A run that hangs past `every + timeout` is "failing" with "timeout", the first one too."""
         rows = []
         now = time.monotonic()
         with self.lock:
@@ -751,12 +741,120 @@ class Runner:
                 stuck = st.running_since is not None and now - st.running_since > spec["every"] + spec["timeout"]
                 error = "timeout" if stuck else st.error
                 row = {"name": spec["name"], "type": spec["type"],
-                       "ok": None if st.checked is None and not stuck else error is None}
+                       "state": "failing" if error else ("never" if st.checked is None else "ok")}
                 if error:
                     row["error"] = error
                 if st.checked:
                     row["checked"] = st.checked
+                if st.last_ok:
+                    row["last_ok"] = st.last_ok
                 if spec["cfg"].get("insecure"):
                     row["insecure"] = True
                 rows.append(row)
         return rows
+
+
+# --------------------------------------------------------------------------------------------- actions
+
+class SourceActions:
+    """Actions of sources, off by default and per item: only what a source's config lists under `actions` (docker:
+    restart, proxmox: start and stop). Served as the app's run-actions: listing() is GET /actions, run() is
+    POST /actions/<name>. The app asks first (a red confirm for destructive ones); the server checks again here:
+    the argument must be exactly one on the list (it is looked up, never parsed or put into a URL), no payload, at
+    most ACTIONS_PER_HOUR presses an hour in all, one press per item at a time. Errors never hold a key or a URL."""
+
+    def __init__(self, specs, secrets=(), logf=lambda m: None, per_hour=ACTIONS_PER_HOUR, after=None):
+        self.secrets = secrets
+        self.log = logf
+        self.after = after  # after(source name), called after a press that worked (the Runner reads it again)
+        self.per_hour = per_hour
+        self.table = {}     # (action, arg) -> (spec, entry)
+        self.meta = {}      # action -> its ACTIONS entry (from the first source type that offers it)
+        self.lock = threading.Lock()
+        self.recent = []    # monotonic times of the presses in the last hour
+        self.running = set()
+        for spec in specs:
+            for a in spec.get("actions", ()):
+                self.table[(a["action"], a["arg"])] = (spec, a)
+                self.meta.setdefault(a["action"], dict(spec["module"].ACTIONS[a["action"]]))
+
+    def __bool__(self):
+        return bool(self.table)
+
+    def names(self):
+        return list(self.meta)
+
+    def listing(self):
+        """{"actions": [ActionSpec]}: one per action name, one arg variant per source and host with the items as a
+        choice. A variant builds exactly the arguments on the list, nothing else."""
+        out = []
+        for action, meta in self.meta.items():
+            groups = {}
+            for (name, _), (spec, a) in self.table.items():
+                if name == action:
+                    groups.setdefault((spec["name"], a["host"]), []).append(a)
+            variants = []
+            for (source, host), entries in groups.items():
+                items = {"kind": "choice", "label": as_text(meta.get("part"), "Item"),
+                         "options": [{"value": a["item"], "label": a["label"]} for a in entries]}
+                if host is None:
+                    variants.append({"label": source, "parts": [{"kind": "literal", "text": source + ":"}, items]})
+                else:
+                    shown = entries[0]["host_label"]
+                    variants.append({"label": "%s · %s" % (source, shown) if shown != source else source,
+                                     "parts": [{"kind": "choice", "label": "Host",
+                                                "options": [{"value": "%s:%s" % (source, host), "label": shown}]},
+                                               {"kind": "literal", "text": ":"}, items]})
+            item = {"name": action, "label": as_text(meta.get("label"), action), "fields": [], "arg": variants}
+            for key in ("icon", "hint"):
+                if as_text(meta.get(key)):
+                    item[key] = meta[key]
+            if meta.get("destructive") is True:
+                item["destructive"] = True
+            out.append(item)
+        return {"actions": out}
+
+    def run(self, action, body):
+        """POST /actions/<action> with {arg, payload}: (status, answer)."""
+        if action not in self.meta:
+            return 404, {"error": "not an action the app may start"}
+        arg, payload = body.get("arg") or "", body.get("payload") or {}
+        if not isinstance(arg, str) or not isinstance(payload, dict):
+            return 400, {"error": "arg must be text and payload an object"}
+        if payload:
+            return 400, {"error": "%s takes no fields" % action}
+        entry = self.table.get((action, arg))
+        if entry is None:
+            return 400, {"error": "not on this server's %s list" % action}
+        spec, a = entry
+        key = (action, arg)
+        with self.lock:
+            now = time.monotonic()
+            self.recent = [t for t in self.recent if now - t < 3600]
+            if len(self.recent) >= self.per_hour:
+                return 429, {"error": "more than %d actions in the last hour" % self.per_hour}
+            if key in self.running:
+                return 429, {"error": "%s is still running" % a["label"]}
+            self.recent.append(now)
+            self.running.add(key)
+        try:
+            fetch = Fetch(spec["cfg"], spec["env"], deadline=time.monotonic() + ACTION_TIMEOUT)
+            text = spec["module"].act(copy.deepcopy(spec["cfg"]), fetch, action, a["host"], a["item"])
+            ok, text = True, as_text(text) or "Done."
+        except SourceError as exc:
+            ok, text = False, "%s: %s failed (%s)" % (spec["name"], a["label"], exc)
+        except Exception as exc:  # noqa: BLE001 - a bug in a module is a failed press, not a dead server
+            ok, text = False, "%s: %s failed (%s)" % (spec["name"], a["label"], short_error(exc))
+            trace = traceback.format_exc()
+            for s in self.secrets:
+                if len(s) >= MIN_SCRUB:
+                    trace = trace.replace(s, "***")
+            self.log("source %s: action %s crashed:\n%s" % (spec["name"], action, trace))
+        finally:
+            with self.lock:
+                self.running.discard(key)
+        text = scrub(text, self.secrets)
+        self.log("source %s: %s %s: %s" % (spec["name"], action, arg, "ok" if ok else text))
+        if ok and self.after:
+            self.after(spec["name"])
+        return 200, {"ok": ok, "text": text}

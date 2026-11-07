@@ -1,0 +1,7 @@
+{
+  "_about": "Made up. A feed that answers a JSON list instead of an object, and a path that answers an HTML page (a login page in front of the feed).",
+  "routes": {
+    "GET /homelab.json": {"status": 200, "json": [{"text": "a problem in a list"}]},
+    "GET /page": {"status": 200, "body": "<html>a login page</html>", "headers": {"Content-Type": "text/html"}}
+  }
+}

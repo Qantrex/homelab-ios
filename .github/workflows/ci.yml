@@ -57,6 +57,22 @@ jobs:
       - name: Reference server tests
         run: python3 -m unittest -v server/test_*.py
 
+  # The Homelab Bridge image (server/Dockerfile): CI builds and tests it, and never pushes it (owner, 2026-11-07: the
+  # owner pushes it by hand with scripts/build-bridge-image --push, which refuses to run in CI). Its own job because the
+  # linux job runs inside a container without Docker. No registry login, no cache, read-only token; about 2 minutes.
+  bridge-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Base image pinned by digest and PyYAML by hash (server/Dockerfile, server/requirements-image.txt). Then the
+      # server tests inside the image, and the image in token mode on loopback against scripts/check-live-api.
+      - name: Build and test the Homelab Bridge image (no push)
+        run: scripts/build-bridge-image --test --image homelab-bridge-ci
+
   macos:
     strategy:
       fail-fast: false

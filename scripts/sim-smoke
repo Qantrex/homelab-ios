@@ -13,11 +13,14 @@
 #   27     demo host detail (reset first, problem scene) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
 #   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality
 #   29     demo Today with only the demo Home Assistant (reset first, -HomelabDemoScene ha-only): no Companion server
+#   30-35  first run (reset first): the welcome, and Found with "Start with" over the demo (-HomelabFirstRun), in light,
+#          dark and accessibility-XL text
+#   36-37  demo Today with show rules (Deals, Cards, Last report in the evenings) at 14:00 (hidden) and 19:00 (shown)
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
 
-usage() { sed -n '2,16p' "$0"; exit 2; }
+usage() { sed -n '2,20p' "$0"; exit 2; }
 [ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
 
 # pick_udid main|small [EXCLUDE_UDID]
@@ -272,6 +275,26 @@ scene demo-today-overkill-snarky "${FRESH_DEMO[@]}" "${PROBLEM[@]}" -HomelabTab 
 
 # 29: Home Assistant only, no Companion server: the headline from HA's states ("Home.", "1 light on", gold unavailable)
 scene demo-ha-only "${FRESH_DEMO[@]}" -HomelabDemoScene ha-only -HomelabTab today
+# 30-35: the first run (docs/plans/MODULAR.md, M2.3). The welcome after a reset; Found with "Start with" over the demo
+# servers (-HomelabFirstRun only works when every server is a demo one).
+FIRST_RUN=(-HomelabResetState YES -HomelabDemo YES -HomelabFirstRun YES)
+xcrun simctl ui "$dev" appearance light || true
+scene first-run-welcome-light -HomelabResetState YES
+scene first-run-found-light "${FIRST_RUN[@]}"
+xcrun simctl ui "$dev" appearance dark || true
+scene first-run-welcome-dark -HomelabResetState YES
+scene first-run-found-dark "${FIRST_RUN[@]}"
+xcrun simctl ui "$dev" appearance light || true
+xcrun simctl ui "$dev" content_size accessibility-extra-large || true
+scene first-run-welcome-xxl -HomelabResetState YES
+scene first-run-found-xxl "${FIRST_RUN[@]}"
+xcrun simctl ui "$dev" content_size large || true
+
+# 36-37: show rules at a fixed clock time (-HomelabTime): at 14:00 the evening sections are hidden and Today ends with
+# "Hidden now: Deals, Cards and Last report (evenings) · Show"; at 19:00 they are back and the line is gone
+RULES=(-HomelabRules "deals=evenings,cards=evenings,report=evenings")
+scene demo-rule-hidden "${FRESH_DEMO[@]}" "${RULES[@]}" -HomelabTab today -HomelabTime 14:00
+scene demo-rule-shown "${FRESH_DEMO[@]}" "${RULES[@]}" -HomelabTab today -HomelabTime 19:00
 
 # App log for this run (Logger subsystem com.qantrex.homelab), from the main simulator
 xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \

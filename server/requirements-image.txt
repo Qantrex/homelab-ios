@@ -1,0 +1,6 @@
+# Python packages of the Homelab Bridge image only (server/Dockerfile). The server runs without them.
+# pip install --require-hashes --only-binary=:all: : the musllinux wheels for CPython 3.14 (Alpine), amd64 and arm64,
+# from https://pypi.org/project/PyYAML/6.0.3/#files. A bump changes the version and both hashes (and features.toml).
+PyYAML==6.0.3 \
+    --hash=sha256:5190d403f121660ce8d1d2c1bb2ef1bd05b5f68533fc5c2ea899bd15f4399b35 \
+    --hash=sha256:7c6610def4f163542a622a73fb39f534f8c101d690126992300bf3207eab9764

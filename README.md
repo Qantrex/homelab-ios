@@ -120,8 +120,9 @@ In a second shell, publish it in your tailnet (pick a free port, `tailscale serv
 sudo tailscale serve --bg --https=7443 http://127.0.0.1:8791
 ```
 
-On the iPhone, with Tailscale on: Homelab → **Add a server** → Type **Homelab API**, Address
-`https://<machine>.<tailnet>.ts.net:7443`, Login **Tailscale / proxy** → **Test connection** → **Save**.
+On the iPhone, with Tailscale on: Homelab → **Add a Homelab server** (later: Settings → **Add server**) → Type
+**Homelab API**, Address `https://<machine>.<tailnet>.ts.net:7443`, Login **Tailscale / proxy** → **Test connection**
+→ **Save**. On a first start the app then shows what it found and offers a start for Today.
 
 To run it for good (systemd), and for cards, actions and chat: [docs/SERVER-SETUP.md](docs/SERVER-SETUP.md).
 

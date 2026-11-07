@@ -9,7 +9,8 @@ The app talks to two kinds of server. You can add several of each in Settings �
 
 There are three ways to connect your homelab:
 
-- (a) the reference server from this repo: a Homelab API server for any Linux box,
+- (a) the reference server from this repo: a Homelab API server for any Linux box, also as the Homelab Bridge in
+  [Docker](#docker) with a Tailscale sidecar,
 - (b) Home Assistant on its own: only the Home tiles on Today,
 - (c) your own agent or script that speaks the Homelab API.
 
@@ -87,6 +88,78 @@ launcher, actions and chat. All options: [REFERENCE_SERVER.md](REFERENCE_SERVER.
 5. In the app: Add server → Type **Homelab API** → Address `https://<machine>.<tailnet>.ts.net:7443` → Login
    **Tailscale / proxy** → Test connection ("Connected to homeserver: status and hosts.") → Save.
 
+### Docker
+
+Run the **Homelab Bridge** (the reference server with its [sources](REFERENCE_SERVER.md#sources)) with Docker
+Compose: the bridge and a Tailscale sidecar. The sidecar is a machine of its own in your tailnet, `homelab-bridge`.
+The bridge listens on `127.0.0.1:8791` in the network namespace it shares with the sidecar, and nothing else; no port
+is opened on the Docker host. `tailscale serve` in the sidecar is the only way in: it adds HTTPS and your login
+(`Tailscale-User-Login`). **Never use Tailscale Funnel for it**: Funnel puts it on the public internet.
+
+You need Docker with Compose 2.17 or newer on Linux (`/dev/net/tun`), and in the Tailscale admin console MagicDNS and
+HTTPS certificates turned on (DNS page).
+
+1. Get the files and make your copies (they stay out of git):
+
+   ```bash
+   git clone https://github.com/Qantrex/homelab-ios
+   cd homelab-ios/server
+   cp docker/config.example.json docker/config.json
+   cp docker/bridge.env.example docker/bridge.env
+   cp docker/tailscale.env.example docker/tailscale.env
+   chmod 600 docker/bridge.env docker/tailscale.env
+   ```
+
+2. In `docker/config.json` set `name`, `allowed_logins` (your Tailscale login: the e-mail, or `name@github`) and your
+   `sources`. The config names each key's env variable (`"key_env": "KUMA_KEY"`); the key itself goes in
+   `docker/bridge.env` (`KUMA_KEY=...`).
+3. In the admin console: Settings → Keys → **Generate auth key** (not reusable, not ephemeral; pre-approved if your
+   tailnet approves devices). Put it in `docker/tailscale.env` as `TS_AUTHKEY=`. It is read once; the login then
+   stays in the volume `tailscale-state`, and you can delete the key from the file.
+4. Start it:
+
+   ```bash
+   docker compose up -d --build     # builds the image from this checkout
+   docker compose ps                # both "healthy" after a minute
+   docker compose logs bridge       # "listening on http://127.0.0.1:8791 (RealApp)"
+   ```
+
+5. Test it from another tailnet device:
+
+   ```bash
+   curl https://homelab-bridge.<tailnet>.ts.net/api/v1/info
+   ```
+
+   A 403 means your login is not in `allowed_logins`; `docker compose logs bridge` shows the refused login.
+6. In the app: Add server → Type **Homelab API** → Address `https://homelab-bridge.<tailnet>.ts.net` → Login
+   **Tailscale / proxy** → Test connection → Save.
+
+Notes:
+
+- **What it can reach.** Your LAN and the internet through the sidecar (`http://192.0.2.10:3001`), and other tailnet
+  machines by their `100.x` address. `127.0.0.1` is the container itself, not the Docker host: use the host's LAN
+  address for services on the same machine (a service bound only to the host's `127.0.0.1` can't be reached).
+- **This machine** in the app is the container: load and memory are the Docker host's (same kernel), `/` is Docker's
+  disk. The image has no `docker` CLI and no `apt`, so keep `this_host.docker` and `updates` off. For containers, the
+  Docker source reads them through the socket proxy: `docker compose --profile docker up -d` starts it (read-only,
+  container list only); the bridge reaches it at `http://socket-proxy:2375`. Never mount the Docker socket into the
+  bridge.
+- **Why the sidecar needs `NET_ADMIN` and `/dev/net/tun`.** It runs Tailscale with kernel networking
+  (`TS_USERSPACE=false`). In userspace mode, tailscaled hands tailnet connections to the namespace's `127.0.0.1`
+  ports, so any tailnet device could reach the bridge on `:8791` past `tailscale serve` and fake the login header.
+- **Tokens** for tagged devices or `curl`: `HOMELAB_TOKENS` in `docker/bridge.env`. Devices with tags get no login
+  header from `tailscale serve`.
+- **ACLs.** If your tailnet has an ACL policy, allow port 443 of `homelab-bridge` for your phone.
+- **Hardened.** The bridge runs as user 10001 with a read-only root, no capabilities and `no-new-privileges`; its
+  only writable places are `/tmp` (in memory) and the `bridge-state` volume (chat history). Actions and chat run
+  commands inside that container, which has only Python and BusyBox.
+- **Health.** Each container has a healthcheck. The bridge's asks `/api/v1/info` once a minute, so its log has one
+  `GET /api/v1/info 401` line a minute.
+- **Updates.** `git pull && docker compose up -d --build`. The Tailscale image is pinned by digest in
+  `compose.yaml`; a newer one is a change to that line. The published image `ghcr.io/qantrex/homelab-bridge` (built
+  by hand, see [RELEASE.md](RELEASE.md#homelab-bridge-image)) works too: `docker compose pull bridge && docker compose
+  up -d`, and `BRIDGE_TAG=<version>` in `server/.env` pins a version.
+
 ### Containers without the docker group
 
 `"docker": true` needs `docker ps`, and the docker group is root-equivalent. To show container counts without
@@ -99,25 +172,45 @@ echo '*/5 * * * * root /usr/local/bin/card-containers /var/lib/homelab-companion
 ```
 
 Then set `"cards_dir": "/var/lib/homelab-companion/cards"` in the config. (A script and not a one-line cron job:
-cron cuts a line at every unescaped `%`.)
+cron cuts a line at every unescaped `%`.) Or read them through a socket proxy with the `docker` source below.
+
+### Sources
+
+With a `sources` list the reference server is the Homelab Bridge: it reads other services' APIs and shows what
+they report on Today and in Lab. Copy the `server/sources/` folder next to `reference_server.py`. The common keys
+(`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources),
+one section per type there; each module's docstring has the details. Keys go in env variables, never in the config.
+
+| Type | What it reads | Keys | Access it needs | Tested with |
+|---|---|---|---|---|
+| `json` | One URL that answers a subset of `/state` (your own script, or another Companion server) ([JSON feed](REFERENCE_SERVER.md#json-feed)) | `url`; `key_env`, `key_header` | None, or a token sent as a bearer token (or in `key_header`) | the shape of `server/openapi.yaml` |
+| `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services ([Uptime Kuma](REFERENCE_SERVER.md#uptime-kuma)) | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
+| `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab ([Gatus](REFERENCE_SERVER.md#gatus)) | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
+| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems ([Docker](REFERENCE_SERVER.md#docker)) | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` | Engine 29 (API 1.52) and older |
+| `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list ([Proxmox](REFERENCE_SERVER.md#proxmox)) | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) | 9.0 |
+| `pihole` | Queries, blocked and blocking as the `dns` card in Lab, the top blocked domains; blocking off = warning ([Pi-hole](REFERENCE_SERVER.md#pi-hole)) | `url`, `key_env`, `top`, `actions` | A Pi-hole v6 app password | FTL v6.8 |
+| `adguard` | The same `dns` cards; protection off or DNS not running = warning ([AdGuard Home](REFERENCE_SERVER.md#adguard-home)) | `url`, `username`, `password_env`, `top`, `actions` | An AdGuard Home user (basic auth) | v0.107.80 |
+| `sonarr`, `radarr` | Health as problems, the download queue in Lab with progress, the next episodes or releases as a countdown on Today ([Sonarr and Radarr](REFERENCE_SERVER.md#sonarr-and-radarr)) | `url`, `key_env`, `queue`, `calendar_days` | The API key (Settings → General) | Sonarr 4.0.20, Radarr 6.4.4 |
+| `qbittorrent` | Running downloads in Lab (progress, speed, time left); errors and a lost connection = warning ([qBittorrent](REFERENCE_SERVER.md#qbittorrent)) | `url`, `key_env` or `username` and `password_env`, `limit` | An API key (5.2 and newer) or a WebUI login | 5.1 and 5.2 |
+
+```json
+"sources": [
+  {"name": "Kuma", "type": "uptime-kuma", "url": "http://192.0.2.10:3001", "slug": "home"},
+  {"name": "Gatus", "type": "gatus", "url": "http://192.0.2.10:8080", "slow_ms": 2000}
+]
+```
+
+The slug is the part after `/status/` in the status page's address. A status page only for the bridge is fine.
+Whole configs: [`sources-monitors.json`](../server/examples/sources-monitors.json) (Kuma and Gatus),
+[`sources-docker-proxmox.json`](../server/examples/sources-docker-proxmox.json),
+[`sources-dns-media.json`](../server/examples/sources-dns-media.json) (Pi-hole, AdGuard, Sonarr, Radarr, qBittorrent)
+and [`sources-json.json`](../server/examples/sources-json.json).
+
+All sources only read. Docker restart, Proxmox start and stop and the ad blockers' pause are off until you list the
+containers, VMIDs or pause lengths under `actions` ([Source actions](REFERENCE_SERVER.md#source-actions)).
 
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.
-
-### Sources (Homelab Bridge)
-
-With a `sources` list the reference server also reads other services' APIs and shows what they report
-([REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources)). Keys go in env variables; the config only names them.
-
-| Type | Config keys | What the key needs |
-|---|---|---|
-| `pihole` | `url`, `key_env`, `top` | Pi-hole v6 app password |
-| `adguard` | `url`, `username`, `password_env`, `top` | An AdGuard Home user (basic auth) |
-| `sonarr`, `radarr` | `url`, `key_env`, `queue`, `calendar_days` | The API key (Settings → General) |
-| `qbittorrent` | `url`, `key_env` or `username` and `password_env`, `limit` | An API key (5.2 and newer) or a WebUI login |
-
-All are read-only. `"actions": ["pause"]` on `pihole` or `adguard` adds a pause button
-([opt-in](REFERENCE_SERVER.md#opt-in-source-actions)).
 
 ## (b) Home Assistant
 

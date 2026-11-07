@@ -16,6 +16,10 @@ public struct ServerInfo: Codable, Sendable, Equatable {
     public var commandHelp: [String: String]
     /// The server keeps standing approvals ("Always"). Changes what the confirm text promises.
     public var standingApprovals: Bool
+    /// A Homelab Bridge's sources and how each is doing (`sources`, docs/API.md#source-status-sources-in-info). Nil
+    /// when the server doesn't send the list (every server but a bridge, the owner's too) or sends something that
+    /// isn't a list; entries without a name are dropped. Diagnostics shows them.
+    public var sources: [SourceStatus]?
 
     public enum Feature: String, Codable, Sendable, CaseIterable {
         case status, hosts, actions, chat, cards, services
@@ -33,14 +37,14 @@ public struct ServerInfo: Codable, Sendable, Equatable {
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,
                 features: Set<Feature> = Set(Feature.allCases), auth: String? = nil, commands: [String] = [],
-                commandHelp: [String: String] = [:], standingApprovals: Bool = false) {
+                commandHelp: [String: String] = [:], standingApprovals: Bool = false, sources: [SourceStatus]? = nil) {
         self.api = api; self.name = name; self.server = server; self.version = version
         self.features = features; self.auth = auth; self.commands = commands
-        self.commandHelp = commandHelp; self.standingApprovals = standingApprovals
+        self.commandHelp = commandHelp; self.standingApprovals = standingApprovals; self.sources = sources
     }
 
     enum CodingKeys: String, CodingKey {
-        case api, name, server, version, features, auth, commands
+        case api, name, server, version, features, auth, commands, sources
         case standingApprovals = "standing_approvals"
     }
 
@@ -68,6 +72,8 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         commandHelp = Dictionary(kept.compactMap { e in e.help.map { (e.name, String($0.prefix(80))) } },
                                  uniquingKeysWith: { first, _ in first })
         standingApprovals = c.bool(.standingApprovals) ?? false
+        // A list (bad entries dropped) or nil: missing, null, a string, a number or an object all mean "no list".
+        sources = c.lenient([Lossy<SourceStatus>].self, .sources).map { $0.compactMap(\.value) }
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -80,6 +86,8 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         try c.encodeIfPresent(auth, forKey: .auth)
         try c.encode(commands.map { CommandEntry(name: $0, help: commandHelp[$0]) }, forKey: .commands)
         try c.encode(standingApprovals, forKey: .standingApprovals)
+        // Only when the server sent it: the cached info of a server without sources stays as it was.
+        try c.encodeIfPresent(sources, forKey: .sources)
     }
 
     /// One `commands` entry: "/x", or an object with the command and what it does. Written back the same way.

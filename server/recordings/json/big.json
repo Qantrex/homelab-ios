@@ -1,0 +1,6 @@
+{
+  "_about": "Made up. A feed that answers more than 8 MB (9 MB of padding after the JSON): one warning, nothing else.",
+  "routes": {
+    "GET /homelab.json": {"status": 200, "json": {"problems": ["never read"]}, "pad": 9437184}
+  }
+}

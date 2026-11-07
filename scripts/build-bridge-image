@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Usage: scripts/build-bridge-image [--test] [--push] [--image NAME] [--platform LIST]
+# Builds the Homelab Bridge image (server/Dockerfile) and tags it NAME:<version> and NAME:latest, here, by hand
+# (owner, 2026-11-07: the image is built and pushed by hand, like scripts/build-ipa; CI only builds and tests it).
+#   (no flags)    build for this machine with `docker build` and keep it locally
+#   --test        then test it: the server tests inside the image (repo mounted read-only), and the image as it runs
+#                 in compose (read-only, no capabilities, user 10001) in token mode on 127.0.0.1 with the sample
+#                 sources config against server/fake_upstream.py, checked by scripts/check-live-api and its healthcheck
+#   --push        the owner only: --test, then build again with `docker buildx` for --platform (default
+#                 linux/amd64,linux/arm64) and push both tags to GHCR. Needs `docker login ghcr.io` (a token with write:packages), a clean
+#                 checkout, and for the other platform QEMU (binfmt). Refused in CI.
+#   --image NAME  default ghcr.io/qantrex/homelab-bridge
+# Env: PORT (default 8794) and UPSTREAM_PORT (default 8796) for --test, on 127.0.0.1 (the container uses the host's
+# network, so check-live-api reaches it on loopback like tailscale serve does).
+# <version> is the commit's date and short hash, e.g. 2026.11.07-1a2b3c4, and "-dirty" with uncommitted changes.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+image=ghcr.io/qantrex/homelab-bridge
+platforms=linux/amd64,linux/arm64
+test=0 push=0
+while [ $# -gt 0 ]; do
+  case $1 in
+    --test) test=1 ;;
+    --push) push=1 ;;
+    --image) image=${2:?--image needs a name}; shift ;;
+    --platform) platforms=${2:?--platform needs a list}; shift ;;
+    -h|--help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;;
+    *) echo "unknown option: $1 (see --help)" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+command -v docker >/dev/null || { echo "docker not found" >&2; exit 1; }
+if [ "$push" = 1 ] && [ -n "${CI:-}${GITHUB_ACTIONS:-}" ]; then
+  echo "refusing --push in CI: the image is pushed by hand only (docs/SERVER-SETUP.md#docker)" >&2
+  exit 1
+fi
+
+rev=$(git rev-parse --short=7 HEAD)
+version="$(git log -1 --format=%cd --date=format:%Y.%m.%d)-$rev"
+dirty=$(git status --porcelain)
+[ -z "$dirty" ] || version+=-dirty
+if [ "$push" = 1 ]; then
+  test=1   # never push an image that failed here
+  [ -z "$dirty" ] || { echo "refusing --push with uncommitted changes (the image's revision label must be true)" >&2; exit 1; }
+  docker buildx version >/dev/null 2>&1 || {
+    echo "docker buildx is missing; it builds the image for several platforms. On Arch: sudo pacman -S docker-buildx" >&2
+    exit 1
+  }
+fi
+created=$(git log -1 --format=%cI)
+labels=(
+  --label "org.opencontainers.image.version=$version"
+  --label "org.opencontainers.image.revision=$(git rev-parse HEAD)"
+  --label "org.opencontainers.image.created=$created"
+)
+
+echo "== build $image:$version"
+docker build "${labels[@]}" -t "$image:$version" -t "$image:latest" server
+
+if [ "$test" = 1 ]; then
+  port=${PORT:-8794} up=${UPSTREAM_PORT:-8796}
+  name=homelab-bridge-test-$$
+  tmp=$(mktemp -d)
+  up_pid=""
+  cleanup() {
+    docker rm -f "$name" >/dev/null 2>&1 || true
+    [ -z "$up_pid" ] || kill "$up_pid" 2>/dev/null || true
+    rm -rf "$tmp"
+  }
+  trap cleanup EXIT
+
+  echo "== server tests inside the image"
+  docker run --rm --network none -v "$PWD:/w:ro" -w /w --entrypoint python3 "$image:$version" \
+    -m unittest discover -s server -p 'test_*.py'
+
+  echo "== image in token mode on 127.0.0.1:$port, sample sources config, fake upstream on $up"
+  python3 server/fake_upstream.py server/recordings/example/normal.json --port "$up" > "$tmp/upstream.log" 2>&1 &
+  up_pid=$!
+  python3 - "$up" > "$tmp/config.json" <<'PY'
+import json, sys
+cfg = json.load(open("server/examples/sources-example.json"))
+cfg["sources"][0]["url"] = "http://127.0.0.1:%s" % sys.argv[1]
+print(json.dumps(cfg))
+PY
+  chmod 644 "$tmp/config.json"
+  token=test-token-$RANDOM$RANDOM$RANDOM
+  # As compose.yaml runs it: read-only root, /tmp in memory, no capabilities, no new privileges.
+  docker run -d --name "$name" --network host --read-only --tmpfs /tmp --cap-drop ALL \
+    --security-opt no-new-privileges -e HOMELAB_TOKENS="$token" -e LAB_KEY=any-made-up-key \
+    -e HEALTHCHECK_PORT="$port" -v "$tmp/config.json:/config/config.json:ro" \
+    "$image:$version" --config /config/config.json --port "$port" > /dev/null
+  # Wait (up to 30 s) until /state has the example source's problem, then check that its key is in no answer.
+  python3 - "$port" "$token" <<'PY' || { echo "-- container log"; docker logs "$name"; exit 1; }
+import sys, time, urllib.request
+port, token = sys.argv[1], sys.argv[2]
+def get(path):
+    req = urllib.request.Request("http://127.0.0.1:%s/api/v1/%s" % (port, path),
+                                 headers={"Authorization": "Bearer " + token})
+    return urllib.request.urlopen(req, timeout=5).read().decode()
+deadline = time.time() + 30
+while True:
+    try:
+        if '"Lab:monitor-3"' in get("state"):
+            break
+    except OSError:
+        pass
+    if time.time() > deadline:
+        sys.exit("the example source's problem Lab:monitor-3 never showed up in /state")
+    time.sleep(0.2)
+for path in ("info", "state", "services"):
+    if "any-made-up-key" in get(path):
+        sys.exit("the source key leaked into /%s" % path)
+print("source Lab answered; its key is in no answer")
+PY
+  HOMELAB_TOKEN=$token scripts/check-live-api "http://127.0.0.1:$port" \
+    || { echo "-- container log"; docker logs "$name"; exit 1; }
+  echo "== healthcheck (the image's own HEALTHCHECK command, run once)"
+  health=$(docker inspect -f '{{json .Config.Healthcheck.Test}}' "$name")
+  python3 - "$health" "$name" <<'PY'
+import json, subprocess, sys
+test = json.loads(sys.argv[1])
+assert test and test[0] == "CMD", test
+rc = subprocess.run(["docker", "exec", sys.argv[2]] + test[1:]).returncode
+print("healthcheck exit code: %d" % rc)
+sys.exit(rc)
+PY
+  echo "== image OK: $image:$version ($(docker image inspect -f '{{.Size}}' "$image:$version" | awk '{printf "%.0f MB", $1/1e6}'))"
+fi
+
+if [ "$push" = 1 ]; then
+  echo "== buildx $platforms, push $image:$version and :latest"
+  echo "   (another platform than this machine's needs QEMU binfmt, e.g. sudo pacman -S qemu-user-static-binfmt)"
+  docker buildx build --platform "$platforms" "${labels[@]}" -t "$image:$version" -t "$image:latest" --push server
+  docker buildx imagetools inspect "$image:$version"
+  cat <<TXT
+
+Pushed $image:$version and :latest.
+The first push makes a private package: on GitHub, Packages -> homelab-bridge -> Package settings -> Change
+visibility -> Public (the source label links it to Qantrex/homelab-ios).
+TXT
+else
+  echo
+  echo "Built $image:$version and $image:latest (local only; --push publishes them)."
+fi

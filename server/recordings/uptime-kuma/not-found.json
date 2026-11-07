@@ -1,0 +1,7 @@
+{
+  "_about": "Made up, in the shape of Uptime Kuma 2.5.9's answer for a slug that does not exist (sendHttpError: 404 for a text with \"not found\"). The heartbeat call then answers empty lists.",
+  "routes": {
+    "GET /api/status-page/home": {"status": 404, "json": {"status": "fail", "msg": "Status Page Not Found"}},
+    "GET /api/status-page/heartbeat/home": {"status": 200, "json": {"heartbeatList": {}, "uptimeList": {}}}
+  }
+}
