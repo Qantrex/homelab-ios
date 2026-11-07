@@ -1,0 +1,8 @@
+# The image gets only the server, its sources and the image's requirements (server/Dockerfile). Everything else in
+# server/ (tests, recordings, goldens, examples, the compose files and your config with its env files) stays out.
+*
+!reference_server.py
+!sources/
+!requirements-image.txt
+**/__pycache__
+**/*.pyc

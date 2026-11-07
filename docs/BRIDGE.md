@@ -3,7 +3,8 @@
 The Homelab Bridge is the [reference server](REFERENCE_SERVER.md) with `sources`: small modules that read another
 service's API and add problems, hosts, cards and services to its answers. This page is the recipe for writing one.
 What users configure: [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources). Why it is built this way:
-[plans/MODULAR.md](plans/MODULAR.md) (decisions D1, D5, D6).
+[plans/MODULAR.md](plans/MODULAR.md) (decisions D1, D5, D6). Running it in Docker with a Tailscale sidecar:
+[SERVER-SETUP.md → Docker](SERVER-SETUP.md#docker).
 
 ## The contract
 

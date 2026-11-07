@@ -48,6 +48,8 @@ needs no token. Test it from another tailnet device:
 curl https://<machine>.<tailnet>.ts.net:7443/api/v1/info
 ```
 
+In Docker, with a Tailscale sidecar and its sources: [SERVER-SETUP.md → Docker](SERVER-SETUP.md#docker).
+
 ## Run it with systemd
 
 `/etc/systemd/system/homelab-companion.service`:

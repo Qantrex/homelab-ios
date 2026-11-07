@@ -104,6 +104,26 @@ SideStore was tested with Homelab on 2026-11-07 (after the -80045 fix in [SIDEST
 the test phone (Sources → +) and check that Homelab shows up and offers the update (DeviceTest I1/I2). If that fails,
 delete `source.json` from the release assets (`gh release delete-asset`); the IPA stays.
 
+## Homelab Bridge image
+
+The Docker image of the Homelab Bridge ([SERVER-SETUP.md → Docker](SERVER-SETUP.md#docker)) is
+`ghcr.io/qantrex/homelab-bridge`. Like the IPA it is built and pushed by hand (owner, 2026-11-07); CI only builds and
+tests it (job `bridge-image`) and never publishes.
+
+1. CI green on the commit, and a clean checkout of it.
+2. Once per machine: `docker login ghcr.io -u Qantrex` with a token that has `write:packages`, and docker buildx plus
+   QEMU binfmt for the other platform (on Arch: `docker-buildx` and `qemu-user-static-binfmt`).
+3. Build, test and push:
+
+   ```bash
+   scripts/build-bridge-image --push      # tags <commit date>-<short sha> and latest, linux/amd64 and linux/arm64
+   ```
+
+   It runs `--test` first (server tests inside the image, `check-live-api` against it) and stops on any failure or
+   uncommitted change. Without `--push` it only builds (and with `--test` tests) the image for this machine.
+4. The first push makes a private package: on GitHub, Packages → homelab-bridge → Package settings → Change
+   visibility → Public. The image's source label links it to this repo.
+
 ## Notes
 
 - A Linux build records a wrong SDK version (xtool issue #351). That only matters for the App Store; SideStore and

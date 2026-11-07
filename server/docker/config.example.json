@@ -1,0 +1,23 @@
+{
+  "_comment": "Homelab Bridge config for server/compose.yaml (docs/SERVER-SETUP.md#docker). Copy it to docker/config.json. Keys that start with _ are comments. All keys: docs/REFERENCE_SERVER.md.",
+
+  "name": "Homelab Bridge",
+  "listen": "127.0.0.1:8791",
+
+  "_auth": "tailscale serve in the sidecar adds Tailscale-User-Login. Only logins listed here get in (a refused login is in `docker compose logs bridge`). Tokens for tagged devices or curl: HOMELAB_TOKENS in docker/bridge.env.",
+  "trust_identity_header": "Tailscale-User-Login",
+  "allowed_logins": ["you@example.com"],
+
+  "_this_host": "The container: load and memory are the Docker host's, / is Docker's disk. The image has no docker CLI and no apt, so keep docker and updates off.",
+  "this_host": {"id": "homelab-bridge", "name": "Homelab Bridge", "kind": "server", "disks": ["/"], "docker": false, "updates": false},
+
+  "_hosts": "Other machines, checked from the container: LAN addresses, or 100.x tailnet addresses (MagicDNS names don't resolve here).",
+  "hosts": [],
+  "checks": [],
+
+  "_sources": "Other services' APIs (docs/REFERENCE_SERVER.md#sources). The config names the env variable (key_env); the key goes in docker/bridge.env. 127.0.0.1 is the container itself: use the Docker host's LAN address.",
+  "sources": [],
+  "_sources_example": [
+    {"name": "Lab", "type": "example", "url": "http://192.0.2.10:8080", "key_env": "LAB_KEY", "every": 60}
+  ]
+}

@@ -15,3 +15,6 @@ __pycache__/
 .venv/
 .build-linux/
 shots-phone/
+# The Homelab Bridge in Docker: your own config and env files (server/docker/*.example are the templates)
+/server/docker/config.json
+/server/docker/*.env

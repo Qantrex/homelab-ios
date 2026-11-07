@@ -14,6 +14,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | `ci` / `linux` | `ubuntu-latest`, container `swift:6.4-noble` | every push (not `ci-screenshots`), PRs, manual | `scripts/lint` passes (no `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit); HomelabKit tests pass on Linux (`KIT_ONLY=1 swift test`, fixture server running); reference server tests pass |
 | `ci` / `macos (macos-26)` | `macos-26` | same | HomelabKit tests on macOS; the app and widget build for the simulator; the simulator build launches and every screen renders (screenshots); HomelabKit tests pass on the iOS simulator (`xcodebuild test`); no compiler warnings in `Sources/`. **Required.** |
 | `ci` / `macos (xcode-27)` | `xcode-27` | same | Same, on Xcode 27 (the SDK the local builds use). **Required** too (since 2026-11-05). |
+| `ci` / `bridge-image` | `ubuntu-latest` | same | The Homelab Bridge image builds from `server/Dockerfile` (base image pinned by digest, PyYAML by hash); the server tests pass inside it; the image in token mode on loopback passes `scripts/check-live-api`. `scripts/build-bridge-image --test`. **Never pushes**: no registry login, and the script refuses `--push` in CI |
 | `ci` / `screenshots` | `ubuntu-latest` | pushes and manual runs, after `macos` | Publishes the `macos-26` screenshots to the `ci-screenshots` branch (see below) |
 
 ### Steps of the macOS job
@@ -35,6 +36,7 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | No token left on disk | `persist-credentials: false` on every checkout, except in `screenshots` (it pushes) |
 | Pinned actions | `actions/checkout`, `upload-artifact`, `download-artifact` by full commit SHA (the tag is in a comment) |
 | Pinned xtool | Fixed release + SHA-256, see above |
+| No image published | The `bridge-image` job builds and tests the Homelab Bridge image only; the owner pushes it by hand ([RELEASE.md](RELEASE.md#homelab-bridge-image)) |
 
 ## Screenshots
 
@@ -114,6 +116,7 @@ To look at a change before pushing, any Jekyll 3.10 works (`bundle exec jekyll s
 | `scripts/test-linux` | Fixture server on the host, `KIT_ONLY=1 swift test` in Docker (`swift:6.4-noble`), Python tests, lint |
 | `scripts/lint` | The source checks from the `linux` job, including `scripts/features check` |
 | <code>scripts/features [check&#124;render&#124;show X&#124;gaps&#124;json]</code> | The feature registry `features.toml`: checks it against the repo, writes `docs/FEATURES.md`, tells which feature a file, test or DeviceTest row belongs to |
+| <code>scripts/build-bridge-image [--test] [--push]</code> | Builds the Homelab Bridge image (`server/Dockerfile`) as `ghcr.io/qantrex/homelab-bridge:<date>-<sha>` and `:latest`; `--test` runs the server tests inside it and `check-live-api` against it; `--push` (owner, by hand) pushes amd64 and arm64 with buildx |
 | `scripts/build-ipa` | `xtool dev build --ipa` (release config if supported), runs `scripts/verify-ipa` on it, prints the IPA path and size |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
 | `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |

@@ -1,0 +1,88 @@
+# Homelab Bridge with a Tailscale sidecar. Guide: docs/SERVER-SETUP.md#docker. In this folder (server/):
+#   cp docker/config.example.json docker/config.json        # name, allowed_logins, sources
+#   cp docker/bridge.env.example docker/bridge.env          # the sources' keys (and HOMELAB_TOKENS, if you want tokens)
+#   cp docker/tailscale.env.example docker/tailscale.env    # TS_AUTHKEY
+#   chmod 600 docker/*.env && docker compose up -d --build
+# Then in the app: https://homelab-bridge.<tailnet>.ts.net, login "Tailscale / proxy".
+#
+# The bridge shares only the sidecar's network namespace: it listens on 127.0.0.1:8791 there, no port is published on
+# the Docker host, and `tailscale serve` (docker/serve.json) is the only way in, with HTTPS and the login header.
+# Never use Tailscale Funnel for it: Funnel puts it on the public internet.
+name: homelab-bridge
+
+services:
+  tailscale:
+    # Pinned by digest; bump on purpose (and features.toml, dependency tailscale-image).
+    image: tailscale/tailscale:v1.104.4@sha256:ed6480b33c6eb67c9cbd203ed42b9fb57e361986725b6856def71b7a3d9e276c
+    hostname: homelab-bridge          # the machine name in your tailnet
+    env_file: docker/tailscale.env    # TS_AUTHKEY, only read at the first start
+    environment:
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_AUTH_ONCE: "true"
+      # Kernel networking. In userspace mode tailscaled hands tailnet connections to this namespace's 127.0.0.1
+      # ports, so every tailnet device could reach the bridge on :8791 past `tailscale serve` and fake the login header.
+      TS_USERSPACE: "false"
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - ./docker/serve.json:/config/serve.json:ro
+    networks:
+      - default       # out to your LAN and the internet (the bridge's sources use it too)
+      - docker-api    # the socket proxy, nothing else
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9002/healthz"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+
+  bridge:
+    image: ghcr.io/qantrex/homelab-bridge:${BRIDGE_TAG:-latest}
+    build: .                          # `docker compose up --build` builds it from this checkout (server/Dockerfile)
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_started
+        restart: true                 # a new sidecar means a new network namespace: restart the bridge with it
+    env_file: docker/bridge.env
+    volumes:
+      - ./docker/config.json:/config/config.json:ro
+      - bridge-state:/var/lib/homelab-bridge
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Healthcheck: the image's (GET /api/v1/info on 127.0.0.1:8791 once a minute; a 401 counts as up).
+    restart: unless-stopped
+
+  # Only with `docker compose --profile docker up -d`: read-only access to the container list for the bridge's
+  # Docker source, at http://socket-proxy:2375. Never mount the Docker socket into the bridge itself.
+  socket-proxy:
+    profiles: ["docker"]
+    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    environment:
+      CONTAINERS: "1"   # GET /containers/...; everything else and every POST stays refused
+      POST: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    restart: unless-stopped
+
+networks:
+  docker-api:
+    internal: true    # no way out to the internet or the LAN
+
+volumes:
+  tailscale-state:    # the sidecar's tailnet login; delete it to log the machine in again
+  bridge-state:       # chat history (only with chat_command)
