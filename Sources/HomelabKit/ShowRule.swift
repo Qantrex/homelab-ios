@@ -26,6 +26,9 @@ public struct TimeWindow: Codable, Equatable, Hashable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        // Unreadable `days` (a wrong type, a day list from a newer app) mean every day, so one bad key doesn't throw
+        // the window away. For a show rule that errs toward shown, the safe side. For quiet hours it widens the quiet
+        // to days the owner didn't pick; a window with a bad `from` or `to` still fails to decode.
         self.init(from: try c.decode(Int.self, forKey: .from), to: try c.decode(Int.self, forKey: .to),
                   days: c.lenient([Int].self, .days))
     }

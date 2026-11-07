@@ -203,7 +203,7 @@ public enum APIError: Error, Equatable, Sendable {
     /// Worth an automatic retry later (vs. a setup problem the user must fix).
     public var isTransient: Bool {
         switch self {
-        case .offline, .notOnTailnet, .timeout, .tooManyRequests, .server, .serverSaid, .cancelled: true
+        case .offline, .notOnTailnet, .timeout, .tooManyRequests, .server, .serverSaid: true
         default: false
         }
     }

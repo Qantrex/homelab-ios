@@ -138,4 +138,52 @@ import Testing
         #expect(m.settings.faceIDLock && m.settings.notifyPending && !m.settings.todayLayout.isVisible(.report))
         #expect(m.settings.quietHours == nil)
     }
+
+    // MARK: review round 3
+
+    @Test func serverDatesStayRightWithCachedFormattersInEveryZoneAndThread() async {
+        let vienna = TimeZone(identifier: "Europe/Vienna")!, tokyo = TimeZone(identifier: "Asia/Tokyo")!
+        let text = "2026-11-07 12:00:00"
+        #expect(ServerDate.parse(text, timeZone: vienna)!.timeIntervalSince(ServerDate.parse(text, timeZone: tokyo)!) == 8 * 3600)
+        #expect(ServerDate.parse(text, timeZone: vienna) == ServerDate.parse(text, timeZone: vienna))   // a second call uses the cache
+        let ok = await withTaskGroup(of: Bool.self) { group in
+            for i in 0..<50 {
+                group.addTask {
+                    let zone = i.isMultiple(of: 2) ? vienna : tokyo
+                    return ServerDate.parse("2026-11-07T12:00:00.123456", timeZone: zone) != nil
+                        && ServerDate.parse("2026-11-07", timeZone: zone) != nil && ServerDate.parse("nope", timeZone: zone) == nil
+                }
+            }
+            var all = true
+            for await r in group { all = all && r }
+            return all
+        }
+        #expect(ok)
+    }
+
+    @Test func aCancelledRequestIsNotWorthARetryButASharedItemIsStillKept() {
+        #expect(!APIError.cancelled.isTransient && APIError.cancelled.mayHaveRun)   // Share queues on mayHaveRun
+        #expect(APIError.notOnTailnet(host: "h").isTransient && APIError.serverSaid(status: 503, text: "agent is down").isTransient)
+    }
+
+    @Test func unreadableDaysOfAWindowMeanEveryDay() throws {
+        let w = try Storage.decoder.decode(TimeWindow.self, from: Data(#"{"from":1080,"to":1440,"days":"mon"}"#.utf8))
+        #expect(w == TimeWindow(from: 1080, to: 1440) && w.days == nil)
+        #expect(throws: (any Error).self) { try Storage.decoder.decode(TimeWindow.self, from: Data(#"{"from":"x","to":1440}"#.utf8)) }
+    }
+
+    // MARK: a stale copy in the app never overwrites the background run
+
+    @Test func savingSettingsKeepsANewerBackgroundRun() {
+        let (m, _, storage, _) = makeModel()
+        let ran = Date(timeIntervalSince1970: 1_800_000_000)
+        var onDisk = m.settings
+        onDisk.lastBackgroundRun = ran
+        onDisk.lastBackgroundResult = "2 problems"
+        try? storage.write(onDisk, AppSettings.fileName)       // what the background task does behind the app's back
+        m.settings.faceIDLock = true                            // the app saves its stale copy
+        let saved = storage.read(AppSettings.self, AppSettings.fileName)
+        #expect(saved?.faceIDLock == true && saved?.lastBackgroundRun == ran && saved?.lastBackgroundResult == "2 problems")
+        #expect(m.settings.lastBackgroundRun == ran && m.settings.lastBackgroundResult == "2 problems")
+    }
 }

@@ -528,6 +528,35 @@ class RealModeTest(unittest.TestCase):
         self.assertEqual(self.post("/api/v1/button", {"action": self.signed("APPROVE", "uc01")})[0], 403)
         os.remove(os.path.join(self.pending, "uc01.json"))
 
+    def test_overlapping_presses_run_the_action_once(self):
+        path = self.add_pending("ov01")
+        btn = self.buttons("ov01")["approve"]
+        counter = os.path.join(self.tmp, "ov01.count")
+        self.app.actions.commands["count"] = ["/bin/sh", "-c", "echo x >> %s; sleep 0.5" % counter]
+        data = self.app.actions._scan()["ov01"][1]
+        data["action"] = "count"
+        with open(path, "w") as fh:
+            json.dump(data, fh)
+        btn = self.buttons("ov01")["approve"]
+        results = []
+        barrier = threading.Barrier(2)
+
+        def press():
+            barrier.wait()
+            results.append(self.app.actions.press(btn)[0])
+
+        threads = [threading.Thread(target=press) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        with open(counter) as fh:
+            self.assertEqual(len(fh.read().split()), 1)
+        self.assertEqual(sorted(results), [200, 403] if 403 in results else [200, 200])
+        self.assertFalse(os.path.exists(path))
+        self.assertFalse(os.path.exists(path + ".running"))
+        del self.app.actions.commands["count"]
+
     def test_arg_regex_and_argv(self):
         for good in ("media sonarr", "nginx.service", "user@host", "a_b-c"):
             self.assertTrue(rs.ARG_RE.match(good), good)
@@ -577,6 +606,23 @@ class RealModeTest(unittest.TestCase):
         again = rs.Chat(["/bin/cat"], state_dir)
         self.assertEqual([m["text"] for m in again.page(0)["messages"]], ["one", "(no output)"])
         self.assertEqual(os.stat(os.path.join(state_dir, "messages.jsonl")).st_mode & 0o077, 0)
+
+    def test_chat_busy_is_reset_when_storing_the_reply_fails(self):
+        chat = rs.Chat(["/bin/cat"], os.path.join(self.tmp, "chat3"))
+        real = chat._append
+        calls = []
+
+        def flaky(msg):
+            calls.append(msg)
+            if len(calls) == 2:
+                raise OSError("disk full")
+            real(msg)
+
+        chat._append = flaky
+        self.assertEqual(chat.post("one")[0], 200)
+        wait_for(lambda: not chat.busy)
+        self.assertEqual(chat.post("two")[0], 200)
+        wait_for(lambda: not chat.busy)
 
     # --- request validation -------------------------------------------------------------------
     def test_415_not_json(self):

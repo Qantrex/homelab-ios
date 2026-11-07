@@ -129,8 +129,7 @@ public enum ServerDate {
         guard !s.isEmpty else { return nil }
         if let d = Double(s), s.allSatisfy({ $0.isNumber || $0 == "." }) { return fromEpoch(d) }
         for format in formats {
-            let f = formatter(format, zone: timeZone)
-            if let d = f.date(from: s) { return d }
+            if let d = cache.parse(s, format: format, zone: timeZone) { return d }
         }
         return nil
     }
@@ -148,7 +147,7 @@ public enum ServerDate {
 
     /// For writing times the server will read (and for caches): ISO 8601 with zone.
     public static func string(_ date: Date) -> String {
-        formatter("yyyy-MM-dd'T'HH:mm:ssXXXXX", zone: .current).string(from: date)
+        cache.string(date, format: "yyyy-MM-dd'T'HH:mm:ssXXXXX", zone: .current)
     }
 
     static let formats = [
@@ -157,6 +156,31 @@ public enum ServerDate {
         "yyyy-MM-dd HH:mm:ssXXXXX", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mmXXXXX", "yyyy-MM-dd'T'HH:mm",
         "yyyy-MM-dd",
     ]
+
+    /// One formatter per format and zone, made once (building one is slow, and a parse tries up to eleven). Every use
+    /// holds the lock, so no formatter is used by two threads at once, on any platform.
+    private final class FormatterCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var formatters: [String: DateFormatter] = [:]
+
+        private func formatter(_ format: String, zone: TimeZone) -> DateFormatter {
+            let key = zone.identifier + "|" + format
+            if let f = formatters[key] { return f }
+            let f = ServerDate.formatter(format, zone: zone)
+            formatters[key] = f
+            return f
+        }
+
+        func parse(_ text: String, format: String, zone: TimeZone) -> Date? {
+            lock.withLock { formatter(format, zone: zone).date(from: text) }
+        }
+
+        func string(_ date: Date, format: String, zone: TimeZone) -> String {
+            lock.withLock { formatter(format, zone: zone).string(from: date) }
+        }
+    }
+
+    private static let cache = FormatterCache()
 
     static func formatter(_ format: String, zone: TimeZone) -> DateFormatter {
         let f = DateFormatter()

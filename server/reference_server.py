@@ -846,10 +846,18 @@ class Actions:
         arg = data.get("arg") or ""
         if not isinstance(arg, str) or (arg and not ARG_RE.fullmatch(arg)):
             return 400, {"error": "bad arg", "text": "refused %s: the arg is not allowed" % pid}
+        # Claim the pending file under the lock: whoever renames it first runs the command, an
+        # overlapping press (double tap, app plus notification button) finds it gone.
+        claimed = path + ".running"
         with self.lock:
             if pid in self.running:
                 return 200, {"text": "%s is already running" % pid}
+            try:
+                os.rename(path, claimed)
+            except OSError:
+                return 403, {"error": "unknown or expired action"}
             self.running.add(pid)
+        path = claimed
         try:
             argv = self.build_argv(template, arg)
             env = child_env({"HOMELAB_PENDING_ID": pid, "HOMELAB_ACTION": name, "HOMELAB_ARG": arg})
@@ -948,23 +956,28 @@ class Chat:
         return 200, {"ok": True, "id": msg["id"]}
 
     def _run(self, text):
-        status = "OK"
         try:
-            res = subprocess.run(self.command, input=text.encode("utf-8"), stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, timeout=self.timeout, env=child_env())
-            reply = res.stdout.decode("utf-8", "replace").strip() or "(no output)"
-            if res.returncode != 0:
-                status = "ERROR"
-                reply = "%s\n(exit %d)" % (reply, res.returncode)
-        except subprocess.TimeoutExpired:
-            status, reply = "ERROR", "No answer within %d s." % self.timeout
-        except OSError as exc:
-            status, reply = "ERROR", "chat_command could not start (%s)" % short_error(exc)
-        if len(reply) > 20000:
-            reply = reply[:20000] + "…"
-        with self.lock:
-            self._append(self._new("agent", reply, job="chat", status=status))
-            self.busy = False
+            status = "OK"
+            try:
+                res = subprocess.run(self.command, input=text.encode("utf-8"), stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, timeout=self.timeout, env=child_env())
+                reply = res.stdout.decode("utf-8", "replace").strip() or "(no output)"
+                if res.returncode != 0:
+                    status = "ERROR"
+                    reply = "%s\n(exit %d)" % (reply, res.returncode)
+            except subprocess.TimeoutExpired:
+                status, reply = "ERROR", "No answer within %d s." % self.timeout
+            except OSError as exc:
+                status, reply = "ERROR", "chat_command could not start (%s)" % short_error(exc)
+            if len(reply) > 20000:
+                reply = reply[:20000] + "…"
+            with self.lock:
+                self._append(self._new("agent", reply, job="chat", status=status))
+        except Exception as exc:  # never leave busy stuck: every later POST would be 429
+            log("chat: could not run or store the reply (%s)" % short_error(exc))
+        finally:
+            with self.lock:
+                self.busy = False
 
     def page(self, after):
         with self.lock:

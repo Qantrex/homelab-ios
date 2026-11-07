@@ -120,9 +120,9 @@ public struct Outbox: Sendable {
     /// Sends what waits, oldest first. An item leaves the outbox on a 2xx, on an answer that never changes (400, 413,
     /// 415, 422), when its server is gone, its file is gone, or it is older than seven days. Any other error keeps
     /// it, and stops that server's items for this run (it is probably not reachable).
-    @discardableResult
     /// `maxPDFBytes`: leave bigger PDFs for later (the background refresh has ~30 s; the app in the foreground sends
     /// everything).
+    @discardableResult
     public func drain(servers: ServerList, now: Date = Date(), maxPDFBytes: Int? = nil,
                       api: @Sendable (ServerConfig) -> any CompanionAPI) async -> Report {
         var report = Report()

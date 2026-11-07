@@ -226,9 +226,11 @@ public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegat
         let info = response.notification.request.content.userInfo
         if let request = ProposalNotice.Request(actionID: response.actionIdentifier, userInfo: info) {
             // Keep running if the owner leaves the notification at once; iOS ends the task when time is up.
-            let task = await UIApplication.shared.beginBackgroundTask(withName: "proposal-press", expirationHandler: nil)
-            await ProposalPress.run(request)
-            if task != .invalid { await UIApplication.shared.endBackgroundTask(task) }
+            // When time is up the handler cancels the press and ends the task (iOS would kill the app otherwise).
+            let work = Task { await ProposalPress.run(request) }
+            let task = await ExtraTime.begin("proposal-press") { work.cancel() }
+            await work.value
+            await ExtraTime.end(task)
             return
         }
         guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
@@ -239,6 +241,31 @@ public final class NotificationRouter: NSObject, UNUserNotificationCenterDelegat
     public nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                                    willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .list]
+    }
+}
+
+/// Extra background time for work that outlives a notification button. `onExpiry` runs when iOS takes it back and
+/// the task ends right after it.
+enum ExtraTime {
+    @MainActor final class Handle {
+        var id = UIBackgroundTaskIdentifier.invalid
+    }
+
+    @MainActor static func begin(_ name: String, onExpiry: @escaping @Sendable () -> Void) -> Handle {
+        let handle = Handle()
+        handle.id = UIApplication.shared.beginBackgroundTask(withName: name) {
+            MainActor.assumeIsolated {
+                onExpiry()
+                end(handle)
+            }
+        }
+        return handle
+    }
+
+    @MainActor static func end(_ handle: Handle) {
+        guard handle.id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(handle.id)
+        handle.id = .invalid
     }
 }
 
