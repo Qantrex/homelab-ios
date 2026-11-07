@@ -1,7 +1,10 @@
 # Installing with SideStore
 
-> No release yet: until then, build it yourself ([INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md)) and import
-> the IPA in SideStore, or install it with `xtool install`.
+> **Not verified yet (2026-11-07).** SideStore has not installed Homelab on a real phone so far: its Apple ID
+> sign-in failed on the test iPhone with error -80045. The way that works today is xtool from Linux or a Mac
+> ([INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md)). This page describes how SideStore should work with Homelab; treat
+> it as a plan until a device test passes. There is also no release yet: build the IPA yourself
+> ([SETUP.md](SETUP.md)).
 
 [SideStore](https://sidestore.io) installs apps on an iPhone with a free Apple ID, without a computer after the first
 setup. It signs the app for you and refreshes it before it expires. Homelab needs nothing else: no paid developer
@@ -35,7 +38,8 @@ installing with SideStore each register their own set, so switching between the 
 ## 3. The 7-day refresh
 
 Apps signed with a free Apple ID stop opening after 7 days. SideStore refreshes them in the background over Wi-Fi.
-To be safe, open SideStore every few days, or tap My Apps → Refresh All.
+To be safe, open SideStore every few days, or tap My Apps → Refresh All. Homelab warns on Today 2 days before its
+install stops opening, and Settings → Diagnostics → Install expires shows the date.
 
 - SideStore needs its own VPN helper while it refreshes (see the SideStore docs). iOS runs only one VPN at a time, so
   turn Tailscale back on afterwards, or Homelab can't reach your servers.
@@ -62,7 +66,8 @@ is writable.
 **Settings → Diagnostics → Shared storage** shows the group in use and each candidate (`ok`, `read-only` or `–`).
 If it says "none (widget can't see data)", the app still works, but the widgets say "No App Group: see Diagnostics".
 Installed with xtool 1.24.0 or older from Linux, that is an xtool bug (SETUP.md, "Known xtool bug: no App Group");
-after SideStore, copy the report (Diagnostics → Copy report) and open an issue.
+after SideStore, copy the report (Diagnostics → Copy report: host names with the tailnet part masked, no tokens)
+and open an issue.
 
 ## Troubleshooting
 
@@ -70,7 +75,7 @@ after SideStore, copy the report (Diagnostics → Copy report) and open an issue
 |---|---|---|
 | Widget shows "Open the app" or "Open Homelab to load your machines." | The app has no data yet | Open the app and pull down on Today |
 | Widget shows "No App Group: see Diagnostics" | No App Group was granted: Settings → Diagnostics → App Group is "none" | Installed with xtool 1.24.0 or older: update xtool and install again (SETUP.md, "Known xtool bug: no App Group"). After SideStore: reinstall through SideStore and send the report |
-| Widget is dimmed and says "Data from … open the app" | The last data is more than 2 hours old. Widgets never fetch by themselves | Open the app. Background refresh also updates it when iOS allows |
+| Widget is grey with a clock and its age, or says "Data from … open the app" | The last data is more than 2 hours old. Widgets fetch `/state` themselves only for a Homelab API server with the Tailscale login (when the data is older than 5 minutes; Diagnostics → At a glance → Widget fetch shows the last try). For a token server or with Tailscale off they show only what the app saved | Turn Tailscale on, or open the app. Background refresh also updates it when iOS allows |
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Tailscale is off (often after a SideStore refresh), the server is down, or `tailscale serve` doesn't serve that port | Turn Tailscale on. On the server: `tailscale serve status` and `curl https://<machine>.<tailnet>.ts.net:<port>/api/v1/info` from another tailnet device |
 | "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off (a `.ts.net` name that can't be found says "Can't reach … Is Tailscale on?" instead, the row above) | Check the name in the Tailscale app, and that MagicDNS is on (Tailscale app → Settings, and the admin console → DNS). The `100.x` address won't work with `tailscale serve`: its certificate is for the `.ts.net` name |
 | "The server refused access. Is this login or token allowed?" (HTTP 403) | Your Tailscale login is not in the server's `allowed_logins`, the token is wrong, or the device is tagged (tagged devices get no login header) | Add the login on the server, or switch Login to **Token** and enter a token the server knows |
@@ -84,4 +89,4 @@ after SideStore, copy the report (Diagnostics → Copy report) and open an issue
 | "This server uses a token over plain http. Use its https://….ts.net address (tailscale serve)." | A token server or Home Assistant at `http://` on anything but this device (`localhost`, `127.0.0.1`, `::1`): a LAN IP, `.local`, a single name, a raw `100.x` address or a `.ts.net` name. The app sends nothing there: anyone on that network could read the token (a `.ts.net` name is only safe while Tailscale is on) | Put it behind `tailscale serve` and use `https://<machine>.<tailnet>.ts.net[:port]`, or switch the server to Login Tailscale |
 | "http:// is only allowed for private addresses (home network, 100.x). Use https://, also for .ts.net names." | Plain http to a public name, or to a `.ts.net` name | Use `https://`. `tailscale serve` gives HTTPS for free |
 | Diagnostics → Background → Last run "never" | iOS hasn't run it yet. It learns from how often you open the app | Use the phone normally for a day. Low Power Mode and turning off Background App Refresh (iOS Settings → General) stop it |
-| The app doesn't open | It expired (7 days) | SideStore → My Apps → Refresh All |
+| The app doesn't open | It expired (7 days; Today warns 2 days before) | Installed with xtool: plug the phone in and install again (`scripts/install-dev`), your data stays. With SideStore: My Apps → Refresh All |

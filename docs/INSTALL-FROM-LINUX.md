@@ -84,4 +84,4 @@ git clone https://github.com/Qantrex/homelab-ios ~/Projects/homelab-ios && cd ~/
 | "Homelab" is missing in the share sheet | Share sheet → scroll the app row to the end → More → switch Homelab on. Open the app once first |
 | The widget shows "Open the app" | Open the app once; it writes the data the widget shows |
 | Widgets say "No App Group: see Diagnostics" | xtool dropped the App Group (1.24.0 or older without the patch). Install again with a fixed xtool, see [SETUP.md](SETUP.md) |
-| Something else | Settings → Diagnostics → Copy report, and paste it into `DeviceTest.md` or an issue |
+| Something else | Settings → Diagnostics → Copy report (host names with the tailnet part masked, no tokens), and paste it into `DeviceTest.md` or an issue |
