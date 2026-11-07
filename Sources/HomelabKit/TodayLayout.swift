@@ -30,12 +30,25 @@ public enum TodaySection: String, Codable, CaseIterable, Sendable, Identifiable 
 public struct TodayLayout: Codable, Equatable, Sendable {
     public var order: [String]
     public var hidden: [String]
+    /// When a section shows, by section name (`ShowRule.swift`). Nil or missing = Always; written only once a rule is
+    /// set, so older settings save back unchanged. A rule that can't be read (from a newer version) is dropped.
+    public var rules: [String: ShowRule]?
 
     public static let standard = TodayLayout(order: TodaySection.allCases.map(\.rawValue), hidden: [])
 
-    public init(order: [String], hidden: [String]) {
+    public init(order: [String], hidden: [String], rules: [String: ShowRule]? = nil) {
         self.order = order
         self.hidden = hidden
+        self.rules = rules
+    }
+
+    enum CodingKeys: String, CodingKey { case order, hidden, rules }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        order = try c.decode([String].self, forKey: .order)
+        hidden = try c.decode([String].self, forKey: .hidden)
+        rules = ShowRule.lenient(c.lenient([String: Lossy<ShowRule>].self, .rules))
     }
 
     /// Every section once, in the stored order, new ones last.
