@@ -1370,7 +1370,7 @@ sources = ["server/Dockerfile", "server/.dockerignore", "server/requirements-ima
            "server/docker/serve.json", "server/docker/config.example.json", "server/docker/bridge.env.example",
            "server/docker/tailscale.env.example", "scripts/build-bridge-image"]
 docs = ["docs/SERVER-SETUP.md#docker", "docs/GETTING-STARTED.md#b-homelab-bridge", "docs/RELEASE.md#homelab-bridge-image", "docs/CI.md#workflows"]
-tests = ["server/test_reference_server.py::TailscaleModeTest"]
+tests = ["server/test_reference_server.py::TailscaleModeTest", "server/test_reference_server.py::StaleRunningTest"]
 not_needed = { device_tests = "server side; the app sees an ordinary Companion server" }
 depends_on = ["server-sources", "reference-server", "bridge-base-image", "pyyaml", "tailscale-image", "docker-socket-proxy", "docker", "tailscale", "gha-checkout", "gha-runners"]
 notes = "docs/plans/MODULAR.md M1.7. Tested locally 2026-11-07 without a tailnet: the compose stack with an idle stand-in for the sidecar (identity header 200/403/401 from the shared namespace, nothing reachable from the host, healthy). Not tested yet: the real sidecar with an auth key, `tailscale serve` from serve.json, a buildx push to GHCR. scripts/build-bridge-image --test (CI job bridge-image) runs the server tests inside the image, then the image in token mode on loopback against check-live-api and its own healthcheck. Security review 2026-11-07: the image refuses TS_USERSPACE=true with a Tailscale login header (HOMELAB_ALLOW_USERSPACE=1 overrides) and warns without tailscale0; the socket proxy is wollomatic/socket-proxy with GET /containers/json only (tecnativa's CONTAINERS=1 also served container env, logs and files); the bridge image tag defaults to local, never latest."
@@ -1523,7 +1523,8 @@ endpoints = ["GET /state"]
 api_fields = ["state.problems", "state.cards"]
 sources = ["server/sources/gameserver.py#collect", "server/test_source_gameserver.py"]
 tests = ["server/test_source_gameserver.py::MinecraftSource", "server/test_source_gameserver.py::A2SSource",
-         "server/test_source_gameserver.py::MixedAndConfig", "server/test_sources.py::SourceModuleRules"]
+         "server/test_source_gameserver.py::MixedAndConfig", "server/test_source_gameserver.py::MarkdownText",
+         "server/test_source_gameserver.py::ConnectDeadline", "server/test_sources.py::SourceModuleRules"]
 docs = ["docs/REFERENCE_SERVER.md#game-servers", "docs/SERVER-SETUP.md#sources"]
 not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
 depends_on = ["server-sources"]

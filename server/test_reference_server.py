@@ -1039,6 +1039,18 @@ class CliTest(unittest.TestCase):
         self.assertEqual(cfg.actions, {})
 
 
+class StaleRunningTest(unittest.TestCase):
+    def test_old_running_files_are_swept_at_start(self):
+        d = tempfile.mkdtemp(prefix="pend-")
+        self.addCleanup(shutil.rmtree, d, True)
+        old, new, pend = (os.path.join(d, n) for n in ("a.json.running", "b.json.running", "c.json"))
+        for p in (old, new, pend):
+            open(p, "w").write("{}")
+        os.utime(old, (time.time() - 1000, time.time() - 1000))
+        rs.Actions(d, {}, b"secret", timeout=110.0)
+        self.assertEqual(sorted(os.listdir(d)), ["b.json.running", "c.json"])
+
+
 class TailscaleModeTest(unittest.TestCase):
     """The bridge image refuses TS_USERSPACE=true with a trusted Tailscale login header (every tailnet device could
     reach 127.0.0.1:8791 and fake the header) and stops when the shared namespace has no tailscale0."""
@@ -1103,6 +1115,47 @@ class TailscaleModeTest(unittest.TestCase):
         tokens = rs.Config({"listen": "127.0.0.1:0", "tokens": [TOKEN]}, {})
         self.assertIsNone(rs.check_tailscale_mode(tokens, dict(self.IMAGE, TS_USERSPACE="true")))
         self.assertEqual(self.logs, [])
+
+    def test_header_not_trusted_until_tailscale0_exists(self):
+        now = [0.0]
+        gate = rs.TailscaleGate(recheck=2.0, clock=lambda: now[0])
+        auth = rs.Auth([TOKEN], LOGIN_HEADER, ["you@example.com"])
+        auth.identity_ready = gate.ready
+        net = self.net_dev("lo", "eth0")
+        rs.check_tailscale_mode(self.cfg(), dict(self.IMAGE), wait=0.0, net_dev=net, exit_fn=lambda c: None, gate=gate)
+        forged = {LOGIN_HEADER: "you@example.com"}
+        self.assertEqual(auth.check(forged, "127.0.0.1")[0], 401)
+        self.assertIsNone(auth.check({"Authorization": "Bearer " + TOKEN}, "127.0.0.1"))
+        self.net_dev("lo", "eth0", "tailscale0")
+        self.assertEqual(auth.check(forged, "127.0.0.1")[0], 401)  # re-probe is cached for `recheck`
+        now[0] = 3.0
+        self.assertIsNone(auth.check(forged, "127.0.0.1"))
+        self.net_dev("lo")  # once found, stays trusted
+        now[0] = 10.0
+        self.assertIsNone(auth.check(forged, "127.0.0.1"))
+
+    def test_header_trusted_with_the_override_and_outside_the_image(self):
+        for env in (dict(self.IMAGE, HOMELAB_ALLOW_USERSPACE="1"), {}):
+            gate = rs.TailscaleGate()
+            auth = rs.Auth([TOKEN], LOGIN_HEADER, ["you@example.com"])
+            auth.identity_ready = gate.ready
+            rs.check_tailscale_mode(self.cfg(), env, wait=0.0, net_dev=self.net_dev("lo"), exit_fn=lambda c: None,
+                                    gate=gate)
+            self.assertIsNone(auth.check({LOGIN_HEADER: "you@example.com"}, "127.0.0.1"))
+
+    def test_unreadable_proc_fails_closed(self):
+        gate = rs.TailscaleGate()
+        auth = rs.Auth([TOKEN], LOGIN_HEADER, ["you@example.com"])
+        auth.identity_ready = gate.ready
+        missing = os.path.join(self.tmp, "nope")
+        rs.check_tailscale_mode(self.cfg(), dict(self.IMAGE), wait=0.0, net_dev=missing, exit_fn=lambda c: None,
+                                gate=gate)
+        self.assertEqual(auth.check({LOGIN_HEADER: "you@example.com"}, "127.0.0.1")[0], 401)
+        self.assertTrue(any("cannot read" in line for line in self.logs))
+        gate = rs.TailscaleGate()
+        rs.check_tailscale_mode(self.cfg(), dict(self.IMAGE, HOMELAB_ALLOW_USERSPACE="1"), wait=0.0, net_dev=missing,
+                                exit_fn=lambda c: None, gate=gate)
+        self.assertTrue(gate.ready())
 
     def test_cli_stops_at_start(self):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:

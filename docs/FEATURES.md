@@ -178,7 +178,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [JSON feed source](#source-json) | partial | `status`, `hosts`, `cards`, `services` | 4 | n/a | 1 |
 | [Bridge source: Uptime Kuma](#source-uptime-kuma) | partial | `status`, `cards`, `services` | 2 | n/a | 2 |
 | [Bridge source: Gatus](#source-gatus) | partial | `status`, `cards` | 1 | n/a | 2 |
-| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | 1 | n/a | 4 |
+| [Homelab Bridge in Docker (image, compose with a Tailscale sidecar)](#bridge-docker) | partial (?) | `status`, `hosts` | 2 | n/a | 4 |
 | [Docker source (socket proxy)](#source-docker) | partial | `hosts` | 2 | n/a | 2 |
 | [Proxmox source](#source-proxmox) | partial | `hosts` | 2 | n/a | 2 |
 | [Bridge source actions (opt-in)](#source-actions) | partial | `run-actions` | 4 | n/a | 2 |
@@ -186,7 +186,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [AdGuard Home source](#source-adguard) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Sonarr source](#source-sonarr) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Radarr source](#source-radarr) | partial | `status`, `cards` | 2 | n/a | 2 |
-| [Bridge source: game servers](#source-gameserver) | partial | `status`, `cards` | 4 | n/a | 2 |
+| [Bridge source: game servers](#source-gameserver) | partial | `status`, `cards` | 6 | n/a | 2 |
 | [qBittorrent source](#source-qbittorrent) | partial | `status`, `cards` | 2 | n/a | 2 |
 | [Import from Homepage](#homepage-import) | partial | `services`, `status`, `cards` | 8 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
@@ -1640,7 +1640,7 @@ Source type `gatus`: every Gatus endpoint from GET /api/v1/endpoints/statuses. F
 |---|---|
 | Server | `status`, `hosts`, `GET /info`, `GET /state` |
 | Sources | [Dockerfile](../server/Dockerfile), [.dockerignore](../server/.dockerignore), [requirements-image.txt](../server/requirements-image.txt), [compose.yaml](../server/compose.yaml), [serve.json](../server/docker/serve.json), [config.example.json](../server/docker/config.example.json), [bridge.env.example](../server/docker/bridge.env.example), [tailscale.env.example](../server/docker/tailscale.env.example), [build-bridge-image](../scripts/build-bridge-image) |
-| Tests | `server/test_reference_server.py::TailscaleModeTest` |
+| Tests | `server/test_reference_server.py::TailscaleModeTest`, `server/test_reference_server.py::StaleRunningTest` |
 | Phone (DeviceTest.md) | n/a: server side; the app sees an ordinary Companion server |
 | Docs | [docs/SERVER-SETUP.md#docker](SERVER-SETUP.md#docker), [docs/GETTING-STARTED.md#b-homelab-bridge](GETTING-STARTED.md#b-homelab-bridge), [docs/RELEASE.md#homelab-bridge-image](RELEASE.md#homelab-bridge-image), [docs/CI.md#workflows](CI.md#workflows) |
 | Depends on | [server-sources](#server-sources), [reference-server](#reference-server), [bridge-base-image](#dep-bridge-base-image), [pyyaml](#dep-pyyaml), [tailscale-image](#dep-tailscale-image), [docker-socket-proxy](#dep-docker-socket-proxy), [docker](#dep-docker), [tailscale](#dep-tailscale), [gha-checkout](#dep-gha-checkout), [gha-runners](#dep-gha-runners) |
@@ -1777,7 +1777,7 @@ Source type `gameserver`: Minecraft Java (Server List Ping over TCP) and Valve A
 |---|---|
 | Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
 | Sources | [gameserver.py#collect](../server/sources/gameserver.py), [test_source_gameserver.py](../server/test_source_gameserver.py) |
-| Tests | `server/test_source_gameserver.py::MinecraftSource`, `server/test_source_gameserver.py::A2SSource`, `server/test_source_gameserver.py::MixedAndConfig`, `server/test_sources.py::SourceModuleRules` |
+| Tests | `server/test_source_gameserver.py::MinecraftSource`, `server/test_source_gameserver.py::A2SSource`, `server/test_source_gameserver.py::MixedAndConfig`, `server/test_source_gameserver.py::MarkdownText`, `server/test_source_gameserver.py::ConnectDeadline`, `server/test_sources.py::SourceModuleRules` |
 | Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
 | Docs | [docs/REFERENCE_SERVER.md#game-servers](REFERENCE_SERVER.md#game-servers), [docs/SERVER-SETUP.md#sources](SERVER-SETUP.md#sources) |
 | Depends on | [server-sources](#server-sources) |

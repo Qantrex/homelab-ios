@@ -17,7 +17,7 @@ public enum SearchQuery {
 
     /// What a link puts into the search field: normalised and cut to the longest allowed query.
     public static func prefill(_ text: String) -> String {
-        String(normalize(text).prefix(maxLength))
+        normalize(String(normalize(text).prefix(maxLength)))   // the cut may leave a space at the end
     }
 
     /// Typing searches by itself (400 ms after the last key); text a link put into the field (`held`) waits for the

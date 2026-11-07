@@ -397,12 +397,30 @@ def link_ok(url):
         return False
 
 
-def safe_text(text, limit=MAX_TEXT):
-    """An upstream's text for the app: URLs become <url>, `key=value` with a secret-named key `key=***`, at most
-    `limit` characters."""
+# What would be Markdown in the app's inline renderer: a backslash, `<` before a letter, `/`, `!` or `?` (autolink, HTML), `*`, a backtick, `~`, the `]`
+# of `](`, an entity (`&#58;`, `&amp;`) and an `_` that is not inside a word. A lone `[`, `]`, `>` or `&` is plain text.
+_MD_SPECIAL = re.compile(r"([\\*`~]|<(?=[A-Za-z/!?])|\](?=[(\[])|&(?=#?\w+;)|(?<![A-Za-z0-9])_|_(?![A-Za-z0-9]))")
+
+
+def plain_text(text, limit=MAX_TEXT):
+    """An upstream's text without secrets: URLs become <url>, `key=value` with a secret-named key `key=***`, at most
+    `limit` characters. Still raw text: safe_text() makes it safe for the app's Markdown renderer."""
     text = _URL_RE.sub("<url>", text)
     text = _SECRET_PAIR_RE.sub(lambda m: m.group(1) + m.group(2) + "***", text)
     return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+def safe_text(text, limit=MAX_TEXT):
+    """plain_text() for the app: the app shows text as Markdown, so a backslash, [ ] < > & * _ ` ~ gets a backslash
+    in front (CommonMark shows it as the plain character). That removes links (`[a](b)`, also with `&#58;` or
+    `\\` forms in the address), autolinks, raw HTML, entities, emphasis and code; ordinary text ("C&C", "2/10",
+    "[STATUS] (502)") stays as it is. Call it once on a string: a second call would escape the escapes."""
+    text = _MD_SPECIAL.sub(r"\\\1", plain_text(text, limit))
+    if len(text) > limit:
+        text = text[:limit - 1]
+        text = text[:-1] if (len(text) - len(text.rstrip("\\"))) % 2 else text
+        text += "…"
+    return text
 
 
 def _allowed(name, module, cfg):

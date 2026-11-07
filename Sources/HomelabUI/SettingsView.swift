@@ -658,7 +658,7 @@ struct DiagnosticsView: View {
                         copied = true
                     }
                 } footer: {
-                    SettingsFooter("The report has no tokens, and the tailnet part of host names, other host names and local addresses (LAN IPv4, IPv6 ULA and link-local) are masked. It helps when something doesn't work.")
+                    SettingsFooter("The report has no tokens, and the tailnet part of host names, other host names (including .lan, .local, .home.arpa and .internal) and IP addresses (LAN, IPv6 and public) are masked. Check it before posting. It helps when something doesn't work.")
                 }
             }
             .surfaceRows()

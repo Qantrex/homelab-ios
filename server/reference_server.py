@@ -459,6 +459,7 @@ class Auth:
         self.tokens = [t.encode() for t in tokens]
         self.identity_header = identity_header
         self.allowed_logins = [x.lower() for x in allowed_logins]
+        self.identity_ready = None  # optional callable: False = do not trust the identity header yet
 
     @property
     def mode(self):
@@ -476,7 +477,7 @@ class Auth:
         """Return None when allowed, else (status, message)."""
         if not self.tokens and not self.identity_header:
             return None
-        if self.identity_header and is_loopback(peer):
+        if self.identity_header and is_loopback(peer) and (self.identity_ready is None or self.identity_ready()):
             login = (headers.get(self.identity_header) or "").strip().lower()
             if login and (not self.allowed_logins or login in self.allowed_logins):
                 return None
@@ -751,7 +752,19 @@ class Actions:
         self.secret = secret
         self.timeout = timeout
         self.lock = threading.Lock()
-        self.running = set()
+        self._sweep_stale()
+
+    def _sweep_stale(self):
+        """Remove `*.json.running` files a crash left behind: older than the action timeout, no run can own them."""
+        if not self.pending_dir or not os.path.isdir(self.pending_dir):
+            return
+        for path in glob.glob(os.path.join(self.pending_dir, "*.json.running")):
+            try:
+                if time.time() - os.path.getmtime(path) > self.timeout + 10:
+                    os.remove(path)
+                    log("removed a stale %s" % os.path.basename(path))
+            except OSError:
+                pass
 
     @staticmethod
     def digest(data):
@@ -849,17 +862,13 @@ class Actions:
         arg = data.get("arg") or ""
         if not isinstance(arg, str) or (arg and not ARG_RE.fullmatch(arg)):
             return 400, {"error": "bad arg", "text": "refused %s: the arg is not allowed" % pid}
-        # Claim the pending file under the lock: whoever renames it first runs the command, an
-        # overlapping press (double tap, app plus notification button) finds it gone.
+        # Claim the pending file by renaming it: whoever renames first runs the command, an overlapping press
+        # (double tap, app plus notification button) finds it gone.
         claimed = path + ".running"
-        with self.lock:
-            if pid in self.running:
-                return 200, {"text": "%s is already running" % pid}
-            try:
-                os.rename(path, claimed)
-            except OSError:
-                return 403, {"error": "unknown or expired action"}
-            self.running.add(pid)
+        try:
+            os.rename(path, claimed)
+        except OSError:
+            return 403, {"error": "unknown or expired action"}
         path = claimed
         try:
             argv = self.build_argv(template, arg)
@@ -876,8 +885,6 @@ class Actions:
             log("action %s %s: %s" % (pid, name, result))
         finally:
             self._remove(path)
-            with self.lock:
-                self.running.discard(pid)
         if len(out) > 2000:
             out = out[:2000] + "…"
         label = "approved" if verb == "APPROVE" else "approved (always)"
@@ -1609,7 +1616,44 @@ def _has_tailscale_interface(net_dev="/proc/net/dev"):
     return any(n.startswith("tailscale") for n in names)
 
 
-def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev", exit_fn=None):
+class TailscaleGate:
+    """Whether the identity header may be trusted. Open until check_tailscale_mode arms it (image + Tailscale header,
+    no HOMELAB_ALLOW_USERSPACE=1); then closed until a tailscale0 interface exists (re-probed at most every
+    `recheck` seconds), and open for the rest of the process once found. Unreadable /proc/net/dev stays closed."""
+
+    def __init__(self, recheck=2.0, clock=time.monotonic):
+        self.net_dev = None
+        self.recheck = recheck
+        self.clock = clock
+        self.found = False
+        self.next_probe = 0.0
+        self.warned = False
+        self.lock = threading.Lock()
+
+    def arm(self, net_dev):
+        self.net_dev = net_dev
+
+    def ready(self):
+        if self.net_dev is None or self.found:
+            return True
+        with self.lock:
+            now = self.clock()
+            if now < self.next_probe:
+                return False
+            self.next_probe = now + self.recheck
+            found = _has_tailscale_interface(self.net_dev)
+            if found:
+                self.found = True
+                log("tailscale0 found: the identity header is trusted from now on")
+                return True
+            if found is None and not self.warned:
+                self.warned = True
+                log("WARNING: cannot read %s to check for tailscale0: identity-header logins are refused "
+                    "(tokens still work); HOMELAB_ALLOW_USERSPACE=1 trusts the header anyway" % self.net_dev)
+            return False
+
+
+def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev", exit_fn=None, gate=None):
     """The bridge image (HOMELAB_BRIDGE_IMAGE=1) behind a Tailscale sidecar with a trusted Tailscale-User-Login: refuse
     to start with TS_USERSPACE=true unless HOMELAB_ALLOW_USERSPACE=1 (USERSPACE_RISK). The bridge does not see the
     sidecar's env, so it also fails closed: when no tailscale0 interface shows up in the shared namespace within
@@ -1628,6 +1672,8 @@ def check_tailscale_mode(cfg, env, wait=60.0, step=2.0, net_dev="/proc/net/dev",
 
     allow = env.get("HOMELAB_ALLOW_USERSPACE") == "1"
     stop = exit_fn or os._exit
+    if gate is not None and not allow:
+        gate.arm(net_dev)  # header logins get 401 until tailscale0 exists; tokens work throughout
 
     def watch():
         deadline = time.monotonic() + wait
@@ -1672,8 +1718,11 @@ def main(argv=None):
     try:
         if args.config:
             cfg = Config.load(args.config)
-            check_tailscale_mode(cfg, os.environ, wait=_env_float(os.environ, "HOMELAB_TAILSCALE_WAIT", 60.0))
+            gate = TailscaleGate()
+            check_tailscale_mode(cfg, os.environ, wait=_env_float(os.environ, "HOMELAB_TAILSCALE_WAIT", 60.0),
+                                 gate=gate)
             app = RealApp(cfg)
+            app.auth.identity_ready = gate.ready
             httpd = build_server(app, cfg.host, cfg.port if args.port is None else args.port, cfg.allow_remote)
         else:
             app = FixtureApp(args.fixtures, args.state, args.token, args.echo_delay)

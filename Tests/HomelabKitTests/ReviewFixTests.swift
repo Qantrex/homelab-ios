@@ -142,6 +142,18 @@ import Testing
         #expect(r.contains("nas.<tailnet>.ts.net") && r.contains("100.x.x.x") && !r.contains("192.168.1.5") && r.contains("<lan-ip>"))
     }
 
+    @Test func reportMasksHomeNetworkNamesAndGlobalIPv6() {
+        let r = Redact.hosts("a nas.lan b printer.local c router.home.arpa d db.internal e 2001:db8:85a3::8a2e:370:7334 f 2a02:1234::1 g 2001:db8:0:0:0:0:0:1 at 12:30:45 h NAS.LAN")
+        for leak in ["nas.lan", "printer", "router", "db.internal", "2001", "2a02", "NAS.LAN"] { #expect(!r.localizedCaseInsensitiveContains(leak), "\(leak)") }
+        #expect(r.contains("12:30:45") && r.contains("<ip6>") && r.contains("<host>"))
+        #expect(Redact.host("printer.local") == "<host>" && Redact.host("2a02:1234::1") == "<ip6>")
+    }
+
+    @Test func knownHostsMatchWholeNamesOnly() {
+        let r = Redact.hosts("api on nas, Homelab via pi (PI) pie nas-2 nas.example.lan", knownHosts: ["nas", "pi", "home"])
+        #expect(r == "api on <host>, Homelab via <host> (<host>) pie nas-2 <host>")
+    }
+
     @Test func reportMasksLocalAddressesAndOtherHosts() {
         let r = Redact.hosts("a 10.0.0.2 b 172.20.1.1 c 169.254.3.4 d fd12:3456::1 e fe80::1ff:fe23 f 8.8.8.8 g nas.example.lan:7443 refused (1.2.3, iOS 17.2)",
                              knownHosts: ["nas.example.lan"])

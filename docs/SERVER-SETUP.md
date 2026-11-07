@@ -163,9 +163,11 @@ Notes:
   The image guards against it: with `trust_identity_header: Tailscale-User-Login` it refuses to start when
   `TS_USERSPACE=true` is in its own env (the compose file sets that variable only on the `tailscale` service, so
   this catches an override in `docker/bridge.env`, not the sidecar's setting). The check that covers the sidecar
-  is the interface: if the shared namespace has no `tailscale0` interface 60 seconds after the start (userspace mode
-  has none, and neither has a sidecar that is not up), the bridge logs an `ERROR` and exits with code 3; Docker
-  restarts it and it tries again. `HOMELAB_TAILSCALE_WAIT=<seconds>` changes the 60. `HOMELAB_ALLOW_USERSPACE=1` in
+  is the interface: until the shared namespace has a `tailscale0` interface (userspace mode has none, and neither
+  has a sidecar that is not up), the bridge does not trust the login header: those requests get 401, tokens keep
+  working. It looks again every few seconds and trusts the header from the moment it sees the interface. If there is
+  none 60 seconds after the start, the bridge logs an `ERROR` and exits with code 3; Docker
+  restarts it and it tries again. If it cannot read `/proc/net/dev`, it refuses the header the same way. `HOMELAB_TAILSCALE_WAIT=<seconds>` changes the 60. `HOMELAB_ALLOW_USERSPACE=1` in
   `docker/bridge.env` turns both into a `WARNING` and starts it anyway; do that only with the ACL below, and with tokens instead of the login header if you can.
 - **Tokens** for tagged devices or `curl`: `HOMELAB_TOKENS` in `docker/bridge.env`. Devices with tags get no login
   header from `tailscale serve`.
