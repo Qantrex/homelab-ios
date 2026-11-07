@@ -80,8 +80,10 @@ if [ "$install" = 1 ]; then
 fi
 
 # xtool installs under a team prefix for free accounts (XTL-<TEAM>.com.qantrex.homelab): look the ID up.
-bundle=$(pmd apps list -t User 2>/dev/null | grep -oE '"CFBundleIdentifier": "[^"]*com\.qantrex\.homelab"' \
-  | head -1 | sed -E 's/.*: "(.*)"/\1/')
+# On a phone where SideStore installed the app, use --no-install (an xtool install would add a second app).
+# SideStore installs it as com.qantrex.homelab.<TEAM>: both forms count, the extensions don't.
+bundle=$(pmd apps list -t User 2>/dev/null | grep -oE '"CFBundleIdentifier": "[^"]*com\.qantrex\.homelab(\.[A-Z0-9]+)?"' \
+  | grep -vE 'Homelab(Widget|Share)' | head -1 | sed -E 's/.*: "(.*)"/\1/')
 [ -n "$bundle" ] || { echo "Homelab is not installed on the phone"; exit 1; }
 echo "== app: $bundle"
 

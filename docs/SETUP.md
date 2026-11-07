@@ -169,6 +169,24 @@ On macOS, `scripts/sim-smoke APP OUT` installs a simulator build and takes scree
 simulator app with `xtool dev build --triple arm64-apple-ios-simulator`. CI runs this on every push, see
 [CI.md](CI.md).
 
+## Looking at the app on a real iPhone
+
+`scripts/phone` drives the Homelab app that is installed on the phone over USB, whatever installed it (SideStore or
+xtool), with real data and without a second app. It's meant for people and for a coding agent alike:
+
+| Command | What |
+|---|---|
+| `scripts/phone apps` | Installed Homelab and SideStore apps, versions, and when their signing expires |
+| `scripts/phone launch -HomelabTab lab` | Start the app with launch arguments (below) |
+| `scripts/phone shot NAME [ARGS…]` | Launch, wait, save `shots-phone/NAME.png` |
+| `scripts/phone tabs [--ax]` | One screenshot per tab; `--ax` at the largest accessibility text size |
+| `scripts/phone log [SECONDS]` | The app's log lines for a while (default 20 s) |
+| `scripts/phone crashes [--pull DIR]` | The app's crash reports |
+| `scripts/phone push-ipa [IPA]` | Copy an IPA into SideStore's folder, then install it there (My Apps → + → On My iPhone → SideStore) |
+
+The phone must be unlocked; black screenshots or a failed launch mean it's locked. `scripts/phone-shots` is the demo
+screenshot set; on a phone where SideStore installed the app, run it with `--no-install`.
+
 ## Launch arguments
 
 For tests, screenshots and a quick first run. Pass them to the app at launch, for example in the simulator:

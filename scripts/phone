@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# Usage: scripts/phone <command> [args]
+# Looks at and drives the Homelab app that is installed on the iPhone (USB), whatever installed it: SideStore
+# (com.qantrex.homelab.<TEAM>) or xtool (XTL-<TEAM>.com.qantrex.homelab). Nothing is installed or changed on the phone
+# except what a command says (launch arguments set what they always set; push-ipa copies a file into SideStore).
+# For the coding agent as much as for people: every command prints plain lines or JSON, and exits non-zero on failure.
+#
+#   apps                  installed Homelab and SideStore apps, versions, and when their signing expires
+#   launch [ARGS…]        start the app with launch arguments (docs/SETUP.md lists them), e.g. -HomelabTab lab
+#   shot NAME [ARGS…]     launch with ARGS, wait, save $OUT/NAME.png (OUT defaults to shots-phone/)
+#   tabs [--ax]           one screenshot per tab with the real data (no demo); --ax: largest accessibility text size
+#   log [SECONDS]         the app's own log lines for SECONDS (default 20), one per line
+#   crashes [--pull DIR]  the app's crash reports on the phone; --pull copies them into DIR
+#   push-ipa [IPA]        copy an IPA (default xtool/Homelab.ipa) into SideStore's folder; then on the phone:
+#                         SideStore → My Apps → + → On My iPhone → SideStore → Homelab.ipa (same app: data stays)
+#
+# Needs: the iPhone plugged in, unlocked, trusted, Developer Mode on (docs/INSTALL-FROM-LINUX.md). Black screenshots or
+# a failed launch: the phone is locked. pymobiledevice3 is pinned like in scripts/phone-shots.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+PMD_VERSION=11.50.0
+OUT=${OUT:-shots-phone}
+WAIT=${WAIT:-6}
+
+if [ ! -x .venv/bin/pymobiledevice3 ]; then
+  python3 -m venv .venv
+  .venv/bin/pip install -q "pymobiledevice3==$PMD_VERSION"
+fi
+pmd() { timeout "${PMD_TIMEOUT:-60}" .venv/bin/pymobiledevice3 "$@"; }
+
+die() { echo "phone: $*" >&2; exit 1; }
+
+# The installed apps as "bundle<TAB>name<TAB>version" lines (JSON from pymobiledevice3, read with python).
+apps_tsv() {
+  pmd apps list -t User 2>/dev/null | python3 -I -c '
+import json, sys
+for bid, a in json.load(sys.stdin).items():
+    print("\t".join([bid, a.get("CFBundleDisplayName") or a.get("CFBundleName") or "", a.get("CFBundleShortVersionString") or ""]))'
+}
+
+# The Homelab app (not its extensions); SideStore's own; fails when it isn't there.
+homelab_bundle() {
+  local b
+  b=$(apps_tsv | cut -f1 | grep -E '(^|[.-])com\.qantrex\.homelab(\.[A-Z0-9]+)?$' | grep -vE 'Homelab(Widget|Share)' | head -1 || true)
+  [ -n "$b" ] || die "Homelab is not installed on the phone (or the phone isn't connected and unlocked)"
+  echo "$b"
+}
+sidestore_bundle() { apps_tsv | cut -f1 | grep -E '^com\.SideStore\.SideStore' | head -1 || true; }
+
+ensure_ddi() { pmd mounter auto-mount >/dev/null 2>&1 || true; }   # fails harmlessly when already mounted
+
+launch() {   # launch BUNDLE ARGS…
+  local bundle=$1; shift
+  ensure_ddi
+  pmd developer dvt launch --userspace "$bundle $*" >/dev/null 2>&1 \
+    || die "launch failed: is the phone unlocked?"
+}
+
+shot() {   # shot NAME ARGS…
+  local name=$1; shift
+  local bundle file
+  bundle=$(homelab_bundle)
+  mkdir -p "$OUT"
+  file="$OUT/$name.png"
+  local try
+  for try in 1 2; do   # right after an install or a VPN switch the first launch sometimes fails
+    if launch "$bundle" "$@" 2>/dev/null; then
+      sleep "$WAIT"
+      if pmd developer dvt screenshot --userspace "$file" >/dev/null 2>&1 && [ -s "$file" ]; then
+        echo "$file"; return 0
+      fi
+    fi
+    [ "$try" = 1 ] && sleep 3
+  done
+  die "no screenshot for $name (is the phone unlocked?)"
+}
+
+cmd=${1:-help}; shift || true
+case "$cmd" in
+  apps)
+    apps_tsv | grep -E 'qantrex\.homelab|SideStore' | grep -vE 'Homelab(Widget|Share)' | sed 's/^/app\t/' || true
+    # Signing expiry per installed profile (a free Apple ID signs for 7 days; SideStore refreshes it).
+    # Only profiles of apps that are installed now (deleted apps leave theirs behind).
+    installed=$(apps_tsv | cut -f1 | tr '\n' ' ')
+    pmd provision list 2>/dev/null | INSTALLED="$installed" python3 -I -c '
+import json, os, sys
+installed = set(os.environ.get("INSTALLED", "").split())
+seen = {}
+for p in json.load(sys.stdin):
+    e = p.get("Entitlements") or {}
+    appid = e.get("application-identifier", "")
+    if "qantrex.homelab" in appid or "SideStore" in appid:
+        key = appid.split(".", 1)[-1]
+        if not any(key == b or key.startswith(b + ".") for b in installed): continue
+        exp = str(p.get("ExpirationDate"))
+        if exp > seen.get(key, ""): seen[key] = exp
+for k, v in sorted(seen.items()): print("expires\t" + k + "\t" + v)'
+    ;;
+  launch)
+    launch "$(homelab_bundle)" "$@"
+    echo "launched"
+    ;;
+  shot)
+    [ $# -ge 1 ] || die "usage: scripts/phone shot NAME [LAUNCH_ARGS…]"
+    shot "$@"
+    ;;
+  tabs)
+    extra=()
+    suffix=""
+    if [ "${1:-}" = --ax ]; then
+      extra=(-UIPreferredContentSizeCategoryName UICTContentSizeCategoryAccessibilityXXL); suffix="-ax"
+    fi
+    for tab in today actions chat lab settings; do
+      shot "$tab$suffix" -HomelabTab "$tab" "${extra[@]}"
+    done
+    # Back to the normal text size, so the phone isn't left at the largest one.
+    [ -z "$suffix" ] || launch "$(homelab_bundle)" -HomelabTab today >/dev/null
+    ;;
+  log)
+    secs=${1:-20}
+    bundle=$(homelab_bundle)
+    # The app's process is named after its executable, Homelab; the widget and share extension have their own names.
+    PMD_TIMEOUT=$((secs + 5)) pmd syslog live -pn Homelab 2>/dev/null &
+    pid=$!
+    sleep "$secs"; kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+    : "$bundle"
+    ;;
+  crashes)
+    if [ "${1:-}" = --pull ]; then
+      dir=${2:?usage: scripts/phone crashes --pull DIR}
+      mkdir -p "$dir"
+      pmd crash pull "$dir" >/dev/null 2>&1 || die "pull failed"
+      find "$dir" -iname '*Homelab*' -type f | sort
+    else
+      pmd crash ls 2>/dev/null | grep -i homelab || echo "no Homelab crash reports"
+    fi
+    ;;
+  push-ipa)
+    ipa=${1:-xtool/Homelab.ipa}
+    [ -f "$ipa" ] || die "no IPA at $ipa (scripts/build-ipa makes one)"
+    ss=$(sidestore_bundle)
+    [ -n "$ss" ] || die "SideStore is not installed"
+    pmd apps push "$ss" "$ipa" Documents/Homelab.ipa >/dev/null 2>&1 || die "copy failed"
+    echo "copied $(basename "$ipa") into SideStore: on the phone, SideStore → My Apps → + → On My iPhone → SideStore → Homelab.ipa"
+    ;;
+  help|-h|--help)
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+  *)
+    die "unknown command $cmd (scripts/phone help)"
+    ;;
+esac
