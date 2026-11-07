@@ -153,9 +153,9 @@ targets.
 
 | Command | Needs | Runs |
 |---|---|---|
-| `scripts/test-linux` | docker, python3 | Same as the CI `linux` job: fixture server on `127.0.0.1:8791`, `KIT_ONLY=1 swift test` in `swift:6.4-noble`, the reference server's Python tests, `scripts/lint` |
+| `scripts/test-linux` | docker, python3 | Same as the CI `linux` job: fixture server on `127.0.0.1:8791`, `KIT_ONLY=1 swift test` in `swift:6.4-noble`, the reference server's Python tests (`server/test_*.py`), `scripts/lint` |
 | `KIT_ONLY=1 swift test` | Swift 6.4 | The HomelabKit tests. The integration tests are skipped unless `HOMELAB_FIXTURE_URL` is set |
-| `python3 -m unittest -v server/test_reference_server.py` | python3 | The reference server's tests |
+| `python3 -m unittest -v server/test_*.py` | python3 | The reference server's tests and its sources' tests ([BRIDGE.md](BRIDGE.md)) |
 | `scripts/lint` | bash, grep (python3 3.11+ for the registry) | No `print(`/`NSLog(` in `Sources/`, no token-ish values in log calls, no `try!`/`fatalError(` in HomelabKit, the feature registry (`scripts/features check`) |
 
 To run the integration tests natively, start the fixture server first:
