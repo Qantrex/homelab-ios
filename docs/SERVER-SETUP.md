@@ -2,13 +2,19 @@
 
 The app talks to two kinds of server. You can add several of each in Settings → Add server.
 
-| Type in the app | Speaks | Tabs it fills |
+| Type in the app | Speaks | What it fills |
 |---|---|---|
-| Homelab API | The Homelab Companion API v1 ([`server/openapi.yaml`](../server/openapi.yaml)) | Overview, Actions, Chat, widgets |
-| Home Assistant | Home Assistant's REST API | Home |
+| Homelab API | The Homelab Companion API v1 ([`server/openapi.yaml`](../server/openapi.yaml)) | Today, Lab, Actions, Chat, widgets |
+| Home Assistant | Home Assistant's REST API | The Home tiles on Today |
 
-There are three ways to get a Homelab API server: (a) the reference server from this repo, (b) Home Assistant on its
-own (tiles on Today only), (c) your own agent or script.
+There are three ways to connect your homelab:
+
+- (a) the reference server from this repo: a Homelab API server for any Linux box,
+- (b) Home Assistant on its own: only the Home tiles on Today,
+- (c) your own agent or script that speaks the Homelab API.
+
+You can combine them, for example the reference server plus Home Assistant. Settings → "Show data from" picks the
+Homelab API server, "Home tiles from" the Home Assistant.
 
 All examples assume [Tailscale](https://tailscale.com) on the server and on the phone. Any VPN to your home network
 works too; then use `https://` with a certificate the phone trusts, or plain `http://` on a local address.
@@ -107,7 +113,7 @@ Assistant app stays the place for everything else.
 1. In Home Assistant: your profile → Security → **Long-lived access tokens** → Create token. Copy it; HA shows it
    only once. A separate HA user just for the phone makes it easy to revoke later.
 2. In the app: Add server → Type **Home Assistant** → Address as you open HA in a browser, for example
-   `https://ha.<tailnet>.ts.net` or `http://192.168.0.10:8123` → paste the token → Test connection ("Home Assistant
+   `https://<machine>.<tailnet>.ts.net:8443` behind `tailscale serve` (see the notes below) → paste the token → Test connection ("Home Assistant
    answers.") → Save.
 3. On Today, in the **Home** section → **Edit** (or "Pin the lights or scripts you use most") → pick them → Done.
 
