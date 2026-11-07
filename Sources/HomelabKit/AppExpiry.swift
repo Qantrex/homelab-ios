@@ -30,10 +30,10 @@ public enum AppExpiry {
         let when: String
         if left <= 0 { when = "has stopped opening" }   // shown only by a still-running app
         else if left < 24 * 3600 {
-            let hours = max(1, Int(clamping: left / 3600))
+            let hours = max(1, Int(clamping: (left / 3600).rounded(.down)))
             when = hours == 1 ? "stops opening in 1 hour" : "stops opening in \(hours) hours"
         } else {
-            let days = Int(clamping: left / (24 * 3600))
+            let days = Int(clamping: (left / (24 * 3600)).rounded(.down))
             when = days == 1 ? "stops opening in 1 day" : "stops opening in \(days) days"
         }
         return "This install \(when) (free Apple ID, 7 days). Plug the iPhone into the computer and reinstall; your data stays."
