@@ -1637,6 +1637,8 @@ class TailscaleGate:
         if self.net_dev is None or self.found:
             return True
         with self.lock:
+            if self.found:   # another thread's probe found it while this one waited for the lock
+                return True
             now = self.clock()
             if now < self.next_probe:
                 return False

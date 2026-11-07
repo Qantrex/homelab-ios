@@ -168,7 +168,7 @@ Notes:
   has a sidecar that is not up), the bridge does not trust the login header: those requests get 401, tokens keep
   working. It looks again every few seconds and trusts the header from the moment it sees the interface. If there is
   none 60 seconds after the start, the bridge logs an `ERROR` and exits with code 3; Docker
-  restarts it and it tries again. If it cannot read `/proc/net/dev`, it refuses the header the same way. `HOMELAB_TAILSCALE_WAIT=<seconds>` changes the 60. `HOMELAB_ALLOW_USERSPACE=1` in
+  restarts it and it tries again. If it cannot read `/proc/net/dev`, it refuses the header the same way, but keeps running (tokens work; the log says why) until you fix it or restart it. `HOMELAB_TAILSCALE_WAIT=<seconds>` changes the 60. `HOMELAB_ALLOW_USERSPACE=1` in
   `docker/bridge.env` turns both into a `WARNING` and starts it anyway; do that only with the ACL below, and with tokens instead of the login header if you can.
   These checks run only in the image and only for a `Tailscale-…` login header. Running the bridge some other way
   (or with another header, such as `Remote-User`), make sure nothing but your proxy can reach its port: never behind a

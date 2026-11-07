@@ -1134,6 +1134,19 @@ class TailscaleModeTest(unittest.TestCase):
         now[0] = 10.0
         self.assertIsNone(auth.check(forged, "127.0.0.1"))
 
+    def test_a_request_waiting_for_the_probe_sees_its_result(self):
+        # A thread that waited on the lock while another thread's probe found tailscale0 gets True, not a 401.
+        gate = rs.TailscaleGate(recheck=60.0, clock=lambda: 0.0)
+        gate.arm(self.net_dev("lo"))
+        result = []
+        with gate.lock:
+            t = threading.Thread(target=lambda: result.append(gate.ready()))
+            t.start()
+            time.sleep(0.2)                       # past the lock-free check, now waiting for the lock
+            gate.found, gate.next_probe = True, 60.0
+        t.join(5)
+        self.assertEqual(result, [True])
+
     def test_header_trusted_with_the_override_and_outside_the_image(self):
         for env in (dict(self.IMAGE, HOMELAB_ALLOW_USERSPACE="1"), {}):
             gate = rs.TailscaleGate()
