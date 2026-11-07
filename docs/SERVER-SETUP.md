@@ -179,23 +179,10 @@ cron cuts a line at every unescaped `%`.) Or read them through a socket proxy wi
 
 ### Sources
 
-With a `sources` list the reference server becomes the Homelab Bridge and also reads other services' APIs
-([REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources)). Keys go in env variables, never in the config.
-
-| Type | Reads | Config keys | What the key needs |
-|---|---|---|---|
-| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` ([Docker](REFERENCE_SERVER.md#docker)) |
-| `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) ([Proxmox](REFERENCE_SERVER.md#proxmox)) |
-
-Restart, start and stop are off until you list containers or VMIDs under `actions`
-([Source actions](REFERENCE_SERVER.md#source-actions)).
-
-### Sources
-
 With a `sources` list the reference server is the Homelab Bridge: it reads other services' APIs and shows what
 they report on Today and in Lab. Copy the `server/sources/` folder next to `reference_server.py`. The common keys
 (`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources);
-each module's docstring has the details.
+each module's docstring has the details. Keys go in env variables, never in the config.
 
 #### Pick your sources
 
@@ -207,7 +194,8 @@ are two sources with different names.
 | Uptime Kuma | `uptime-kuma` | Down monitors as problems, a card "11 of 12 up" |
 | Gatus | `gatus` | Failing endpoints as problems, a card |
 | A script or another server that writes JSON | `json` ([REFERENCE_SERVER.md → JSON feed](REFERENCE_SERVER.md#json-feed)) | Whatever it sends: problems, hosts, cards, services. On the bridge's own machine, `cards_dir` is simpler |
-| Docker, Proxmox | coming (plan M1.5) | Containers, hosts with 24 h history |
+| Docker (through a socket proxy) | `docker` | Unhealthy, restarting and crashed containers as problems |
+| Proxmox VE | `proxmox` | Nodes as hosts with 24 h history, VMs and containers per node |
 | Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | coming (plan M1.6) | DNS card, health problems, a download queue |
 
 Each source, its keys and the access it needs:
@@ -216,6 +204,11 @@ Each source, its keys and the access it needs:
 |---|---|---|---|---|
 | `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
 | `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
+| `docker` | One Docker host's containers: unhealthy, restarting, dead and crashed ones as problems | `url` (a socket proxy), `host`, `ignore`, `actions` | No key; a socket proxy that allows only `GET /containers` ([Docker](REFERENCE_SERVER.md#docker)) | Docker Engine 29 (API 1.52) |
+| `proxmox` | Nodes as hosts with 24 h history, VMs and containers as each node's container list | `url`, `token_id`, `key_env`, `ca_file`, `expect_running`, `actions` | An API token with `Sys.Audit` and `VM.Audit` (or PVEAuditor) ([Proxmox](REFERENCE_SERVER.md#proxmox)) | Proxmox VE 9.0 |
+
+Restart, start and stop are off until you list containers or VMIDs under `actions`
+([Source actions](REFERENCE_SERVER.md#source-actions)).
 
 ```json
 "sources": [

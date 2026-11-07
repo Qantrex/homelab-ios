@@ -8,7 +8,7 @@ the made-up tailnet `tail1234.ts.net`; use yours.
 | You run | Setup | Today then shows |
 |---|---|---|
 | Home Assistant, nothing else you want to see | [A. Only Home Assistant](#a-only-home-assistant) | "Home." with what is on and what doesn't answer, and your Home tiles. No Lab, no widgets with data |
-| Services like Uptime Kuma or Gatus, a Linux box with Docker | [B. Homelab Bridge](#b-homelab-bridge) | "All quiet." or "1 problem.", problems from your services, Lab with your machines and cards, widgets |
+| Services like Uptime Kuma, Gatus, Docker or Proxmox | [B. Homelab Bridge](#b-homelab-bridge) | "All quiet." or "1 problem.", problems from your services, Lab with your machines and cards, widgets |
 | Your own agent or scripts | [C. Your own server](#c-your-own-server) | What your server sends: from a status line up to actions and chat |
 
 You can combine B or C with A: the app shows one Homelab server ("Show data from") and one Home Assistant ("Home
@@ -74,12 +74,14 @@ your tailnet (`homelab-bridge`). No port opens on your Docker host.
 | Uptime Kuma (a status page) | `uptime-kuma` | Works |
 | Gatus | `gatus` | Works |
 | Anything that answers JSON in the shape of `/state` | `json` | Works |
-| Docker, Proxmox | `docker`, `proxmox` | Coming (plan M1.5) |
-| Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | `pihole`, `adguard`, `sonarr`, `radarr`, `qbittorrent` | Coming (plan M1.6) |
+| Docker (through a socket proxy) | `docker` | Works |
+| Proxmox VE (an API token, read-only) | `proxmox` | Works |
+| Pi-hole, AdGuard Home, Sonarr, Radarr, qBittorrent | – | Coming (plan M1.6) |
 | A Homepage `services.yaml` | import | Coming (plan M1.8) |
 
-Details per source: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources). Without Docker, the same server runs as
-one Python file with systemd ([SERVER-SETUP.md → the 5-minute path](SERVER-SETUP.md#the-5-minute-path-debian-or-ubuntu-behind-tailscale-serve)).
+Details per source: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources). For Docker, `docker compose --profile docker
+up -d` also starts the socket proxy ([REFERENCE_SERVER.md → Docker](REFERENCE_SERVER.md#docker)). Without Docker,
+the same server runs as one Python file with systemd ([SERVER-SETUP.md → the 5-minute path](SERVER-SETUP.md#the-5-minute-path-debian-or-ubuntu-behind-tailscale-serve)).
 
 You need Docker with Compose 2.17 or newer on Linux.
 
@@ -121,8 +123,8 @@ You need Docker with Compose 2.17 or newer on Linux.
    proxy** → **Save**. "Found" lists what it offers; **Watch** is checked → **Start**.
 
 What you see: Today says "All quiet." or "1 problem."; a down monitor is a problem ("Jellyfin: down"). Lab
-shows the bridge as a machine, a card per monitor source ("11 of 12 up") and monitors with a public link in the
-launcher. The status and
+shows the bridge as a machine, Proxmox nodes with a 24 h history, a card per monitor source ("11 of 12 up") and
+monitors with a public link in the launcher. Settings → Diagnostics lists each source as ok or failing. The status and
 hosts widgets work, also with the app closed. Actions and Chat stay hidden: they are off on the bridge. Screenshots of
 Today and Lab from the demo: [Today](https://github.com/Qantrex/homelab-ios/blob/main/docs/screenshots/01-today.png),
 [Lab](https://github.com/Qantrex/homelab-ios/blob/main/docs/screenshots/04-lab.png) (the demo has more than a new
@@ -175,7 +177,7 @@ change the app itself: [ADAPTING.md](ADAPTING.md).
 | Home Assistant: "The server rejected the request." (400) | HA doesn't trust the proxy: `use_x_forwarded_for` and `trusted_proxies` as in A, step 1 |
 | "This server uses a token over plain http. …" | Use the `https://….ts.net` address from `tailscale serve` |
 | "The server's answer couldn't be read. …" | The address points at a web page. Use the base address; the app adds `/api/v1` |
-| A source shows as one warning, for example "Kuma: 401" | Its key, URL or slug is wrong, or the service is down. `docker compose logs bridge` and `/api/v1/info` (`sources`) say which |
+| A source shows as one warning, for example "Kuma: 401" | Its key, URL or slug is wrong, or the service is down. Settings → Diagnostics → Sources and `docker compose logs bridge` say which |
 | The widgets stay empty | Open the app once. With only Home Assistant they have nothing to show (see A) |
 | The app doesn't open | It expired after 7 days: install it again |
 
