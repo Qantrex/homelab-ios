@@ -4,7 +4,9 @@ The app is a SwiftPM package. [xtool](https://github.com/xtool-org/xtool) turns 
 extension, on Linux or macOS. There is no Xcode project. `xtool.yml` names the bundle ID, the Info.plists, the
 entitlements, the icon and the widget extension.
 
-If you only want to use the app, take the release IPA or the SideStore source instead ([SIDESTORE.md](SIDESTORE.md)).
+There is no release yet, so for now you build and install it yourself: from Linux see
+[INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md). After the first release you can take the release IPA instead
+([SIDESTORE.md](SIDESTORE.md); SideStore is not verified yet).
 
 ## Linux
 
@@ -68,7 +70,8 @@ phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
 
 `scripts/install-dev` signs with your own Apple ID. Before the first run:
 
-- `xtool auth login` (a free Apple ID works; the app then expires after 7 days, run it again).
+- `xtool auth login` (a free Apple ID works; the app then stops opening after 7 days: run `scripts/install-dev`
+  again, your data stays. Today warns 2 days before, and Settings → Diagnostics → Install expires shows the date).
 - The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
 - On Linux, usbmuxd must be running.
 
@@ -115,7 +118,7 @@ their next reload; remove and add them again if one still shows the old text aft
 Linux builds record the deployment target (iOS 18) as the SDK version in the binary
 ([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). The minimum iOS is correct, so the app
 installs on iOS 18 and newer. Only an App Store upload would be refused, and this app doesn't use the App Store.
-CI builds the release IPA on macOS, where the bug doesn't happen.
+CI never builds an IPA to install: releases are built by hand ([RELEASE.md](RELEASE.md)).
 
 ## Tests
 
@@ -152,6 +155,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | Argument | Effect |
 |---|---|
 | `-HomelabDemo YES` | Turns on the demo servers (a demo homelab and a demo Home Assistant, no network) and shows the demo homelab |
+| `-HomelabDemo NO` | Removes the demo servers again (like the Demo servers switch in Settings); your own servers stay. `scripts/phone-shots` ends with it |
 | `-HomelabDemoScene <scene>` | What the demo homelab shows in this launch: `calm` (default: an ordinary current day, all quiet, one proposal; `state-demo.json`) or `problem` (the stress scene for screenshots: an unhealthy and an exited container, a warning, U6 delays; `state-problem.json`) |
 | `-HomelabServer <url>` | Adds a Homelab API server with this address (login: Tailscale / proxy) and shows it. The URL rules below apply |
 | `-HomelabTab <tab>` | Opens a tab: `today`, `actions`, `chat`, `lab` or `settings` (`overview` and `home` mean Today). A tab that depends on a server feature (Actions, Chat) opens once the server's info shows it |
