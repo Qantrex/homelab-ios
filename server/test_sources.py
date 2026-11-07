@@ -838,6 +838,15 @@ class IdentityWithSources(unittest.TestCase):
                                     "actions": None}], allowed_logins=["you@example.com"])
         self.assertEqual(len(cfg.sources), 1)
 
+    def test_empty_logins_with_command_features_refused(self):
+        for raw in ({"chat_command": ["/bin/true"]}, {"pending_dir": "/tmp/p"},
+                    {"pending_dir": "/tmp/p", "actions": {"go": ["/bin/true"]}}):
+            with self.subTest(raw=raw):
+                with self.assertRaisesRegex(rs.ConfigError, "allowed_logins is empty"):
+                    self.config(**raw)
+                self.assertEqual(rs.Config(dict(raw, listen="127.0.0.1:0", tokens=[TOKEN]), {}).allowed_logins, [])
+                self.assertTrue(self.config(allowed_logins=["you@example.com"], **raw).allowed_logins)
+
     def test_tokens_only_or_no_sources_unchanged(self):
         self.assertEqual(self.config().allowed_logins, [])
         self.assertEqual(self.config(allowed_logins=[]).sources, [])

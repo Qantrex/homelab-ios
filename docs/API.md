@@ -79,7 +79,7 @@ item's `action` with the usual confirm (`Request <title>?`), `POST /actions/<nam
 `search` alone.
 
 Link: `homelab://search?q=dune` opens the Actions tab with the search screen and the text in the field (`q` optional,
-cut to 100 characters). Servers without the feature drop it.
+cut to 100 characters). The link does not search: the app waits for the user to tap Search (typing in the field still searches 400 ms after the last key). Servers without the feature drop it.
 
 **Card style `poster-grid`**: the items as posters, 3 columns (2 at accessibility text sizes), each poster 2:3 with the
 `title` (2 lines), `subtitle`, `value` and the item's `action` button under it. Older apps show it as `list`.

@@ -273,11 +273,29 @@ public extension HomelabState {
 }
 
 /// Text that may leave the phone (Diagnostics → Copy report, pasted into an issue): the tailnet part of `.ts.net`
-/// names and Tailscale `100.x` addresses masked, so a report doesn't give away the tailnet.
+/// names, Tailscale `100.x` addresses, LAN addresses (RFC 1918, link-local, IPv6 ULA/link-local), every other IPv4
+/// address and the server hosts you pass in (`knownHosts`: names that are not `.ts.net`) masked, so a report doesn't
+/// give away the tailnet or the home network.
 public enum Redact {
-    public static func hosts(_ text: String) -> String {
-        var out = text.replacing(/\.[A-Za-z0-9-]+\.ts\.net/) { _ in ".<tailnet>.ts.net" }
+    public static func hosts(_ text: String, knownHosts: [String] = []) -> String {
+        var out = text
+        // Longest first, so "nas.example.lan" goes before "example.lan". Names under .ts.net keep their own rule below.
+        for h in knownHosts.map({ $0.trimmingCharacters(in: .whitespaces) })
+            .filter({ !$0.isEmpty && !$0.lowercased().hasSuffix(".ts.net") })
+            .sorted(by: { $0.count > $1.count }) {
+            out = out.replacingOccurrences(of: h, with: "<host>", options: .caseInsensitive)
+        }
+        out = out.replacing(/\.[A-Za-z0-9-]+\.ts\.net/) { _ in ".<tailnet>.ts.net" }
         out = out.replacing(/\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "100.x.x.x" }
+        out = out.replacing(/\b(10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|192\.168|169\.254)\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "<lan-ip>" }
+        out = out.replacing(/\b(fe[89ab][0-9a-fA-F]|f[cd][0-9a-fA-F]{2}):[0-9a-fA-F:]*[0-9a-fA-F]/) { _ in "<lan-ip6>" }
+        out = out.replacing(/\b(?!127\.)[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b/) { _ in "<ip>" }
         return out
+    }
+
+    /// The host of a server for the report: `.ts.net` names keep their machine name, anything else is left out.
+    public static func host(_ host: String) -> String {
+        let masked = hosts(host)
+        return masked == host ? "<host>" : masked   // nothing masked by the address rules: a plain name, left out
     }
 }

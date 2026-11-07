@@ -1041,7 +1041,7 @@ public final class AppModel {
             dropRequests()
             request(.actions)
             let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value
-            openSearch = SearchRequest(query: SearchQuery.prefill(q ?? ""))
+            openSearch = SearchRequest(query: SearchQuery.prefill(q ?? ""), held: true)
             return
         }
         // homelab://deals: the Deals screen on the Actions tab (the ntfy push for an "act now" deal opens it).

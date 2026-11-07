@@ -20,6 +20,13 @@ public enum SearchQuery {
         String(normalize(text).prefix(maxLength))
     }
 
+    /// Typing searches by itself (400 ms after the last key); text a link put into the field (`held`) waits for the
+    /// user's submit until it is edited, so opening a link never sends a request on its own.
+    public static func runsOnItsOwn(_ text: String, held: String?) -> Bool {
+        guard let held, !held.isEmpty else { return true }
+        return normalize(text) != held
+    }
+
     /// Control characters and runs of white space become one space; the ends are trimmed.
     static func normalize(_ text: String) -> String {
         var out = ""
@@ -40,7 +47,9 @@ public enum SearchQuery {
 public struct SearchRequest: Equatable, Sendable, Identifiable {
     public let id = UUID()
     public let query: String
-    public init(query: String) { self.query = query }
+    /// True for text from a link: it fills the field and waits for the user's submit.
+    public let held: Bool
+    public init(query: String, held: Bool = false) { self.query = query; self.held = held }
 }
 
 /// The answer to `GET /search?q=`: the query as the server understood it and the cards that answer it (a

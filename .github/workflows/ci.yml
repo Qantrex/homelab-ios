@@ -104,8 +104,10 @@ jobs:
           dir=$RUNNER_TEMP/xtool
           mkdir -p "$dir"
           if curl -fsSL --retry 3 -o "$dir/xtool.app.zip" \
-               "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool.app.zip" \
-             && echo "$XTOOL_SHA256  $dir/xtool.app.zip" | shasum -a 256 -c -; then
+               "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool.app.zip"; then
+            # A downloaded file with the wrong checksum fails the job: no fallback to an unpinned binary.
+            echo "$XTOOL_SHA256  $dir/xtool.app.zip" | shasum -a 256 -c - \
+              || { echo "::error::xtool $XTOOL_VERSION: sha256 mismatch"; exit 1; }
             ditto -x -k "$dir/xtool.app.zip" "$dir"   # keeps symlinks and the code signature
             echo "$dir/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
             export PATH="$dir/xtool.app/Contents/Resources/bin:$PATH"
