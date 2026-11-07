@@ -1,0 +1,9 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-11-07 12:27:12.410 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
+2026-11-07 12:27:17.772 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
+2026-11-07 12:27:28.421 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
+2026-11-07 12:27:49.682 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
+2026-11-07 12:28:33.147 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
+2026-11-07 12:29:58.783 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
+2026-11-07 12:32:07.503 Df Homelab[37622:18c23] [com.qantrex.homelab:app] refresh failed: Can't reach 127.0.0.1. Is Tailscale (or your VPN) on?
