@@ -1,0 +1,18 @@
+{
+  "_comment": "Homelab Bridge with a docker and a proxmox source, against the fake upstreams (docs/REFERENCE_SERVER.md#docker, #proxmox). Start: python3 server/fake_upstream.py server/recordings/docker/normal.json --port 8796 & python3 server/fake_upstream.py server/recordings/proxmox/normal.json --port 8797 & then HOMELAB_TOKENS=<16+ characters> PVE_TOKEN=any-made-up-secret python3 server/reference_server.py --config server/examples/sources-docker-proxmox.json. For real use: the docker url is your socket proxy (http://socket-proxy:2375), the proxmox url https://<node>:8006 with ca_file.",
+
+  "name": "bridge docker and proxmox",
+  "listen": "127.0.0.1:8791",
+  "this_host": {"id": "bridge", "kind": "server", "disks": ["/"]},
+
+  "sources": [
+    {"name": "Docker", "type": "docker", "url": "http://127.0.0.1:8796", "host": "nas", "host_name": "nas",
+     "ignore": ["backup-job"],
+     "_actions": "Opt-in. Without the actions key the source is read-only and the socket proxy needs no POST.",
+     "actions": {"restart": ["sonarr", "gluetun"]}},
+    {"name": "Proxmox", "type": "proxmox", "url": "http://127.0.0.1:8797", "token_id": "monitor@pve!bridge",
+     "key_env": "PVE_TOKEN", "expect_running": [101, 201],
+     "_actions": "Opt-in. Needs VM.PowerMgmt on /vms/<vmid> for exactly these guests; stop is a clean shutdown.",
+     "actions": {"start": [103, {"vmid": 201, "label": "nginx"}], "stop": [101]}}
+  ]
+}

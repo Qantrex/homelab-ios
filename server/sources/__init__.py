@@ -18,8 +18,9 @@ The Runner here runs every source on its own `every`, each run in its own thread
 into /state and /services (`merged()`). Rules it enforces, whatever the module returns:
   - ids get the prefix "<source name>:"; a problem's `host` too (dropped unless the source sent that host)
   - a failing, crashing or hanging source is exactly one warning problem "<name>: <short error>", nothing else
-  - no actions: `action` on cards and items and `restartable` on containers are removed (bridge actions come later,
-    off by default, per item)
+  - no actions by default: `action` on cards and items and `restartable` on containers are removed. A source type
+    may offer actions (docker: restart, proxmox: start and stop). They exist only for the items its config lists under
+    `actions`; SourceActions serves them as the app's run-actions (GET /actions, POST /actions/<name>)
   - the card ids `today` and `departures` are refused (the app gives those ids a meaning)
   - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values are replaced by
     "***" in everything the source returns and in every error; fields named like a secret are dropped
@@ -68,6 +69,14 @@ RESERVED_CARD_IDS = ("today", "departures")
 RESERVED_ENV = ("HOMELAB_TOKENS", "HOMELAB_BUTTON_SECRET")
 SEVERITIES = ("problem", "warning")
 COMMON_KEYS = ("name", "type", "url", "every", "timeout", "insecure", "ca_file")
+# Source actions (opt-in per item): what an item or host id in an action's argument may look like, the app's limit
+# on an argument, how many presses an hour the bridge takes in all, and how long one press may take.
+ITEM_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+ACTION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+RESTART = "restart-container"   # the action the app's container list uses, with "<host id>:<container>"
+MAX_ARG = 64
+ACTIONS_PER_HOUR = 30
+ACTION_TIMEOUT = 60.0
 
 _URL_RE = re.compile(r"[a-z][a-z0-9+.-]*://\S+", re.I)
 _NO_PROXY = urllib.request.ProxyHandler({})
@@ -285,9 +294,48 @@ def parse(raw, env):
                 check(copy.deepcopy(cfg))
             except ValueError as exc:
                 raise ValueError("%s: %s" % (where, exc))
+        try:
+            allowed = _allowed(name, module, cfg)
+        except ValueError as exc:
+            raise ValueError("%s: %s" % (where, exc))
         specs.append({"name": name, "type": item["type"], "every": cfg["every"], "timeout": cfg["timeout"],
-                      "cfg": cfg, "module": module, "env": values})
+                      "cfg": cfg, "module": module, "env": values, "actions": allowed})
     return specs
+
+
+def _allowed(name, module, cfg):
+    """What a source's config allows it to do: [{"action", "host", "item", "label", "host_label", "arg"}], checked.
+
+    Empty without an `actions` key. The module's allowed(cfg) lists them from the config only (never from the
+    upstream); its ACTIONS describes each action name. The argument the app sends is "<name>:<host>:<item>" with a host
+    (the app's container Restart builds "<host id>:<container>", and host ids are prefixed) or "<name>:<item>". The
+    bridge only looks it up in this list and never parses it, so ARG_RE (for argv commands) doesn't apply."""
+    if cfg.get("actions") is None:
+        return []
+    meta = getattr(module, "ACTIONS", None)
+    if not callable(getattr(module, "allowed", None)) or not callable(getattr(module, "act", None)) \
+            or not isinstance(meta, dict):
+        raise ValueError("type %r has no actions" % cfg["type"])
+    out, args = [], set()
+    for a in module.allowed(copy.deepcopy(cfg)):
+        action, host, item = a.get("action"), a.get("host"), a.get("item")
+        if action not in meta or not isinstance(action, str) or not ACTION_NAME_RE.fullmatch(action):
+            raise ValueError("unknown action %r" % (action,))
+        if not isinstance(item, str) or not ITEM_RE.fullmatch(item):
+            raise ValueError("actions: %r is not a valid name (A-Z a-z 0-9 _ . -)" % (item,))
+        if host is not None and (not isinstance(host, str) or not ITEM_RE.fullmatch(host)):
+            raise ValueError("actions: host %r is not a valid id" % (host,))
+        arg = "%s:%s:%s" % (name, host, item) if host is not None else "%s:%s" % (name, item)
+        if len(arg) > MAX_ARG:
+            raise ValueError("actions: %r is longer than %d characters, so the app can't send it (use a shorter "
+                             "source name or host)" % (arg, MAX_ARG))
+        if (action, arg) in args:
+            continue
+        args.add((action, arg))
+        out.append({"action": action, "host": host, "item": item, "arg": arg,
+                    "label": as_text(a.get("label")) or item,
+                    "host_label": as_text(a.get("host_label")) or host or ""})
+    return out
 
 
 def env_names(specs):
@@ -448,9 +496,10 @@ def _no_actions(card):
     return card
 
 
-def normalize(name, result, secrets=(), checked=None, logf=lambda m: None):
+def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, restartable=frozenset()):
     """A source's raw result → {"problems", "hosts", "cards", "services"} as the app may see it (rules in the
-    module docstring). Raises SourceError when the result is not a JSON object."""
+    module docstring). `restartable`: the (host id, container name) pairs on the source's restart list; only those
+    get `restartable: true`. Raises SourceError when the result is not a JSON object."""
     if not isinstance(result, dict):
         raise SourceError("collect() returned %s, not a dict" % type(result).__name__)
     try:
@@ -466,8 +515,9 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None):
     hosts = []
     for h in _pick(result.get("hosts"), MAX_HOSTS, has_id, "host", name, logf):
         h = dict(h)
-        h.setdefault("name", h["id"])
-        h["id"] = prefix + h["id"]
+        raw_id = h["id"]
+        h.setdefault("name", raw_id)
+        h["id"] = prefix + raw_id
         hist = h.get("history")
         if isinstance(hist, dict):
             for k, v in hist.items():
@@ -477,6 +527,8 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None):
             h["container_list"] = [c for c in h["container_list"] if isinstance(c, dict)]
             for c in h["container_list"]:
                 c.pop("restartable", None)
+                if (raw_id, c.get("name")) in restartable:
+                    c["restartable"] = True
         hosts.append(h)
     host_ids = {h["id"] for h in hosts}
 
@@ -553,6 +605,7 @@ class Runner:
         self.log = logf
         self.tick_seconds = tick
         self.secrets = sorted({v for s in specs for v in s["env"].values() if v}, key=len, reverse=True)
+        self.actions = SourceActions(specs, self.secrets, logf)
         self.states = {s["name"]: _State() for s in specs}
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -608,7 +661,8 @@ class Runner:
         result, error = None, None
         try:
             raw = spec["module"].collect(copy.deepcopy(spec["cfg"]), fetch)
-            result = normalize(name, raw, self.secrets, now_iso(), self.log)
+            restartable = {(a["host"], a["item"]) for a in spec.get("actions", ()) if a["action"] == RESTART}
+            result = normalize(name, raw, self.secrets, now_iso(), self.log, restartable)
         except SourceError as exc:
             error = scrub(exc, self.secrets)
         except Exception as exc:  # noqa: BLE001 - a crash is one warning, not a dead server
@@ -684,3 +738,106 @@ class Runner:
                     row["insecure"] = True
                 rows.append(row)
         return rows
+
+
+# --------------------------------------------------------------------------------------------- actions
+
+class SourceActions:
+    """Actions of sources, off by default and per item: only what a source's config lists under `actions` (docker:
+    restart, proxmox: start and stop). Served as the app's run-actions: listing() is GET /actions, run() is
+    POST /actions/<name>. The app asks first (a red confirm for destructive ones); the server checks again here:
+    the argument must be exactly one on the list (it is looked up, never parsed or put into a URL), no payload, at
+    most ACTIONS_PER_HOUR presses an hour in all, one press per item at a time. Errors never hold a key or a URL."""
+
+    def __init__(self, specs, secrets=(), logf=lambda m: None, per_hour=ACTIONS_PER_HOUR):
+        self.secrets = secrets
+        self.log = logf
+        self.per_hour = per_hour
+        self.table = {}     # (action, arg) -> (spec, entry)
+        self.meta = {}      # action -> its ACTIONS entry (from the first source type that offers it)
+        self.lock = threading.Lock()
+        self.recent = []    # monotonic times of the presses in the last hour
+        self.running = set()
+        for spec in specs:
+            for a in spec.get("actions", ()):
+                self.table[(a["action"], a["arg"])] = (spec, a)
+                self.meta.setdefault(a["action"], dict(spec["module"].ACTIONS[a["action"]]))
+
+    def __bool__(self):
+        return bool(self.table)
+
+    def names(self):
+        return list(self.meta)
+
+    def listing(self):
+        """{"actions": [ActionSpec]}: one per action name, one arg variant per source and host with the items as a
+        choice. A variant builds exactly the arguments on the list, nothing else."""
+        out = []
+        for action, meta in self.meta.items():
+            groups = {}
+            for (name, _), (spec, a) in self.table.items():
+                if name == action:
+                    groups.setdefault((spec["name"], a["host"]), []).append(a)
+            variants = []
+            for (source, host), entries in groups.items():
+                items = {"kind": "choice", "label": as_text(meta.get("part"), "Item"),
+                         "options": [{"value": a["item"], "label": a["label"]} for a in entries]}
+                if host is None:
+                    variants.append({"label": source, "parts": [{"kind": "literal", "text": source + ":"}, items]})
+                else:
+                    shown = entries[0]["host_label"]
+                    variants.append({"label": "%s · %s" % (source, shown) if shown != source else source,
+                                     "parts": [{"kind": "choice", "label": "Host",
+                                                "options": [{"value": "%s:%s" % (source, host), "label": shown}]},
+                                               {"kind": "literal", "text": ":"}, items]})
+            item = {"name": action, "label": as_text(meta.get("label"), action), "fields": [], "arg": variants}
+            for key in ("icon", "hint"):
+                if as_text(meta.get(key)):
+                    item[key] = meta[key]
+            if meta.get("destructive") is True:
+                item["destructive"] = True
+            out.append(item)
+        return {"actions": out}
+
+    def run(self, action, body):
+        """POST /actions/<action> with {arg, payload}: (status, answer)."""
+        if action not in self.meta:
+            return 404, {"error": "not an action the app may start"}
+        arg, payload = body.get("arg") or "", body.get("payload") or {}
+        if not isinstance(arg, str) or not isinstance(payload, dict):
+            return 400, {"error": "arg must be text and payload an object"}
+        if payload:
+            return 400, {"error": "%s takes no fields" % action}
+        entry = self.table.get((action, arg))
+        if entry is None:
+            return 400, {"error": "not on this server's %s list" % action}
+        spec, a = entry
+        key = (action, arg)
+        with self.lock:
+            now = time.monotonic()
+            self.recent = [t for t in self.recent if now - t < 3600]
+            if len(self.recent) >= self.per_hour:
+                return 429, {"error": "more than %d actions in the last hour" % self.per_hour}
+            if key in self.running:
+                return 429, {"error": "%s is still running" % a["label"]}
+            self.recent.append(now)
+            self.running.add(key)
+        try:
+            fetch = Fetch(spec["cfg"], spec["env"], deadline=time.monotonic() + ACTION_TIMEOUT)
+            text = spec["module"].act(copy.deepcopy(spec["cfg"]), fetch, action, a["host"], a["item"])
+            ok, text = True, as_text(text) or "Done."
+        except SourceError as exc:
+            ok, text = False, "%s: %s failed (%s)" % (spec["name"], a["label"], exc)
+        except Exception as exc:  # noqa: BLE001 - a bug in a module is a failed press, not a dead server
+            ok, text = False, "%s: %s failed (%s)" % (spec["name"], a["label"], short_error(exc))
+            trace = traceback.format_exc()
+            for s in self.secrets:
+                if len(s) >= MIN_SCRUB:
+                    trace = trace.replace(s, "***")
+            self.log("source %s: action %s crashed:\n%s" % (spec["name"], action, trace))
+        finally:
+            with self.lock:
+                self.running.discard(key)
+        text = scrub(text, self.secrets)
+        self.log("source %s: %s %s: %s" % (spec["name"], action, arg, "ok" if ok else text))
+        return 200, {"ok": ok, "text": text}

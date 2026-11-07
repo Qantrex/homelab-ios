@@ -1,0 +1,96 @@
+{
+ "_about": "Made up. Proxmox VE answering oddly: unknown fields, numbers as strings, wrong types, junk rows, a node name that must never reach a URL, a duplicate node, a node in an unknown state, a guest list that isn't a list and one that fails (500). The source must not crash.",
+ "routes": {
+  "GET /api2/json/nodes": {
+   "json": {
+    "data": [
+     {
+      "node": "pve1",
+      "status": "online",
+      "maxcpu": "8",
+      "mem": "x",
+      "maxmem": 0,
+      "new_field": [
+       1
+      ]
+     },
+     {
+      "node": "../../access/users",
+      "status": "online"
+     },
+     {
+      "node": "pve1",
+      "status": "offline"
+     },
+     {
+      "node": "pve3",
+      "status": "unknown"
+     },
+     {
+      "node": 5
+     },
+     "a string",
+     null
+    ]
+   }
+  },
+  "GET /api2/json/nodes/pve1/status": {
+   "json": {
+    "data": {
+     "loadavg": "high",
+     "memory": [
+      1,
+      2
+     ],
+     "rootfs": {
+      "total": "100",
+      "used": "bad"
+     },
+     "cpuinfo": null
+    }
+   }
+  },
+  "GET /api2/json/nodes/pve1/rrddata": {
+   "json": {
+    "data": [
+     {
+      "time": 1762495200,
+      "loadavg": "0.5",
+      "memused": 1,
+      "memtotal": 0
+     },
+     {
+      "time": "soon"
+     },
+     {
+      "time": -5
+     },
+     {
+      "time": 1e+300
+     },
+     null,
+     "row",
+     {
+      "time": 1762498800,
+      "loadavg": true,
+      "rootused": 50,
+      "roottotal": 100,
+      "token": "not-a-real-one"
+     }
+    ]
+   }
+  },
+  "GET /api2/json/nodes/pve1/qemu": {
+   "json": {
+    "data": "nope"
+   }
+  },
+  "GET /api2/json/nodes/pve1/lxc": {
+   "status": 500,
+   "json": {
+    "data": null,
+    "message": "internal error"
+   }
+  }
+ }
+}
