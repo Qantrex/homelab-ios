@@ -102,6 +102,16 @@ import Testing
         #expect(SourceStatus(name: "x", state: .ok).reportLine(now: now) == "source x (?): ok")
     }
 
+    @Test func plainHTTPIsAWarning() throws {
+        let json = #"[{"name":"Sonarr","type":"sonarr","state":"ok","plain_http":true},{"name":"x","plain_http":"no"}]"#
+        let s = try #require(try info("{\(base),\"sources\":\(json)}").sources)
+        #expect(s[0].plainHTTP && !s[0].insecure && !s[1].plainHTTP)
+        #expect(s[0].reportLine() == "source Sonarr (sonarr): ok, plain http")
+        let written = try #require(String(data: JSONEncoder().encode(s), encoding: .utf8))
+        #expect(written.components(separatedBy: "plain_http").count == 2)   // only written as true
+        #expect(try JSONDecoder().decode([SourceStatus].self, from: Data(written.utf8)) == s)
+    }
+
     @Test func theReportMasksTailnetNames() {
         let s = SourceStatus(name: "nas.tail1234.ts.net", type: "json", state: .failing, error: "100.101.102.103 refused")
         let line = Redact.hosts(s.reportLine())

@@ -31,7 +31,7 @@ rs.log = lambda msg: None
 SECRET = "st4tus-key-0123456789abcdef"
 ENV = {"LAB_KEY": SECRET}
 NORMAL = os.path.join(HERE, "recordings", "example", "normal.json")
-ROW_KEYS = {"name", "type", "state", "error", "checked", "last_ok", "insecure"}
+ROW_KEYS = {"name", "type", "state", "error", "checked", "last_ok", "insecure", "plain_http"}
 T1, T2, T3 = "2026-11-07T08:00:00+01:00", "2026-11-07T09:00:00+01:00", "2026-11-07T10:00:00+01:00"
 
 # Test-only source types: one that fails while _FAIL holds an error text, one that hangs until released.
@@ -137,12 +137,12 @@ class StatusRows(unittest.TestCase):
         self.assertEqual(row, {"name": "Slow", "type": "st-hang", "state": "failing", "error": "timeout"})
 
     def test_only_documented_keys(self):
-        s = spec("Kuma", insecure=True)
+        s = spec("Kuma", insecure=True, url="http://192.0.2.10:3001")   # its key over plain http: plain_http
         runner = sources.Runner([s])
         runner.run_one(s)
         _FAIL["Kuma"] = "500"
         runner.run_one(s)
-        self.assertEqual(set(runner.status()[0]), ROW_KEYS)   # failing after a good run, insecure: every key
+        self.assertEqual(set(runner.status()[0]), ROW_KEYS)   # failing after a good run, insecure, plain http: every key
 
 
 def openapi_source_status():

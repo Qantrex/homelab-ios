@@ -388,6 +388,11 @@ components:
           description: >-
             Only sent as `true`: the source skips the TLS certificate check (`insecure: true` in its config, for a
             self-signed Proxmox or TrueNAS). Clients show it as a warning.
+        plain_http:
+          type: boolean
+          description: >-
+            Only sent as `true`: the source sends its key over plain `http://` to a host that is not loopback, so
+            anyone on that network path can read it. Clients show it as a warning.
     State:
       type: object
       properties:

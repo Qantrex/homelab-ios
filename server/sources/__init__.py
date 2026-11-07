@@ -23,15 +23,24 @@ into /state and /services (`merged()`). Rules it enforces, whatever the module r
     items its config lists under `actions`; SourceActions serves them as the app's run-actions (GET /actions,
     POST /actions/<name>). An item's `action` stays only when its name and arg are on that list
   - the card ids `today` and `departures` are refused (the app gives those ids a meaning)
-  - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values are replaced by
-    "***" in everything the source returns and in every error; fields named like a secret are dropped
-  - at most 100 problems, 100 hosts, 50 cards and 100 services per source; history series at most 288 points
+  - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values (stripped; one
+    with a control character stops the start) are replaced by "***" in everything the source returns and in every
+    error, also escaped, %-encoded and in base64; fields named like a secret are dropped. A key sent over plain
+    http:// to a host that is not loopback is a warning in the source's status (`plain_http`)
+  - texts from upstream (problems, card and item titles, values) get no URLs (`<url>`) and no `key=value` pairs
+    with a secret-named key, at most 200 characters (a card's `text` 1000); a link with a user or password, or a key
+    in its query, is dropped
+  - at most 100 problems, 100 hosts, 50 cards and 100 services per source, 200 items per card and 200 containers per
+    host; history series at most 288 points
 """
 
+import base64
 import copy
-import http.client
 import datetime
+import functools
 import hashlib
+import http.client
+import ipaddress
 import importlib
 import importlib.util
 import json
@@ -55,6 +64,10 @@ MAX_HOSTS = 100
 MAX_CARDS = 50
 MAX_SERVICES = 100
 MAX_HISTORY = 288
+MAX_ITEMS = 200        # per card
+MAX_CONTAINERS = 200   # per host
+MAX_TEXT = 200         # a problem's text; a card's or an item's title, subtitle, value
+MAX_LONG_TEXT = 1000   # a card's `text` (style text)
 MAX_ERROR = 120
 MIN_SCRUB = 4   # secrets shorter than this can't be told apart from ordinary text; the config check warns
 
@@ -80,6 +93,11 @@ ACTIONS_PER_HOUR = 30
 ACTION_TIMEOUT = 60.0
 
 _URL_RE = re.compile(r"[a-z][a-z0-9+.-]*://\S+", re.I)
+# `apikey=abc` or `token: abc` in an upstream's text (an *arr health message that quotes an indexer's address).
+_SECRET_PAIR_RE = re.compile(r"(?i)\b([\w.-]*(?:key|token|password|passwd|secret|auth)[\w.-]*)(\s*[=:]\s*)"
+                             r"([^\s&;,'\"()<>\[\]{}]+)")
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
+BAD_REQUEST = "invalid request (a key or the URL holds a character that is not allowed)"
 _NO_PROXY = urllib.request.ProxyHandler({})
 
 # Types registered by code instead of a file (tests). type -> module-like object with collect().
@@ -116,7 +134,8 @@ def now_iso():
 
 
 def short_error(exc):
-    """A short text for an exception, without URLs."""
+    """A short text for an exception, without URLs. Of a ValueError or an http.client error only its class name: they
+    quote what they refuse ("Invalid header value b'<key>\\n'"), and that may be a key."""
     if isinstance(exc, SourceError):
         text = str(exc)
     elif isinstance(exc, urllib.error.HTTPError):
@@ -134,18 +153,53 @@ def short_error(exc):
         text = "TLS certificate not trusted (set ca_file, or insecure: true)"
     elif isinstance(exc, ssl.SSLError):
         text = "TLS error: %s" % (getattr(exc, "reason", None) or exc)
+    elif isinstance(exc, (ValueError, http.client.HTTPException)):
+        text = exc.__class__.__name__
     else:
         detail = str(exc)
         text = "%s: %s" % (exc.__class__.__name__, detail) if detail else exc.__class__.__name__
     return text
 
 
-def scrub(text, secrets):
-    """Secrets become ***, URLs <url>, one line, at most MAX_ERROR characters."""
-    text = str(text)
+def _b64_cores(raw):
+    """The parts of base64 that depend only on `raw`, wherever it sits in the encoded bytes (all 3 alignments; Basic
+    auth encodes "user:password")."""
+    out = []
+    for k in range(3):
+        enc = base64.b64encode(b"\0" * k + raw).decode("ascii")
+        core = enc[-(-8 * k // 6):8 * (k + len(raw)) // 6]
+        out += [core, core.replace("+", "-").replace("/", "_")]
+    return [c for c in out if len(c) >= 8]
+
+
+@functools.lru_cache(maxsize=64)
+def secret_forms(secrets):
+    """Every form a text may hold the secrets (a tuple) in: as they are, repr- and JSON-escaped, %-encoded, base64.
+    Longest first, so a longer form is replaced before a shorter one inside it."""
+    forms = set()
     for s in secrets:
-        if len(s) >= MIN_SCRUB:
-            text = text.replace(s, "***")
+        if not isinstance(s, str) or len(s) < MIN_SCRUB:
+            continue
+        raw = s.encode("utf-8")
+        forms.update({s, repr(s)[1:-1], repr(raw)[2:-1], ascii(s)[1:-1], json.dumps(s)[1:-1],
+                      s.encode("unicode_escape").decode("ascii"),
+                      urllib.parse.quote(s, safe=""), urllib.parse.quote_plus(s, safe=""),
+                      urllib.parse.quote(s), urllib.parse.quote_plus(s)})
+        forms.update(_b64_cores(raw))
+    return tuple(sorted((f for f in forms if len(f) >= MIN_SCRUB), key=len, reverse=True))
+
+
+def hide_secrets(text, secrets):
+    """`text` with every form of every secret (secret_forms) replaced by ***."""
+    for f in secret_forms(tuple(secrets)):
+        if f in text:
+            text = text.replace(f, "***")
+    return text
+
+
+def scrub(text, secrets):
+    """Secrets (in every form) become ***, URLs <url>, one line, at most MAX_ERROR characters."""
+    text = hide_secrets(str(text), secrets)
     text = _URL_RE.sub("<url>", text)
     text = " ".join(text.split())
     return text[:MAX_ERROR] or "error"
@@ -288,7 +342,14 @@ def parse(raw, env):
                 raise ValueError("%s.%s must name an env variable (A-Z, 0-9, _)" % (where, key))
             if var in RESERVED_ENV:
                 raise ValueError("%s.%s: %s is the server's own secret" % (where, key, var))
-            values[var] = env.get(var, "")
+            value = env.get(var, "")
+            value = value.strip() if isinstance(value, str) else ""
+            if _CONTROL_RE.search(value):
+                # Only the variable's name, never its value.
+                raise ValueError("%s.%s: the env variable %s holds a line break or another control character inside "
+                                 "the key. Write the key on one line (in an env file: %s=the key)"
+                                 % (where, key, var, var))
+            values[var] = value
         check = getattr(module, "check", None)
         if callable(check):
             try:
@@ -300,8 +361,48 @@ def parse(raw, env):
         except ValueError as exc:
             raise ValueError("%s: %s" % (where, exc))
         specs.append({"name": name, "type": item["type"], "every": cfg["every"], "timeout": cfg["timeout"],
-                      "cfg": cfg, "module": module, "env": values, "actions": allowed})
+                      "cfg": cfg, "module": module, "env": values, "actions": allowed,
+                      "plain_http": bool(values) and _plain_http(url)})
     return specs
+
+
+def is_loopback_host(host):
+    """localhost, 127.0.0.0/8 or ::1."""
+    host = (host or "").strip("[]").lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _plain_http(url):
+    """An http:// url to a host that is not loopback: a key sent there crosses the network in clear text."""
+    if not isinstance(url, str):
+        return False
+    u = urllib.parse.urlsplit(url)
+    return u.scheme.lower() == "http" and not is_loopback_host(u.hostname)
+
+
+def link_ok(url):
+    """A link the app may show: no user or password in it, and no key in its query."""
+    if not isinstance(url, str) or not url:
+        return False
+    try:
+        u = urllib.parse.urlsplit(url)
+        return not (u.username is not None or u.password is not None or "@" in u.netloc
+                    or SECRET_QUERY.search(u.query))
+    except ValueError:
+        return False
+
+
+def safe_text(text, limit=MAX_TEXT):
+    """An upstream's text for the app: URLs become <url>, `key=value` with a secret-named key `key=***`, at most
+    `limit` characters."""
+    text = _URL_RE.sub("<url>", text)
+    text = _SECRET_PAIR_RE.sub(lambda m: m.group(1) + m.group(2) + "***", text)
+    return text if len(text) <= limit else text[:limit - 1] + "…"
 
 
 def _allowed(name, module, cfg):
@@ -433,7 +534,10 @@ class Fetch:
             resp = self._opener.open(req, timeout=timeout)
         except urllib.error.HTTPError as exc:
             resp = exc
-        except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError) as exc:
+        except ValueError:
+            # http.client: "Invalid header value b'<key>\n'", an invalid URL. Its text may quote the key.
+            raise SourceError(BAD_REQUEST)
+        except (urllib.error.URLError, http.client.HTTPException, OSError) as exc:
             raise SourceError(short_error(exc))
         try:
             status = resp.status if hasattr(resp, "status") and resp.status else resp.code
@@ -461,16 +565,21 @@ class Fetch:
 # --------------------------------------------------------------------------------------------- merge
 
 def _clean(obj, secrets):
-    """Drop secret-named fields at any depth; secret values in any string become ***."""
+    """Drop secret-named fields at any depth; secret values (in every form, secret_forms) in any string become ***."""
     if isinstance(obj, dict):
         return {_clean(k, secrets): _clean(v, secrets) for k, v in obj.items() if not SECRET_FIELD.match(str(k))}
     if isinstance(obj, list):
         return [_clean(v, secrets) for v in obj]
     if isinstance(obj, str):
-        for s in secrets:
-            if len(s) >= MIN_SCRUB and s in obj:
-                obj = obj.replace(s, "***")
+        return hide_secrets(obj, secrets)
     return obj
+
+
+def _safe_fields(obj, keys):
+    """safe_text() on the text fields `keys` of a dict, in place; a card's `text` may be longer."""
+    for k in keys:
+        if isinstance(obj.get(k), str):
+            obj[k] = safe_text(obj[k], MAX_LONG_TEXT if k == "text" else MAX_TEXT)
 
 
 def _pick(items, limit, valid, kind, name, logf):
@@ -531,7 +640,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
                 if isinstance(v, list) and len(v) > MAX_HISTORY:
                     hist[k] = v[-MAX_HISTORY:]
         if isinstance(h.get("container_list"), list):
-            h["container_list"] = [c for c in h["container_list"] if isinstance(c, dict)]
+            h["container_list"] = [c for c in h["container_list"] if isinstance(c, dict)][:MAX_CONTAINERS]
             for c in h["container_list"]:
                 c.pop("restartable", None)
                 if (raw_id, c.get("name")) in restartable:
@@ -546,14 +655,15 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
         if not isinstance(p, dict) or not isinstance(p.get("text"), str) or not p["text"].strip():
             logf("source %s: skipped a problem without text" % name)
             continue
+        text = safe_text(p["text"])
         raw_id = p.get("id") if isinstance(p.get("id"), str) and p.get("id") else \
-            hashlib.sha256(p["text"].encode("utf-8")).hexdigest()[:10]
+            hashlib.sha256(text.encode("utf-8")).hexdigest()[:10]
         pid = prefix + raw_id
         if pid in seen:
             continue
         seen.add(pid)
         out = {"id": pid, "severity": p.get("severity") if p.get("severity") in SEVERITIES else
-               ("problem" if p.get("severity") is None else "warning"), "text": p["text"]}
+               ("problem" if p.get("severity") is None else "warning"), "text": text}
         if isinstance(p.get("host"), str) and prefix + p["host"] in host_ids:
             out["host"] = prefix + p["host"]
         problems.append(out)
@@ -567,9 +677,15 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
             continue
         c = dict(c)
         c["id"] = prefix + c["id"]
+        _safe_fields(c, ("title", "subtitle", "text"))
         if "items" in c:
             if isinstance(c["items"], list):
-                c["items"] = [i for i in c["items"] if isinstance(i, dict)]
+                c["items"] = [i for i in c["items"] if isinstance(i, dict)][:MAX_ITEMS]
+                for i in c["items"]:
+                    _safe_fields(i, ("title", "subtitle", "value"))
+                    if "url" in i and not link_ok(i["url"]):
+                        logf("source %s: dropped an item's link (a user, password or key in it)" % name)
+                        del i["url"]
             else:
                 del c["items"]
         if checked and "updated" not in c:
@@ -579,8 +695,9 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
     services = []
     for s in _pick(result.get("services"), MAX_SERVICES,
                    lambda x: isinstance(x, dict) and isinstance(x.get("name"), str) and x["name"]
-                   and isinstance(x.get("url"), str) and x["url"], "service", name, logf):
+                   and isinstance(x.get("url"), str) and link_ok(x["url"]), "service", name, logf):
         s = {k: v for k, v in s.items() if k in ("name", "url", "group", "icon", "description")}
+        _safe_fields(s, ("description",))
         s.setdefault("group", name)
         services.append(s)
     return {"problems": problems, "hosts": hosts, "cards": cards, "services": services}
@@ -625,6 +742,9 @@ class Runner:
                     logf("source %s: env %s is shorter than %d characters" % (s["name"], var, MIN_SCRUB))
             if s["cfg"].get("insecure"):
                 logf("source %s: warning: insecure: true, TLS certificates are not checked" % s["name"])
+            if s.get("plain_http"):
+                logf("source %s: warning: its key goes over plain http:// to a host that is not loopback; use https://"
+                     % s["name"])
 
     def read_soon(self, name):
         """Read this source again at the next tick (after an action changed something upstream)."""
@@ -648,10 +768,7 @@ class Runner:
             self.stop_event.wait(self.tick_seconds)
 
     def _scrub_log(self, text):
-        for s in self.secrets:
-            if len(s) >= MIN_SCRUB:
-                text = text.replace(s, "***")
-        return text
+        return hide_secrets(text, self.secrets)
 
     def tick(self):
         """Start every source that is due and not running."""
@@ -731,7 +848,8 @@ class Runner:
 
         {"name", "type", "state": "ok" | "failing" | "never", "error" (only while failing: the warning's short,
         scrubbed text), "checked" (the last finished run), "last_ok" (the last good run, kept while failing),
-        "insecure" (only when true: TLS certificates are not checked; clients show it as a warning)}. "never": no run
+        "insecure" (only when true: TLS certificates are not checked; clients show it as a warning), "plain_http" (only
+        when true: its key goes over plain http:// to a host that is not loopback; a warning too)}. "never": no run
         has finished yet. A run that hangs past `every + timeout` is "failing" with "timeout", the first one too."""
         rows = []
         now = time.monotonic()
@@ -750,6 +868,8 @@ class Runner:
                     row["last_ok"] = st.last_ok
                 if spec["cfg"].get("insecure"):
                     row["insecure"] = True
+                if spec.get("plain_http"):
+                    row["plain_http"] = True
                 rows.append(row)
         return rows
 
@@ -845,10 +965,7 @@ class SourceActions:
             ok, text = False, "%s: %s failed (%s)" % (spec["name"], a["label"], exc)
         except Exception as exc:  # noqa: BLE001 - a bug in a module is a failed press, not a dead server
             ok, text = False, "%s: %s failed (%s)" % (spec["name"], a["label"], short_error(exc))
-            trace = traceback.format_exc()
-            for s in self.secrets:
-                if len(s) >= MIN_SCRUB:
-                    trace = trace.replace(s, "***")
+            trace = hide_secrets(traceback.format_exc(), self.secrets)
             self.log("source %s: action %s crashed:\n%s" % (spec["name"], action, trace))
         finally:
             with self.lock:

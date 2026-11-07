@@ -7,6 +7,7 @@ Stdlib only; every upstream is server/fake_upstream.py replaying a recording on 
 """
 
 import ast
+import base64
 import copy
 import json
 import os
@@ -19,6 +20,7 @@ import time
 import types
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 from unittest import mock
 
@@ -647,6 +649,193 @@ class FakeUpstreamRules(unittest.TestCase):
     def test_cli_needs_a_recording(self):
         with self.assertRaises(ValueError):
             FakeUpstream({"nothing": 1})
+
+
+# Security review 2026-11-07: an env key with a line break made http.client raise "Invalid header value
+# b'<key>\n'", and that text reached /info, /state and the log. Every type that sends its key in a header:
+HEADER_TYPES = [("example", {}), ("json", {}), ("sonarr", {}), ("radarr", {}), ("qbittorrent", {}),
+                ("proxmox", {"token_id": "monitor@pve!bridge"})]
+LEAK_KEY = "Sup3rSecretLeakKey0123456789abcdef"
+
+
+def leak_forms(key):
+    """The forms the old scrub missed: escaped, %-encoded, in base64 (also inside Basic auth's user:password)."""
+    raw = key.encode()
+    return [repr(key)[1:-1], repr(raw)[2:-1], urllib.parse.quote(key, safe=""), key[:16],
+            base64.b64encode(raw).decode()[:16], base64.b64encode(b"bridge:" + raw).decode()[12:28]]
+
+
+class KeyLeakRules(unittest.TestCase):
+    """A key never reaches /info, /state or the log, whatever form an error puts it in."""
+
+    def test_trailing_line_break_is_stripped(self):
+        for kind, extra in HEADER_TYPES:
+            with self.subTest(kind=kind):
+                s = sources.parse([dict({"name": "S", "type": kind, "url": "http://127.0.0.1:9", "key_env": "K"},
+                                        **extra)], {"K": LEAK_KEY + "\r\n"})[0]
+                self.assertEqual(s["env"], {"K": LEAK_KEY})
+        with FakeUpstream(recording("example", "normal")) as up:
+            runner = run(spec(url=up.url, key_env="K", env={"K": "  " + LEAK_KEY + "\n"}))
+            self.assertIsNone(runner.states["Lab"].error)
+            self.assertEqual({k.lower(): v for k, v in up.requests[0]["headers"].items()}["x-api-key"], LEAK_KEY)
+
+    def test_control_character_inside_stops_the_start(self):
+        for kind, extra in HEADER_TYPES:
+            for bad in (LEAK_KEY[:10] + "\n" + LEAK_KEY[10:], LEAK_KEY + "\x00x", "x\r" + LEAK_KEY):
+                with self.subTest(kind=kind, bad=bad[:3]):
+                    with self.assertRaises(ValueError) as ctx:
+                        sources.parse([dict({"name": "S", "type": kind, "url": "http://127.0.0.1:9",
+                                             "key_env": "SONARR_KEY"}, **extra)], {"SONARR_KEY": bad})
+                    msg = str(ctx.exception)
+                    self.assertIn("SONARR_KEY", msg)
+                    self.assertIn("control character", msg)
+                    for form in leak_forms(LEAK_KEY):
+                        self.assertNotIn(form, msg)
+
+    def test_poc_without_parse_leaks_nothing(self):
+        """The PoC's key, put past parse(): the error is a fixed text, and no form of the key is anywhere."""
+        with FakeUpstream({"routes": {}}) as up:
+            for kind, extra in HEADER_TYPES:
+                with self.subTest(kind=kind):
+                    s = sources.parse([dict({"name": "S", "type": kind, "url": up.url, "key_env": "K"}, **extra)],
+                                      {"K": "placeholder"})[0]
+                    s["env"] = {"K": LEAK_KEY + "\n"}
+                    logs = []
+                    runner = sources.Runner([s], logf=logs.append)
+                    runner.run_one(s)
+                    status = runner.status()[0]
+                    self.assertEqual(status["error"], sources.BAD_REQUEST)
+                    seen = json.dumps([status, runner.merged()]) + "\n".join(logs)
+                    for form in leak_forms(LEAK_KEY):
+                        self.assertNotIn(form, seen)
+
+    def test_short_error_drops_the_text_of_value_errors(self):
+        import http.client
+        for exc in (ValueError("Invalid header value b'%s\\n'" % LEAK_KEY), http.client.InvalidURL(LEAK_KEY),
+                    http.client.BadStatusLine(LEAK_KEY), UnicodeEncodeError("latin-1", LEAK_KEY, 0, 1, "x")):
+            with self.subTest(exc=type(exc).__name__):
+                self.assertEqual(sources.short_error(exc), type(exc).__name__)
+
+    def test_scrub_and_clean_catch_every_form(self):
+        key = "k3y/with+odd=chars\"'%0123456789"
+        raw = key.encode()
+        forms = [key, repr(key)[1:-1], repr(raw)[2:-1], json.dumps(key)[1:-1], urllib.parse.quote(key, safe=""),
+                 urllib.parse.quote_plus(key), base64.b64encode(raw).decode(), base64.urlsafe_b64encode(raw).decode()]
+        for user in ("", "u", "bridge", "admin:"):   # Basic auth: base64 of "user:password" at every alignment
+            forms.append(base64.b64encode((user + ":").encode() + raw).decode())
+        for form in forms:
+            with self.subTest(form=form):
+                text = "before %s after" % form
+                self.assertNotIn(key[:12], sources.scrub(text, [key]))
+                out = sources.scrub(text, [key])
+                self.assertTrue(out.startswith("before ") and out.endswith(" after"), out)
+                cleaned = sources._clean({"a": [text]}, [key])["a"][0]
+                for f in forms[:6]:
+                    self.assertNotIn(f, cleaned)
+                self.assertNotIn(base64.b64encode(raw).decode()[4:20], cleaned)
+
+
+class UpstreamTextRules(unittest.TestCase):
+    """Texts from upstream: no URLs, no `key=value` secrets, capped; lists capped; links without users or keys."""
+
+    def norm(self, result):
+        logs = []
+        return sources.normalize("Kuma", result, (), "2026-11-07T10:00:00+01:00", logs.append), logs
+
+    def test_arr_health_with_apikey(self):
+        health = [{"source": "IndexerSearchCheck", "type": "error",
+                   "message": "Search failed: http://192.0.2.30:9696/api/v1/indexer?apikey=0a1b2c3d4e5f6a7b8c9d"},
+                  {"source": "IndexerRssCheck", "type": "warning",
+                   "message": "RSS sync failed (apikey=0a1b2c3d4e5f6a7b8c9d&t=search, token: 9f8e7d6c5b4a)"}]
+        with open(recording("sonarr", "normal"), encoding="utf-8") as fh:
+            routes = json.load(fh)["routes"]
+        routes["GET /api/v3/health"] = {"json": health}
+        with FakeUpstream({"routes": routes}) as up:
+            s = sources.parse([{"name": "Sonarr", "type": "sonarr", "url": up.url, "key_env": "K"}],
+                              {"K": "made-up-sonarr-key"})[0]
+            runner = run(s)
+        texts = [p["text"] for p in runner.merged()["problems"] if p["id"].startswith("Sonarr:health")]
+        self.assertEqual(texts, ["Sonarr: Search failed: <url>",
+                                 "Sonarr: RSS sync failed (apikey=***&t=search, token: ***)"])
+        self.assertNotIn("0a1b2c3d4e5f", json.dumps(runner.merged()))
+
+    def test_card_and_item_texts(self):
+        out, _ = self.norm({"cards": [{"id": "c", "title": "see https://x.example/?token=abc", "subtitle": "a" * 500,
+                                       "text": "t" * 1500,
+                                       "items": [{"title": "password=hunter22", "value": "v" * 300,
+                                                  "url": "https://nas.example/"}]}]})
+        card = out["cards"][0]
+        self.assertEqual(card["title"], "see <url>")
+        self.assertEqual(len(card["subtitle"]), sources.MAX_TEXT)
+        self.assertEqual(len(card["text"]), sources.MAX_LONG_TEXT)
+        self.assertEqual(card["items"][0]["title"], "password=***")
+        self.assertEqual(len(card["items"][0]["value"]), sources.MAX_TEXT)
+        self.assertEqual(card["items"][0]["url"], "https://nas.example/")
+        out, _ = self.norm({"problems": [{"text": "x" * 1000}]})
+        self.assertEqual(len(out["problems"][0]["text"]), sources.MAX_TEXT)
+
+    def test_items_and_containers_capped(self):
+        out, _ = self.norm({"cards": [{"id": "c", "items": [{"title": str(i)} for i in range(5000)]}],
+                            "hosts": [{"id": "h", "container_list": [{"name": "c%d" % i} for i in range(5000)]}]})
+        self.assertEqual(len(out["cards"][0]["items"]), sources.MAX_ITEMS)
+        self.assertEqual(len(out["hosts"][0]["container_list"]), sources.MAX_CONTAINERS)
+        self.assertEqual((sources.MAX_ITEMS, sources.MAX_CONTAINERS), (200, 200))
+
+    def test_links_with_a_user_or_key_are_dropped(self):
+        bad = ["http://admin:pw@192.0.2.1/", "https://user@nas.example/", "http://192.0.2.1/?api_key=abc",
+               "https://nas.example/x?token=abc&y=1"]
+        out, logs = self.norm({"services": [{"name": "S%d" % i, "url": u} for i, u in enumerate(bad)] +
+                                           [{"name": "Good", "url": "https://nas.example/?page=2"}],
+                               "cards": [{"id": "c", "items": [{"title": "t", "url": u} for u in bad]}]})
+        self.assertEqual([s["name"] for s in out["services"]], ["Good"])
+        self.assertEqual(out["cards"][0]["items"], [{"title": "t"}] * len(bad))
+        self.assertTrue(any("skipped a service" in line for line in logs))
+
+
+class PlainHttpRules(unittest.TestCase):
+    """A key over plain http:// to a host that is not loopback: a warning in the status row and the log."""
+
+    def test_plain_http_rows(self):
+        cases = [("http://192.0.2.10:8989", "K", True), ("http://nas.example:8989", "K", True),
+                 ("https://192.0.2.10:8989", "K", False), ("http://127.0.0.1:8989", "K", False),
+                 ("http://localhost:8989", "K", False), ("http://[::1]:8989", "K", False),
+                 ("http://192.0.2.10:8989", None, False)]
+        for url, key_env, warned in cases:
+            with self.subTest(url=url, key_env=key_env):
+                raw = {"name": "Lab", "type": "example" if key_env else "docker", "url": url}
+                if key_env:
+                    raw["key_env"] = key_env
+                s = sources.parse([raw], {"K": "a-key-0123456789"})[0]
+                logs = []
+                row = sources.Runner([s], logf=logs.append).status()[0]
+                self.assertEqual(row.get("plain_http"), True if warned else None)
+                self.assertEqual(any("plain http://" in line for line in logs), warned)
+
+
+class IdentityWithSources(unittest.TestCase):
+    """Identity mode with sources needs allowed_logins; without sources an empty list stays as it was."""
+
+    def config(self, **raw):
+        return rs.Config(dict({"listen": "127.0.0.1:0", "trust_identity_header": "Tailscale-User-Login"}, **raw), {})
+
+    def test_empty_logins_with_sources_refused(self):
+        for logins in (None, [], ["  "]):
+            with self.subTest(logins=logins):
+                raw = {"sources": [{"name": "Lab", "type": "example", "url": "http://127.0.0.1:9", "key_env": "K"}]}
+                if logins is not None:
+                    raw["allowed_logins"] = logins
+                with self.assertRaisesRegex(rs.ConfigError, "allowed_logins is empty"):
+                    self.config(**raw)
+        cfg = self.config(sources=[{"name": "Lab", "type": "example", "url": "http://127.0.0.1:9", "key_env": "K",
+                                    "actions": None}], allowed_logins=["you@example.com"])
+        self.assertEqual(len(cfg.sources), 1)
+
+    def test_tokens_only_or_no_sources_unchanged(self):
+        self.assertEqual(self.config().allowed_logins, [])
+        self.assertEqual(self.config(allowed_logins=[]).sources, [])
+        cfg = rs.Config({"listen": "127.0.0.1:0", "tokens": [TOKEN],
+                         "sources": [{"name": "Lab", "type": "example", "url": "http://127.0.0.1:9", "key_env": "K"}]}, {})
+        self.assertEqual(len(cfg.sources), 1)
 
 
 if __name__ == "__main__":
