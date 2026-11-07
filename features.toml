@@ -1181,7 +1181,7 @@ status = "partial"
 since = "2026-11-07"
 summary = "Import the IPA (or, after the first release, add the source) in SideStore; it signs with a free Apple ID and refreshes over Wi-Fi. A Shortcuts automation swaps LocalDevVPN and Tailscale for the daily refresh."
 sources = ["scripts/make-source"]
-device_tests = ["I1", "I2", "D1", "D2", "D3", "D4", "D5"]
+device_tests = ["I1", "I2", "I4", "D1", "D2", "D3", "D4", "D5"]
 docs = ["docs/SIDESTORE.md#installing-with-sidestore", "docs/SIDESTORE.md#sign-in-error--80045", "docs/SIDESTORE.md#3-the-7-day-refresh"]
 not_needed = { tests = "needs SideStore on a phone" }
 depends_on = ["sidestore", "sidestore-anisette", "localdevvpn", "tailscale", "free-apple-id", "ios-18"]

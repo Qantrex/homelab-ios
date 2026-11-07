@@ -28,7 +28,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
-| [Install expiry warning](#expiry-warning) | shipped | – | 1 | **X2** | 3 |
+| [Install expiry warning](#expiry-warning) | shipped | – | 1 | X2 | 3 |
 | [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | partial | – | 4 | DL10 | 3 |
 
 ### Cards (7)
@@ -140,7 +140,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Refresh, cache and offline view](#refresh-and-cache) | shipped | – | 7 | **R4**, O14, O15 | 2 |
 | [Diagnostics and copyable report](#diagnostics) | shipped | – | 1 | **ST4**, O17 | 2 |
 | [Reset everything](#reset-everything) | shipped | – | 3 | **ST5** | 1 |
-| [App Group found at runtime](#app-group) | shipped | – | 2 | **X3**, D3 | 2 |
+| [App Group found at runtime](#app-group) | shipped | – | 2 | X3, D3 | 2 |
 | [Sources in Diagnostics](#diagnostics-sources) | partial | – | 2 | ST4b | 3 |
 
 ### Security (3)
@@ -155,15 +155,15 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Look: true black, monochrome, motion, haptics](#look) | shipped | – | 1 | T3, I3 | 2 |
+| [Look: true black, monochrome, motion, haptics](#look) | shipped | – | 1 | T3, **I3** | 2 |
 | [Accessibility (Dynamic Type, VoiceOver, contrast)](#accessibility) | shipped | – | 2 | AX1, AX2, AX3 | 2 |
 
 ### Install (3)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Build and install with xtool (Linux or Mac)](#install-xtool) | shipped | – | n/a | **X1**, **X3** | 3 |
-| [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
+| [Build and install with xtool (Linux or Mac)](#install-xtool) | shipped | – | n/a | X1, X3 | 3 |
+| [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, **I2**, **I4**, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
 ### Server (18)
@@ -478,7 +478,7 @@ Two days before a free-Apple-ID install stops opening, Today says so ("This inst
 |---|---|
 | Sources | [AppExpiry.swift](../Sources/HomelabKit/AppExpiry.swift) |
 | Tests | `AppExpiryTests` |
-| Phone (DeviceTest.md) | **X2** |
+| Phone (DeviceTest.md) | X2 |
 | Docs | [README.md#limits](../README.md#limits), [docs/SETUP.md#build](SETUP.md#build), [docs/SIDESTORE.md#3-the-7-day-refresh](SIDESTORE.md#3-the-7-day-refresh) |
 | Depends on | [free-apple-id](#dep-free-apple-id) |
 
@@ -1357,7 +1357,7 @@ App, widget and share extension find their shared App Group at runtime (profile 
 |---|---|
 | Sources | [AppGroup.swift](../Sources/HomelabKit/AppGroup.swift), [Storage.swift](../Sources/HomelabKit/Storage.swift) |
 | Tests | `AppGroupTests`, `StorageTests/adoptsFilesFromTheLocalFolderOnce` |
-| Phone (DeviceTest.md) | **X3**, D3 |
+| Phone (DeviceTest.md) | X3, D3 |
 | Docs | [docs/SIDESTORE.md#app-group-why-the-widget-and-the-share-extension-work-after-sidestore](SIDESTORE.md#app-group-why-the-widget-and-the-share-extension-work-after-sidestore), [docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older](SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older) |
 | Depends on | [app-group-entitlement](#dep-app-group-entitlement), [xtool-app-group-patch](#dep-xtool-app-group-patch) |
 
@@ -1433,7 +1433,7 @@ True black (white in light mode), monochrome, thin borders, mono numbers; colour
 |---|---|
 | Sources | [Theme.swift](../Sources/HomelabDesign/Theme.swift), [Motion.swift](../Sources/HomelabDesign/Motion.swift), [Haptics.swift](../Sources/HomelabUI/Haptics.swift) |
 | Tests | `TileIconTests/symbolsExist` |
-| Phone (DeviceTest.md) | T3, I3 |
+| Phone (DeviceTest.md) | T3, **I3** |
 | CI screenshots | `demo-today-dark` |
 | Docs | [docs/DESIGN.md#design-rules](DESIGN.md#design-rules), [docs/ADAPTING.md#rules-to-keep](ADAPTING.md#rules-to-keep) |
 
@@ -1461,7 +1461,7 @@ Label and value stack at accessibility sizes, nothing cut; VoiceOver reads ages 
 |---|---|
 | Sources | [build-ipa](../scripts/build-ipa), [install-dev](../scripts/install-dev), [verify-ipa](../scripts/verify-ipa) |
 | Tests | n/a: shell scripts that need xtool and an iPhone; verify-ipa checks every build |
-| Phone (DeviceTest.md) | **X1**, **X3** |
+| Phone (DeviceTest.md) | X1, X3 |
 | Docs | [docs/INSTALL-FROM-LINUX.md#b-build-on-the-pc](INSTALL-FROM-LINUX.md#b-build-on-the-pc), [docs/SETUP.md#build](SETUP.md#build), [docs/SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older](SETUP.md#known-xtool-bug-no-app-group-with-a-free-apple-id-xtool-1240-and-older) |
 | Depends on | [xtool](#dep-xtool), [xtool-app-group-patch](#dep-xtool-app-group-patch), [ios-sdk](#dep-ios-sdk), [swift](#dep-swift), [usbmuxd](#dep-usbmuxd), [free-apple-id](#dep-free-apple-id), [ios-18](#dep-ios-18) |
 
@@ -1475,7 +1475,7 @@ Import the IPA (or, after the first release, add the source) in SideStore; it si
 |---|---|
 | Sources | [make-source](../scripts/make-source) |
 | Tests | n/a: needs SideStore on a phone |
-| Phone (DeviceTest.md) | I1, I2, D1, D2, D3, D4, D5 |
+| Phone (DeviceTest.md) | I1, **I2**, **I4**, D1, D2, D3, D4, D5 |
 | Docs | [docs/SIDESTORE.md#installing-with-sidestore](SIDESTORE.md#installing-with-sidestore), [docs/SIDESTORE.md#sign-in-error--80045](SIDESTORE.md#sign-in-error--80045), [docs/SIDESTORE.md#3-the-7-day-refresh](SIDESTORE.md#3-the-7-day-refresh) |
 | Depends on | [sidestore](#dep-sidestore), [sidestore-anisette](#dep-sidestore-anisette), [localdevvpn](#dep-localdevvpn), [tailscale](#dep-tailscale), [free-apple-id](#dep-free-apple-id), [ios-18](#dep-ios-18) |
 | Unsure | Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release. |

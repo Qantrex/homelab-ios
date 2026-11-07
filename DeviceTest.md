@@ -1,7 +1,7 @@
 # Device test: Homelab 1.0.0
 
-The checks that only a real iPhone can do. Use the IPA you will release, installed with `xtool install` (or, once it
-is verified, SideStore), Tailscale on, and a real server (the agent, or the reference server). Mark each row ✅ / ⚠️ /
+The checks that only a real iPhone can do. Use the IPA you will release, installed through SideStore (copy it into
+SideStore's folder with `scripts/phone push-ipa`, then My Apps → + → the IPA), Tailscale on, and a real server (the agent, or the reference server). Mark each row ✅ / ⚠️ /
 ❌ and add a note.
 
 Date: ____  iPhone model: iPhone 12 mini  iOS version: 18.7.3  App version (Settings → Diagnostics): ____
@@ -11,11 +11,13 @@ Installed with: SideStore 0.7.0 (since 2026-11-07, after the -80045 fix in docs/
 ## Release-blocking rows
 
 Every ⚠️/❌ in these rows gets fixed or decided before a release ([docs/RELEASE.md](docs/RELEASE.md), step 4). All
-other rows are nice-to-have: run them when the area changed, and note what you skipped.
+other rows are nice-to-have: run them when the area changed, and note what you skipped. The xtool rows X1 to X3 are
+optional (xtool is only the build and fallback tool). I1 (add the source) is a check after publishing, not a gate
+before the release.
 
 | Area | Rows |
 |---|---|
-| Install with xtool | X1, X2, X3 |
+| Install and refresh (SideStore) | I2, I3, I4 |
 | First start and demo | FS1 to FS6, FS9 |
 | Real server | R1, R2, R4, R7, R8 |
 | Today | T1, T2, T7 |
@@ -32,13 +34,14 @@ other rows are nice-to-have: run them when the area changed, and note what you s
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| I1 | Add the source in SideStore | (after the first release) Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` shows "Homelab iOS" with the Homelab app | | |
-| I2 | Install from the source | (SideStore) Installs without an error. SideStore → My Apps shows Homelab, active apps 2 of 3 | | |
+| I1 | Add the source in SideStore | (after publishing, not a pre-release gate) Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` shows "Homelab iOS" with the Homelab app | | |
+| I2 | Install the release IPA in SideStore | The IPA from `dist/` (copied into SideStore's folder, My Apps → +) or from the source installs without an error. SideStore → My Apps shows Homelab, active apps 2 of 3 | | |
 | I3 | Icon and name | Home screen shows the Homelab icon (sharp, no white border) and the name "Homelab" | | |
+| I4 | Daily refresh moves the expiry | After the daily Shortcuts automation has run (docs/SIDESTORE.md), the expiry date in `scripts/phone apps` or Settings → Diagnostics → Install expires has moved forward (about 7 days from the refresh) | | |
 
-## Install with xtool (free Apple ID)
+## Install with xtool (optional fallback)
 
-How the owner installs it (docs/INSTALL-FROM-LINUX.md). Set up servers, a token server, Home tiles and widgets first.
+Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run these only when you install over USB. Set up servers, a token server, Home tiles and widgets first.
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|

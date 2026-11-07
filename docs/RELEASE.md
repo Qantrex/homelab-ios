@@ -64,8 +64,11 @@ scripts/make-source --version "$V" --ipa "dist/Homelab-$V.ipa" --download-url "h
 Not a fresh `xtool dev` build: the file in `dist/`.
 
 ```bash
-(cd dist && sha256sum -c "Homelab-$V.ipa.sha256") && xtool install "dist/Homelab-$V.ipa"
+(cd dist && sha256sum -c "Homelab-$V.ipa.sha256") && scripts/phone push-ipa "dist/Homelab-$V.ipa"
 ```
+
+`push-ipa` copies the IPA into SideStore's folder. On the phone: SideStore → My Apps → + → the IPA. (Without
+SideStore, `xtool install "dist/Homelab-$V.ipa"` over USB also works.)
 
 On the phone: Settings → Diagnostics shows `$V` and the build number from step 0. Then go through the
 **release-blocking rows** of [DeviceTest.md](../DeviceTest.md) (listed at its top) with a real server, and write the
@@ -92,13 +95,8 @@ People add this source in SideStore once, and it always points at the newest rel
 
 ## Release channel (decided 2026-11-07)
 
-SideStore was tested with Homelab on 2026-11-07 (after the -80045 fix in [SIDESTORE.md](SIDESTORE.md)); the source
-(`source.json`) itself is not tested yet. For the first release, choose one:
-
-| Option | For | Against |
-|---|---|---|
-| Publish `source.json` too (steps 3 and 5 as written) | SideStore users get updates from the start | Adding the source URL in SideStore is not tested yet (installing the IPA is) |
-| Publish only the IPA and its SHA-256 (leave `dist/source.json` out of `gh release create`) | Only what was tested: the IPA, installed with xtool or imported in SideStore | No updates through a SideStore source; the source URL above stays empty |
+The release channel is IPA + SHA-256 + `source.json`. SideStore has installed Homelab since 2026-11-07 (after the
+-80045 fix in [SIDESTORE.md](SIDESTORE.md)); the source URL itself can only be checked once the release exists.
 
 **Decided 2026-11-07: publish `source.json` too.** Right after the release, add the source URL once in SideStore on
 the test phone (Sources → +) and check that Homelab shows up and offers the update (DeviceTest I1/I2). If that fails,
