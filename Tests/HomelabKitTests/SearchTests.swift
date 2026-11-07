@@ -112,6 +112,14 @@ import Testing
         #expect(SearchQuery.prefill("  a ") == "a")
     }
 
+    @Test func textFromALinkWaitsForTheUser() {
+        #expect(SearchQuery.runsOnItsOwn("dune", held: nil))              // typed: searches after the pause
+        #expect(!SearchQuery.runsOnItsOwn("dune", held: "dune"))          // a link's text: waits for submit
+        #expect(!SearchQuery.runsOnItsOwn("  dune ", held: "dune"))
+        #expect(SearchQuery.runsOnItsOwn("dune 2", held: "dune"))         // edited: back to the debounced search
+        #expect(SearchQuery.runsOnItsOwn("", held: ""))
+    }
+
     // MARK: Client
 
     @Test func searchSendsTheQueryAndReadsCards() async throws {
@@ -389,6 +397,7 @@ import Testing
         try m.save(ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity), token: nil)
         m.open(URL(string: "homelab://search?q=the%20long%20quiet")!)
         #expect(m.openSearch?.query == "the long quiet")
+        #expect(m.openSearch?.held == true)                             // a link only fills the field
         #expect(m.takeOpenSearch() == nil)                             // features unknown: waits
         await m.refresh()                                              // info.json has "search"
         m.validateTab()

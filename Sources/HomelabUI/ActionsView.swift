@@ -111,7 +111,7 @@ struct ActionsView: View {
                 if let server = model.selected { ScanView(model: model, server: server) }
             }
             .sheet(item: $searching, onDismiss: { openRequested() }) { request in
-                if let server = model.selected { SearchView(model: model, server: server, query: request.query) }
+                if let server = model.selected { SearchView(model: model, server: server, query: request.query, held: request.held) }
             }
             .sheet(isPresented: $showingDeals, onDismiss: { openRequested() }) {
                 if let server = model.selected { DealsView(model: model, server: server) }

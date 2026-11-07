@@ -47,12 +47,15 @@ struct SearchView: View {
     @State private var found: SearchResult?
     @State private var failure: APIError?
     @State private var loading = false
+    /// Text from a link: not searched until the user submits (or edits) it.
+    @State private var held: String?
     @Environment(\.dismiss) private var dismiss
 
-    init(model: AppModel, server: ServerConfig, query: String = "") {
+    init(model: AppModel, server: ServerConfig, query: String = "", held: Bool = false) {
         self.model = model
         self.server = server
         _query = State(initialValue: query)
+        _held = State(initialValue: held ? query : nil)
     }
 
     var body: some View {
@@ -77,7 +80,12 @@ struct SearchView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) { if loading { ProgressView() } }
             }
-            .task(id: query) { await run(wait: true) }
+            .onSubmit(of: .search) { held = nil; Task { await run(wait: false) } }
+            .task(id: query) {
+                guard SearchQuery.runsOnItsOwn(query, held: held) else { return }
+                held = nil
+                await run(wait: true)
+            }
         }
         .tint(Palette.accent)
         .labeledContentStyle(.adaptive)
@@ -99,6 +107,10 @@ struct SearchView: View {
             } else {
                 ForEach(found.shown) { CardView(card: $0, model: model) }
             }
+        } else if !SearchQuery.runsOnItsOwn(query, held: held) {
+            Placeholder(title: "Ready to search", symbol: "magnifyingglass",
+                        message: "Tap Search on the keyboard to look this up.")
+                .padding(.top, 40)
         } else if failure == nil {
             ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
         }
