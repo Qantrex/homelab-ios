@@ -593,11 +593,14 @@ def _clean(obj, secrets):
     return obj
 
 
-def _safe_fields(obj, keys):
-    """safe_text() on the text fields `keys` of a dict, in place; a card's `text` may be longer."""
+def _safe_fields(obj, keys, markdown=()):
+    """The text fields `keys` of a dict, in place: safe_text() for the ones in `markdown` (the app renders those as
+    Markdown), plain_text() for the rest (the app shows them as plain text, where an escape would show as a
+    backslash). A card's `text` may be longer."""
     for k in keys:
         if isinstance(obj.get(k), str):
-            obj[k] = safe_text(obj[k], MAX_LONG_TEXT if k == "text" else MAX_TEXT)
+            limit = MAX_LONG_TEXT if k == "text" else MAX_TEXT
+            obj[k] = safe_text(obj[k], limit) if k in markdown else plain_text(obj[k], limit)
 
 
 def _pick(items, limit, valid, kind, name, logf):
@@ -673,7 +676,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
         if not isinstance(p, dict) or not isinstance(p.get("text"), str) or not p["text"].strip():
             logf("source %s: skipped a problem without text" % name)
             continue
-        text = safe_text(p["text"])
+        text = plain_text(p["text"])   # problems are plain text in the app
         raw_id = p.get("id") if isinstance(p.get("id"), str) and p.get("id") else \
             hashlib.sha256(text.encode("utf-8")).hexdigest()[:10]
         pid = prefix + raw_id
@@ -695,12 +698,14 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
             continue
         c = dict(c)
         c["id"] = prefix + c["id"]
-        _safe_fields(c, ("title", "subtitle", "text"))
+        # Markdown in the app: a card's `text`, and for a `text` card without one its item titles (joined).
+        _safe_fields(c, ("title", "subtitle", "text"), markdown=("text",))
+        item_markdown = ("title",) if c.get("style") == "text" else ()
         if "items" in c:
             if isinstance(c["items"], list):
                 c["items"] = [i for i in c["items"] if isinstance(i, dict)][:MAX_ITEMS]
                 for i in c["items"]:
-                    _safe_fields(i, ("title", "subtitle", "value"))
+                    _safe_fields(i, ("title", "subtitle", "value"), markdown=item_markdown)
                     if "url" in i and not link_ok(i["url"]):
                         logf("source %s: dropped an item's link (a user, password or key in it)" % name)
                         del i["url"]

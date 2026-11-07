@@ -330,27 +330,41 @@ class MinecraftSource(unittest.TestCase):
 
 
 class MarkdownText(unittest.TestCase):
-    """Upstream text reaches the app's Markdown renderer: no link, autolink, HTML or entity form survives."""
+    """Upstream text in a field the app renders as Markdown (a card's `text`; the item titles of a `text` card) gets
+    every link, autolink, HTML, entity and emphasis form escaped. Every other field is plain text in the app
+    (`Text(String)`, no links), so it stays as the upstream wrote it: an escape would show as a backslash."""
 
     EVIL = ["[a](https&#58;//e.co)", "[a](https\\://e.co)", "[a](<javascript:x>)", "<https://e.co>", "<b>x</b>",
             "&#104;ttp&#58;//e.co", "**bold** _it_ `code` ~~s~~", "![i](tel:123)"]
 
-    def check_plain(self, text):
+    def check_escaped(self, text):
         import re
         # no unescaped link opener `](`, `<` + tag start, entity, emphasis or code mark
         self.assertIsNone(re.search(r"(?<!\\)(?:\\\\)*(\]\(|<[A-Za-z/!?]|&#?\w+;|[*`~])", text), text)
 
-    def test_player_names_and_motd(self):
+    def test_player_names_and_motd_stay_plain_text(self):
         sample = [{"name": n} for n in self.EVIL]
         obj = paper(players={"online": 8, "max": 10, "sample": sample}, description="sleeping " + self.EVIL[0])
         with FakeMinecraft(lambda _d: mc_packet(obj)) as fake:
             out, _ = run_games(mc("S [x](y&#58;//z)", fake.port))
-        row = rows(out)
-        self.assertEqual(len(row), 1)
+        self.assertEqual(len(rows(out)), 1)
         item = out["cards"][0]["items"][0]
-        for field in ("title", "subtitle"):
-            self.check_plain(item[field])
-        self.assertIn("[a\\](https\\&#58;//e.co)", item["subtitle"])
+        self.assertEqual(out["cards"][0]["style"], "list")   # list items: plain text in the app
+        self.assertIn("[a](https&#58;//e.co)", item["subtitle"])
+        for escaped in ("\\[", "\\]", "\\&", "\\*", "\\<"):   # no Markdown escape added
+            self.assertNotIn(escaped, item["subtitle"] + item["title"])
+
+    def test_markdown_fields_are_escaped(self):
+        for evil in self.EVIL:
+            out = sources.normalize("X", {"cards": [
+                {"id": "t", "style": "text", "items": [{"title": evil, "subtitle": evil}]},
+                {"id": "l", "style": "list", "text": "down " + evil, "items": [{"title": evil}]}]})
+            text_card, list_card = out["cards"]
+            self.check_escaped(text_card["items"][0]["title"])
+            self.check_escaped(list_card["text"])
+            plain = sources.plain_text(evil)   # never rendered as Markdown: URLs masked, nothing escaped
+            self.assertEqual(text_card["items"][0]["subtitle"], plain)
+            self.assertEqual(list_card["items"][0]["title"], plain)
 
     def test_ordinary_text_is_left_alone(self):
         self.assertEqual(sources.safe_text("2/10 · Paper 26.3 · C&C [STATUS] (502) a < b snake_case"),
@@ -361,13 +375,12 @@ class MarkdownText(unittest.TestCase):
         self.assertEqual(len(out), 11)
         self.assertEqual(out, "\\*" * 5 + "…")
 
-    def test_another_source_goes_through_the_same_filter(self):
-        out = sources.normalize("X", {"problems": [{"text": "down [a](https&#58;//e.co) <https://e.co> <b>"}],
-                                      "cards": [{"id": "c", "title": "&amp; \\[x\\](y)", "items": [
-                                          {"title": "[a](https&#58;//e.co)"}]}]})
-        self.check_plain(out["problems"][0]["text"])
-        self.check_plain(out["cards"][0]["title"])
-        self.check_plain(out["cards"][0]["items"][0]["title"])
+    def test_problems_and_titles_are_plain_text(self):
+        out = sources.normalize("X", {"problems": [{"text": "down <b> *x*"}],
+                                      "cards": [{"id": "c", "title": "a *b*", "items": [{"title": "_c_"}]}]})
+        self.assertEqual(out["problems"][0]["text"], "down <b> *x*")
+        self.assertEqual(out["cards"][0]["title"], "a *b*")
+        self.assertEqual(out["cards"][0]["items"][0]["title"], "_c_")
 
 
 class ConnectDeadline(unittest.TestCase):

@@ -59,8 +59,10 @@ problems, 100 hosts, 50 cards and 100 services, 200 items per card and 200 conta
 secret (`token`, `password`, `api_key`, ...) are dropped at any depth, and the values of the source's env variables
 become `***` wherever they appear (also escaped, `%`-encoded or in base64). Problem texts and the `title`,
 `subtitle` and `value` of cards and items lose URLs (`<url>`) and secret-like `key=value` pairs and are cut to 200
-characters (a card's `text` to 1000); a service or item link with a user, password or key in it is dropped. So pass
-an upstream's message on as it is; the bridge cleans it.
+characters (a card's `text` to 1000); a service or item link with a user, password or key in it is dropped. The
+fields the app renders as Markdown (a card's `text`, and the item titles of a `text` card) also get every Markdown
+character escaped, so an upstream can't put a link, an image or HTML there; all other fields are plain text in the
+app and stay as written. So pass an upstream's message on as it is; the bridge cleans it.
 
 Shared code of several types goes in a module whose name starts with `_` (`_dns.py`, `_arr.py`): it is not a type.
 

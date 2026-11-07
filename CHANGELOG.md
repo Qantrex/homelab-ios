@@ -41,7 +41,7 @@ Security review fixes:
   install are wiped on the first launch. API answers stop at 8 MB (Home Assistant 32 MB).
 - Homelab Bridge: a source key with a line break inside stops the start (a trailing one is stripped); it could leak
   through an http.client error into `/info`. Keys are hidden also escaped, `%`-encoded and in base64. Upstream texts
-  lose URLs and `apikey=…` pairs and are cut to 200 characters; at most 200 items per card and containers per host;
+  lose URLs and `apikey=…` pairs and are cut to 200 characters (Markdown escaped where the app renders Markdown); at most 200 items per card and containers per host;
   links with a user or key are dropped. A key over plain `http://` to a non-loopback host shows as `plain_http` in
   Diagnostics. With sources, identity login needs `allowed_logins`. Uptime Kuma's `services` is off by default. The
   image refuses Tailscale userspace mode with the login header; the socket proxy is wollomatic's with only
