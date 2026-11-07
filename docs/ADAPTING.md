@@ -66,7 +66,8 @@ To delete a module from the app:
 | A widget | Its line in `HomelabWidgets` (`HomelabWidget.swift`) and the widget struct |
 | Home Assistant | `HomeTiles.swift`, the `.home` section, `HomeAssistant.swift` and its tests, the HA server type in Settings |
 
-Then run `scripts/test-linux`.
+Then mark the feature `removed` in `features.toml` (or delete its entry), run `scripts/features render` and
+`scripts/test-linux`.
 
 ## Add a module
 
@@ -85,6 +86,7 @@ In this order. The contract comes first; the app only follows it.
 | 9 | Screenshot in CI: a tab in `TABS` gets light, dark and XXL shots by itself; anything else gets a `scene` line with launch arguments. Update the numbered list at the top | `scripts/sim-smoke` |
 | 10 | Phone check: a row with "Pass when" | `DeviceTest.md` |
 | 11 | Users notice it: a line | `CHANGELOG.md`, the tab table in `README.md` |
+| 12 | Registry: one `[[feature]]` entry with its files, tests, DeviceTest rows and docs, then `scripts/features render` (`scripts/lint` fails until every new file, test and row belongs to a feature) | `features.toml`, `docs/FEATURES.md` |
 
 Your server then has to send the feature and the data. The reference server only serves what the tests and demo
 need; your own server or agent does the real work ([SERVER-SETUP.md](SERVER-SETUP.md), section "Your own server").
@@ -166,7 +168,7 @@ My homelab: <hosts, what runs where, what my server or agent can do>
 1. Turn these modules off: <list>. Prefer leaving the feature out on my server; delete app code only where I say so.
 2. Add these modules: <list, with what the server sends>. For each: contract (server/openapi.yaml, docs/API.md)
    first, then the HomelabKit model with tolerant decoding, a normal and an odd fixture, tests, then a thin view,
-   a sim-smoke shot and a DeviceTest.md row.
+   a sim-smoke shot, a DeviceTest.md row and its entry in features.toml.
 
 Rules: true-black monochrome look from HomelabDesign, no blue, Rosé Pine colours only for status. No secrets, host
 names or personal data in the repo. Run scripts/test-linux after each step and fix what fails. Commit after each
