@@ -20,6 +20,7 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `POST /documents` | the raw PDF (`Content-Type: application/pdf`, headers `X-Homelab-Id`, `X-Homelab-Title`) | `202 {ok, id, text}` | Feature `documents`: the Scan tile and the share extension send PDFs to your document inbox (Paperless) |
 | `GET /search?q=<text>` | – | `{query, cards}` | Feature `search`: the Find and request screen (movies and shows as a poster grid) |
 | `GET /poster/<size>/<file>` (or any path an item's `image` names) | – | the picture | Posters for `poster-grid` cards; see "Pictures" |
+| `GET /deals` | – | `{updated, deals: [...]}` | Feature `deals` (optional): the Deals screen, Today's "Deals to act on" and the new-deal notification; 404 hides it |
 | `POST /share` | `{id, kind: "url", url, title}` | `{ok, id, route, text}` | Feature `share`: the share extension sends a web link; the server routes it (a willhaben ad, or a read-later list) |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429
@@ -92,6 +93,38 @@ first bytes; a `Content-Type` that is not `image/*` is refused too), caches it i
 (20 MB, 30 days, oldest out) and shows a quiet placeholder (the card's icon) while it loads or when it fails. A failed
 picture is not asked again for a minute. A server should send `Cache-Control` and keep names stable (the name changes
 when the picture does).
+
+## Deals (`deals`)
+
+`GET /deals` (optional, same login as the other GETs) answers the ads the server's watcher found clearly below their
+market value in the last 7 days, newest first, at most 100 (the app keeps 100, drops duplicate ids and any deal
+without `id` or `title`):
+
+```json
+{"updated": "2026-11-07T09:50:51Z",
+ "deals": [{"id": 1310779339, "watch": "any-gpu", "kind": "gpu", "title": "RAM kit 32 GB", "price": 100.0, "value": 200.0,
+            "discount": 0.5, "conf": "high", "specs": "ddr4 · dimm · 2x16 · 3200 MHz", "loc": "Krems an der Donau",
+            "state": "Niederösterreich", "near": true, "private": true, "ships": true, "cond": "used",
+            "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/...", "flags": ["urgent sale (Notverkauf)"],
+            "seen": "2026-11-07T09:50:51Z", "verdict": "act", "note": "one line from the agent",
+            "comps": [{"title": "...", "price": 185.0, "url": "https://www.willhaben.at/..."}]}]}
+```
+
+| Field | The app shows |
+|---|---|
+| `price`, `value`, `discount` | The price, "worth € 200" and "−50 %" (`discount` 0–1; missing: worked out from the prices; a percent such as 50 is read as 0.5) |
+| `conf` | `high`, `medium`, `low` as words; `low` in gold |
+| `verdict` | `act` first under "Act now" (and on Today for a day), `consider` and not judged (null) under "Worth a look", `skip` last. `note` is the judge's line |
+| `flags` | Warnings in gold with a triangle, each in the server's words. Never an error colour |
+| `near`, `private`, `ships`, `cond`, `loc`, `state`, `specs` | The meta line and the detail |
+| `url`, `comps[].url` | Only http(s) links; "Open the ad" and "Copy link"; comparables as iris links |
+| `seen` | How old; `act` deals seen in the last 24 h count as fresh, and in the last 6 h they may notify |
+
+A server without deals answers **404**: the app then shows nothing and says nothing. A server that does not list
+`deals` in `features` is still asked once every 10 minutes (a server that lists it: at most every 2 minutes, and
+when the screen opens or is pulled). Links: `homelab://deals` (a push's click URL) opens the screen; servers
+without deals drop it. The notification (Settings → Notifications → "New deals to act on", off by default) is local,
+from the background refresh: see the notification diff in `AlertTracker`.
 
 ## Cards for Lab (`place`)
 
@@ -207,7 +240,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 
 | Field | Effect |
 |---|---|
-| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `search` → the "Find a movie or show" tile on the Actions tab (the tab shows for it alone) and the search link; `share` → the share extension sends links. Missing list = `status` + `hosts` only |
+| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `deals` → the Deals tile on the Actions tab (it shows for deals alone), Today's "Deals to act on" and the link; `search` → the "Find a movie or show" tile on the Actions tab (the tab shows for it alone) and the search link; `share` → the share extension sends links. Missing list = `status` + `hosts` only |
 | `commands` | The chat's "/" menu (and the suggestions when the field starts with "/"). Each entry is `"/word"` or `{"command": "/word", "description": "one line"}`; without a description the app uses its own line for the agent's commands (`/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help`, …) or none. Only `/word` entries, at most 24 chars, no spaces, the first 8; descriptions are cut to 80 chars. Empty = no menu. Clearing the chat is the app's own (it hides the messages on the phone); no command is sent for it |
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
@@ -234,7 +267,7 @@ tile, only card and item actions use it (`todo-done`, `read-later-done`, `parcel
 carry `action: {"name": "parcel-done", "label": "Delivered", "arg": "<parcel id>"}` (a trailing button, with a confirm) and
 `url` (its tracking page, https, opened on tap). `wake-set` may offer a third variant `{Day}:clear` ("Normal").
 
-Links from pushes and notifications: `homelab://today`, `homelab://actions`, `homelab://chat`, `homelab://lab` open that
+Links from pushes and notifications: `homelab://deals`, `homelab://today`, `homelab://actions`, `homelab://chat`, `homelab://lab` open that
 tab (`overview` and `home` still open Today). `homelab://search?q=` opens the search screen (see above).
 `homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form filled in (never a hidden field, never a
 `start: false` action; the owner still confirms): see [SHORTCUTS.md](SHORTCUTS.md).

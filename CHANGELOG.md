@@ -22,6 +22,18 @@ Security review fixes:
 
 App:
 
+- Deals (feature `deals`, optional endpoint `GET /api/v1/deals`): used-market ads the server found clearly below their
+  market value and judged. A Deals tile on Actions (with "N to act on" in gold when there are fresh strong ones) opens
+  the list: "Act now", "Worth a look", "Skipped", each deal with its price, "−50 %" below the market value, the
+  server's confidence, specs, place (a marker when it is in the pickup area), private or dealer, ships, condition, the
+  server's verdict note, and its warnings in gold ("too good to be true?" is a warning, not an error). A deal opens
+  its detail: the comparable ads with prices and links, Open the ad (willhaben app or Safari) and Copy link.
+  `homelab://deals` (also the ntfy push) opens it; Today gets a "Deals to act on" section only while there is an "act
+  now" deal from the last day. Settings → Notifications → "New deals to act on" (off by default, since the server
+  already pushes them): a local notification for a new strong deal from the background refresh, never for one older
+  than 6 hours or one seen before, the first list only learned, at most 3 per run, nothing about the deal while the
+  app lock is on. A server that answers 404 gets no screen, tile, section or error; servers that don't list `deals`
+  are asked once every 10 minutes. Launch argument `-HomelabDeals list|detail`.
 - Lab rows: host names wrap to two lines instead of being cut, the sparkline drops first on a narrow row, the value
   columns have a fixed width that grows with the text size, and at accessibility sizes each value gets its own
   "Load 0.42" line. Numbers turn gold or love at the same limits as the sparkline's dot and the detail chart (load per

@@ -10,6 +10,7 @@ app always shows the filled form and asks once before anything runs: a link only
 | Link | Opens |
 |---|---|
 | `homelab://today`, `homelab://actions`, `homelab://chat`, `homelab://lab`, `homelab://settings` | That tab |
+| `homelab://deals` | Actions with the Deals screen on top (server feature `deals`; the ntfy push for a strong deal uses it) |
 | `homelab://scan` | Actions with the document camera (server feature `documents`) |
 | `homelab://lab/<host-id>` | A host's details |
 | `homelab://actions/<name>` | That action's form, as its Start tile opens it |

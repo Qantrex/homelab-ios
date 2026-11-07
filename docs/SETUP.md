@@ -158,6 +158,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabResetState YES` | Deletes all servers, tokens, cached data and settings before the start |
 | `-HomelabAction <name>` | Opens the Actions tab with that action's form (once the server lists it; dropped when it doesn't). Names as in `GET /actions`: `[a-z0-9][a-z0-9_-]*` |
 | `-HomelabHost <host-id>` | Opens Lab with that host's details (once the state has the host; dropped when a newer state lacks it) |
+| `-HomelabDeals list\|detail` | Opens the Deals screen (`detail`: with the first deal's detail). Needs a server with deals (the demo has them) |
 | `-HomelabDensity <detail>` | Today's detail: `calm`, `standard` or `overkill` (stored like the setting) |
 | `-HomelabPersonality <voice>` | The headline's personality: `off`, `dry` or `snarky` (stored like the setting) |
 

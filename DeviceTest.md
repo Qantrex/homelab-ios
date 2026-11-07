@@ -116,6 +116,23 @@ Date: ____  iPhone model: ____  iOS version: ____  App version (Settings → Dia
 | F5 | `homelab://search?q=dune` | Opens Actions and the search with "dune" typed and results. On a server without `search` nothing opens | | |
 | F6 | Large text | At an accessibility size the grid has 2 columns and nothing is cut; VoiceOver reads title, subtitle, value, then the Request button | | |
 
+## Deals
+
+Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has five deals).
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| DL1 | Entry | Actions → Start has a "Deals" tile, with a gold dot and "N to act on" when strong deals are fresh. A server that answers 404 on `/deals`: no tile, no Today section, no error text anywhere | | |
+| DL2 | List | Deals: "5 deals · 2 to act on · updated …", sections "Act now", "Worth a look", "Skipped". A row: title, specs, place (a small arrow when near), private/dealer, ships, condition, confidence, the note, price, "−50 %", "worth € …". Pull to refresh works | | |
+| DL3 | Warnings | A deal with "too good to be true?" shows it in gold with a triangle (not red). Low confidence is gold with its words. Nothing in the screen is blue | | |
+| DL4 | Detail | Tap a deal: big price, "−50 %", the verdict and note, **Open the ad** and **Copy link**, "Look twice" warnings, "About the ad", "Comparable ads" with prices | | |
+| DL5 | Open and copy | Open the ad opens willhaben (the app if installed) or Safari on the right ad. Copy link: "Copied", a haptic, pasting gives the ad URL. A comparable's title (iris, underlined) opens that ad | | |
+| DL6 | Today | While an "act now" deal from the last day exists: Today shows "Deals to act on" under "Waiting for you" (Calm hides it), tap opens Deals. With none: the section is gone | | |
+| DL7 | Push link | A ntfy push (or Safari) with `homelab://deals` opens the app on Deals, also from a cold start and with the app lock on (Face ID first) | | |
+| DL8 | Notification | Settings → Notifications → "New deals to act on" on (only shown with deals). A new strong deal: one notification "`<server>`: deal at € 100 (−50 %)" within the next background runs, tap opens Deals. Not again for the same deal, not for old ones, not for the ones already there when the toggle went on. With the app lock on: "A deal is waiting for you." | | |
+| DL9 | Large text | At an accessibility size the figures go under the title, nothing is cut, VoiceOver reads a row as one sentence ("…, 50 percent below the market value, act now, …, warning: …") | | |
+| DL10 | Empty | A server with `{"deals": []}`: "No deals right now" with the voice line when a personality is on | | |
+
 ## Chat
 
 | # | Test | Pass when | Result | Note |
