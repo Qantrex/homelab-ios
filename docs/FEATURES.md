@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 98 | 71 | 26 | 1 | 41 | 3 |
+| 99 | 72 | 25 | 1 | 41 | 4 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,14 +14,15 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (12)
+### Today (13)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Today headline (mood)](#today-hero) | shipped | `status`, `hosts` | 3 | **T1**, T8 | 3 |
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
-| [Machines list (Overkill)](#overkill-machines) | shipped | `hosts` | 2 | O8 | 1 |
+| [Today is short by design (folds, Also panel)](#today-folding) | shipped | – | 1 | **none** | 3 |
+| [Machines list (Overkill)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
 | [Where you are (presence from Home Assistant)](#presence) | partial | – | 4 | H8, H9 | 3 |
 | [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
@@ -29,7 +30,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | X2 | 3 |
-| [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | partial | – | 4 | DL10 | 3 |
+| [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | shipped | – | 4 | DL10 | 3 |
 
 ### Cards (8)
 
@@ -208,8 +209,9 @@ Shipped or partial features that miss tests, a phone row or docs (and don't say 
 
 | Feature | Missing |
 |---|---|
+| [today-folding](#today-folding) | no DeviceTest row |
 | [weather-line](#weather-line) | docs only in the changelog |
-| [personality](#personality) | Ultrakill missing from README and CHANGELOG (they say off, dry or snarky), no DeviceTest row for the personality itself (DL10 only touches it) |
+| [personality](#personality) | no DeviceTest row for the personality itself (DL10 only touches it) |
 | [lessons-card](#lessons-card) | docs only in the changelog |
 
 Not verified (the registry says so in `unsure`):
@@ -353,11 +355,28 @@ Today's sections can be reordered and hidden; Calm, Standard or Overkill picks h
 | Launch arguments | `-HomelabDensity` |
 | Settings | Settings → Today: order, hide, detail |
 
+### today-folding
+
+**Today is short by design (folds, Also panel)** · Today · shipped · since 2026-11-08
+
+Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, departure disruptions, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads, grades and departures are one-line summary rows in an "Also" panel that expand in place; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
+
+| | |
+|---|---|
+| Sources | [TodayFold.swift](../Sources/HomelabKit/TodayFold.swift), [TodayFoldViews.swift](../Sources/HomelabUI/TodayFoldViews.swift) |
+| Fixtures | [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json) |
+| Tests | `TodayFoldTests` |
+| Phone (DeviceTest.md) | **none** |
+| CI screenshots | `demo-today-light`, `demo-today-dark`, `demo-today-overkill-snarky` |
+| Docs | [docs/DESIGN.md#8-today-short-by-design](DESIGN.md#8-today-short-by-design), [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is), [README.md#what-it-does](../README.md#what-it-does) |
+| Settings | Settings → Today → Detail |
+| Depends on | [today-layout](#today-layout) |
+
 ### overkill-machines
 
-**Machines list (Overkill)** · Today · shipped · since 2026-11-06
+**Machines list (Overkill)** · Today · removed · since 2026-11-06
 
-In Overkill, Today lists every host's numbers in one dense list with a 24 h load sparkline under each.
+Removed 2026-11-08: Today no longer lists the machines in any detail level (Lab has them; the hero line still says "3 of 3 machines up"). It was a dense list of every host with a 24 h load sparkline under each.
 
 | | |
 |---|---|
@@ -370,6 +389,7 @@ In Overkill, Today lists every host's numbers in one dense list with a 24 h load
 | Today section | `machines` |
 | Settings | Settings → Today → Detail → Overkill |
 | Depends on | [today-layout](#today-layout) |
+| Notes | The saved layout keeps the machines case for compatibility. |
 
 ### show-rules
 
@@ -486,7 +506,7 @@ Two days before a free-Apple-ID install stops opening, Today says so ("This inst
 
 ### personality
 
-**Personality (Off, Dry, Snarky, Ultrakill)** · Today · partial · since 2026-11-06
+**Personality (Off, Dry, Snarky, Ultrakill)** · Today · shipped · since 2026-11-06
 
 A line of commentary under Today's headline, on empty screens, after actions and as a notification's subtitle. Changes once a day; the facts never change with it. Off by default.
 
@@ -499,7 +519,7 @@ A line of commentary under Today's headline, on empty screens, after actions and
 | Docs | [README.md#what-it-does](../README.md#what-it-does), [docs/DESIGN.md#4-the-voice](DESIGN.md#4-the-voice), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
 | Launch arguments | `-HomelabPersonality` |
 | Settings | Settings → Today → Personality |
-| Notes | Status partial only because the docs lag behind: the code and Settings offer a fourth level, Ultrakill (2026-11-06, rude on purpose). |
+| Notes | Four levels: Off, Dry, Snarky, Ultrakill (2026-11-06, rude on purpose). |
 
 ### cards
 
@@ -1279,7 +1299,7 @@ A demo homelab and a demo Home Assistant from built-in fixtures, no network, tha
 | | |
 |---|---|
 | Sources | [Demo.swift](../Sources/HomelabKit/Demo.swift) |
-| Fixtures | [state-demo.json](../Sources/HomelabKit/Fixtures/state-demo.json), [state-problem.json](../Sources/HomelabKit/Fixtures/state-problem.json) |
+| Fixtures | [state-demo.json](../Sources/HomelabKit/Fixtures/state-demo.json), [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json), [state-problem.json](../Sources/HomelabKit/Fixtures/state-problem.json) |
 | Tests | `DemoBackendTests`, `DemoCardsTests`, `HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow`, `HeroLinesTests/calmDemoLooksLikeACurrentDay`, `HeroLinesTests/cardAgesMoveWithTheClock`, `HeroLinesTests/problemSceneStaysForScreenshots`, `GlanceTests/demoMovesDeparturesAndCommuteToNow`, `StorageTests/demoServers`, `DealsModelTests/demoHasDeals` |
 | Phone (DeviceTest.md) | **FS2**, **FS3**, **FS4** |
 | CI screenshots | `demo-today-light`, `demo-settings-light` |

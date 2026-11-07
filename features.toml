@@ -95,12 +95,28 @@ launch_args = ["-HomelabDensity"]
 settings = ["Settings → Today: order, hide, detail"]
 
 [[feature]]
+id = "today-folding"
+name = "Today is short by design (folds, Also panel)"
+area = "Today"
+status = "shipped"
+since = "2026-11-08"
+summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, departure disruptions, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads, grades and departures are one-line summary rows in an \"Also\" panel that expand in place; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session."
+sources = ["Sources/HomelabKit/TodayFold.swift", "Sources/HomelabUI/TodayFoldViews.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/demo-today.json"]
+tests = ["TodayFoldTests"]
+screenshots = ["demo-today-light", "demo-today-dark", "demo-today-overkill-snarky"]
+docs = ["docs/DESIGN.md#8-today-short-by-design", "docs/GETTING-STARTED.md#how-long-today-is", "README.md#what-it-does"]
+settings = ["Settings → Today → Detail"]
+depends_on = ["today-layout"]
+
+[[feature]]
 id = "overkill-machines"
 name = "Machines list (Overkill)"
 area = "Today"
-status = "shipped"
+status = "removed"
 since = "2026-11-06"
-summary = "In Overkill, Today lists every host's numbers in one dense list with a 24 h load sparkline under each."
+summary = "Removed 2026-11-08: Today no longer lists the machines in any detail level (Lab has them; the hero line still says \"3 of 3 machines up\"). It was a dense list of every host with a 24 h load sparkline under each."
+notes = "The saved layout keeps the machines case for compatibility."
 server_features = ["hosts"]
 endpoints = ["GET /state"]
 api_fields = ["hosts[].history.load"]
@@ -227,7 +243,7 @@ depends_on = ["free-apple-id"]
 id = "personality"
 name = "Personality (Off, Dry, Snarky, Ultrakill)"
 area = "Today"
-status = "partial"
+status = "shipped"
 since = "2026-11-06"
 summary = "A line of commentary under Today's headline, on empty screens, after actions and as a notification's subtitle. Changes once a day; the facts never change with it. Off by default."
 sources = ["Sources/HomelabKit/Voice.swift", "Sources/HomelabKit/Takes.swift", "Sources/HomelabKit/VoiceLines.swift", "Sources/HomelabUI/SettingsView.swift#PersonalityPreview"]
@@ -237,8 +253,8 @@ screenshots = ["demo-today-overkill-snarky"]
 docs = ["README.md#what-it-does", "docs/DESIGN.md#4-the-voice", "docs/SETUP.md#launch-arguments"]
 launch_args = ["-HomelabPersonality"]
 settings = ["Settings → Today → Personality"]
-notes = "Status partial only because the docs lag behind: the code and Settings offer a fourth level, Ultrakill (2026-11-06, rude on purpose)."
-known_gaps = ["Ultrakill missing from README and CHANGELOG (they say off, dry or snarky)", "no DeviceTest row for the personality itself (DL10 only touches it)"]
+notes = "Four levels: Off, Dry, Snarky, Ultrakill (2026-11-06, rude on purpose)."
+known_gaps = ["no DeviceTest row for the personality itself (DL10 only touches it)"]
 
 # ==================================================================================================== Cards
 
@@ -1008,7 +1024,7 @@ status = "shipped"
 since = "2026-11-04"
 summary = "A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene) or the stress scene for screenshots; chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch."
 sources = ["Sources/HomelabKit/Demo.swift"]
-fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/state-problem.json"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/demo-today.json", "Sources/HomelabKit/Fixtures/state-problem.json"]
 tests = ["DemoBackendTests", "DemoCardsTests", "HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow", "HeroLinesTests/calmDemoLooksLikeACurrentDay", "HeroLinesTests/cardAgesMoveWithTheClock", "HeroLinesTests/problemSceneStaysForScreenshots", "GlanceTests/demoMovesDeparturesAndCommuteToNow", "StorageTests/demoServers", "DealsModelTests/demoHasDeals"]
 device_tests = ["FS2", "FS3", "FS4"]
 screenshots = ["demo-today-light", "demo-settings-light"]
