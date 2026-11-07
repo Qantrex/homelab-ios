@@ -765,7 +765,9 @@ def main():
     ap.add_argument("--token", default=os.environ.get("HOMELAB_TOKEN"))
     ap.add_argument("--timeout", type=float, default=20)
     ap.add_argument("-v", "--verbose", action="store_true")
-    a = ap.parse_args()
+    # Intermixed: old argparse (Ubuntu 24.04's Python 3.12.3) fills the optional BASE_URL with nothing when an option
+    # comes before it ("--token T URL" then fails as "unrecognized arguments"; CI 2026-11-07).
+    a = ap.parse_intermixed_args()
 
     if not a.base:
         ap.error("no BASE_URL: pass one, set HOMELAB_URL or write it to ~/.config/homelab-ios/check-live-api.url")
