@@ -175,7 +175,7 @@ docs = ["README.md#what-it-does", "docs/DESIGN.md#4-the-voice", "docs/SETUP.md#l
 launch_args = ["-HomelabPersonality"]
 settings = ["Settings → Today → Personality"]
 notes = "Status partial only because the docs lag behind: the code and Settings offer a fourth level, Ultrakill (2026-11-06, rude on purpose)."
-known_gaps = ["Ultrakill missing from README, CHANGELOG and the -HomelabPersonality row in docs/SETUP.md (they say off, dry or snarky)", "no DeviceTest row for the personality itself (DL10 only touches it)"]
+known_gaps = ["Ultrakill missing from README and CHANGELOG (they say off, dry or snarky)", "no DeviceTest row for the personality itself (DL10 only touches it)"]
 
 # ==================================================================================================== Cards
 
@@ -399,7 +399,6 @@ tests = ["ShareRouterTests", "ShareSenderTests", "ShareRequestTests"]
 device_tests = ["SC6", "SC7", "SC8", "SC9", "SC10", "SC13", "SC14"]
 docs = ["docs/API.md#documents-and-shares-documents-share", "docs/SECURITY.md#what-the-app-does", "docs/ADAPTING.md#the-modules"]
 depends_on = ["share-extension-target", "app-group", "outbox", "willhaben", "agent-chat"]
-known_gaps = ["the project layout table in docs/SETUP.md doesn't list Sources/HomelabShare, Share-Info.plist or Share.entitlements"]
 
 [[feature]]
 id = "outbox"
@@ -1072,7 +1071,6 @@ docs = ["docs/SIDESTORE.md#installing-with-sidestore", "docs/SIDESTORE.md#sign-i
 not_needed = { tests = "needs SideStore on a phone" }
 depends_on = ["sidestore", "sidestore-anisette", "localdevvpn", "tailscale", "free-apple-id", "ios-18"]
 unsure = "Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release."
-known_gaps = ["DeviceTest.md (header, I1, SideStore refresh) and the README install table still say SideStore is not verified (error -80045); docs/SIDESTORE.md and the README status say it was tested 2026-11-07"]
 
 [[feature]]
 id = "release-process"
@@ -1153,6 +1151,18 @@ sources = ["scripts/sim-smoke", "scripts/phone-shots"]
 docs = ["docs/CI.md#screenshots"]
 not_needed = { tests = "it is a test tool", device_tests = "phone-shots is the device run" }
 depends_on = ["pymobiledevice3", "xtool", "gha-artifacts", "gha-runners"]
+
+[[feature]]
+id = "phone-cli"
+name = "Look at and drive the installed app (scripts/phone)"
+area = "Tooling"
+status = "shipped"
+since = "2026-11-07"
+summary = "`scripts/phone` works on the app as installed on the phone (SideStore or xtool), over USB, without a second app: installed apps and signing expiry, launch with launch arguments, screenshots and all tabs (also at the largest text size), the app's log, crash reports, and copying an IPA into SideStore. For people and for a coding agent checking DeviceTest rows."
+sources = ["scripts/phone"]
+docs = ["docs/SETUP.md#looking-at-the-app-on-a-real-iphone"]
+not_needed = { tests = "a device tool; it needs a phone", device_tests = "it is the tool that runs them" }
+depends_on = ["pymobiledevice3"]
 
 [[feature]]
 id = "feature-registry"

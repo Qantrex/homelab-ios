@@ -6,7 +6,7 @@ is verified, SideStore), Tailscale on, and a real server (the agent, or the refe
 
 Date: ____  iPhone model: iPhone 12 mini  iOS version: 18.7.3  App version (Settings → Diagnostics): ____
 
-Installed with: xtool 1.24.0 + App Group patch (docs/SETUP.md) / SideStore (not verified yet, error -80045)
+Installed with: SideStore 0.7.0 (since 2026-11-07, after the -80045 fix in docs/SIDESTORE.md) / xtool 1.24.0 + App Group patch (docs/SETUP.md)
 
 ## Release-blocking rows
 
@@ -32,7 +32,7 @@ other rows are nice-to-have: run them when the area changed, and note what you s
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| I1 | Add the source in SideStore | (after the first release; SideStore is not verified yet) Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` shows "Homelab iOS" with the Homelab app | | |
+| I1 | Add the source in SideStore | (after the first release) Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` shows "Homelab iOS" with the Homelab app | | |
 | I2 | Install from the source | (SideStore) Installs without an error. SideStore → My Apps shows Homelab, active apps 2 of 3 | | |
 | I3 | Icon and name | Home screen shows the Homelab icon (sharp, no white border) and the name "Homelab" | | |
 
@@ -283,7 +283,7 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 
 ## SideStore refresh
 
-Nice-to-have until SideStore is verified (its sign-in failed with error -80045 on the test phone).
+SideStore installs the app since 2026-11-07; a daily Shortcuts automation refreshes it (docs/SIDESTORE.md).
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|

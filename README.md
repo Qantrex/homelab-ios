@@ -94,7 +94,7 @@ look around without any server.
 | Build and install from Linux | Works, used daily. Reinstall every 7 days over USB | [docs/INSTALL-FROM-LINUX.md](docs/INSTALL-FROM-LINUX.md) |
 | Build and install from a Mac | Same xtool steps | [docs/SETUP.md](docs/SETUP.md) |
 | IPA from GitHub Releases | From the first release on. Install it with xtool (`xtool install`) or SideStore | [Releases](https://github.com/Qantrex/homelab-ios/releases) |
-| SideStore | Not verified yet (sign-in error -80045). SideStore would refresh the app over Wi-Fi | [docs/SIDESTORE.md](docs/SIDESTORE.md) |
+| SideStore | Tested 2026-11-07 (after the [-80045 fix](docs/SIDESTORE.md#sign-in-error--80045)); refreshes the app by itself (a Shortcut swaps its VPN and Tailscale) | [docs/SIDESTORE.md](docs/SIDESTORE.md) |
 
 Needs iOS 18 or newer.
 

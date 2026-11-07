@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 70 | 67 | 2 | 1 | 36 | 5 |
+| 71 | 68 | 2 | 1 | 36 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -166,12 +166,13 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
-### Tooling (3)
+### Tooling (4)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [CI and local checks](#ci-checks) | shipped | – | n/a | n/a | 3 |
 | [Screenshots (simulator in CI, phone over USB)](#screenshots) | shipped | – | n/a | n/a | 1 |
+| [Look at and drive the installed app (scripts/phone)](#phone-cli) | shipped | – | n/a | n/a | 1 |
 | [This feature registry](#feature-registry) | shipped | – | n/a | n/a | 1 |
 
 ## Gaps
@@ -181,10 +182,8 @@ Shipped or partial features that miss tests, a phone row or docs (and don't say 
 | Feature | Missing |
 |---|---|
 | [weather-line](#weather-line) | docs only in the changelog |
-| [personality](#personality) | Ultrakill missing from README, CHANGELOG and the -HomelabPersonality row in docs/SETUP.md (they say off, dry or snarky), no DeviceTest row for the personality itself (DL10 only touches it) |
+| [personality](#personality) | Ultrakill missing from README and CHANGELOG (they say off, dry or snarky), no DeviceTest row for the personality itself (DL10 only touches it) |
 | [lessons-card](#lessons-card) | docs only in the changelog |
-| [share-extension](#share-extension) | the project layout table in docs/SETUP.md doesn't list Sources/HomelabShare, Share-Info.plist or Share.entitlements |
-| [install-sidestore](#install-sidestore) | DeviceTest.md (header, I1, SideStore refresh) and the README install table still say SideStore is not verified (error -80045); docs/SIDESTORE.md and the README status say it was tested 2026-11-07 |
 
 Not verified (the registry says so in `unsure`):
 
@@ -1402,6 +1401,20 @@ CI (free runners only): Linux job with lint, HomelabKit tests against the fixtur
 | Docs | [docs/CI.md#screenshots](CI.md#screenshots) |
 | Depends on | [pymobiledevice3](#dep-pymobiledevice3), [xtool](#dep-xtool), [gha-artifacts](#dep-gha-artifacts), [gha-runners](#dep-gha-runners) |
 
+### phone-cli
+
+**Look at and drive the installed app (scripts/phone)** · Tooling · shipped · since 2026-11-07
+
+`scripts/phone` works on the app as installed on the phone (SideStore or xtool), over USB, without a second app: installed apps and signing expiry, launch with launch arguments, screenshots and all tabs (also at the largest text size), the app's log, crash reports, and copying an IPA into SideStore. For people and for a coding agent checking DeviceTest rows.
+
+| | |
+|---|---|
+| Sources | [phone](../scripts/phone) |
+| Tests | n/a: a device tool; it needs a phone |
+| Phone (DeviceTest.md) | n/a: it is the tool that runs them |
+| Docs | [docs/SETUP.md#looking-at-the-app-on-a-real-iphone](SETUP.md#looking-at-the-app-on-a-real-iphone) |
+| Depends on | [pymobiledevice3](#dep-pymobiledevice3) |
+
 ### feature-registry
 
 **This feature registry** · Tooling · shipped · since 2026-11-07
@@ -1455,7 +1468,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
 | <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 5 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
-| <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots) | 1 |
+| <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
 | <a id="dep-gha-checkout"></a>**actions/checkout** | ci | v7.0.1, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-gha-artifacts"></a>**actions/upload-artifact and download-artifact** | ci | upload v7.0.2, download v8.0.2, pinned by SHA | [ci.yml](../.github/workflows/ci.yml) | [screenshots](#screenshots) | 1 |
@@ -1535,7 +1548,7 @@ Features per area that need each dependency, directly or through another feature
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
 | Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 2 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
-| pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
+| pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | actions/checkout |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | actions/upload-artifact and download-artifact |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |

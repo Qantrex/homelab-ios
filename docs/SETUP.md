@@ -210,7 +210,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 | `-HomelabTileNames "<id>=<name>,…"` | Sets custom names for pinned Home tiles, for example `"light.wohnzimmer_lampen=Living room,script.homelab_radio_off=Alarm off"`. Ids as for `-HomelabPins`, names trimmed to one line of at most 24 characters and without commas; a bad id, an empty name or more than 12 entries drops the whole argument. Names only stick to pinned entities, so give `-HomelabPins` first (an earlier launch is enough). Home Assistant keeps its own names |
 | `-HomelabTileIcons "<id>=<symbol>,…"` | Sets icons for pinned Home tiles, for example `"light.wohnzimmer_lampen=lamp.floor,script.homelab_goodnight=moon.stars"`. Symbols only from the app's list (`TileIcon.choices`: `lightbulb`, `lamp.floor`, `lamp.table`, `lamp.ceiling`, `sofa`, `sparkles`, `book`, `moon.stars`, `bed.double`, `sun.horizon`, `alarm`, `music.note`, `speaker.slash`, `radio`, `tv`, `power`); anything else, a bad id or more than 12 entries drops the whole argument. Like names, icons only stick to pinned entities |
 | `-HomelabDensity <detail>` | Today's detail: `calm`, `standard` or `overkill` (stored like the setting) |
-| `-HomelabPersonality <voice>` | The headline's personality: `off`, `dry` or `snarky` (stored like the setting) |
+| `-HomelabPersonality <voice>` | The headline's personality: `off`, `dry`, `snarky` or `ultrakill` (stored like the setting) |
 
 `YES`, `true` and `1` all count as yes. The links `homelab://today`, `homelab://actions`, `homelab://chat`,
 `homelab://lab` and `homelab://settings` open a tab too (the widgets use them; the older `overview` and `home` open Today).
@@ -235,10 +235,11 @@ Assistant) only goes over `https://`, or plain `http://` to this device (`localh
 | `Sources/HomelabUI` | The SwiftUI screens, `AppModel`, Keychain token store, background refresh, Face ID lock | no |
 | `Sources/Homelab` | The `@main` app: scene, deep links, notification taps, background task | no |
 | `Sources/HomelabWidget` | The WidgetKit extension (status, day, hosts, U6, deadlines and to-do widgets and the Live Activity, static configuration only; no App Intents) | no |
+| `Sources/HomelabShare` | The share extension (send a link, photo or PDF to the server; queued in the outbox when offline) | no |
 | `Tests/HomelabKitTests` | Swift Testing tests for HomelabKit, plus integration tests against the fixture server | yes |
 | `server/` | `openapi.yaml` (the API), `reference_server.py`, its tests, `config.example.json` | – |
 | `scripts/` | Build, install, test, lint, screenshot and release helpers | – |
-| `xtool.yml`, `App-Info.plist`, `Widget-Info.plist`, `App.entitlements`, `Widget.entitlements`, `Resources/AppIcon.png` | What xtool needs to package the app and the widget | – |
+| `xtool.yml`, `App-Info.plist`, `Widget-Info.plist`, `Share-Info.plist`, `App.entitlements`, `Widget.entitlements`, `Share.entitlements`, `Resources/AppIcon.png` | What xtool needs to package the app and its two extensions | – |
 | `.github/workflows/` | `ci.yml` (Linux + macOS checks only; CI never builds an app to install, see `docs/RELEASE.md`) | – |
 
 No third-party Swift packages. The shared App Group is `group.com.qantrex.homelab`; SideStore renames it, see
