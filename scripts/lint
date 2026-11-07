@@ -59,7 +59,23 @@ check_conversions Sources/HomelabKit
 private_hits=$(git grep -nIE 'tail[0-9a-f]{6,}\.ts\.net' -- . ':!scripts/lint' 2>/dev/null || true)
 words=${HOMELAB_PRIVATE_WORDS:-$HOME/.config/homelab-ios/private-words}
 if [ -f "$words" ] && [ -s "$words" ]; then
-  private_hits+=$(git grep -nIiF -f "$words" -- . ':!scripts/lint' 2>/dev/null || true)
+  more=$(git grep -nIiF -f "$words" -- . ':!scripts/lint' 2>/dev/null || true)
+  private_hits+=${more:+${private_hits:+$'\n'}$more}
+fi
+# Commits not pushed yet (@{upstream}..HEAD): the added lines checked the same way, so a leak is caught before the
+# push. Pushed history is not scanned (an old leak there is a known decision). Quiet when there is no upstream.
+if git rev-parse --verify -q '@{upstream}' >/dev/null 2>&1; then
+  added=$(git log -p --no-color --format='commit %h' '@{upstream}..HEAD' -- . ':!scripts/lint' 2>/dev/null | grep -E '^(\+[^+]|\+$|commit )' || true)
+  unpushed=$(printf '%s\n' "$added" | grep -E 'tail[0-9a-f]{6,}\.ts\.net' || true)
+  if [ -f "$words" ] && [ -s "$words" ]; then
+    more=$(printf '%s\n' "$added" | grep -iF -f "$words" || true)
+    unpushed+=${more:+${unpushed:+$'\n'}$more}
+  fi
+  if [ -n "$unpushed" ]; then
+    echo "lint: private names in commits that are not pushed yet (fix them before the push; amend or rewrite local commits)"
+    echo "$unpushed" | sed 's/^/  /'
+    fail=1
+  fi
 fi
 if [ -n "$private_hits" ]; then
   echo "lint: private names in the repo (tailnet or a word from $words)"
