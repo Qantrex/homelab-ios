@@ -11,7 +11,7 @@ A source is one file, `server/sources/<type>.py`. A `-` in the type is a `_` in 
 `uptime_kuma.py`). The server finds it by that name; there is no list to edit.
 
 ```python
-"""Uptime Kuma: down monitors as problems, one card. Tested against Uptime Kuma 2.0.2 (recordings/uptime-kuma/).
+"""Uptime Kuma: down monitors as problems, one card. Tested against Uptime Kuma 2.5.9 (recordings/uptime-kuma/).
 
 Config: {"name": "Kuma", "type": "uptime-kuma", "url": "http://192.0.2.10:3001", "slug": "home"}
 """

@@ -1,0 +1,25 @@
+{
+  "_about": "Made up. The statuses answering oddly: unknown fields, wrong types, junk entries, a duplicate key, an endpoint without a group or key, results without `success`, a failed result without conditions. The source must not crash.",
+  "routes": {
+    "GET /api/v1/endpoints/statuses": {
+      "status": 200,
+      "json": [
+        {"name": "router", "results": [{"success": true, "duration": "fast", "new": 1}], "events": "none"},
+        {"name": "router", "group": "", "key": "_router", "results": [{"success": false}]},
+        {"name": 12, "group": "core", "key": "core_12", "results": "none"},
+        {"name": "dns", "group": ["core"], "key": "x_dns", "results": [
+          {"success": "no"}, {"success": false, "duration": -5, "conditionResults": [
+            {"condition": 7, "success": false}, "junk", {"condition": "[RESPONSE_TIME] (900) < 500", "success": false}]}
+        ]},
+        {"name": "cert-only", "key": "_cert-only", "results": [
+          {"success": false, "errors": ["x509: certificate has expired"], "conditionResults": [
+            {"condition": "[CERTIFICATE_EXPIRATION] (0s) > 72h", "success": false}]}]},
+        {"name": "", "key": "_", "results": []},
+        {"key": "only-a-key"},
+        "a string",
+        null,
+        [1, 2]
+      ]
+    }
+  }
+}

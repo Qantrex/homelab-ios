@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 83 | 70 | 12 | 1 | 37 | 3 |
+| 85 | 70 | 14 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -165,7 +165,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, I2, D1, D2, D3, D4, D5 | 3 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
-### Server (6)
+### Server (8)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -174,6 +174,8 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 8 | n/a | 2 |
 | [Source status in /info](#source-status) | partial | – | 4 | n/a | 2 |
 | [JSON feed source](#source-json) | partial | `status`, `hosts`, `cards`, `services` | 4 | n/a | 1 |
+| [Bridge source: Uptime Kuma](#source-uptime-kuma) | partial | `status`, `cards`, `services` | 2 | n/a | 2 |
+| [Bridge source: Gatus](#source-gatus) | partial | `status`, `cards` | 1 | n/a | 2 |
 | [Live API check](#live-api-check) | shipped | – | n/a | n/a | 1 |
 
 ### Tooling (6)
@@ -210,12 +212,12 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 
 | Kind | Entry | Features |
 |---|---|---|
-| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json) |
+| Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus) |
 | Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json) |
-| Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json) |
+| Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus) |
+| Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma) |
 | Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
@@ -274,8 +276,8 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
-| Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources), [source-json](#source-json) |
-| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json) |
+| Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma) |
+| Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus) |
 | Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
@@ -1547,6 +1549,40 @@ Bridge source type `json`: one URL that answers a subset of the Companion /state
 | Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
 | Notes | docs/plans/MODULAR.md M1.3. The type is `json`, so the module is server/sources/json.py; sources.load_type imports it without binding it on the package, so the package's stdlib `json` stays. For a script on the bridge's own machine, `cards_dir` (push) is simpler. |
 
+### source-uptime-kuma
+
+**Bridge source: Uptime Kuma** · Server · partial · since 2026-11-07
+
+Source type `uptime-kuma`: the monitors of one Uptime Kuma status page (its public JSON, no key). Down is a problem; pending, slower than `slow_ms` and a certificate expiring within `cert_days` are warnings; a pinned danger or warning incident too. One list card in Lab ("11 of 12 up", state and 24 h uptime per monitor), monitors with a public link as services. Tested against Uptime Kuma 2.5.9 and 1.23.16.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `services`, `GET /state`, `GET /services`, `state.problems`, `state.cards`, `services` |
+| Sources | [uptime_kuma.py#collect](../server/sources/uptime_kuma.py), [test_source_uptime_kuma.py](../server/test_source_uptime_kuma.py), [normal.json](../server/recordings/uptime-kuma/normal.json), [odd.json](../server/recordings/uptime-kuma/odd.json), [v1.json](../server/recordings/uptime-kuma/v1.json), [not-found.json](../server/recordings/uptime-kuma/not-found.json), [sources-monitors.json](../server/examples/sources-monitors.json) |
+| Tests | `server/test_source_uptime_kuma.py::UptimeKumaSource`, `server/test_source_uptime_kuma.py::MonitorsSampleConfig` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/SERVER-SETUP.md#sources](SERVER-SETUP.md#sources), [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.4. Reads GET /api/status-page/<slug> and /api/status-page/heartbeat/<slug>, not /metrics (Prometheus text behind HTTP Basic with an API key as the password, made by an admin; the plan prefers no key). Kuma 1.23 never answers an unknown slug, so that shows as `Kuma: timeout`; 2.x gives `status page <slug> not found`. |
+
+### source-gatus
+
+**Bridge source: Gatus** · Server · partial · since 2026-11-07
+
+Source type `gatus`: every Gatus endpoint from GET /api/v1/endpoints/statuses. Failing is a problem with the first failed condition; failing only on [RESPONSE_TIME], [CERTIFICATE_EXPIRATION] or [DOMAIN_EXPIRATION], or slower than `slow_ms`, is a warning. One list card in Lab ("11 of 12 up"). Optional HTTP Basic (`user` + `password_env`) for security.basic. Tested against Gatus v5.38.0.
+
+| | |
+|---|---|
+| Server | `status`, `cards`, `GET /state`, `state.problems`, `state.cards` |
+| Sources | [gatus.py#collect](../server/sources/gatus.py), [test_source_gatus.py](../server/test_source_gatus.py), [normal.json](../server/recordings/gatus/normal.json), [odd.json](../server/recordings/gatus/odd.json), [auth-failed.json](../server/recordings/gatus/auth-failed.json) |
+| Tests | `server/test_source_gatus.py::GatusSource` |
+| Phone (DeviceTest.md) | n/a: server side; the app sees ordinary Companion data |
+| Docs | [docs/SERVER-SETUP.md#sources](SERVER-SETUP.md#sources), [docs/REFERENCE_SERVER.md#sources](REFERENCE_SERVER.md#sources) |
+| Depends on | [server-sources](#server-sources) |
+| Through those | [companion-api-v1](#dep-companion-api-v1), [python3](#dep-python3), [tailscale](#dep-tailscale) |
+| Notes | docs/plans/MODULAR.md M1.4. Gatus' `errors` texts are not shown (they hold the endpoint's URL). The sample config server/examples/sources-monitors.json and its check-live-api test are in source-uptime-kuma. |
+
 ### live-api-check
 
 **Live API check** · Server · shipped · since 2026-11-06
@@ -1664,8 +1700,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 15 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 31 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 17 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 33 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -1683,7 +1719,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 8 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 10 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [ci-checks](#ci-checks) | 1 |
 | <a id="dep-pymobiledevice3"></a>**pymobiledevice3** | tooling | 11.50.0 (in .venv/) | [phone-shots](../scripts/phone-shots) | [screenshots](#screenshots), [phone-cli](#phone-cli) | 2 |
 | <a id="dep-gh"></a>**GitHub CLI** | tooling | unpinned | [RELEASE.md](RELEASE.md) | [release-process](#release-process) | 1 |
@@ -1746,8 +1782,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 4 |  |
-| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 6 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 3 |  |  | 1 | 6 |  |
+| Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 4 | 1 |  |  | 8 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1765,7 +1801,7 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 5 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 7 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |
 | pymobiledevice3 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |
 | GitHub CLI |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |

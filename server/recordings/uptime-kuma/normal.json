@@ -1,0 +1,63 @@
+{
+  "_about": "Made up, in the shape of Uptime Kuma 2.5.9 (server/routers/status-page-router.js, getStatusPageData; heartbeats are toPublicJSON, msg always empty). Status page `home`: six monitors in two groups, one down, one pending, one in maintenance, one with a certificate that expires soon, one pinned danger incident. Heartbeats oldest first.",
+  "routes": {
+    "GET /api/status-page/home": {
+      "status": 200,
+      "json": {
+        "config": {
+          "slug": "home", "title": "Home lab", "description": null, "icon": "/icon.svg", "autoRefreshInterval": 300,
+          "theme": "auto", "published": true, "showTags": false, "customCSS": "body {\n  \n}\n", "footerText": null,
+          "showPoweredBy": true, "analyticsId": null, "analyticsScriptUrl": null, "analyticsType": null,
+          "showCertificateExpiry": true, "showOnlyLastHeartbeat": false, "rssTitle": null
+        },
+        "incidents": [
+          {"id": 2, "style": "danger", "title": "Power cut in the rack", "content": "UPS on battery.", "pin": true,
+           "active": true, "createdDate": "2026-11-07 08:12:00", "lastUpdatedDate": null, "status_page_id": 1}
+        ],
+        "publicGroupList": [
+          {"id": 1, "name": "Services", "weight": 1, "monitorList": [
+            {"id": 1, "name": "Jellyfin", "sendUrl": 1, "type": "http", "url": "http://192.0.2.10:8096",
+             "certExpiryDaysRemaining": "", "validCert": false},
+            {"id": 2, "name": "Vaultwarden", "sendUrl": 1, "type": "http", "url": "https://nas.tail1234.ts.net",
+             "certExpiryDaysRemaining": 61, "validCert": true},
+            {"id": 3, "name": "Gitea", "sendUrl": 0, "type": "http", "certExpiryDaysRemaining": "", "validCert": false},
+            {"id": 6, "name": "Nextcloud", "sendUrl": 0, "type": "keyword", "certExpiryDaysRemaining": 5,
+             "validCert": true}
+          ]},
+          {"id": 2, "name": "Infra", "weight": 2, "monitorList": [
+            {"id": 4, "name": "pve1", "sendUrl": 0, "type": "ping", "certExpiryDaysRemaining": "", "validCert": false},
+            {"id": 5, "name": "Backup NAS", "sendUrl": 0, "type": "port", "certExpiryDaysRemaining": "",
+             "validCert": false}
+          ]}
+        ],
+        "maintenanceList": [
+          {"id": 1, "title": "Disk swap", "description": "", "strategy": "single", "intervalDay": 1, "active": true,
+           "dateRange": ["2026-11-07 09:00:00", "2026-11-07 12:00:00"], "timeRange": [{"hours": 0, "minutes": 0},
+           {"hours": 0, "minutes": 0}], "weekdays": [], "daysOfMonth": [], "timeslotList": [], "cron": null,
+           "duration": null, "durationMinutes": 0, "timezone": "SAME_AS_SERVER", "timezoneOffset": "+01:00",
+           "status": "under-maintenance"}
+        ]
+      }
+    },
+    "GET /api/status-page/heartbeat/home": {
+      "status": 200,
+      "json": {
+        "heartbeatList": {
+          "1": [
+            {"status": 1, "time": "2026-11-07 09:58:00.112", "msg": "", "ping": 41},
+            {"status": 0, "time": "2026-11-07 09:59:00.087", "msg": "", "ping": null}
+          ],
+          "2": [{"status": 1, "time": "2026-11-07 09:59:10.501", "msg": "", "ping": 88}],
+          "3": [
+            {"status": 1, "time": "2026-11-07 09:58:20.000", "msg": "", "ping": 120},
+            {"status": 2, "time": "2026-11-07 09:59:20.000", "msg": "", "ping": null}
+          ],
+          "4": [{"status": 1, "time": "2026-11-07 09:59:30.004", "msg": "", "ping": 3}],
+          "5": [{"status": 3, "time": "2026-11-07 09:59:40.010", "msg": "", "ping": null}],
+          "6": [{"status": 1, "time": "2026-11-07 09:59:50.300", "msg": "", "ping": 2310}]
+        },
+        "uptimeList": {"1_24": 0.9583, "2_24": 1, "3_24": 0.9986, "4_24": 1, "5_24": 0.875, "6_24": 0.99812}
+      }
+    }
+  }
+}

@@ -101,6 +101,28 @@ echo '*/5 * * * * root /usr/local/bin/card-containers /var/lib/homelab-companion
 Then set `"cards_dir": "/var/lib/homelab-companion/cards"` in the config. (A script and not a one-line cron job:
 cron cuts a line at every unescaped `%`.)
 
+### Sources
+
+With a `sources` list the reference server is the Homelab Bridge: it reads other services' APIs and shows what
+they report on Today and in Lab. Copy the `server/sources/` folder next to `reference_server.py`. The common keys
+(`name`, `type`, `url`, `every`, `timeout`, `*_env`) are in [REFERENCE_SERVER.md → Sources](REFERENCE_SERVER.md#sources);
+each module's docstring has the details.
+
+| Type | What it reads | Keys | Access it needs | Tested with |
+|---|---|---|---|---|
+| `uptime-kuma` | The monitors of one status page: down = problem; pending, slow (`slow_ms`) and a certificate that expires within `cert_days` (14) = warning; a pinned "danger" or "warning" incident. A card "11 of 12 up" in Lab, links as services | `url`, `slug`; `slow_ms`, `cert_days`, `services` | None: the public status page JSON. Only the monitors on that page show | 2.5.9 and 1.23.16 |
+| `gatus` | All endpoints: failing = problem; failing only on `[RESPONSE_TIME]`, `[CERTIFICATE_EXPIRATION]` or `[DOMAIN_EXPIRATION]`, or slower than `slow_ms` = warning. A card "11 of 12 up" in Lab | `url`; `slow_ms`; `user` with `password_env` | None, or the `security.basic` user (OIDC can't be used) | v5.38.0 |
+
+```json
+"sources": [
+  {"name": "Kuma", "type": "uptime-kuma", "url": "http://192.0.2.10:3001", "slug": "home"},
+  {"name": "Gatus", "type": "gatus", "url": "http://192.0.2.10:8080", "slow_ms": 2000}
+]
+```
+
+The slug is the part after `/status/` in the status page's address. A status page only for the bridge is fine.
+[`server/examples/sources-monitors.json`](../server/examples/sources-monitors.json) is a whole config with both.
+
 Next steps, all optional: cards from your own scripts, a service launcher, actions and chat. See
 [REFERENCE_SERVER.md](REFERENCE_SERVER.md). Actions and chat are off by default; read their safety notes first.
 

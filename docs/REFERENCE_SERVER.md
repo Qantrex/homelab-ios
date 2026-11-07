@@ -222,7 +222,8 @@ Companion API data and needs nothing new. Without the key nothing changes (a gol
 
 Sources are optional modules in `server/sources/`, next to `reference_server.py` (copy the folder too). They are
 stdlib only. The types are the files in that folder: [`json`](#json-feed) reads a feed in the shape of `/state`;
-`example` is the template for new ones and reads a made-up API.
+`example` is the template for new ones and reads a made-up API. The real ones, their keys and the upstream versions
+they are tested with: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources).
 
 ```json
 "sources": [

@@ -1,0 +1,6 @@
+{
+  "_about": "Made up, in the shape of Gatus v5.38.0 with security.basic and a wrong or missing password: 401 with a plain-text body.",
+  "routes": {
+    "GET /api/v1/endpoints/statuses": {"status": 401, "body": "Unauthorized", "headers": {"WWW-Authenticate": "Basic realm=\"Restricted\""}}
+  }
+}
