@@ -138,7 +138,8 @@ HTTPS certificates turned on (DNS page).
    ```
 
    A 403 means your login is not in `allowed_logins`; `docker compose logs bridge` shows the refused login. A 401 means
-   the request didn't come through the bridge's `tailscale serve` address. If the machine never appears in your tailnet,
+   the request didn't come through the bridge's `tailscale serve` address, or, right after the start, the sidecar isn't
+   up yet (wait until both are `healthy`). If the machine never appears in your tailnet,
    `docker compose logs tailscale` shows an expired or already used auth key (add `--profile docker` to step 4 if you
    use the `docker` source).
 6. In the app: Add server → Type **Homelab API** → Address `https://homelab-bridge.<tailnet>.ts.net` → Login

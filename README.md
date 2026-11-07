@@ -110,6 +110,9 @@ Needs iOS 18 or newer.
 
 ## Quick start (a homelab with nothing yet)
 
+Running services in Docker already (Uptime Kuma, Proxmox, Pi-hole, …)? Use the Homelab Bridge instead:
+[Getting started B](docs/GETTING-STARTED.md#b-homelab-bridge).
+
 On a Debian/Ubuntu server that is in your tailnet. Once per tailnet, in the Tailscale admin console → DNS: turn on
 **MagicDNS** and **HTTPS Certificates** (`tailscale serve --https` needs both).
 

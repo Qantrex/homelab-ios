@@ -123,7 +123,8 @@ You need Docker with Compose 2.17 or newer on Linux.
 
    `{"api": 1, "name": "Homelab Bridge", ...}` means it works. A 403 means your login is not in `allowed_logins`
    (`docker compose logs bridge` shows the refused one). A 401 means the request didn't come through the bridge's
-   `tailscale serve` address (`https://homelab-bridge.…`): use that address, not an IP or a port. If `docker compose
+   `tailscale serve` address (`https://homelab-bridge.…`): use that address, not an IP or a port. Right after the start
+   a 401 can also mean the sidecar isn't up yet: wait until both are `healthy` and try again. If `docker compose
    ps` never shows `healthy` and the machine doesn't appear in your tailnet, `docker compose logs tailscale` shows an
    expired or already used auth key: generate a new one (step 3), put it in `docker/tailscale.env` and run
    `docker compose up -d` again. If `bridge` keeps restarting in `docker compose ps` and `docker compose logs bridge`
@@ -205,7 +206,7 @@ It doesn't hide anything on Today.
 |---|---|
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Turn Tailscale on. On the server: `tailscale serve status`, and the `curl` above from another tailnet device |
 | "The server refused access. …" (403) | Your login is not in `allowed_logins`. The server log shows the refused login |
-| "No login reached the server. …" (401) | The request didn't come through `tailscale serve` (or the phone isn't logged in, or it is a tagged device), or the Token is wrong |
+| "No login reached the server. …" (401) | The request didn't come through `tailscale serve` (or the phone isn't logged in, or it is a tagged device), or the Token is wrong. Right after a bridge start: its Tailscale sidecar isn't up yet, try again in a minute |
 | `bridge` keeps restarting; its log says "ERROR: no tailscale0 interface in this network namespace 60 s after the start" | The Tailscale sidecar isn't up with kernel networking. `docker compose logs tailscale`, and check the host has `/dev/net/tun` (missing in some LXC and NAS setups). See [SERVER-SETUP.md](SERVER-SETUP.md#docker) |
 | "Home Assistant refused the token. …" | Create a new long-lived token (HA profile → Security) and paste it under Edit server |
 | "Can't find `<host>`. Check the address." | Typo in the address, or the name isn't known (MagicDNS off for a `.ts.net` name). Check it in the Tailscale app |

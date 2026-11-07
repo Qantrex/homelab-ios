@@ -170,7 +170,7 @@ struct WelcomeView: View {
                 }
                 VStack(spacing: 4) {
                     Text("A Homelab server is anything that speaks the Homelab API, like the small Homelab Bridge for any Linux box:")
-                    Link("Set up a Homelab Bridge", destination: URL(string: "https://github.com/Qantrex/homelab-ios/blob/main/docs/SERVER-SETUP.md")!)
+                    Link("Set up a Homelab Bridge", destination: URL(string: "https://github.com/Qantrex/homelab-ios/blob/main/docs/GETTING-STARTED.md#b-homelab-bridge")!)
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
