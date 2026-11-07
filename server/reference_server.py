@@ -66,6 +66,9 @@ PENDING_ID_RE = re.compile(r"^[A-Za-z0-9-]{1,32}$")
 ARG_RE = re.compile(r"^[A-Za-z0-9_.@][A-Za-z0-9_.@-]{0,63}( [A-Za-z0-9_.@][A-Za-z0-9_.@-]{0,63})*$")
 HOSTNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
 SECRET_ENV = ("HOMELAB_TOKENS", "HOMELAB_BUTTON_SECRET")
+# Env variables that sources read their keys from (key_env, *_env). Filled by a Config with `sources`; kept from
+# every command the server runs, like SECRET_ENV.
+SOURCE_SECRET_ENV = set()
 SEVERITIES = ("problem", "warning")
 
 # Local checks must never go through an HTTP proxy from the environment.
@@ -87,7 +90,7 @@ def log(msg):
 
 def child_env(extra=None):
     """Environment for commands we run: ours, minus our secrets."""
-    env = {k: v for k, v in os.environ.items() if k not in SECRET_ENV}
+    env = {k: v for k, v in os.environ.items() if k not in SECRET_ENV and k not in SOURCE_SECRET_ENV}
     env.update(extra or {})
     return env
 
@@ -250,7 +253,7 @@ def probe(target, timeout=5.0, expect=None, insecure=False):
 KNOWN_KEYS = {
     "name", "listen", "allow_remote", "allowed_hosts", "tokens", "trust_identity_header", "allowed_logins", "interval",
     "this_host", "hosts", "checks", "thresholds", "cards_dir", "services", "pending_dir", "actions",
-    "action_timeout", "chat_command", "chat_timeout", "state_dir",
+    "action_timeout", "chat_command", "chat_timeout", "state_dir", "sources",
 }
 
 
@@ -392,6 +395,17 @@ class Config:
         self.state_dir = os.path.expanduser(raw.get("state_dir") or "~/.local/state/homelab-companion")
 
         self.button_secret = env.get("HOMELAB_BUTTON_SECRET", "").encode() or secrets.token_bytes(32)
+
+        # Homelab Bridge sources (docs/REFERENCE_SERVER.md#sources). Without the key nothing below runs and the
+        # sources package is never imported.
+        self.sources = []
+        if raw.get("sources"):
+            import sources as bridge_sources  # noqa: E402 - optional, next to this file
+            try:
+                self.sources = bridge_sources.parse(raw["sources"], env)
+            except ValueError as exc:
+                raise ConfigError(str(exc))
+            SOURCE_SECRET_ENV.update(bridge_sources.env_names(self.sources))
 
     @classmethod
     def load(cls, path, env=None):
@@ -967,6 +981,10 @@ class RealApp:
         self.actions = Actions(cfg.pending_dir, cfg.actions, cfg.button_secret, cfg.action_timeout) \
             if cfg.pending_dir else None
         self.chat = Chat(cfg.chat_command, cfg.state_dir, cfg.chat_timeout) if cfg.chat_command else None
+        self.sources = None
+        if cfg.sources:
+            import sources as bridge_sources  # noqa: E402
+            self.sources = bridge_sources.Runner(cfg.sources, logf=lambda msg: log(msg))
         self.routes = {
             "info": {"GET": self.info},
             "state": {"GET": self.state},
@@ -974,27 +992,32 @@ class RealApp:
         }
         if self.chat:
             self.routes["messages"] = {"GET": self.messages, "POST": self.post_message}
-        if cfg.services:
+        if cfg.services or self.sources:
             self.routes["services"] = {"GET": self.services}
 
     def start(self):
         self.collector.start()
+        if self.sources:
+            self.sources.start()
 
     def stop(self):
         self.collector.stop()
+        if self.sources:
+            self.sources.stop()
 
     def control(self, query):
         return None
 
     def features(self):
         f = ["status", "hosts"]
+        extra = self.sources.merged() if self.sources else None
         if self.actions:
             f.append("actions")
         if self.chat:
             f.append("chat")
-        if self.cfg.cards_dir:
+        if self.cfg.cards_dir or (extra and extra["cards"]):
             f.append("cards")
-        if self.cfg.services:
+        if self.cfg.services or (extra and extra["services"]):
             f.append("services")
         return f
 
@@ -1005,6 +1028,11 @@ class RealApp:
     def state(self, query, body):
         snap = self.collector.get()
         problems = snap["problems"]
+        hosts = snap["hosts"]
+        extra = self.sources.merged() if self.sources else None
+        if extra:
+            problems = problems + extra["problems"]
+            hosts = hosts + extra["hosts"]
         if snap["checked"] is None:
             status = "unknown"
         elif any(p.get("severity") == "problem" for p in problems):
@@ -1017,9 +1045,11 @@ class RealApp:
         if snap["checked"]:
             out["checked"] = snap["checked"]
         out["problems"] = problems
-        out["hosts"] = snap["hosts"]
+        out["hosts"] = hosts
         out["pending"] = self.actions.pending() if self.actions else []
         out["cards"] = load_cards(self.cfg.cards_dir)
+        if extra:
+            out["cards"] += extra["cards"]
         out["busy"] = ["chat"] if self.chat and self.chat.busy else []
         last = self.chat.last() if self.chat else None
         if last:
@@ -1041,6 +1071,8 @@ class RealApp:
         return self.chat.post(_text(body))
 
     def services(self, query, body):
+        if self.sources:
+            return 200, {"services": self.cfg.services + self.sources.merged()["services"]}
         return 200, {"services": self.cfg.services}
 
 

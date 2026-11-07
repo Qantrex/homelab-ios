@@ -1,0 +1,26 @@
+{
+  "_about": "Made up. The same API answering oddly: unknown fields, wrong types, junk entries, duplicates, a secret-named field. The source must not crash.",
+  "routes": {
+    "GET /api/status": {
+      "status": 200,
+      "json": {
+        "version": 2,
+        "new_field": {"nested": [1, 2, 3]},
+        "hosts": [
+          {"id": "pve1", "name": null, "up": "yes", "load": "high"},
+          {"id": 7},
+          {"name": "no id"},
+          "a string",
+          null,
+          {"id": "pve1", "name": "duplicate"}
+        ],
+        "monitors": [
+          {"id": null, "name": "No id", "up": null},
+          {"name": 12},
+          [1, 2],
+          {"id": 9, "name": "Bad url", "up": true, "url": "javascript:alert(1)"}
+        ]
+      }
+    }
+  }
+}

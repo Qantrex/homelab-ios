@@ -55,7 +55,7 @@ jobs:
           swift test
 
       - name: Reference server tests
-        run: python3 -m unittest -v server/test_reference_server.py
+        run: python3 -m unittest -v server/test_*.py
 
   macos:
     strategy:

@@ -1,0 +1,20 @@
+{
+  "_about": "Made up. The example source's status API (server/sources/example.py): two hosts, three monitors, one down.",
+  "routes": {
+    "GET /api/status": {
+      "status": 200,
+      "json": {
+        "version": "1.0",
+        "hosts": [
+          {"id": "pve1", "name": "pve1", "up": true, "load": 0.42},
+          {"id": "backup", "name": "Backup box", "up": false}
+        ],
+        "monitors": [
+          {"id": 3, "name": "Jellyfin", "up": false, "msg": "timeout", "url": "http://192.0.2.10:8096"},
+          {"id": 4, "name": "Vaultwarden", "up": true, "url": "https://nas.tail1234.ts.net"},
+          {"id": 5, "name": "Gitea", "up": true}
+        ]
+      }
+    }
+  }
+}

@@ -122,6 +122,7 @@ The config is JSON. Keys that start with `_` are comments and are ignored. Unkno
 | `chat_command` | none | argv list. Turns on `chat` |
 | `chat_timeout` | `120` | Seconds the chat command may run |
 | `state_dir` | `~/.local/state/homelab-companion` | Chat history (`messages.jsonl`, last 1000) |
+| `sources[]` | none | Homelab Bridge sources: other services' APIs as problems, hosts, cards and services. See [Sources](#sources) |
 
 `insecure: true` skips TLS certificate checks for that one URL (for self-signed local UIs such as Cockpit).
 Checks never use an HTTP proxy from the environment.
@@ -212,6 +213,56 @@ The command gets the message text from someone you let in. Treat it as untrusted
 - Slow clients are cut off after 30 s without data.
 - Actions and chat are off by default. Turn them on only if you need them.
 
+## Sources
+
+With a `sources` list the reference server becomes the **Homelab Bridge**: it also reads the APIs of other services
+(Uptime Kuma, Docker, Proxmox, ...) and adds what they report to `/state` and `/services`. The app sees ordinary
+Companion API data and needs nothing new. Without the key nothing changes (a golden test checks it).
+
+Sources are optional modules in `server/sources/`, next to `reference_server.py` (copy the folder too). They are
+stdlib only. The types are the files in that folder; `example` is the template for new ones and reads a made-up
+API.
+
+```json
+"sources": [
+  {"name": "Lab", "type": "example", "url": "http://192.0.2.10:8080", "key_env": "LAB_KEY", "every": 60}
+]
+```
+
+`server/examples/sources-example.json` is a whole config with this source; [BRIDGE.md](BRIDGE.md#try-it) runs it
+against a fake upstream.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `name` | required | 1–40 of `A-Z a-z 0-9`, space, `_ . -`, unique. Shown in warnings, and every id gets `<name>:` in front |
+| `type` | required | The module: `server/sources/<type>.py` (a `-` in the type is `_` in the file name) |
+| `url` | per type | The upstream's base URL, `http://` or `https://`, without a user, password or key in it |
+| `every` | `60` | Seconds between two reads of this source. Each source has its own |
+| `timeout` | `10` | Seconds per request |
+| `key_env` | none | The **name** of the env variable that holds the key. Other `*_env` keys work the same (`password_env`) |
+| `insecure` | `false` | Skip the TLS certificate check (self-signed Proxmox or TrueNAS). Logged as a warning |
+| `ca_file` | none | A PEM file with the CA that signed the upstream's certificate (better than `insecure`) |
+| other keys | | Per type, in the module's docstring |
+
+Rules the server enforces for every source:
+
+- **Keys only in env variables.** The config names the variable (`"key_env": "PVE_TOKEN"`), never the key. A source
+  key such as `key`, `api_key`, `token` or `password` in the config, or a key in the URL, stops the server at start.
+  Put the variables in the systemd `EnvironmentFile` next to `HOMELAB_TOKENS`. A source sees only the variables its
+  own `*_env` keys name. Their values are replaced by `***` in every answer and log line, and commands from actions
+  and chat don't get them.
+- **Read-only.** A source can't offer actions; buttons on its cards and items are removed.
+- **Ids are prefixed.** A Kuma monitor `m3` becomes the problem `Kuma:m3`, the host `pve1` of the source `Lab`
+  becomes `Lab:pve1`. The card ids `today` and `departures` are refused.
+- **A failing source is one warning.** A wrong key, a timeout, an odd answer or a bug in the module gives exactly one
+  warning, for example `Kuma: 401` or `Lab: timeout`, and nothing else from that source. The rest answers as usual.
+  The status is the worst of all problems.
+- **Limits.** A request may take `timeout` seconds and return at most 8 MB. No redirects, no cookies, no proxy from
+  the environment. At most 100 problems, 100 hosts, 50 cards and 100 services per source.
+- Each source runs in its own thread, so a slow upstream never holds up the host checks or another source.
+
+Writing a new source: [BRIDGE.md](BRIDGE.md).
+
 ## Fixture mode
 
 A mock for the app's unit tests, UI tests and CI screenshots. It serves the files in `Sources/HomelabKit/Fixtures/`.
@@ -237,8 +288,10 @@ It binds `127.0.0.1` only. Without `--token` there is no auth.
 ## Tests
 
 ```bash
-python3 -m unittest -v server/test_reference_server.py
+python3 -m unittest -v server/test_*.py
 ```
 
-53 tests, stdlib only, no network beyond `127.0.0.1`. They start both modes, a tiny local web app for the
-checks, and the CLI with SIGTERM.
+Stdlib only, no network beyond `127.0.0.1`. `test_reference_server.py` starts both modes, a tiny local web app for
+the checks, and the CLI with SIGTERM; its `NoSourcesGolden` freezes the answers of a config without `sources`.
+`test_sources.py` tests the [sources](#sources) rules against `server/fake_upstream.py`, which replays recordings
+from `server/recordings/`.
