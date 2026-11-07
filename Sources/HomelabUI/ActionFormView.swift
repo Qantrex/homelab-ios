@@ -255,13 +255,18 @@ struct StartGrid: View {
     var scan: () -> Void = {}
     /// Feature `search`: a tile that opens the search screen; nil = no tile.
     var search: (() -> Void)?
+    /// Feature `deals`: a tile that opens the Deals screen; nil = no tile. `dealsToAct` is the number of fresh "act
+    /// now" deals (a gold dot and its words under the label), 0 = none.
+    var deals: (() -> Void)?
+    var dealsToAct = 0
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// A tile: an action (its index in `actions`), the Search tile or the Scan tile.
-    private enum Tile: Hashable { case action(Int), search, scan }
+    private enum Tile: Hashable { case action(Int), search, deals, scan }
 
     private var tiles: [Tile] {
-        actions.indices.map(Tile.action) + (search == nil ? [] : [.search]) + (scanWaiting == nil ? [] : [.scan])
+        actions.indices.map(Tile.action) + (search == nil ? [] : [.search]) + (deals == nil ? [] : [.deals])
+            + (scanWaiting == nil ? [] : [.scan])
     }
 
     var body: some View {
@@ -305,6 +310,15 @@ struct StartGrid: View {
             .buttonStyle(.press)
             .accessibilityLabel(Text("Find a movie or show"))
             .accessibilityHint(Text("Searches the server and lets you request what is missing."))
+        case .deals:
+            Button { deals?() } label: {
+                StartTile(icon: "tag", label: Text("Deals"),
+                          status: dealsToAct > 0 ? "\(dealsToAct) to act on" : nil, statusValue: dealsToAct)
+            }
+            .buttonStyle(.press)
+            .accessibilityLabel(Text("Deals"))
+            .accessibilityValue(dealsToAct > 0 ? Text("\(dealsToAct) to act on") : Text(""))
+            .accessibilityHint(Text("Used-market ads far below their value, with the server's verdict."))
         case .scan:
             let waiting = scanWaiting ?? 0
             Button(action: scan) {

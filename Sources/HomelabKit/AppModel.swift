@@ -157,6 +157,8 @@ public final class AppModel {
     /// The Deals screen was asked for (`homelab://deals`, the ntfy push, the Today card). The Actions tab opens it once
     /// the server is known to answer `/deals`, and clears it.
     public private(set) var openDeals = false
+    /// Launch argument only: the Deals screen opens the first deal's detail (screenshots).
+    public var openDealDetail = false
     /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
     public private(set) var outboxCount = 0
     /// Scans and links the outbox gave up on (server removed, 7 days, refused): shown until cleared.
@@ -282,6 +284,14 @@ public final class AppModel {
         }
         if selectedStatus.knownInfo != nil || selected == nil { openSearch = nil }
         return nil
+    }
+
+    /// Asks for the Deals screen (the link, Today's card): the Actions tab opens it once the server is known to have
+    /// deals (`takeOpenDeals`).
+    public func showDeals() {
+        dropRequests()
+        request(.actions)
+        openDeals = true
     }
 
     /// The Actions tab asks whether to open the Deals screen now: once, when the tab shows, no form is open and the
@@ -905,6 +915,10 @@ public final class AppModel {
             openAction = a
             request(.actions)
         }
+        if let d = args.deals {
+            showDeals()
+            openDealDetail = d == "detail"
+        }
         if let h = args.host {
             openHost = h
             request(.lab)
@@ -931,9 +945,7 @@ public final class AppModel {
         }
         // homelab://deals: the Deals screen on the Actions tab (the ntfy push for an "act now" deal opens it).
         if url.scheme == "homelab", url.host?.lowercased() == "deals" {
-            dropRequests()
-            request(.actions)
-            openDeals = true
+            showDeals()
             return
         }
         guard let t = AppTab(url: url) else { return }
@@ -971,6 +983,8 @@ struct LaunchArguments {
     var personality: Personality?
     var action: String?
     var host: String?
+    /// `-HomelabDeals list|detail`: the Deals screen, with the first deal's detail for `detail` (screenshots).
+    var deals: String?
 
     /// A host id as servers send them: letters, digits, `.`, `_`, `-`, at most 64.
     static func isHostID(_ s: String) -> Bool {
@@ -995,6 +1009,7 @@ struct LaunchArguments {
         density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
         personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
         action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }
+        deals = value("HomelabDeals").flatMap { ["list", "detail"].contains($0) ? $0 : nil }
         host = value("HomelabHost").flatMap { Self.isHostID($0) ? $0 : nil }
     }
 }

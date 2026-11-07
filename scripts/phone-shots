@@ -108,6 +108,10 @@ shot demo-today-problem -HomelabDemo YES -HomelabDemoScene problem -HomelabTab t
 shot demo-today-overkill -HomelabDemo YES -HomelabTab today -HomelabDensity overkill
 shot demo-today-calm     -HomelabDemo YES -HomelabTab today -HomelabDensity calm
 shot demo-today-snarky   -HomelabDemo YES -HomelabTab today -HomelabPersonality snarky
+shot demo-deals-today    -HomelabDemo YES -HomelabTab today -HomelabDensity standard -HomelabPersonality off
+shot demo-deals-actions  -HomelabDemo YES -HomelabTab actions
+shot demo-deals-list     -HomelabDemo YES -HomelabDeals list
+shot demo-deals-detail   -HomelabDemo YES -HomelabDeals detail
 # Leave the phone as it was.
 shot demo-today-standard -HomelabDemo YES -HomelabTab today -HomelabDensity standard -HomelabPersonality off
 # Back to the owner's real server: the demo servers go away again (they were added by -HomelabDemo YES).

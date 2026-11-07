@@ -258,6 +258,8 @@ struct TodayView: View {
             if let dayCard { DaySection(card: dayCard) }
         case .waiting:
             if let state, model.selected != nil, !state.pending.isEmpty { waiting(state.pending) }
+        case .deals:
+            if model.selected != nil, let fresh = status.deals?.freshAct(), !fresh.isEmpty { dealsCard(fresh) }
         case .home:
             if let ha = model.homeAssistant { HomeTiles(model: model, server: ha) }
         case .cards:
@@ -318,6 +320,53 @@ struct TodayView: View {
             }
             .buttonStyle(.press)
             .accessibilityHint(Text("Opens Actions"))
+        }
+    }
+
+    /// Only while the server has an "act now" deal from the last day, so the section is gone when there is nothing to do
+    /// (and for a server without deals). Tap opens the Deals screen. Rows as in "Waiting for you"; at accessibility
+    /// sizes the figures go under the title.
+    private func dealsCard(_ fresh: [Deal]) -> some View {
+        let stacked = typeSize.isAccessibilitySize
+        let shown = Array(fresh.prefix(density == .overkill ? fresh.count : 2))
+        return VStack(alignment: .leading, spacing: Space.titleToPanel) {
+            SectionTitle(text: "Deals to act on", trailing: "\(fresh.count)")
+            Button {
+                model.showDeals()
+            } label: {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { i, deal in
+                        if i > 0 { TodaySeparator() }
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Image(systemName: "tag").foregroundStyle(Palette.secondary).font(Typo.secondary)
+                                    .accessibilityHidden(true)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                                    if let line = deal.note ?? deal.place {
+                                        Text(line).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                                            .lineLimit(density == .overkill ? nil : 2)
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                if !stacked { DealFigures(deal: deal) }
+                            }
+                            if stacked { DealFigures(deal: deal, leading: true) }
+                            if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: 1) }
+                        }
+                        .multilineTextAlignment(.leading)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(deal.spoken)
+                    }
+                    if density != .overkill, fresh.count > 2 {
+                        TodaySeparator()
+                        Text("and \(fresh.count - 2) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
+                    }
+                }
+                .panel()
+            }
+            .buttonStyle(.press)
+            .accessibilityHint(Text("Opens Deals"))
         }
     }
 

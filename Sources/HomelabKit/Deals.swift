@@ -199,6 +199,26 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
         return isPrivate ? "private" : "dealer"
     }
 
+    /// What a row says to VoiceOver, in one sentence list: the title, the price and how far below the value, the
+    /// server's verdict, where, who sells, and the warnings (said as warnings, not left to a colour).
+    public var spoken: String {
+        var parts = [title]
+        if let price { parts.append(DealFormat.price(price)) }
+        if let below = DealFormat.spokenDiscount(share) { parts.append(below) }
+        switch verdict {
+        case .act: parts.append("act now")
+        case .consider: parts.append("consider")
+        case .skip: parts.append("skipped")
+        case nil: break
+        }
+        if let confidence { parts.append("\(confidence.word) confidence") }
+        if let place { parts.append(near ? "\(place), near you" : place) }
+        if let sellerWord { parts.append(sellerWord + " seller") }
+        if ships == true { parts.append("ships") }
+        if !flags.isEmpty { parts.append("warning: " + flags.joined(separator: ", ")) }
+        return parts.joined(separator: ", ")
+    }
+
     /// The condition with a capital letter ("Like new").
     public var conditionWord: String? {
         condition.map { $0.prefix(1).uppercased() + $0.dropFirst() }

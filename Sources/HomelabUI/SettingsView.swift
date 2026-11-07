@@ -73,10 +73,13 @@ struct SettingsView: View {
                     Section {
                         Toggle("New problems", isOn: notifyBinding(\.notifyProblems))
                         Toggle("New actions to approve", isOn: notifyBinding(\.notifyPending))
+                        if model.selectedStatus.hasDeals {
+                            Toggle("New deals to act on", isOn: notifyBinding(\.notifyDeals))
+                        }
                     } header: {
                         Text("Notifications")
                     } footer: {
-                        SettingsFooter(verbatim: notificationNote ?? String(localized: "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off."))
+                        SettingsFooter(verbatim: notificationNote ?? String(localized: "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off. Deals: the server already pushes the strong ones."))
                     }
 
                     Section {

@@ -134,6 +134,16 @@ import Testing
         #expect(!Deal(id: 1, title: "t", flags: ["dealer"]).warnsOfScam)
     }
 
+    @Test func spokenSentence() throws {
+        let d = try #require(try fixture(DealList.self, "deals.json").deals.first { $0.id == 1310441906 })
+        let said = d.spoken
+        #expect(said.hasPrefix("Gaming card, never opened, €\u{00A0}90, 78 percent below the market value, skipped, low confidence"))
+        #expect(said.contains("private seller") && said.contains("warning: too good to be true?") && !said.contains("ships"))
+        let near = Deal(id: 1, title: "t", location: "Wien", state: "Wien", near: true, ships: true, verdict: .act)
+        #expect(near.spoken == "t, act now, Wien, near you, ships")
+        #expect(Deal(id: 1, title: "t").spoken == "t")
+    }
+
     // MARK: Order and groups
 
     func deal(_ id: Int64, _ verdict: Deal.Verdict?, hoursAgo: Double?, price: Double? = nil, value: Double? = nil) -> Deal {

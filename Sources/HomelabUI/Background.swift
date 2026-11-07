@@ -68,8 +68,12 @@ public enum BackgroundRefresh {
             WidgetCenter.shared.reloadAllTimelines()
 
             var tracker = storage.read(AlertTracker.self, AlertTracker.fileName) ?? AlertTracker()
-            let alerts = tracker.update(with: state, server: snap.serverName, serverID: server.id,
-                                        options: .init(problems: settings.notifyProblems, pending: settings.notifyPending))
+            // Deals only when the owner wants a notification for them. No list (404: the server has none, or a failed
+            // request) changes nothing in the tracker, so a bad connection can't make old deals look new.
+            let deals: DealList? = settings.notifyDeals ? (try? await api.deals()) : nil
+            let alerts = tracker.update(with: state, deals: deals, server: snap.serverName, serverID: server.id,
+                                        options: .init(problems: settings.notifyProblems, pending: settings.notifyPending,
+                                                       deals: settings.notifyDeals))
             try? storage.write(tracker, AlertTracker.fileName)
             if settings.notificationsOn {
                 for a in alerts {
@@ -108,7 +112,7 @@ enum Notifier {
         content.sound = alert.kind == .problem ? .default : nil
         content.threadIdentifier = alert.kind.rawValue
         // Same links as the agent's pushes: proposals open Actions, problems open Lab.
-        var info: [String: String] = ["link": alert.kind == .pending ? "homelab://actions" : "homelab://lab"]
+        var info: [String: String] = ["link": Self.link(for: alert.kind)]
         if let proposal = alert.proposal, let category = shown.category {
             content.categoryIdentifier = category.rawValue
             info.merge(ProposalNotice.userInfo(server: server, proposal: proposal.id)) { old, _ in old }
@@ -116,6 +120,16 @@ enum Notifier {
         content.userInfo = info
         let request = UNNotificationRequest(identifier: alert.id, content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Where a tap goes: a proposal opens Actions, a deal the Deals screen (the same link as the server's push),
+    /// anything else Lab.
+    static func link(for kind: AlertTracker.Alert.Kind) -> String {
+        switch kind {
+        case .pending: "homelab://actions"
+        case .deal: "homelab://deals"
+        case .problem, .summary: "homelab://lab"
+        }
     }
 
     /// The short answer after Approve / Deny on a notification. Tapping it opens Actions.

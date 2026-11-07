@@ -20,17 +20,20 @@ struct ActionsView: View {
     @State private var scanning = false
     /// The search screen (feature `search`): from the Find tile or a `homelab://search?q=` link.
     @State private var searching: SearchRequest?
+    /// The Deals screen (feature `deals`): from the Deals tile, `homelab://deals` or Today's card.
+    @State private var showingDeals = false
 
     /// Scan tile: only where the server takes documents.
     private var canScan: Bool { model.selected != nil && model.selectedStatus.features.contains(.documents) }
     private var canSearch: Bool { model.selected != nil && model.selectedStatus.features.contains(.search) }
+    private var canDeals: Bool { model.selected != nil && model.selectedStatus.hasDeals }
     private var pending: [PendingAction] { model.selectedStatus.snapshot?.state.pending ?? [] }
     private var startable: [ActionSpec] {
         model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
     }
     private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
     /// The Start section: tiles to start actions, or the Scan tile.
-    private var hasStart: Bool { !startable.isEmpty || canScan || canSearch }
+    private var hasStart: Bool { !startable.isEmpty || canScan || canSearch || canDeals }
     private var nothingToApprove: LocalizedStringKey {
         Voice.line(.nothingToApprove, model.settings.voice)
             .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
@@ -54,7 +57,9 @@ struct ActionsView: View {
                             StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
                                       open: { formPrefill = nil; formFor = $0 }, scan: { scanning = true },
-                                      search: canSearch ? { searching = SearchRequest(query: "") } : nil)
+                                      search: canSearch ? { searching = SearchRequest(query: "") } : nil,
+                                      deals: canDeals ? { showingDeals = true } : nil,
+                                      dealsToAct: model.selectedStatus.deals?.freshAct().count ?? 0)
                             if !model.outboxDropped.isEmpty {
                                 NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
                                     .padding(.top, Space.row - Space.titleToPanel)
@@ -72,7 +77,7 @@ struct ActionsView: View {
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startable.isEmpty && !canScan && !canSearch && model.selectedStatus.snapshot != nil
+                } else if pending.isEmpty && startable.isEmpty && !canScan && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
@@ -92,6 +97,9 @@ struct ActionsView: View {
             }
             .sheet(item: $searching, onDismiss: { openRequested() }) { request in
                 if let server = model.selected { SearchView(model: model, server: server, query: request.query) }
+            }
+            .sheet(isPresented: $showingDeals, onDismiss: { openRequested() }) {
+                if let server = model.selected { DealsView(model: model, server: server) }
             }
             .onChange(of: openable) { _, _ in openRequested() }
             .onAppear { openRequested() }
@@ -152,7 +160,7 @@ struct ActionsView: View {
     /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
     private var openable: String {
         let s = model.selectedStatus
-        return [model.openAction ?? "", "\(model.openScan)", model.openSearch?.id.uuidString ?? "", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
+        return [model.openAction ?? "", "\(model.openScan)", model.openSearch?.id.uuidString ?? "", "\(model.openDeals)", "\(model.selectedStatus.hasDeals)", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
                 "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)", "\(model.formSheetOpen)"]
             .joined(separator: "|")
     }
@@ -160,6 +168,10 @@ struct ActionsView: View {
     /// Opens a requested form once this tab shows and the list knows the action. While another tab shows or a form
     /// is open (here or a card's) the request waits (`AppModel.takeOpenAction`).
     private func openRequested() {
+        if model.tab == .actions, formFor == nil, !scanning, searching == nil, !showingDeals, model.takeOpenDeals() {   // homelab://deals
+            showingDeals = true
+            return
+        }
         if model.tab == .actions, formFor == nil, !scanning, searching == nil, let request = model.takeOpenSearch() {   // homelab://search
             searching = request
             return
