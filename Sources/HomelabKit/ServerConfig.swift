@@ -20,11 +20,31 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     public var auth: Auth
     /// HA only: the entities pinned on the Home tab, in order.
     public var pinnedEntities: [String]
+    /// HA only: short names for the pinned tiles, by entity id (set in the app only; Home Assistant keeps its names).
+    /// Always cleaned by `TileName.clean`; an entity without an entry shows HA's friendly name.
+    public var tileNames: [String: String]
 
-    public init(id: UUID = UUID(), name: String, kind: Kind, baseURL: URL, auth: Auth, pinnedEntities: [String] = []) {
+    public init(id: UUID = UUID(), name: String, kind: Kind, baseURL: URL, auth: Auth, pinnedEntities: [String] = [],
+                tileNames: [String: String] = [:]) {
         self.id = id; self.name = name; self.kind = kind; self.baseURL = baseURL; self.auth = auth
         self.pinnedEntities = pinnedEntities
+        self.tileNames = tileNames
     }
+
+    /// Settings saved before custom tile names existed have no `tileNames`: they still decode.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        baseURL = try c.decode(URL.self, forKey: .baseURL)
+        auth = try c.decode(Auth.self, forKey: .auth)
+        pinnedEntities = try c.decodeIfPresent([String].self, forKey: .pinnedEntities) ?? []
+        tileNames = TileName.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileNames) ?? [:], pinned: pinnedEntities)
+    }
+
+    /// The tile's custom name for an entity, or nil (then the tile shows HA's friendly name).
+    public func tileName(for entityID: String) -> String? { tileNames[entityID] }
 
     public static let demoURL = URL(string: "https://demo.invalid")!   // .invalid never resolves (RFC 2606)
 

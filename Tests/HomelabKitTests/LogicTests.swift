@@ -160,6 +160,63 @@ import Testing
     }
 }
 
+@Suite struct TileNameTests {
+    @Test func cleaning() {
+        #expect(TileName.clean("  Living\nroom \t ") == "Living room")
+        #expect(TileName.clean("   \n ") == nil && TileName.clean("") == nil)
+        #expect(TileName.clean(String(repeating: "ab ", count: 20))?.count ?? 99 <= 24)
+        #expect(TileName.clean("0123456789012345678901234567")?.count == 24)
+        #expect(TileName.clean("Wohnzimmer Lämpchen") == "Wohnzimmer Lämpchen")
+    }
+
+    @Test func tileAndVoiceOverNames() {
+        #expect(TileName.shown(custom: "Living room", haName: "Wohnzimmer Lampen") == "Living room")
+        #expect(TileName.shown(custom: nil, haName: "Wohnzimmer Lampen") == "Wohnzimmer Lampen")
+        #expect(TileName.spoken(custom: "Living room", haName: "Wohnzimmer Lampen") == "Living room, Wohnzimmer Lampen")
+        #expect(TileName.spoken(custom: nil, haName: "Wohnzimmer Lampen") == "Wohnzimmer Lampen")
+        #expect(TileName.spoken(custom: "lamps", haName: "Lamps") == "Lamps")   // same name: said once
+    }
+
+    @Test func oldSavedServersStillDecode() throws {
+        let id = UUID()
+        let old = """
+        {"id":"\(id.uuidString)","name":"HA","kind":"homeAssistant","baseURL":"https://ha.example.com","auth":"token","pinnedEntities":["light.a"]}
+        """
+        let s = try JSONDecoder().decode(ServerConfig.self, from: Data(old.utf8))
+        #expect(s.pinnedEntities == ["light.a"] && s.tileNames.isEmpty && s.tileName(for: "light.a") == nil)
+        let oldest = """
+        {"id":"\(id.uuidString)","name":"x","kind":"companion","baseURL":"https://x.example.com","auth":"identity"}
+        """
+        #expect(try JSONDecoder().decode(ServerConfig.self, from: Data(oldest.utf8)).pinnedEntities.isEmpty)
+        // A stored name for something no longer pinned, or an unclean one, is cleaned on load.
+        let odd = """
+        {"id":"\(id.uuidString)","name":"HA","kind":"homeAssistant","baseURL":"https://ha.example.com","auth":"token","pinnedEntities":["light.a"],"tileNames":{"light.a":" Lamp\\n ","light.gone":"x"}}
+        """
+        #expect(try JSONDecoder().decode(ServerConfig.self, from: Data(odd.utf8)).tileNames == ["light.a": "Lamp"])
+    }
+
+    @MainActor @Test func namesRoundTripAndPinsDropThem() async throws {
+        let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES"])
+        let ha = try #require(m.homeAssistant)
+        m.setPinned(["light.a", "script.b"], names: ["light.a": " Lamp ", "script.b": "Off", "light.gone": "x"], for: ha.id)
+        #expect(m.homeAssistant?.tileNames == ["light.a": "Lamp", "script.b": "Off"])
+        m.setPinned(["light.a"], for: ha.id)   // unpinning script.b drops its name; names stay when not passed
+        #expect(m.homeAssistant?.tileNames == ["light.a": "Lamp"])
+        m.setPinned(["light.a"], names: ["light.a": "  "], for: ha.id)   // empty = HA's name again
+        #expect(m.homeAssistant?.tileNames.isEmpty == true)
+        let data = try JSONEncoder().encode(m.homeAssistant)
+        #expect(try JSONDecoder().decode(ServerConfig.self, from: data) == m.homeAssistant)
+    }
+
+    @MainActor @Test func launchArgumentSetsNamesOnPins() async throws {
+        // The demo's Home Assistant exists after the first launch; a later launch sets pins, then names.
+        let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES"])
+        m.apply(LaunchArguments(["-HomelabPins", "light.a,script.b", "-HomelabTileNames", "light.a=Living room,script.zzz=Ghost"]))
+        #expect(m.homeAssistant?.pinnedEntities == ["light.a", "script.b"])
+        #expect(m.homeAssistant?.tileNames == ["light.a": "Living room"])
+    }
+}
+
 @Suite struct StorageTests {
     @Test func serverListRoundTripAndSelection() throws {
         let storage = Storage(directory: temporaryDirectory())

@@ -230,6 +230,16 @@ import Testing
         #expect(LaunchArguments(["-HomelabPins", "light.wohnzimmer_lampen,scene.wohnzimmer_wohnzimmer_tokio"]).pins
                 == ["light.wohnzimmer_lampen", "scene.wohnzimmer_wohnzimmer_tokio"])
         #expect(LaunchArguments(["-HomelabPins", "light.a,rm -rf"]).pins == nil && LaunchArguments([]).pins == nil)
+        // -HomelabTileNames: id=name pairs, ids as for pins, names cleaned; anything odd drops the whole argument.
+        #expect(LaunchArguments(["-HomelabTileNames", "light.wohnzimmer_lampen=Living room,script.homelab_radio_off=Alarm off"]).tileNames
+                == ["light.wohnzimmer_lampen": "Living room", "script.homelab_radio_off": "Alarm off"])
+        #expect(LaunchArguments(["-HomelabTileNames", "light.a=  Long   name  "]).tileNames == ["light.a": "Long name"])
+        #expect(LaunchArguments(["-HomelabTileNames", "light.a=" + String(repeating: "x", count: 40)]).tileNames?["light.a"]?.count == 24)
+        for bad in ["rm -rf=x", "light.a", "light.a=", "light.a=ok,Bad.Id=x", "LIGHT.a=x", "light.a=x\u{7}y"] {
+            #expect(LaunchArguments(["-HomelabTileNames", bad]).tileNames == nil, "\(bad)")
+        }
+        #expect(LaunchArguments(["-HomelabTileNames", (0..<13).map { "light.l\($0)=n" }.joined(separator: ",")]).tileNames == nil)
+        #expect(LaunchArguments([]).tileNames == nil)
         let (m, _, _, _) = makeModel(args: ["-HomelabDemo", "YES", "-HomelabDemoScene", "problem"])
         await m.refresh()
         #expect(m.selectedStatus.snapshot?.state.status == .problem)

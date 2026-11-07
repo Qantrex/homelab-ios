@@ -428,9 +428,12 @@ public final class AppModel {
         validateTab()
     }
 
-    public func setPinned(_ entities: [String], for id: UUID) {
+    /// Sets the pinned entities. Names of entities that are no longer pinned are dropped; `names`, when given,
+    /// replaces the custom tile names (cleaned: see `TileName`).
+    public func setPinned(_ entities: [String], names: [String: String]? = nil, for id: UUID) {
         guard var s = servers.servers.first(where: { $0.id == id }) else { return }
         s.pinnedEntities = entities
+        s.tileNames = TileName.cleaned(names ?? s.tileNames, pinned: entities)
         servers.upsert(s)
         saveServers()
     }
@@ -892,6 +895,12 @@ public final class AppModel {
     func apply(_ args: LaunchArguments) {
         if args.demoOff { setDemo(false) }
         if let pins = args.pins, let ha = homeAssistant { setPinned(pins, for: ha.id) }
+        if let names = args.tileNames, let ha = homeAssistant {
+            // Names only count for pinned tiles: set them after -HomelabPins (this launch's or an earlier one).
+            var merged = homeAssistant?.tileNames ?? ha.tileNames
+            for (id, name) in names { merged[id] = name }
+            setPinned(homeAssistant?.pinnedEntities ?? ha.pinnedEntities, names: merged, for: ha.id)
+        }
         if let scene = args.demoScene {
             demoScene = scene
             demo = nil
@@ -974,6 +983,9 @@ struct LaunchArguments {
     var demoOff = false
     /// `-HomelabPins light.a,scene.b`: the Home tiles of the Home tiles server (set up from the laptop over USB).
     var pins: [String]?
+    /// `-HomelabTileNames "light.a=Living room,script.b=Alarm off"`: custom names for pinned Home tiles (ids as in
+    /// `-HomelabPins`, names cleaned by `TileName`; anything odd drops the whole argument).
+    var tileNames: [String: String]?
     /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state.
     var demoScene: DemoBackend.Scene?
     var reset = false
@@ -1002,6 +1014,7 @@ struct LaunchArguments {
         pins = value("HomelabPins").map { $0.split(separator: ",").map(String.init) }.flatMap { ids in
             ids.count <= 12 && ids.allSatisfy({ $0.wholeMatch(of: /[a-z_]{1,32}\.[a-z0-9_]{1,96}/) != nil }) ? ids : nil
         }
+        tileNames = value("HomelabTileNames").flatMap(TileName.parse)
         demoScene = value("HomelabDemoScene").flatMap { DemoBackend.Scene(rawValue: $0.lowercased()) }
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
