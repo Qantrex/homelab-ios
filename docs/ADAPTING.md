@@ -34,7 +34,7 @@ gets no tab or section for it. `AppModel.availableTabs` (`Sources/HomelabKit/App
 | Lab (hosts, problems, history, containers) | `hosts` | `Host`, `Problem` in `Models.swift`, `Format.swift`; `HostHistory.swift` (24 h history, containers, restart form) | `LabView.swift`, `HostDetailView.swift`, `HomelabDesign/Sparkline.swift` | Tab shows whenever a server is set; history and containers show when hosts send them |
 | Machines (Overkill) | `hosts` | `TodayLayout.swift` (`Density`) | `MachineList` in `TodayView.swift` | Settings → Today → detail; section "Machines" |
 | Service launcher | `services` | `Service` in `Models.swift` | `ServicesSection` in `LabView.swift` | Leave out `services` (or send an empty list) |
-| Home Assistant tiles | – (a Home Assistant server in Settings) | `HomeAssistant.swift` | `HomeTiles.swift` | Don't add an HA server; or Settings → Today → "Home tiles" |
+| Home Assistant tiles | – (a Home Assistant server in Settings) | `HomeAssistant.swift`; `HomeGlance.swift` (the headline without a Companion server) | `HomeTiles.swift`; `homeGlance` in `TodayView.swift` | Don't add an HA server; or Settings → Today → "Home tiles" |
 | Last report | `last_message` in `/state` | `Models.swift` | `TodayView.swift` (`lastReport`) | Settings → Today → "Last report" |
 | Find (search and request) | `search` (`GET /search?q=`) | `Search.swift` (`SearchQuery`, picture rules and cache) | `SearchView.swift`, the "Find a movie or show" tile in `ActionFormView.swift` | Leave out `search` |
 | Widgets (status, day, hosts, deadlines, to-dos) | the data above | `AppGroup.swift`, `Storage.swift`, `WidgetPolicy.swift` (when a widget may fetch, what the app lock hides) | `Sources/HomelabWidget/HomelabWidget.swift`, `ListWidgets.swift`, `WidgetData.swift` | Remove from the `HomelabWidgets` bundle |
@@ -64,7 +64,7 @@ To delete a module from the app:
 | A tab | Its `Tab(...)` in `RootView.tabs`, its line in `AppModel.availableTabs`, the `AppTab` case (keep old names working in `AppTab.init(name:)`), the view file, its Kit file and tests, the tab in `TABS` in `scripts/sim-smoke`, its rows in `DeviceTest.md` |
 | A Today section | The `TodaySection` case (stored layouts drop unknown names by themselves), its `case` in `TodayView.section(for:)`, the view, the expectations in `Tests/HomelabKitTests/TodayLayoutTests.swift` |
 | A widget | Its line in `HomelabWidgets` (`HomelabWidget.swift`) and the widget struct |
-| Home Assistant | `HomeTiles.swift`, the `.home` section, `HomeAssistant.swift` and its tests, the HA server type in Settings |
+| Home Assistant | `HomeTiles.swift`, the `.home` section, `HomeAssistant.swift`, `HomeGlance.swift` and their tests (`TodayMood(home:)` in `TodayView.mood` becomes a plain "Home."), the HA server type in Settings |
 
 Then mark the feature `removed` in `features.toml` (or delete its entry), run `scripts/features render` and
 `scripts/test-linux`.

@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 73 | 70 | 2 | 1 | 37 | 3 |
+| 74 | 70 | 3 | 1 | 37 | 3 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -86,13 +86,14 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Slash commands and Clear](#chat-commands) | shipped | `chat` | 2 | C5, C5b | 1 |
 | [Proposals and cards in chat bubbles](#chat-proposals-cards) | shipped | `chat`, `actions` | 4 | C9, C10 | 1 |
 
-### Home (3)
+### Home (4)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Home Assistant tiles on Today](#home-tiles) | shipped | – | 4 | **H1**, **H2**, **H3**, H4, H5, H6, **T7** | 3 |
 | [Tile names of your own](#tile-names) | shipped | – | 2 | **T4**, T5, **T7** | 2 |
 | [Tile icons of your own](#tile-icons) | shipped | – | 1 | **T6** | 2 |
+| [Today with only Home Assistant](#home-only-today) | partial | – | 2 | H7 | 4 |
 
 ### Widgets (8)
 
@@ -224,7 +225,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Launch arguments (`LaunchArguments`) | `-HomelabAction` | [start-actions](#start-actions) |
 | Launch arguments (`LaunchArguments`) | `-HomelabDeals` | [deals](#deals) |
 | Launch arguments (`LaunchArguments`) | `-HomelabDemo` | [launch-arguments](#launch-arguments), [demo-mode](#demo-mode) |
-| Launch arguments (`LaunchArguments`) | `-HomelabDemoScene` | [launch-arguments](#launch-arguments), [demo-mode](#demo-mode) |
+| Launch arguments (`LaunchArguments`) | `-HomelabDemoScene` | [home-only-today](#home-only-today), [launch-arguments](#launch-arguments), [demo-mode](#demo-mode) |
 | Launch arguments (`LaunchArguments`) | `-HomelabDensity` | [today-layout](#today-layout) |
 | Launch arguments (`LaunchArguments`) | `-HomelabHost` | [host-detail](#host-detail) |
 | Launch arguments (`LaunchArguments`) | `-HomelabPersonality` | [personality](#personality) |
@@ -870,6 +871,26 @@ Today → Edit has a "Name on the tile" field per pinned entity (empty = Home As
 | Depends on | [home-tiles](#home-tiles) |
 | Through those | [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain) |
 
+### home-only-today
+
+**Today with only Home Assistant** · Home · partial · since 2026-11-07
+
+Without a Homelab server, Today's headline reads Home Assistant's states: "Home." with what is true ("3 lights on", "Front door open", "2 locks unlocked") and, gold with a glow, what doesn't answer ("Bedroom fan unavailable", "2 unavailable"; lights, switches, fans, covers, locks and the like, and every pinned tile). Grey "Home." until HA answered or after an error. The owner's headline (a Companion server) is unchanged.
+
+| | |
+|---|---|
+| Server | `Home Assistant GET /api/states: state, device_class, friendly_name` |
+| Sources | [HomeGlance.swift](../Sources/HomelabKit/HomeGlance.swift), [Mood.swift#warningText](../Sources/HomelabKit/Mood.swift), [TodayView.swift#homeGlance](../Sources/HomelabUI/TodayView.swift), [Demo.swift#haOnly](../Sources/HomelabKit/Demo.swift) |
+| Fixtures | [ha-states.json](../Sources/HomelabKit/Fixtures/ha-states.json) |
+| Tests | `HomeGlanceTests`, `OwnerInvarianceTests` |
+| Phone (DeviceTest.md) | H7 |
+| CI screenshots | `demo-ha-only` |
+| Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
+| Launch arguments | `-HomelabDemoScene` |
+| Depends on | [home-tiles](#home-tiles) |
+| Through those | [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain) |
+| Notes | docs/plans/MODULAR.md M2.1. The widgets still need a Companion server (plan, section 7). |
+
 ### widget-status
 
 **Widget: Homelab status** · Widgets · shipped · since 2026-11-04
@@ -1479,7 +1500,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server) | 11 |
 | <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 27 |
-| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 3 |
+| <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [home-tiles](#home-tiles) | 4 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
 | <a id="dep-seerr"></a>**Seerr (server side)** | server-side | – | [API.md](API.md) | [find](#find) | 1 |
@@ -1491,7 +1512,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 8 |
 | <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 3 |
 | <a id="dep-localauthentication"></a>**LocalAuthentication (Face ID)** | ios-framework | iOS 18 SDK | [Components.swift](../Sources/HomelabUI/Components.swift), [App-Info.plist](../App-Info.plist) | [app-lock](#app-lock) | 1 |
-| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 4 |
+| <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 5 |
 | <a id="dep-app-group-entitlement"></a>**App Group entitlement** | runtime | group.com.qantrex.homelab (renamed by SideStore and xtool) | [App.entitlements](../App.entitlements), [Widget.entitlements](../Widget.entitlements), [Share.entitlements](../Share.entitlements) | [app-group](#app-group) | 12 |
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
@@ -1561,7 +1582,7 @@ Features per area that need each dependency, directly or through another feature
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 2 |  |  | 1 | 1 |  |
 | Homelab Companion API v1 | 2 | 5 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 3 | 1 |  |  | 3 |  |
-| Home Assistant REST API |  |  |  |  |  |  |  |  | 3 |  |  |  |  |  |  |  |  |  |
+| Home Assistant REST API |  |  |  |  |  |  |  |  | 4 |  |  |  |  |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Seerr (server side) |  |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -1573,7 +1594,7 @@ Features per area that need each dependency, directly or through another feature
 | BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 3 |  |  |  |  |  |  |  |
 | UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 2 |  |  |  |  |  |  |  |
 | LocalAuthentication (Face ID) |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |
-| Keychain (Security framework) |  |  |  |  |  |  |  |  | 3 |  |  |  |  | 1 |  |  |  |  |
+| Keychain (Security framework) |  |  |  |  |  |  |  |  | 4 |  |  |  |  | 1 |  |  |  |  |
 | App Group entitlement |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  |  |  |  |
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

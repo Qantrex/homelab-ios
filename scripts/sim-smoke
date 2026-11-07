@@ -11,12 +11,13 @@
 #   23-24  the smallest iPhone available (SE / "e" model / smallest screen): demo today + actions
 #   25-26  action forms (demo, reset first): Wake-up in dark, Add an event with accessibility-XL text (-HomelabAction)
 #   27     demo host detail (reset first, problem scene) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
-#   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality (last: both settings stay set afterwards)
+#   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality
+#   29     demo Today with only the demo Home Assistant (reset first, -HomelabDemoScene ha-only): no Companion server
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
 
-usage() { sed -n '2,15p' "$0"; exit 2; }
+usage() { sed -n '2,16p' "$0"; exit 2; }
 [ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
 
 # pick_udid main|small [EXCLUDE_UDID]
@@ -268,6 +269,9 @@ xcrun simctl ui "$dev" appearance light || true
 
 # 28: everything at once, with a personality
 scene demo-today-overkill-snarky "${FRESH_DEMO[@]}" "${PROBLEM[@]}" -HomelabTab today -HomelabDensity overkill -HomelabPersonality snarky
+
+# 29: Home Assistant only, no Companion server: the headline from HA's states ("Home.", "1 light on", gold unavailable)
+scene demo-ha-only "${FRESH_DEMO[@]}" -HomelabDemoScene ha-only -HomelabTab today
 
 # App log for this run (Logger subsystem com.qantrex.homelab), from the main simulator
 xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \

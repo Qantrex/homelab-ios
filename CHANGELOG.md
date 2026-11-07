@@ -8,6 +8,8 @@ Highlights:
 
 - Today: the lab's state in two words, your day as a line with a countdown, actions to approve, Home Assistant tiles
   and the server's cards.
+- Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
+  "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
 - Actions: approve, always allow or deny proposals; start your own actions from small forms; Deals, Scan and Find.
 - Lab: hosts, 24 h history, containers with Restart, web UIs.
 - Chat with your homelab agent, with proposals and cards in the replies.

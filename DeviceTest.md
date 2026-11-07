@@ -199,6 +199,7 @@ Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has 
 | H4 | Run script | Run on a script or scene: it runs in HA | | |
 | H5 | Unavailable | An unavailable device shows "Unavailable" (sensor) or a greyed-out toggle, no crash | | |
 | H6 | Wrong token | Edit HA, paste a wrong token: a clear error text in the Home section on Today, no crash. Put the right one back | | |
+| H7 | Home Assistant only | Only a Home Assistant server, no Homelab server (or the demo: `-HomelabResetState YES -HomelabDemo YES -HomelabDemoScene ha-only`). Today's headline is "Home." with what is true under it ("1 light on", "All lights off", "Front door open"). While a light, switch, fan, lock or pinned tile is unavailable: a gold triangle with "Bedroom fan unavailable" (one) or "2 unavailable" and a gold glow; else a white tick. Switch a light in the HA app: the count follows within 30 s. Only Today and Settings as tabs, no "Lab ›". With a wrong token the headline is a grey "Home." again | | |
 
 ## Widgets
 

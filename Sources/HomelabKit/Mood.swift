@@ -17,12 +17,16 @@ public struct TodayMood: Equatable, Sendable {
     public var detail: String?
     /// Warnings next to the counted problems ("and 1 warning").
     public var warnings: Int
+    /// The words after the gold glyph when they aren't "1 warning" / "2 warnings": Home Assistant without a Companion
+    /// server says what doesn't answer ("Bedroom fan unavailable", `HomeGlance`). Nil for the lab.
+    public var warningText: String?
 
-    public init(level: Level, headline: String, detail: String?, warnings: Int = 0) {
+    public init(level: Level, headline: String, detail: String?, warnings: Int = 0, warningText: String? = nil) {
         self.level = level
         self.headline = headline
         self.detail = detail
         self.warnings = warnings
+        self.warningText = warningText
     }
 
     /// `state` nil means nothing loaded yet: `checking` while the first fetch is still on its way ("Checking…"),

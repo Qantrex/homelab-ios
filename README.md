@@ -64,7 +64,7 @@ Anyone with a homelab and Tailscale (or another VPN) on the phone. You need one 
 | You have | Use |
 |---|---|
 | Nothing special: a Linux box with some Docker apps | The [reference server](docs/REFERENCE_SERVER.md): one Python file, no dependencies |
-| Home Assistant | Add it directly with a long-lived token (Home tiles on Today) |
+| Home Assistant | Add it directly with a long-lived token: Home tiles on Today, and on its own (no other server) a headline that says what is on and what doesn't answer ("1 light on", "Bedroom fan unavailable") |
 | Your own agent or scripts | Implement the small JSON API in [`server/openapi.yaml`](server/openapi.yaml) |
 
 You can combine them, for example the reference server plus Home Assistant. **Try the demo** on the first screen to

@@ -648,6 +648,24 @@ docs = ["docs/SETUP.md#launch-arguments", "CHANGELOG.md#100-unreleased"]
 launch_args = ["-HomelabTileIcons"]
 depends_on = ["home-tiles"]
 
+[[feature]]
+id = "home-only-today"
+name = "Today with only Home Assistant"
+area = "Home"
+status = "partial"
+since = "2026-11-07"
+summary = "Without a Homelab server, Today's headline reads Home Assistant's states: \"Home.\" with what is true (\"3 lights on\", \"Front door open\", \"2 locks unlocked\") and, gold with a glow, what doesn't answer (\"Bedroom fan unavailable\", \"2 unavailable\"; lights, switches, fans, covers, locks and the like, and every pinned tile). Grey \"Home.\" until HA answered or after an error. The owner's headline (a Companion server) is unchanged."
+api_fields = ["Home Assistant GET /api/states: state, device_class, friendly_name"]
+sources = ["Sources/HomelabKit/HomeGlance.swift", "Sources/HomelabKit/Mood.swift#warningText", "Sources/HomelabUI/TodayView.swift#homeGlance", "Sources/HomelabKit/Demo.swift#haOnly"]
+fixtures = ["Sources/HomelabKit/Fixtures/ha-states.json"]
+tests = ["HomeGlanceTests", "OwnerInvarianceTests"]
+device_tests = ["H7"]
+screenshots = ["demo-ha-only"]
+docs = ["README.md#who-it-is-for", "docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased"]
+launch_args = ["-HomelabDemoScene"]
+depends_on = ["home-tiles"]
+notes = "docs/plans/MODULAR.md M2.1. The widgets still need a Companion server (plan, section 7)."
+
 # ==================================================================================================== Widgets
 
 [[feature]]
