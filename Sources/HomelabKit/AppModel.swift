@@ -200,7 +200,7 @@ public final class AppModel {
     @ObservationIgnored public var onQuickActionsChange: @MainActor () -> Void = {}
 
     @ObservationIgnored private var demo: DemoBackend?
-    /// What the demo homelab shows (`-HomelabDemoScene problem` for screenshots); calm by default.
+    /// What the demo homelab shows (`-HomelabDemoScene problem` or `ha-only` for screenshots); calm by default.
     @ObservationIgnored var demoScene: DemoBackend.Scene = .calm
     /// The picture loader per server (memory and disk cache), made when a card first shows a picture.
     @ObservationIgnored private var loaders: [UUID: ImageLoader] = [:]
@@ -451,9 +451,14 @@ public final class AppModel {
         saveServers()
     }
 
-    /// Demo on: two demo servers. Off: they go away (the user's own servers stay).
+    /// Demo on: two demo servers. Off: they go away (the user's own servers stay). The `ha-only` scene has only the
+    /// demo Home Assistant: Today as someone without a Companion server sees it.
     public func setDemo(_ on: Bool) {
-        if on, !isDemo {
+        if on, !demoScene.hasHomelab {
+            for s in servers.servers where s.kind == .demo && s.speaksCompanionAPI { remove(s.id) }
+            if !servers.servers.contains(where: \.isDemoHomeAssistant) { servers.upsert(.demoHomeAssistant()) }
+            demo = nil
+        } else if on, !isDemo {
             let d = ServerConfig.demo()
             servers.upsert(d)
             servers.upsert(.demoHomeAssistant())
@@ -1018,7 +1023,8 @@ struct LaunchArguments {
     /// `-HomelabTileIcons "light.a=lamp.floor,script.b=moon.stars"`: icons for pinned Home tiles, symbols from
     /// `TileIcon.choices` only (anything odd drops the whole argument).
     var tileIcons: [String: String]?
-    /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state.
+    /// The demo's scene for this launch (`DemoBackend.Scene`): screenshots of the problem state, or of Home Assistant
+    /// only (`ha-only`).
     var demoScene: DemoBackend.Scene?
     var reset = false
     var server: URL?

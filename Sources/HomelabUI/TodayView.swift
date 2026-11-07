@@ -12,6 +12,8 @@ struct TodayView: View {
     /// A pull to refresh runs or just ended: the hero says where the data is from (`showsFacts`).
     @State private var pulled = false
     @State private var pulls = 0
+    /// Home Assistant's states, loaded by the Home tiles; without a Companion server the headline reads them too.
+    @State private var home = HomeModel()
 
     private var status: ServerStatus { model.selectedStatus }
     private var density: Density { model.settings.todayDensity }
@@ -83,8 +85,15 @@ struct TodayView: View {
 
     private var mood: TodayMood {
         // Before the first answer: "Checking…" (grey) while it's on its way, "No signal." once it failed.
-        model.selected == nil ? TodayMood(level: .unknown, headline: String(localized: "Home."), detail: nil)
+        model.selected == nil ? TodayMood(home: homeGlance)
                               : TodayMood(state: state, checking: status.error == nil)
+    }
+
+    /// Without a Companion server: Home Assistant at a glance ("Home." · "1 light on" · gold "Bedroom fan
+    /// unavailable"), once the tiles loaded its states without an error; else nil ("Home." in grey).
+    private var homeGlance: HomeGlance? {
+        guard let ha = model.homeAssistant, home.error == nil, !home.entities.isEmpty else { return nil }
+        return HomeGlance(entities: home.entities, pinned: ha.pinnedEntities)
     }
 
     /// The big "now" (docs/DESIGN.md): the date, how the lab is doing in two words (white; the mood is the light
@@ -197,7 +206,11 @@ struct TodayView: View {
             // No-break spaces keep "⚠ 1 warning" together and the dot at the end of the first line when it wraps.
             if m.detail != nil { t = t + Text("\u{00A0}· ") }
             t = t + Text(Image(systemName: "exclamationmark.triangle.fill")).foregroundColor(Palette.gold)
-                + Text(m.warnings == 1 ? "\u{00A0}1\u{00A0}warning" : "\u{00A0}\(m.warnings)\u{00A0}warnings")
+            if let words = m.warningText {
+                t = t + Text(verbatim: "\u{00A0}" + words)   // Home Assistant only: "Bedroom fan unavailable"
+            } else {
+                t = t + Text(m.warnings == 1 ? "\u{00A0}1\u{00A0}warning" : "\u{00A0}\(m.warnings)\u{00A0}warnings")
+            }
         }
         return t
     }
@@ -284,7 +297,7 @@ struct TodayView: View {
         case .deals:
             if model.selected != nil, let fresh = status.deals?.freshAct(), !fresh.isEmpty { dealsCard(fresh) }
         case .home:
-            if let ha = model.homeAssistant { HomeTiles(model: model, server: ha) }
+            if let ha = model.homeAssistant { HomeTiles(model: model, server: ha, home: home) }
         case .cards:
             if let state, model.selected != nil { otherCards(state) }
         case .report:

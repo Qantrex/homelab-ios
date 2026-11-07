@@ -66,7 +66,8 @@ final class HomeModel {
 struct HomeTiles: View {
     let model: AppModel
     let server: ServerConfig
-    @State private var home = HomeModel()
+    /// Owned by Today, so its headline can read the states too (Home Assistant without a Companion server).
+    let home: HomeModel
     @State private var picking = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize

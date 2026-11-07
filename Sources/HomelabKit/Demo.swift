@@ -20,12 +20,17 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     /// What the demo shows. `calm` (the default, what the owner sees with Settings → Demo): an ordinary current day
     /// like a real server's, all quiet, one proposal, the day card of today (before school) or of tomorrow. `problem`:
     /// the stress scene for screenshots and tests (an unhealthy and an exited container, a warning, U6 delays), its
-    /// day line moved around the clock. `-HomelabDemoScene problem` picks it at launch.
+    /// day line moved around the clock. `-HomelabDemoScene problem` picks it at launch. `haOnly` (`ha-only`): only the
+    /// demo Home Assistant, no demo homelab, so Today looks like it does for someone without a Companion server
+    /// (M2.1); its homelab side, never shown, is the calm one.
     public enum Scene: String, Sendable, CaseIterable {
         case calm, problem
+        case haOnly = "ha-only"
 
-        public var stateFixture: String { self == .calm ? "state-demo.json" : "state-problem.json" }
-        public var messagesFixture: String { self == .calm ? "messages-demo.json" : "messages.json" }
+        public var stateFixture: String { self == .problem ? "state-problem.json" : "state-demo.json" }
+        public var messagesFixture: String { self == .problem ? "messages.json" : "messages-demo.json" }
+        /// The scene adds the demo homelab (a Companion server), not only the demo Home Assistant.
+        public var hasHomelab: Bool { self != .haOnly }
     }
 
     private var current: HomelabState
@@ -63,7 +68,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         state.cards = state.cards.map { c in
             guard c.id == "today" else { return card(c) }
             switch scene {
-            case .calm:
+            case .calm, .haOnly:
                 return Self.schoolDay(c, now: now)
             case .problem:
                 // Always today (the fixture card is dated), so it never counts as a stale or tomorrow card.
@@ -71,7 +76,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             }
         }
         switch scene {
-        case .calm:
+        case .calm, .haOnly:
             // The way to school belongs to the day card: today's before school, else none (like the real server).
             let day = state.cards.first { $0.id == "today" }
             state.commute = state.commute.map { Self.schoolCommute($0, day: day, now: now) }

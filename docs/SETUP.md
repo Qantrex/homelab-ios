@@ -199,7 +199,7 @@ xcrun simctl launch --terminate-running-process booted com.qantrex.homelab -Home
 |---|---|
 | `-HomelabDemo YES` | Turns on the demo servers (a demo homelab and a demo Home Assistant, no network) and shows the demo homelab |
 | `-HomelabDemo NO` | Removes the demo servers again (like the Demo servers switch in Settings); your own servers stay. `scripts/phone-shots` ends with it |
-| `-HomelabDemoScene <scene>` | What the demo homelab shows in this launch: `calm` (default: an ordinary current day, all quiet, one proposal; `state-demo.json`) or `problem` (the stress scene for screenshots: an unhealthy and an exited container, a warning, U6 delays; `state-problem.json`) |
+| `-HomelabDemoScene <scene>` | What the demo homelab shows in this launch: `calm` (default: an ordinary current day, all quiet, one proposal; `state-demo.json`) or `problem` (the stress scene for screenshots: an unhealthy and an exited container, a warning, U6 delays; `state-problem.json`), or `ha-only` (only the demo Home Assistant, no demo homelab: Today as someone with only Home Assistant sees it; `ha-states.json`). With `-HomelabDemo YES`; for `ha-only` reset first (`-HomelabResetState YES`), as a running demo keeps its servers |
 | `-HomelabServer <url>` | Adds a Homelab API server with this address (login: Tailscale / proxy) and shows it. The URL rules below apply |
 | `-HomelabTab <tab>` | Opens a tab: `today`, `actions`, `chat`, `lab` or `settings` (`overview` and `home` mean Today). A tab that depends on a server feature (Actions, Chat) opens once the server's info shows it |
 | `-HomelabResetState YES` | Deletes all servers, tokens, cached data and settings before the start |
