@@ -563,7 +563,7 @@ struct TodayView: View {
                             .accessibilityValue(statusWord(m.status).map { Text($0) } ?? Text(""))
                         }
                         Text(markdown(m.text)).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                            .lineLimit(10).multilineTextAlignment(.leading)
+                            .lineLimit(typeSize.isAccessibilitySize || density == .overkill ? 10 : 4).multilineTextAlignment(.leading)
                             .tint(Palette.iris)
                     }
                     .panel()
