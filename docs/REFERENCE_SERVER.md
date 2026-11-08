@@ -224,7 +224,7 @@ With a `sources` list the reference server becomes the **Homelab Bridge**: it al
 Companion API data and needs nothing new. Without the key nothing changes (a golden test checks it).
 
 Sources are optional modules in `server/sources/`, next to `reference_server.py` (copy the folder too). They are
-stdlib only. The types are the files in that folder: [`json`](#json-feed) reads a feed in the shape of `/state`;
+stdlib only. The types are the files in that folder: [`json`](#json-feed) reads a feed in the shape of `/state`; [`rss`](#news-rss-and-atom) reads news feeds;
 `example` is the template for new ones and reads a made-up API. The real ones, their keys and the upstream versions
 they are tested with: [SERVER-SETUP.md → Sources](SERVER-SETUP.md#sources).
 
@@ -591,6 +591,63 @@ names are shown as one line: `§` formatting codes, control characters and invis
 become `<url>`. A Valve server since 2020 answers with a challenge first; that is handled. Only the plain ping is
 used, so an `a2s` server must have its query port reachable from the bridge over UDP. `server/sources/gameserver.py`
 has the details. Homepage's `minecraft` widget imports as one server; `gamedig` is not imported.
+
+### News (RSS and Atom)
+
+Type `rss` is the server side of the app's News tile: headlines from public RSS 2.0, RSS 1.0 (ORF) and Atom feeds,
+as one card `news` on Today. **Headlines only**: no summary, no model, never an article body or an image; the server
+cannot summarise (`can_summarize` is false). The phone never fetches a feed, the bridge does. There is at most one
+`rss` source; list all feeds in it.
+
+```json
+{"name": "News", "type": "rss", "every": 600, "max": 8, "window_h": 24, "feeds": [
+  {"id": "orf", "name": "ORF", "url": "https://rss.orf.at/news.xml", "country": "at", "topic": "general"},
+  {"id": "derstandard", "name": "Der Standard", "url": "https://www.derstandard.at/rss", "country": "at", "topic": "general"},
+  {"id": "heise", "name": "heise", "url": "https://www.heise.de/rss/heise-atom.xml", "country": "de", "topic": "tech"},
+  {"id": "hn", "name": "Hacker News", "url": "https://news.ycombinator.com/rss", "country": "int", "topic": "tech"},
+  {"id": "bbc", "name": "BBC", "url": "https://feeds.bbci.co.uk/news/rss.xml", "country": "gb", "topic": "general"}
+]}
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `feeds[].id` | required | Short id (`a-z 0-9 - _`, unique): the app's source toggle and the `source:` tag |
+| `feeds[].name` | required | Shown name: "ORF · 2 h" |
+| `feeds[].url` | required | The feed's own `http(s)` address. Redirects are not followed: give the final address. No user, password or key in it |
+| `feeds[].country` | `int` | Two letters (`at`, `de`, `gb`) or `int` (international). The app's Country choice lists these |
+| `feeds[].topic` | `general` | A word (`general`, `tech`, ...). Feeds with another topic than `general` are offered in every country |
+| `max` | `8` | Most items on the card; the app's count (3, 5, 8) can only lower it |
+| `window_h` | `24` | Default window in hours; the app's choice (12, 24, 48) replaces it |
+| `max_bytes` | 2 MB | Largest answer read from one feed (at most 8 MB); a larger one counts as failed |
+| `every` | `60` | Seconds between reads. 300 to 900 is kind to the feeds |
+
+The card: `{"id": "news", "title": "News", "style": "list", "icon": "newspaper", "subtitle": "", "updated": "HH:MM",
+"items": [{"title": "<headline>", "subtitle": "ORF · 2 h", "url": "https://…", "tags": ["source:orf", "country:at",
+"topic:general"]}]}`. The card id is `news` as it is, not prefixed with the source name (the app looks for exactly
+that). `subtitle` (the digest) is empty. What is read: only the feeds the user picked in the app, in parallel, each
+with its own timeout (the source's `timeout`, at most 8 s). An item needs a title, a date and an `http(s)` link;
+older than the window, dated more than an hour ahead, or without one of those, it is skipped. The same article (the
+address without tracking parameters, `www.` and a trailing slash) or a near-identical headline is shown once, the
+newest copy; one feed gets a fair share of the card first. Titles are plain text (tags, control characters and URLs
+removed, 160 characters); links with a user, password or key are dropped.
+
+A feed that fails (timeout, HTTP error, too large, not XML, a feed that declares a `DOCTYPE` or an `ENTITY`) is skipped
+and shows as one warning problem `News: ORF: timeout`. When every picked feed fails the source fails: one warning and
+no card, never a stale one. Feeds that declare entities are refused outright (no entity expansion, no external
+entities); at most 100 items are read per feed.
+
+**Choosing what to read.** Two endpoints, both only with an `rss` source (otherwise 404, and `/info` is unchanged):
+
+- `GET /api/v1/news/sources`: `{"countries": [{"id", "name"}], "sources": [{"id", "name", "country", "topic"}],
+  "prefs": {"enabled", "country", "sources", "summary", "count", "window_h"}, "can_summarize": false}`. Until someone
+  chooses, the prefs are: on, the first feed's country, every feed, count 5, the config's `window_h`.
+- `PUT /api/v1/news/prefs` with a full prefs object (same authentication as the other writes) answers
+  `{"ok": true, "prefs": {...}}`. Unknown source ids are dropped, `count` must be 3, 5 or 8, `window_h` 12, 24 or 48
+  and `country` one of the listed ones, otherwise 400 `{"error": "..."}`; `summary` is stored `false`. The prefs are
+  stored in `news-prefs.json` in `state_dir` (mode 600) and the source reads again at once. A feed shows when its id is
+  in `sources` and its country is the chosen one or its topic is not `general`. `enabled: false` removes the card.
+
+`server/sources/rss.py` has the details, `server/sources/_news.py` the prefs; tests in `server/test_source_rss.py`.
 
 ### Source actions
 

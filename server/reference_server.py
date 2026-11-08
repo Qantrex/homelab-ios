@@ -1041,6 +1041,14 @@ class RealApp:
             self.routes["messages"] = {"GET": self.messages, "POST": self.post_message}
         if cfg.services or self.sources:
             self.routes["services"] = {"GET": self.services}
+        # News module (docs/REFERENCE_SERVER.md#news): only with an rss source; without one both routes are 404.
+        self.news = None
+        for spec in (cfg.sources or []):
+            if spec["type"] == "rss":
+                self.news = spec
+                spec["cfg"]["_prefs_file"] = os.path.join(cfg.state_dir, "news-prefs.json")
+                self.routes["news/sources"] = {"GET": self.news_sources}
+                self.routes["news/prefs"] = {"PUT": self.news_prefs}
         # Source actions (feature run-actions): only when a source's config lists items under `actions`.
         if self.sources and self.sources.actions:
             acts = self.sources.actions
@@ -1127,6 +1135,24 @@ class RealApp:
 
     def post_message(self, query, body):
         return self.chat.post(_text(body))
+
+    def news_sources(self, query, body):
+        from sources import rss  # noqa: E402
+        out = rss.catalog(self.news["cfg"])
+        out["prefs"] = rss.load_prefs(self.news["cfg"], self.news["cfg"]["_prefs_file"])
+        out["can_summarize"] = False
+        return 200, out
+
+    def news_prefs(self, query, body):
+        from sources import rss  # noqa: E402
+        cfg = self.news["cfg"]
+        try:
+            prefs = rss.validate_prefs(cfg, body, rss.load_prefs(cfg, cfg["_prefs_file"]))
+        except ValueError as exc:
+            raise BadRequest(str(exc))
+        rss.save_prefs(cfg["_prefs_file"], prefs)
+        self.sources.read_soon(self.news["name"])
+        return 200, {"ok": True, "prefs": prefs}
 
     def services(self, query, body):
         if self.sources:
@@ -1471,7 +1497,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:  # noqa: BLE001
             log("error handling %s:\n%s" % (method, traceback.format_exc()))
             code, obj = 500, {"error": "internal error"}
-        if code >= 400 and method == "POST" and not getattr(self, "_body_read", True):
+        if code >= 400 and method in ("POST", "PUT") and not getattr(self, "_body_read", True):
             self.close_connection = True  # unread body: don't reuse the connection
         self._send(code, obj)
 
@@ -1508,7 +1534,7 @@ class Handler(BaseHTTPRequestHandler):
             return 411, {"error": "send a Content-Length, not Transfer-Encoding"}
         if method == "POST" and path[len(API_PREFIX):].rstrip("/") in getattr(app, "raw_routes", ()):
             return self._raw_upload(fn)
-        if method == "POST":
+        if method in ("POST", "PUT"):
             self._body_read = False
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
             if ctype != "application/json":

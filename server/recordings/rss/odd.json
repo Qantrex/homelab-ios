@@ -1,0 +1,29 @@
+{
+ "_about": "Hostile and odd feeds: odd (missing dates, javascript:/ftp:/credential/key links, blank and missing titles, markup in titles, a future date, a guid-only item), malformed (cut off), entity (DOCTYPE with entities), notafeed (HTML).",
+ "routes": {
+  "GET /odd.xml": {
+   "body": "<?xml version=\"1.0\"?>\n<rss version=\"2.0\"><channel><title>Odd</title>\n<item><title>No date at all</title><link>https://odd.example/nodate</link></item>\n<item><title>Javascript link</title><link>javascript:alert(1)</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item>\n<item><title>FTP link</title><link>ftp://odd.example/x</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item>\n<item><title>Credentials in link</title><link>https://user:pw@odd.example/a</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item>\n<item><title>Key in link</title><link>https://odd.example/a?apikey=abc123</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item>\n<item><title>   </title><link>https://odd.example/blank</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item>\n<item><title>Relative link</title><link>/relative/path</link><pubDate>Sun, 08 Nov 2026 11:05:00 GMT</pubDate></item>\n<item><title>From the future</title><link>https://odd.example/future</link><pubDate>Mon, 09 Nov 2026 11:00:00 GMT</pubDate></item>\n<item><title>Bad date</title><link>https://odd.example/baddate</link><pubDate>last tuesday</pubDate></item>\n<item><title>  &lt;b&gt;Bold&lt;/b&gt; *markup*  [x](https://evil.example)   and\n spaces https://tracker.example/p?token=abc </title><link>https://odd.example/markup</link><pubDate>Sun, 08 Nov 2026 11:30:00 GMT</pubDate></item>\n<item><title>Guid only</title><guid isPermaLink=\"true\">https://odd.example/guid</guid><pubDate>Sun, 08 Nov 2026 11:10:00 GMT</pubDate></item>\n<item><link>https://odd.example/notitle</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item>\n</channel></rss>\n",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  },
+  "GET /malformed.xml": {
+   "body": "<?xml version=\"1.0\"?>\n<rss version=\"2.0\"><channel><title>Cut</title><item><title>Half an item</tit",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  },
+  "GET /entity.xml": {
+   "body": "<?xml version=\"1.0\"?>\n<!DOCTYPE lolz [\n <!ENTITY lol \"lol\">\n <!ENTITY lol2 \"&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;\">\n <!ENTITY ext SYSTEM \"file:///nonexistent/made-up-secret\">\n]>\n<rss version=\"2.0\"><channel><title>&lol2;</title><item><title>&ext;</title><link>https://evil.example/a</link><pubDate>Sun, 08 Nov 2026 11:00:00 GMT</pubDate></item></channel></rss>\n",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  },
+  "GET /notafeed.xml": {
+   "body": "<?xml version=\"1.0\"?><html><body><item><title>x</title></item></body></html>\n",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  }
+ }
+}

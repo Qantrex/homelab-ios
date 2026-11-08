@@ -116,7 +116,8 @@ area = "Today"
 status = "shipped"
 since = "2026-11-08"
 summary = "The server fetches and summarises the owner's news; Today shows a News tile (count and the top headline, Overkill the digest) that opens a sheet with the digest and the stories, each opening in the in-app browser (reader mode when available). Settings → Advanced → Today → News (only when the server answers) picks country, sources, summaries or headlines, 3/5/8 stories and a 12/24/48 h window; changes are saved on the server."
-notes = "Endpoints GET /news/sources and PUT /news/prefs (docs/API.md): list them under endpoints once server/openapi.yaml has them (the server agent owns that file)."
+notes = "The Homelab Bridge serves news through the rss source (headlines only); the owner's agent also summarises."
+endpoints = ["GET /news/sources", "PUT /news/prefs"]
 api_fields = ["cards[id=news]", "can_summarize", "prefs"]
 sources = ["Sources/HomelabKit/News.swift", "Sources/HomelabUI/NewsViews.swift"]
 fixtures = ["Sources/HomelabKit/Fixtures/news-sources.json"]
@@ -1578,6 +1579,27 @@ docs = ["docs/REFERENCE_SERVER.md#game-servers", "docs/SERVER-SETUP.md#sources"]
 not_needed = { device_tests = "server side; the app sees ordinary Companion data" }
 depends_on = ["server-sources"]
 notes = "The one source that opens its own sockets: SourceModuleRules.OWN_SOCKETS allows `socket` for it, and its tests use fake TCP and UDP servers on localhost instead of recordings. Left out on purpose: a wake action (a login wakes the backend; owner decision 6 wants actions off by default per item) and Homepage's `gamedig` widget."
+
+[[feature]]
+id = "source-rss"
+name = "Bridge source: news (RSS and Atom)"
+area = "Server"
+status = "partial"
+since = "2026-11-08"
+summary = "Source type `rss`: headlines from RSS 2.0, RSS 1.0 and Atom feeds as the card `news` on Today (headlines only, no summary, never an article body or image), deduplicated by address and near-identical title, inside a 12/24/48 h window, a fair share per feed. One failing feed is a warning, all failing is no card. Hostile XML (DOCTYPE, entities, huge or endless answers, junk) is refused or skipped. `GET /news/sources` lists the catalog and the choice, `PUT /news/prefs` stores country, sources, count and window in the state dir; both are 404 without an `rss` source."
+server_features = ["cards"]
+endpoints = ["GET /news/sources", "PUT /news/prefs"]
+api_fields = ["state.cards", "news.sources", "news.prefs"]
+sources = ["server/sources/rss.py#collect", "server/sources/_news.py#validate_prefs", "server/test_source_rss.py",
+           "server/recordings/rss/normal.json", "server/recordings/rss/odd.json"]
+tests = ["server/test_source_rss.py::Headlines", "server/test_source_rss.py::Failures",
+         "server/test_source_rss.py::Prefs", "server/test_source_rss.py::ConfigChecks",
+         "server/test_source_rss.py::NewsEndpoints", "server/test_sources.py::SourceModuleRules"]
+docs = ["docs/REFERENCE_SERVER.md#news-rss-and-atom", "docs/BRIDGE.md#example-the-news-module-rss",
+        "docs/SERVER-SETUP.md#sources"]
+not_needed = { device_tests = "server side; the app part is the news feature" }
+depends_on = ["server-sources"]
+notes = "The one source whose card keeps an unprefixed id (`news`, at most one rss source) and that serves endpoints of its own. File access and URL parsing live in the helper `_news.py` (SourceModuleRules does not read `_` modules). No LLM: `can_summarize` is false; a server with a model may answer true and fill `subtitle`."
 
 [[feature]]
 id = "source-qbittorrent"

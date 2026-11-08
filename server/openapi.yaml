@@ -307,6 +307,45 @@ paths:
               schema: { $ref: "#/components/schemas/ShareReply" }
         "400": { description: "Refused; `error` says why." }
         "429": { description: More than 30 shares in the last hour. }
+  /news/sources:
+    get:
+      summary: News the user can choose from, and the choice so far (optional News module).
+      description: |
+        The countries and sources this server reads, the user's current preferences and whether the server can
+        summarise. A server without news answers 404 and the app hides News in Settings. The news itself is the card
+        `news` in `/state` (no `place`, so Today).
+      responses:
+        "200":
+          description: The catalog.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsSources" }
+        "404": { description: No news here; the app hides News settings. }
+  /news/prefs:
+    put:
+      summary: Store the News choice (optional News module).
+      description: |
+        Body: a full prefs object. Unknown source ids are dropped, `count` must be 3, 5 or 8, `window_h` 12, 24 or 48,
+        `summary` is stored false when `can_summarize` is false. The server applies the prefs on its next news run
+        and refreshes the card soon after. Same authentication as the other writes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewsPrefs" }
+      responses:
+        "200":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, prefs]
+                properties:
+                  ok: { type: boolean }
+                  prefs: { $ref: "#/components/schemas/NewsPrefs" }
+        "400": { description: "A malformed body; `error` says why." }
+        "404": { description: No news here. }
 components:
   securitySchemes:
     identityHeader:
@@ -321,6 +360,40 @@ components:
     Unauthorized: { description: No identity. }
     Forbidden: { description: Identity not allowed. }
   schemas:
+    NewsPrefs:
+      type: object
+      required: [enabled, country, sources, summary, count, window_h]
+      properties:
+        enabled: { type: boolean }
+        country: { type: string, example: at }
+        sources: { type: array, items: { type: string }, example: [orf, heise] }
+        summary: { type: boolean, description: Digest and short English lines; only when `can_summarize`. }
+        count: { type: integer, enum: [3, 5, 8] }
+        window_h: { type: integer, enum: [12, 24, 48] }
+    NewsSources:
+      type: object
+      required: [countries, sources, prefs, can_summarize]
+      properties:
+        countries:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, example: at }
+              name: { type: string, example: Austria }
+        sources:
+          type: array
+          items:
+            type: object
+            required: [id, name, country, topic]
+            properties:
+              id: { type: string, example: orf }
+              name: { type: string, example: ORF }
+              country: { type: string, example: at }
+              topic: { type: string, example: general }
+        prefs: { $ref: "#/components/schemas/NewsPrefs" }
+        can_summarize: { type: boolean }
     Info:
       type: object
       required: [api]

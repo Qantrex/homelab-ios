@@ -76,6 +76,11 @@ Security review fixes:
   Lab card with each server's state, players, version and MOTD. It only sends status pings, never a login, so a
   sleeping server behind `itzg/mc-router` stays asleep; there is no wake action. A server that is down is only a
   problem with `expect_up`. Homepage's `minecraft` widget imports as one server.
+- Homelab Bridge: an `rss` source for news. Headlines from RSS 2.0, RSS 1.0 and Atom feeds (ORF, Der Standard, heise,
+  Hacker News, BBC, ...) become the card `news` on Today, with `GET /api/v1/news/sources` and `PUT
+  /api/v1/news/prefs` so the app can choose country, sources, count and window. Headlines only (no summary); a
+  feed that fails is a warning, all failing is no card; feeds that declare entities are refused. Servers without an
+  `rss` source answer 404 to both.
 
 App:
 
