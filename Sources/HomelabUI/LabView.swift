@@ -183,8 +183,9 @@ struct LabView: View {
 
     /// Minimal: a card (or the services) folded to its title and a count; a tap opens it.
     private func foldedRow<Content: View>(_ fold: (title: String, count: String?), @ViewBuilder content: () -> Content) -> some View {
-        DisclosureGroup {
-            content().padding(.top, 8)
+        let inner = content()
+        return DisclosureGroup {
+            inner.padding(.top, 8)
         } label: {
             HStack {
                 Text(fold.title).font(Typo.headline).foregroundStyle(Palette.text)
