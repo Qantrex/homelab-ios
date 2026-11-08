@@ -29,7 +29,7 @@ struct TokenTransportTests {
         let token = ServerConfig(name: "lab", kind: .companion, baseURL: lan, auth: .token)
         #expect(token.tokenTransportProblem == URLPolicy.tokenOverHTTPMessage)
         #expect(URLPolicy.tokenOverHTTPMessage
-                == "This server uses a token over plain http. Use its https://….ts.net address (tailscale serve).")
+                == "This server uses a token over plain http. Use its https://….ts.net address (tailscale serve) or a local https address. See docs/TAILSCALE.md.")
         // Identity servers send no token: the old http rules stay.
         #expect(ServerConfig(name: "lab", kind: .companion, baseURL: lan, auth: .identity).tokenTransportProblem == nil)
         // Home Assistant always sends its token, whatever `auth` says.

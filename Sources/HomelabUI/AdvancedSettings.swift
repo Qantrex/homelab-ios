@@ -66,12 +66,14 @@ struct AdvancedSettingsView: View {
                     SettingsFooter(verbatim: chatFooter)
                 }
 
-                Section {
-                    QuietHoursRow(model: model)
-                } header: {
-                    Text("Notifications")
-                } footer: {
-                    SettingsFooter("No local notifications inside this window.")
+                if model.settings.showsQuietHoursRow {
+                    Section {
+                        QuietHoursRow(model: model)
+                    } header: {
+                        Text("Notifications")
+                    } footer: {
+                        SettingsFooter("No local notifications inside this window.")
+                    }
                 }
 
                 // Only for a server that sends a commute (or while on, so it can be turned off).
@@ -139,7 +141,7 @@ struct AdvancedSettingsView: View {
     }
 
     private var chatFooter: String {
-        String(localized: "Text size is one step from your iPhone's size. Long replies fold after 12 lines by default; Short folds after 6, Never fold shows them whole.")
+        String(localized: "Text size is one step from your iPhone's size. Long replies fold after 12 lines by default; Short folds after 6, Never fold shows them whole. Hyperdetail never folds replies.")
     }
 }
 
@@ -165,7 +167,8 @@ private struct OrderRow: View {
                 if let detail { Text(verbatim: detail).font(Typo.meta).foregroundStyle(Palette.tertiary) }
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            Toggle(isOn: Binding(get: { isOn }, set: set)) { Text(verbatim: title) }
+            // A closure literal, not `set` itself: Xcode 26.6 crashes in IRGen on the reabstraction thunk for the stored function.
+            Toggle(isOn: Binding(get: { isOn }, set: { set($0) })) { Text(verbatim: title) }
                 .labelsHidden()
                 .disabled(!canHide)
         }

@@ -257,13 +257,23 @@ struct PrivacyCover: View {
 /// Face ID / passcode gate.
 struct LockView: View {
     let unlock: () async -> Void
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var asking = false
+
+    /// One Face ID prompt at a time.
+    private func ask() async {
+        guard !asking else { return }
+        asking = true
+        defer { asking = false }
+        await unlock()
+    }
 
     var body: some View {
         VStack(spacing: 18) {
             Image(systemName: "lock.fill").font(.system(size: 44)).foregroundStyle(.secondary)
             Text("Homelab is locked").font(.title3.weight(.semibold))
             Button {
-                Task { await unlock() }
+                Task { await ask() }
             } label: {
                 Label("Unlock", systemImage: "faceid")
                     .frame(minWidth: 160)
@@ -273,7 +283,12 @@ struct LockView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.background.ignoresSafeArea())
-        .task { await unlock() }
+        // The prompt at appearance can fire while the app is still in the background (the lock appears on leaving):
+        // ask when the app is active, now or when it comes back.
+        .task { if scenePhase == .active { await ask() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await ask() } }
+        }
     }
 }
 

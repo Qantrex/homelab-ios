@@ -25,7 +25,8 @@ enum QuickActions {
     static func update(storage: Storage = .shared()) {
         let usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
         let list = storage.read(ServerList.self, ServerList.fileName) ?? ServerList()
-        let items = HomeShortcuts.items(usage, server: list.selectedServer?.id).map { item in
+        let settings = storage.read(AppSettings.self, AppSettings.fileName)
+        let items = HomeShortcuts.items(usage, server: list.selectedServer?.id, tiles: settings?.startTiles).map { item in
             UIApplicationShortcutItem(type: item.type, localizedTitle: item.title, localizedSubtitle: nil,
                                       icon: UIApplicationShortcutIcon(systemImageName: Symbols.safe(item.icon, fallback: "play.circle")),
                                       userInfo: ["link": item.link.absoluteString as NSString])

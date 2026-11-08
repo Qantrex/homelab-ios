@@ -39,6 +39,13 @@ import Testing
         #expect(!m.showsFirstRun)   // a server saved outside a run (Settings, an old install): the tabs
     }
 
+    @Test func tipsPointToTheSectionsInAdvanced() {
+        #expect(FirstRun.startTipText == "Change what Today shows in Settings → Advanced → Sections")
+        #expect(FirstRun.startWithFooter.hasSuffix("in Settings → Advanced → Sections."))
+        // Without /info the offers are what the data itself shows, never nothing.
+        #expect(!FirstRun.offers(features: ServerStatus().features).isEmpty)
+    }
+
     @Test func demoIsStillOneTap() {
         let (m, _, _, _) = makeModel()
         m.setDemo(true)
