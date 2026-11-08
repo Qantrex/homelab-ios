@@ -21,7 +21,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today headline (mood)](#today-hero) | shipped | `status`, `hosts` | 3 | **T1**, T8 | 3 |
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
-| [Today is short by design (folds, Also panel)](#today-folding) | shipped | – | 1 | **none** | 3 |
+| [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 1 | **none** | 3 |
 | [Machines list (Overkill)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
 | [Where you are (presence from Home Assistant)](#presence) | partial | – | 4 | H8, H9 | 3 |
@@ -79,7 +79,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Lab: problems and host tiles](#lab-hosts) | shipped | `hosts`, `status` | 5 | **O1**, O2, **O3**, O14 | 2 |
+| [Lab: problems and host rows](#lab-hosts) | shipped | `hosts`, `status` | 5 | **O1**, O2, **O3**, O14 | 2 |
 | [Host details and 24 h history](#host-detail) | shipped | `hosts` | 1 | **O4**, O5 | 1 |
 | [Containers with Restart](#container-restart) | shipped | `hosts`, `run-actions` | 7 | O6, O7 | 2 |
 | [Service launcher (web UIs)](#service-launcher) | shipped | `services` | 3 | O13 | 2 |
@@ -306,7 +306,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 
 **Today headline (mood)** · Today · shipped · since 2026-11-06
 
-The lab's state in two words on top of Today ("All quiet.", "1 problem."), calm when fine, gold or love with a glow and a haptic when not; "Checking…" until the first answer, "No signal." only after a failed fetch. Tap it (or "Lab ›") for Lab.
+The lab's state in two words on top of Today ("All quiet.", "1 problem."), calm when fine, gold or love with a glow and a haptic when not; "Checking…" until the first answer, "No signal." only after a failed fetch. Tap it for Lab (there is no separate "Lab ›" link).
 
 | | |
 |---|---|
@@ -357,9 +357,9 @@ Today's sections can be reordered and hidden; Calm, Standard or Overkill picks h
 
 ### today-folding
 
-**Today is short by design (folds, Also panel)** · Today · shipped · since 2026-11-08
+**Today is short by design (folds, tiles)** · Today · shipped · since 2026-11-08
 
-Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, departure disruptions, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads, grades and departures are one-line summary rows in an "Also" panel that expand in place; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
+Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
 
 | | |
 |---|---|
@@ -830,9 +830,9 @@ Settings → Notifications → "New deals to act on" (off by default): a local n
 
 ### lab-hosts
 
-**Lab: problems and host tiles** · Lab · shipped · since 2026-11-04
+**Lab: problems and host rows** · Lab · shipped · since 2026-11-04
 
-Overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags); "No problems · 2 hosts with a warning"; a sleeping machine is grey with when it was last seen. Pull to refresh, refresh every 30 s while open.
+Overall status, problems first, one row per host in every density and text size (Load, RAM and worst disk in three columns, stacked under the name from xxLarge; status, flags, hot temperature, missing containers and the 24 h load sparkline; a tap opens the host's details; never tiles); "No problems · 2 hosts with a warning"; a sleeping machine is grey with when it was last seen. Pull to refresh, refresh every 30 s while open.
 
 | | |
 |---|---|
@@ -1078,7 +1078,7 @@ Medium (4 hosts) and large (8 hosts and problems): the headline, then each host 
 
 **Widget: U6 departures (departures card)** · Widgets · shipped · since 2026-11-06
 
-The next trains from your stop with delays (gold "+3") and disruptions, from the server's `departures` card; small (StandBy) and lock screen. Trains drop off at their time without opening the app. On Today the same card shows as a departures board.
+The next trains from your stop with delays (gold "+3") and disruptions, from the server's `departures` card; small (StandBy) and lock screen. Trains drop off at their time without opening the app. On Today the card shows inside the day card at the top, and only while a "Leave by" is within 60 minutes (a disruption alone on a day without one shows nothing).
 
 | | |
 |---|---|

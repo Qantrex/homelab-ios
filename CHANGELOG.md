@@ -11,9 +11,12 @@ Highlights:
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
   "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
 - Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 48
-  hours, a departure disruption, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more";
-  deals, recent downloads, grades and departures are one-line rows in an "Also" panel that open in place; the weather
-  card is left to the hero line; the Machines section moved to Lab only. Overkill adds detail per line instead of
+  hours, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
+  downloads and grades are small tiles (a count and one line: "best −50 %", "Dune +7", "ITP 95 %"; 2 by 2, one row of
+  3, 2 or 1 by count, one per row at large text) that open the full list in a sheet; departures show only inside the
+  day card, at the top, while a "Leave by" is within the hour (a disruption alone shows nothing); Today has no "Lab ›"
+  link (the headline and the machines line open Lab); Lab shows hosts as rows with Load, RAM and Disk in every
+  density, never tiles; the weather card is left to the hero line; the Machines section moved to Lab only. Overkill adds detail per line instead of
   opening everything. What you open folds again on each launch. The demo shows a busy day to match.
 - Show rules: Settings → Today → Sections says under each section when it shows, and a tap picks Always, When it
   needs me, a time (Mornings, Daytime, Evenings, Weekdays, Weekends) or Custom (from, to, days). While a rule hides

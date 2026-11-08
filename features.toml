@@ -48,7 +48,7 @@ name = "Today headline (mood)"
 area = "Today"
 status = "shipped"
 since = "2026-11-06"
-summary = "The lab's state in two words on top of Today (\"All quiet.\", \"1 problem.\"), calm when fine, gold or love with a glow and a haptic when not; \"Checking…\" until the first answer, \"No signal.\" only after a failed fetch. Tap it (or \"Lab ›\") for Lab."
+summary = "The lab's state in two words on top of Today (\"All quiet.\", \"1 problem.\"), calm when fine, gold or love with a glow and a haptic when not; \"Checking…\" until the first answer, \"No signal.\" only after a failed fetch. Tap it for Lab (there is no separate \"Lab ›\" link)."
 server_features = ["status", "hosts"]
 endpoints = ["GET /state"]
 api_fields = ["state.status", "state.problems", "state.hosts"]
@@ -96,11 +96,11 @@ settings = ["Settings → Today: order, hide, detail"]
 
 [[feature]]
 id = "today-folding"
-name = "Today is short by design (folds, Also panel)"
+name = "Today is short by design (folds, tiles)"
 area = "Today"
 status = "shipped"
 since = "2026-11-08"
-summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, departure disruptions, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads, grades and departures are one-line summary rows in an \"Also\" panel that expand in place; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session."
+summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a \"Leave by\" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session."
 sources = ["Sources/HomelabKit/TodayFold.swift", "Sources/HomelabUI/TodayFoldViews.swift"]
 fixtures = ["Sources/HomelabKit/Fixtures/demo-today.json"]
 tests = ["TodayFoldTests"]
@@ -570,11 +570,11 @@ depends_on = ["deals", "notifications"]
 
 [[feature]]
 id = "lab-hosts"
-name = "Lab: problems and host tiles"
+name = "Lab: problems and host rows"
 area = "Lab"
 status = "shipped"
 since = "2026-11-04"
-summary = "Overall status, problems first, a tile per host (load, RAM, worst disk, temperature, containers, flags); \"No problems · 2 hosts with a warning\"; a sleeping machine is grey with when it was last seen. Pull to refresh, refresh every 30 s while open."
+summary = "Overall status, problems first, one row per host in every density and text size (Load, RAM and worst disk in three columns, stacked under the name from xxLarge; status, flags, hot temperature, missing containers and the 24 h load sparkline; a tap opens the host's details; never tiles); \"No problems · 2 hosts with a warning\"; a sleeping machine is grey with when it was last seen. Pull to refresh, refresh every 30 s while open."
 server_features = ["hosts", "status"]
 endpoints = ["GET /state"]
 api_fields = ["state.hosts[]", "state.problems[]"]
@@ -814,7 +814,7 @@ name = "Widget: U6 departures (departures card)"
 area = "Widgets"
 status = "shipped"
 since = "2026-11-06"
-summary = "The next trains from your stop with delays (gold \"+3\") and disruptions, from the server's `departures` card; small (StandBy) and lock screen. Trains drop off at their time without opening the app. On Today the same card shows as a departures board."
+summary = "The next trains from your stop with delays (gold \"+3\") and disruptions, from the server's `departures` card; small (StandBy) and lock screen. Trains drop off at their time without opening the app. On Today the card shows inside the day card at the top, and only while a \"Leave by\" is within 60 minutes (a disruption alone on a day without one shows nothing)."
 server_features = ["cards"]
 endpoints = ["GET /state"]
 api_fields = ["card id \"departures\", style departures"]

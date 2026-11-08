@@ -167,26 +167,40 @@ the default text size with typical data on an iPhone 12 mini:
 | Overkill | Three screens at most |
 
 - **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue,
-  due today or due within 48 hours; a departure disruption; a to-do past its time; a proposal. Warm tints belong to
-  urgent rows only, and colour is never the only sign (the row says why in words).
+  due today or due within 48 hours; a to-do past its time; a proposal. Warm tints belong to urgent rows only, and
+  colour is never the only sign (the row says why in words).
 - **Standard folds the rest.**
-  - The hero stays. The weather card is not drawn on Today: the hero line says it.
+  - The hero stays. The weather card is not drawn on Today: the hero line says it. The hero has no "Lab ›" link: the
+    headline and the machines line lead to Lab, and the Lab tab is one tap away (owner, 2026-11-08).
   - The short "today" text is one plain line. Tomorrow's "No school" is a caption without a panel.
   - To approve shows 2 proposals and "and N more", which opens Actions.
   - To-dos and parcels fold after 3 rows. Deadlines show the urgent ones topped up to 3, then "Show N more · next Fri".
     The briefing shows 3 lines and "Show more".
   - A small list card (a game server: "Mira is playing") is one line. An unknown card folds after 3 rows or 3 lines.
-- **The "Also" panel** holds what is nice to know: deals, recent downloads, grades and departures, each as a one-line
-  summary row that expands in place: "2 deals · best −50 %", "Latest: <title> · +7 more", "3 new grades · latest
-  <subject> <grade>", "U6 <direction> 00:03 · 00:10". Departures show the full board instead when Leave by is within
-  60 minutes or when there is a disruption.
-- **Overkill is the same design with more detail per line, not everything open.** "4 deals · best −70 % · GPU €140,
-  RAM kit €100", "Latest: A, B · +6 more", grades with their subjects, a few more rows before a fold (5 deadlines),
-  about 6 briefing lines.
+- **Tiles hold what is nice to know: deals, recent downloads and grades.** No panel title. Each tile has the icon and
+  a short name ("Deals", "Downloads", "Grades"), the count as a big number and one short line ("best −50 %",
+  "Dune +7", "ITP 95 %"). A tap opens the full list in a sheet (title and Done; the card as Lab and chat draw it; the
+  deals sheet ends with "Open Deals"). Today never grows when a tile is tapped.
+  - **Layout by count, never uneven** (`TodayFold.tileRows`): 4 tiles are 2 by 2, 3 are one row of 3, 2 one row of 2,
+    1 full width; at accessibility text sizes one full-width tile per row. A row's tiles have equal heights.
+  - A tile is a button of at least 44 pt, one VoiceOver element ("Deals, 2, best minus 50 percent. Opens the list."),
+    never blue. A warm tint (gold icon and a faint gold fill, "needs you" for VoiceOver) only when a row in it is
+    urgent.
+- **Departures are not a tile and not on Today by default.** They show only while the day has an upcoming "Leave by"
+  within 60 minutes (`TodayFold.departuresMatter`), and then at the top, inside the day card under the school stops
+  and Leave by. A disruption counts only with such a Leave by: on a day without one (no school, tomorrow's card,
+  Leave by already passed) departures stay hidden even with a disruption.
+- **Overkill is the same design with more detail per line, not everything open.** The deals tile says "best −70 % ·
+  GPU €140", downloads name two ("Dune, Arrival +6"), grades two ("ITP 95 %, SEW 88 %"), a few more rows before a
+  fold (5 deadlines), about 6 briefing lines.
 - **Machines are in Lab only**, in every detail level. The hero line ("3 of 3 machines up") stays. The saved layout
   keeps the `machines` case so old settings still load.
+- **Lab hosts are always list rows, never tiles** (three hosts made an uneven grid): one full-width row per host in
+  one panel, with Load, RAM and Disk in three right-hand columns under a small header, in every density and text size.
+  From xxLarge the values stack under the name ("Load 0.42" per line). The 24 h load sparkline stays in the row (it
+  drops when the row is too narrow), and a tap opens the host's details.
 - **Expanding lasts for the session.** Everything folds again on each app launch; nothing is saved.
 - **Accessibility.** A fold row says what it hides and its state: "Deadlines, 9 more, collapsed"; it is at least 44 pt
-  high, and expanding announces itself. Each Also row is one VoiceOver element. At accessibility text sizes the
-  summaries wrap and Today may be longer than the budget; the budget is for the default size.
+  high, and expanding announces itself. At accessibility text sizes the tiles are one per row and their lines wrap,
+  so Today may be longer than the budget; the budget is for the default size.
 - Colours as in 3: white and grey, never blue.
