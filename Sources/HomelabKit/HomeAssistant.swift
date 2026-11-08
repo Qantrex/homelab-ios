@@ -69,7 +69,14 @@ public struct HAEntity: Codable, Sendable, Equatable, Identifiable, Hashable {
     }
 
     public var isOn: Bool { ["on", "open", "playing", "home", "unlocked"].contains(state.lowercased()) }
-    public var isAvailable: Bool { !["unavailable", "unknown"].contains(state.lowercased()) }
+    /// Whether the entity can be used. A scene, script or button that never ran since Home Assistant started has the
+    /// state "unknown" (their state is the time of the last run): that is normal for them, so they stay usable; only
+    /// "unavailable" (the device or integration is gone) makes them unusable. Other domains: neither counts.
+    public var isAvailable: Bool {
+        let s = state.lowercased()
+        if s == "unavailable" { return false }
+        return s != "unknown" || control == .run
+    }
 
     /// The state as people read it: "21.4°C", "45%", "On", "Open".
     public var displayState: String {

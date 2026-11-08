@@ -157,6 +157,19 @@ import Testing
 }
 
 @Suite struct HomeAssistantTests {
+    /// A Hue scene that hasn't been activated since Home Assistant started reports "unknown": its tile must still run
+    /// it (owner review 2026-11-08: "Relax and Party don't work"). A light in "unknown" stays unusable.
+    @Test func neverRunScenesAndScriptsStayUsable() {
+        for id in ["scene.living_room_relax", "script.goodnight", "button.restart"] {
+            let e = HAEntity(entityID: id, state: "unknown")
+            #expect(e.isAvailable, "\(id)")
+            #expect(e.displayState == "Run", "\(id)")
+        }
+        #expect(!HAEntity(entityID: "scene.gone", state: "unavailable").isAvailable)
+        #expect(!HAEntity(entityID: "light.lamp", state: "unknown").isAvailable)
+        #expect(HAEntity(entityID: "light.lamp", state: "unknown").displayState == "Unknown")
+    }
+
     @Test func checkAndStates() async throws {
         let t = FakeTransport { r in
             if r.url?.absoluteString.hasSuffix("/api/") == true { return .init(body: Data(#"{"message":"API running."}"#.utf8)) }
