@@ -51,9 +51,9 @@ struct ActionFormView: View {
                     Section {
                         ForEach(inputParts, id: \.index) { item in partRow(item.index, item.part) }
                     } footer: {
-                        if let arg = form.arg, !arg.isEmpty {
-                            Text(arg).font(Typo.meta).foregroundStyle(Palette.tertiary)
-                                .accessibilityLabel(Text("Sends \(arg)"))
+                        // What the picks mean in words ("Bike"), never the raw argument ("2026-11-09:bike").
+                        if let label = form.argLabel {
+                            Text(label).font(Typo.meta).foregroundStyle(Palette.tertiary)
                         }
                     }
                     .surfaceRows()
@@ -89,15 +89,18 @@ struct ActionFormView: View {
                         ProgressView()
                     } else {
                         Button("Run") {
-                            if form.isReady { confirming = true } else { showProblems = true; blocked += 1 }
+                            // Run in a filled form is the decision: it runs at once. Only a destructive action asks again.
+                            if !form.isReady { showProblems = true; blocked += 1 }
+                            else if spec.destructive { confirming = true }
+                            else { Task { await run() } }
                         }
                         .fontWeight(.semibold)
                     }
                 }
             }
+            .tint(Palette.text)   // the dialog's buttons: white (destructive stays red), never the system blue
             .confirmationDialog(spec.label, isPresented: $confirming, titleVisibility: .visible) {
-                Button(spec.destructive ? String(localized: "Run it") : String(localized: "Run now"),
-                       role: spec.destructive ? .destructive : nil) { Task { await run() } }
+                Button("Run it", role: .destructive) { Task { await run() } }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text(confirmMessage)
