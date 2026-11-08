@@ -19,14 +19,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(ROOT, "scripts", "ship-to-phone")
 
 SSH = """#!/usr/bin/env bash
-# fake ssh: ignore the host, run the command line locally
+# fake ssh: skip the -o options and the host, run the command line locally
+while [ "$1" = -o ]; do shift 2; done
 shift
 exec bash -c "$*"
 """
 SCP = """#!/usr/bin/env bash
-# fake scp: scp -q SRC HOST:DEST -> cp (FAKE_CORRUPT=1 damages the copy)
-dest=${3#*:}
-cp "$2" "$dest"
+# fake scp: scp -q [-o X]... SRC HOST:DEST -> cp (FAKE_CORRUPT=1 damages the copy)
+shift
+while [ "$1" = -o ]; do shift 2; done
+dest=${2#*:}
+cp "$1" "$dest"
 [ -z "${FAKE_CORRUPT:-}" ] || printf x >> "$dest"
 """
 
@@ -38,6 +41,7 @@ def make_ipa(path, version, build):
         z.writestr("Payload/Homelab.app/pad", os.urandom(64))
 
 
+@unittest.skipUnless(shutil.which("bash"), "needs bash (the alpine bridge image has none)")
 class ShipToPhone(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -122,6 +126,7 @@ class ShipToPhone(unittest.TestCase):
         self.assertIn("dry run", r.stdout)
         self.assertEqual(os.listdir(self.remote), [])
 
+    @unittest.skipUnless(os.path.exists(os.path.join(ROOT, ".git")), "needs a git checkout")
     def test_stale_ipa_refused(self):
         make_ipa(self.env["IPA"], "1.0.0", 6)
         os.utime(self.env["IPA"], (946684800, 946684800))   # 2000-01-01, older than any commit

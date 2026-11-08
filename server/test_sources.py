@@ -360,6 +360,31 @@ class MergeRules(unittest.TestCase):
         self.assertNotIn('"token"', text)
         self.assertIn("x***y", text)
 
+    def test_names_are_plain_and_scrubbed(self):
+        long = "n" * 500
+        out = self.norm({"hosts": [{"id": "h", "name": "pve https://u:p@evil.example/x?token=abc",
+                                    "container_list": [{"name": long, "status": "Up (api_key=abc123) http://x.y/z"}]}],
+                         "services": [{"name": "Wiki https://a.b/c", "url": "https://wiki.example", "group": long}]})
+        h = out["hosts"][0]
+        c = h["container_list"][0]
+        s = out["services"][0]
+        for text in (h["name"], c["name"], c["status"], s["name"], s["group"]):
+            self.assertLessEqual(len(text), 200)
+        text = json.dumps(out)
+        for word in ("evil.example", "abc123", "token=abc", "a.b/c", "x.y/z"):
+            self.assertNotIn(word, text)
+
+    def test_links_http_only_and_images_path_or_http(self):
+        items = [{"title": t, "url": u, "image": i} for t, u, i in (
+            ("a", "javascript:alert(1)", "javascript:x"), ("b", "file:///etc/passwd", "//evil.example/p.jpg"),
+            ("c", "https://ok.example/x", "/api/v1/poster/w342/a.jpg"), ("d", "http://ok.example/", "https://ok.example/p.jpg"),
+            ("e", "data:text/html,x", "data:image/png;base64,AA"), ("f", "https://u:p@ok.example/", "ftp://x/p.jpg"))]
+        got = self.norm({"cards": [{"id": "c", "items": items}],
+                         "services": [{"name": "x", "url": "javascript:alert(1)"}, {"name": "y", "url": "https://y.example"}]})
+        self.assertEqual([("url" in i, "image" in i) for i in got["cards"][0]["items"]],
+                         [(False, False), (False, False), (True, True), (True, True), (False, False), (False, False)])
+        self.assertEqual([s["name"] for s in got["services"]], ["y"])
+
     def test_bad_results(self):
         for bad, words in ((["a list"], "not a dict"), ({"hosts": [{"id": "h", "t": object()}]}, "not JSON"),
                            ({"hosts": [{"id": "h", "load": float("nan")}]}, "not JSON")):
