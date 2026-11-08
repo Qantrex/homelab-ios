@@ -24,6 +24,7 @@ struct AdvancedSettingsView: View {
                         }
                     }
                     PresenceRow(model: model)
+                    NewsSettingsRow(model: model)
                 } header: {
                     Text("Today")
                 } footer: {

@@ -186,10 +186,12 @@ the default text size with typical data on an iPhone 12 mini:
     later is behind "Show N more · next Fri", and with none urgent the card is just that row (owner, 2026-11-09).
     The briefing shows 3 lines and "Show more".
   - A small list card (a game server: "Mira is playing") is one line. An unknown card folds after 3 rows or 3 lines.
-- **Tiles hold what is nice to know: deals, recent downloads and grades.** No panel title. Each tile has the icon and
-  a short name ("Deals", "Downloads", "Grades"), the count as a big number and one short line ("best −50 %",
-  "Dune +7", "ITP 95 %"). A tap opens the full list in a sheet (title and Done; the card as Lab and chat draw it; the
-  deals sheet ends with "Open Deals"). Today never grows when a tile is tapped.
+- **Tiles hold what is nice to know: deals, recent downloads, grades and news.** No panel title. Each tile has the icon and
+  a short name ("Deals", "Downloads", "Grades", "News"), the count as a big number and one short line ("best −50 %",
+  "Dune +7", "ITP 95 %", the top headline; the news tile in Overkill says the day's digest). A tap opens the full list in a sheet (title and Done; the card as Lab and chat draw it; the
+  deals sheet ends with "Open Deals"; the News sheet is the digest and then one row per story, a row opens the
+  article in the in-app browser, reader mode when the page has one). Today never grows when a tile is tapped. News is
+  the fourth tile: with deals, downloads and grades present they sit 2 by 2.
   - **Layout by count, never uneven** (`TodayFold.tileRows`): 4 tiles are 2 by 2, 3 are one row of 3, 2 one row of 2,
     1 full width; at accessibility text sizes one full-width tile per row. A row's tiles have equal heights.
   - A tile is a button of at least 44 pt, one VoiceOver element ("Deals, 2, best minus 50 percent. Opens the list."),

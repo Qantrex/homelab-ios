@@ -170,7 +170,7 @@ import Testing
         #expect(s.hosts.flatMap(\.containerList).allSatisfy { $0.state == .running && $0.health != .unhealthy })
         // The cards a real server sends today, none of the old fixture's extras.
         let today = s.cards.filter { $0.place == .today }.map(\.id)
-        #expect(today == ["recent", "today", "weather", "briefing", "todos", "parcels", "gameserver", "deadlines", "grades", "departures"])
+        #expect(today == ["recent", "today", "weather", "briefing", "todos", "parcels", "news", "gameserver", "deadlines", "grades", "departures"])
         #expect(s.cards.filter { $0.place == .lab }.map(\.id) == ["tailnet", "dns", "dns-top", "backups"])
         // The day card is dated today or tomorrow, never an old day.
         let dayCard = try #require(s.dayCard)

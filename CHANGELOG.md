@@ -31,6 +31,11 @@ Highlights:
   There you can hide and reorder the Start tiles on Actions, the blocks in Lab and the tabs (never Settings), make the
   chat text one step smaller or larger, and fold long chat replies after 6 lines, 12 or never. Defaults are not
   stored, so old settings files are untouched.
+- News: your server fetches and summarises the news (the phone never does). Today gets a **News** tile (a count and the
+  top headline; Overkill the day's digest) that opens a sheet; each story opens in the in-app browser, in reader mode
+  when the page has one. Settings → Advanced → Today → **News** (shown only when the server has news) picks country,
+  sources, summaries or headlines, 3, 5 or 8 stories and a 12, 24 or 48 hour window, saved on the server. The demo has
+  it.
 - Show rules: Settings → Advanced → Sections says under each section when it shows, and a tap picks Always, When it
   needs me, a time (Mornings, Daytime, Evenings, Weekdays, Weekends) or Custom (from, to, days). While a rule hides
   something, Today ends with "Hidden now: Deals (evenings) · Show". Without rules Today is as before.
