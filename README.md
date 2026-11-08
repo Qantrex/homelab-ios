@@ -43,14 +43,13 @@ to Retry.
 | Homelab status | small, lock screen (circular, rectangular, inline) | Today's headline ("All quiet.", "1 problem.") in its colour, the first problem, actions to approve |
 | Homelab day | small, medium, lock screen (rectangular, inline) | The "today" card's day line: the next stop big with its countdown (small, lock screen), every stop on the line (medium) |
 | Homelab hosts | medium (4 hosts), large (8 hosts and problems) | The headline, then each host with load, RAM and disk |
-| U6 departures | small, lock screen (circular, rectangular, inline) | The next trains from your stop, with delays and disruptions (from the server's `departures` card) |
+| Departures | small, lock screen (circular, rectangular, inline) | The next trains from your stop, with delays and disruptions (from the server's `departures` card) |
 | Deadlines | small, medium, lock screen (circular, rectangular, inline) | What is due next, counting down |
 | To-dos | small, medium, lock screen (circular, rectangular) | Your open to-dos |
 | "Leave by" (Live Activity) | lock screen, banner, StandBy | When to leave and the next train, counting down by itself (from the server's `commute`) |
 
-U6 is a metro line in Vienna (the line this app was built for). The widget's name in the gallery is fixed in
-`Sources/HomelabWidget/DeparturesWidget.swift`; the line it shows comes from the `departures` card's title. For your
-own line see [docs/ADAPTING.md](docs/ADAPTING.md).
+The Departures widget shows the line your server sends in the `departures` card's title (the screenshots show U6, a
+Vienna metro line). For your own line see [docs/ADAPTING.md](docs/ADAPTING.md).
 
 Widgets show the data the app saved last. For a Homelab API server with the Tailscale login they also fetch
 `/state` themselves when that data is older than 5 minutes (iOS reloads a widget about every 15 minutes), so they

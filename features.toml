@@ -829,7 +829,7 @@ depends_on = ["widget-data", "widgetkit"]
 
 [[feature]]
 id = "widget-departures"
-name = "Widget: U6 departures (departures card)"
+name = "Widget: Departures (departures card)"
 area = "Widgets"
 status = "shipped"
 since = "2026-11-06"
@@ -845,7 +845,7 @@ docs = ["README.md#what-it-does", "docs/ADAPTING.md#the-modules"]
 widgets = ["DeparturesWidget"]
 card_styles = ["departures"]
 depends_on = ["widget-data", "widgetkit"]
-notes = "The gallery name \"U6 departures\" is fixed in DeparturesWidget.swift; the line itself comes from the card's title."
+notes = "The gallery name is the neutral \"Departures\" (DepartureBoard.galleryName); the line itself (U6 for the owner) comes from the card's title; the widget kind stays HomelabU6 so placed widgets survive."
 
 [[feature]]
 id = "widget-deadlines"

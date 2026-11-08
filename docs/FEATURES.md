@@ -109,7 +109,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Widget: Homelab status](#widget-status) | shipped (?) | `status` | 1 | **W1**, **W4**, **W5** | 2 |
 | [Widget: Homelab day](#widget-day) | shipped | `cards` | 4 | W7, W7b | 1 |
 | [Widget: Homelab hosts](#widget-hosts) | shipped | `hosts` | 2 | W2, W3 | 1 |
-| [Widget: U6 departures (departures card)](#widget-departures) | shipped | `cards` | 5 | W8 | 2 |
+| [Widget: Departures (departures card)](#widget-departures) | shipped | `cards` | 5 | W8 | 2 |
 | [Widget: Deadlines](#widget-deadlines) | shipped | `cards` | 2 | W9 | 2 |
 | [Widget: To-dos](#widget-todos) | shipped | `cards` | 1 | W10 | 2 |
 | [Widget data: snapshot, self-fetch, stale marks, lock redaction](#widget-data) | shipped | `status` | 7 | **W6**, W11, **W12** | 3 |
@@ -1100,7 +1100,7 @@ Medium (4 hosts) and large (8 hosts and problems): the headline, then each host 
 
 ### widget-departures
 
-**Widget: U6 departures (departures card)** · Widgets · shipped · since 2026-11-06
+**Widget: Departures (departures card)** · Widgets · shipped · since 2026-11-06
 
 The next trains from your stop with delays (gold "+3") and disruptions, from the server's `departures` card; small (StandBy) and lock screen. Trains drop off at their time without opening the app. On Today the card shows inside the day card at the top, and only while a "Leave by" is within 60 minutes (a disruption alone on a day without one shows nothing).
 
@@ -1116,7 +1116,7 @@ The next trains from your stop with delays (gold "+3") and disruptions, from the
 | Card styles | `departures` |
 | Depends on | [widget-data](#widget-data), [widgetkit](#dep-widgetkit) |
 | Through those | [app-group-entitlement](#dep-app-group-entitlement), [tailscale](#dep-tailscale), [widget-extension-target](#dep-widget-extension-target), [xtool-app-group-patch](#dep-xtool-app-group-patch) |
-| Notes | The gallery name "U6 departures" is fixed in DeparturesWidget.swift; the line itself comes from the card's title. |
+| Notes | The gallery name is the neutral "Departures" (DepartureBoard.galleryName); the line itself (U6 for the owner) comes from the card's title; the widget kind stays HomelabU6 so placed widgets survive. |
 
 ### widget-deadlines
 
