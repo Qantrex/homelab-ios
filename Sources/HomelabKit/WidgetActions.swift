@@ -50,7 +50,8 @@ public enum WidgetActions {
 
     /// `homelab://actions/<name>`, or the Actions tab when the name is not one the server could have sent.
     public static func openURL(_ name: String) -> URL {
-        ActionLink(name: name).url ?? URL(string: "homelab://actions")!
+        // Only a valid action name becomes a deep link (newer Foundation accepts spaces in URL(string:)).
+        (ActionSpec.isValidName(name) ? ActionLink(name: name).url : nil) ?? URL(string: "homelab://actions")!
     }
 
     // MARK: Which actions the widget offers
