@@ -1056,10 +1056,10 @@ name = "Demo mode"
 area = "Settings"
 status = "shipped"
 since = "2026-11-04"
-summary = "A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene) or the stress scene for screenshots; chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch."
+summary = "A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene), the stress scene for screenshots, or a neutral Bridge homelab (`bridge`: Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news; no school, commute, deals or grades); chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch."
 sources = ["Sources/HomelabKit/Demo.swift"]
-fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/demo-today.json", "Sources/HomelabKit/Fixtures/state-problem.json"]
-tests = ["DemoBackendTests", "DemoCardsTests", "HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow", "HeroLinesTests/calmDemoLooksLikeACurrentDay", "HeroLinesTests/cardAgesMoveWithTheClock", "HeroLinesTests/problemSceneStaysForScreenshots", "GlanceTests/demoMovesDeparturesAndCommuteToNow", "StorageTests/demoServers", "DealsModelTests/demoHasDeals"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/demo-today.json", "Sources/HomelabKit/Fixtures/state-problem.json", "Sources/HomelabKit/Fixtures/state-bridge.json", "Sources/HomelabKit/Fixtures/messages-bridge.json", "Sources/HomelabKit/Fixtures/actions-bridge.json", "Sources/HomelabKit/Fixtures/info-bridge.json"]
+tests = ["DemoBackendTests", "CombinationTests/bridgeSceneLoadsAndIsNeutral", "CombinationTests/modelShowsTheBridgeSceneAndTheFirstRun", "DemoCardsTests", "HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow", "HeroLinesTests/calmDemoLooksLikeACurrentDay", "HeroLinesTests/cardAgesMoveWithTheClock", "HeroLinesTests/problemSceneStaysForScreenshots", "GlanceTests/demoMovesDeparturesAndCommuteToNow", "StorageTests/demoServers", "DealsModelTests/demoHasDeals"]
 device_tests = ["FS2", "FS3", "FS4"]
 screenshots = ["demo-today-light", "demo-settings-light"]
 docs = ["README.md#who-it-is-for", "docs/ADAPTING.md#the-modules", "docs/SETUP.md#launch-arguments"]
@@ -1688,10 +1688,11 @@ name = "Screenshots (simulator in CI, phone over USB)"
 area = "Tooling"
 status = "shipped"
 since = "2026-11-04"
-summary = "`scripts/sim-smoke` takes 28 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes."
+summary = "`scripts/sim-smoke` takes 37 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `sim-smoke --matrix` (manual CI run with `matrix: true`) takes about 90 named shots of every scene x detail level x voice, with an index; `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes."
 sources = ["scripts/sim-smoke", "scripts/phone-shots"]
-docs = ["docs/CI.md#screenshots"]
-not_needed = { tests = "it is a test tool", device_tests = "phone-shots is the device run" }
+tests = ["CombinationTests/everyLevelEveryVoiceEveryScene", "CombinationTests/launchArgumentsCoverEveryLevelAndVoice"]
+docs = ["docs/CI.md#screenshots", "docs/CI.md#screenshot-matrix"]
+not_needed = { device_tests = "phone-shots is the device run" }
 depends_on = ["pymobiledevice3", "xtool", "gha-artifacts", "gha-runners"]
 
 [[feature]]

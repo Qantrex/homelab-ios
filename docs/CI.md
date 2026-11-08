@@ -78,6 +78,43 @@ Open them in the browser: `https://github.com/Qantrex/homelab-ios/tree/ci-screen
 CI builds no device IPA at all. The device build, with the widget and App Group check, runs on your PC
 (`scripts/build-ipa`). **CI never builds or publishes an app to install** (owner's rules, 2026-11-04 and 2026-11-05).
 
+## Screenshot matrix
+
+A manual run of `ci` with `matrix: true` replaces the normal screenshots by `scripts/sim-smoke --matrix`: the same
+simulator build, no fixture server, only demo scenes. It is for a test round after a change that touches how Today,
+Lab or the voice look (a new detail level, a new card), not for every push.
+
+```
+gh workflow run ci --ref main -f matrix=true
+gh run watch                                     # about 15 to 25 minutes per runner
+gh run download <run-id> -n matrix-macos-26 -D matrix-shots
+```
+
+| | |
+|---|---|
+| Scenes | `demo` (calm day), `ha-only`, `bridge` (neutral Bridge homelab, `-HomelabDemoScene bridge`), `problem`, `first-run` (the welcome and Found) |
+| Detail | every `Density` case, read from `Sources/HomelabKit/TodayLayout.swift` (so a new level is in the next run by itself) |
+| Voice | Off, Dry, Snarky, Ultrakill |
+| Design | Pairwise: each scene x detail pair is shot once and the voice follows a Latin square, so every scene x voice and detail x voice pair is covered too (20 combinations with four levels). Today and Lab for each combination |
+| More tabs | Actions, Chat and Settings for two combinations per scene (Settings > Advanced too, as soon as the app has `-HomelabSettingsPage`; until then those shots are left out and the log says so) |
+| Look | Dark and default text size. Today, Lab and Settings at the largest accessibility size (`-ax`) for one combination per scene; Today and Lab in light mode (`-light`) for one per scene; the welcome in both for the first run |
+| Size | 87 shots with three levels or four (the count does not grow with the levels), 95 with Settings > Advanced; the plan is printed at the start |
+
+File names: `<scene>-<density>-<personality>-<tab>[-ax][-light].png`, for example `bridge-overkill-snarky-lab.png` or
+`problem-standard-dry-today-ax.png` (first run: the tab is `welcome` or `found`). `index.txt` says what each shot
+shows; `summary.txt` lists the failed ones. A shot of a crashed app is saved as `...-NOT-RUNNING.png` and fails the
+step (that is what the run is for); the artifact is uploaded anyway.
+
+Where it goes: the artifact `matrix-<runner>` (14 days), one per runner, and the run's summary. Nothing is pushed to
+`ci-screenshots` (the `screenshots` job skips matrix runs). The security rules above hold: no new permission, no
+secret, the same pinned actions.
+
+The Kit half of it runs in every push: `CombinationTests` (HomelabKit tests, Linux) walks every `Density` x
+`Personality` x demo scene and `state-*.json` fixture and checks what Today, Lab and Actions would show without a
+simulator: nothing crashes, a voice that is Off says nothing, urgent rows are never folded, the tiles sit evenly, no
+title or text is empty, no `{placeholder}` is left, lines fit their place, and the bridge scene has none of the
+owner's words. The screenshot matrix is the part a test cannot judge: how it looks.
+
 ## Release
 
 By hand, from your own build: [RELEASE.md](RELEASE.md). There is no release workflow.
@@ -121,5 +158,5 @@ To look at a change before pushing, any Jekyll 3.10 works (`bundle exec jekyll s
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB |
 | `scripts/verify-ipa IPA` | Widget inside the IPA, App Group in app and widget (entitlements from `codesign`, `ldid`, or python3 reading the signature) |
 | `scripts/phone-shots [--no-install] [OUT]` | Linux or macOS: build, install on the iPhone over USB, open every tab in demo mode, save screenshots (`shots-phone/`). About 1 minute. Needs the phone unlocked, trusted, Developer Mode on; uses `pymobiledevice3` in `.venv/` (no root) |
-| `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. <code>--pick main&#124;small</code> prints a simulator UDID |
+| `scripts/sim-smoke APP OUT` | macOS: simulator screenshots, as in CI. <code>--pick main&#124;small</code> prints a simulator UDID; `--matrix APP OUT` takes the [screenshot matrix](#screenshot-matrix) |
 | `scripts/make-source` | Builds the SideStore/AltStore `source.json` (`--help` for options) |

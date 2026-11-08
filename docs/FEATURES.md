@@ -138,7 +138,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Settings → Advanced and layout customization](#advanced-settings) | shipped | – | 2 | ST6, ST7, ST8 | 3 |
 | [Welcome screen](#onboarding) | shipped | – | 1 | **FS1** | 2 |
 | [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
-| [Demo mode](#demo-mode) | shipped | – | 9 | **FS2**, **FS3**, **FS4** | 3 |
+| [Demo mode](#demo-mode) | shipped | – | 11 | **FS2**, **FS3**, **FS4** | 3 |
 | [Servers: add, edit, test, switch](#servers) | shipped | – | 6 | **R1**, **R2**, R3, R6, **R8**, **ST1**, **ST2** | 3 |
 | [Tabs follow the server's features](#tabs-by-features) | shipped | `status` | 5 | **FS2**, T8 | 2 |
 | [Refresh, cache and offline view](#refresh-and-cache) | shipped | – | 7 | **R4**, O14, O15 | 2 |
@@ -201,7 +201,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [CI and local checks](#ci-checks) | shipped | – | n/a | n/a | 3 |
-| [Screenshots (simulator in CI, phone over USB)](#screenshots) | shipped | – | n/a | n/a | 1 |
+| [Screenshots (simulator in CI, phone over USB)](#screenshots) | shipped | – | 2 | n/a | 2 |
 | [Look at and drive the installed app (scripts/phone)](#phone-cli) | shipped | – | n/a | n/a | 1 |
 | [This feature registry](#feature-registry) | shipped | – | n/a | n/a | 1 |
 | [Owner invariance goldens](#owner-invariance) | shipped | – | 2 | n/a | 1 |
@@ -1335,13 +1335,13 @@ Only for someone with no server saved (never the owner): Add Home Assistant or A
 
 **Demo mode** · Settings · shipped · since 2026-11-04
 
-A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene) or the stress scene for screenshots; chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch.
+A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene), the stress scene for screenshots, or a neutral Bridge homelab (`bridge`: Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news; no school, commute, deals or grades); chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch.
 
 | | |
 |---|---|
 | Sources | [Demo.swift](../Sources/HomelabKit/Demo.swift) |
-| Fixtures | [state-demo.json](../Sources/HomelabKit/Fixtures/state-demo.json), [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json), [state-problem.json](../Sources/HomelabKit/Fixtures/state-problem.json) |
-| Tests | `DemoBackendTests`, `DemoCardsTests`, `HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow`, `HeroLinesTests/calmDemoLooksLikeACurrentDay`, `HeroLinesTests/cardAgesMoveWithTheClock`, `HeroLinesTests/problemSceneStaysForScreenshots`, `GlanceTests/demoMovesDeparturesAndCommuteToNow`, `StorageTests/demoServers`, `DealsModelTests/demoHasDeals` |
+| Fixtures | [state-demo.json](../Sources/HomelabKit/Fixtures/state-demo.json), [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json), [state-problem.json](../Sources/HomelabKit/Fixtures/state-problem.json), [state-bridge.json](../Sources/HomelabKit/Fixtures/state-bridge.json), [messages-bridge.json](../Sources/HomelabKit/Fixtures/messages-bridge.json), [actions-bridge.json](../Sources/HomelabKit/Fixtures/actions-bridge.json), [info-bridge.json](../Sources/HomelabKit/Fixtures/info-bridge.json) |
+| Tests | `DemoBackendTests`, `CombinationTests/bridgeSceneLoadsAndIsNeutral`, `CombinationTests/modelShowsTheBridgeSceneAndTheFirstRun`, `DemoCardsTests`, `HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow`, `HeroLinesTests/calmDemoLooksLikeACurrentDay`, `HeroLinesTests/cardAgesMoveWithTheClock`, `HeroLinesTests/problemSceneStaysForScreenshots`, `GlanceTests/demoMovesDeparturesAndCommuteToNow`, `StorageTests/demoServers`, `DealsModelTests/demoHasDeals` |
 | Phone (DeviceTest.md) | **FS2**, **FS3**, **FS4** |
 | CI screenshots | `demo-today-light`, `demo-settings-light` |
 | Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
@@ -1944,14 +1944,14 @@ CI (free runners only): Linux job with lint, HomelabKit tests against the fixtur
 
 **Screenshots (simulator in CI, phone over USB)** · Tooling · shipped · since 2026-11-04
 
-`scripts/sim-smoke` takes 28 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes.
+`scripts/sim-smoke` takes 37 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `sim-smoke --matrix` (manual CI run with `matrix: true`) takes about 90 named shots of every scene x detail level x voice, with an index; `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes.
 
 | | |
 |---|---|
 | Sources | [sim-smoke](../scripts/sim-smoke), [phone-shots](../scripts/phone-shots) |
-| Tests | n/a: it is a test tool |
+| Tests | `CombinationTests/everyLevelEveryVoiceEveryScene`, `CombinationTests/launchArgumentsCoverEveryLevelAndVoice` |
 | Phone (DeviceTest.md) | n/a: phone-shots is the device run |
-| Docs | [docs/CI.md#screenshots](CI.md#screenshots) |
+| Docs | [docs/CI.md#screenshots](CI.md#screenshots), [docs/CI.md#screenshot-matrix](CI.md#screenshot-matrix) |
 | Depends on | [pymobiledevice3](#dep-pymobiledevice3), [xtool](#dep-xtool), [gha-artifacts](#dep-gha-artifacts), [gha-runners](#dep-gha-runners) |
 
 ### phone-cli

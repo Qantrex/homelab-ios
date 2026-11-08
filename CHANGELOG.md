@@ -14,6 +14,10 @@ Highlights:
   `GET /app/latest` and `GET /app/ipa` ([API.md](docs/API.md#app-updates-optional-owner-only), [SETUP.md](docs/SETUP.md#daily-updates-to-your-own-phone)).
 - Today: the lab's state in two words, your day as a line with a countdown, actions to approve, Home Assistant tiles
   and the server's cards.
+- Test round tooling: a neutral demo scene for Homelab Bridge users (`-HomelabDemoScene bridge`: Uptime Kuma problems,
+  Proxmox hosts with history, Pi-hole, Docker, a game server, news; made-up data, no school or deals), a combination
+  test for every detail level x personality x scene (`CombinationTests`), and a screenshot matrix of about 90 shots
+  for a manual CI run (`gh workflow run ci -f matrix=true`, [CI.md](docs/CI.md#screenshot-matrix)).
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
   "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
 - Personality: the lines were rewritten to sound like a quick remark about the fact instead of a template. Today's old
