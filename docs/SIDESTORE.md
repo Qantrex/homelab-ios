@@ -2,8 +2,8 @@
 
 > **Tested 2026-11-07** on an iPhone 12 mini (iOS 18.7.3) with SideStore 0.7.0 (nightly): Homelab installed, widgets
 > and share sheet work. The sign-in first failed with error -80045; the fix is in
-> [Sign-in error -80045](#sign-in-error--80045) below. Until the first release, build the IPA yourself
-> ([SETUP.md](SETUP.md)).
+> [Sign-in error -80045](#sign-in-error--80045) below. There is no release yet: until the owner calls a version 1.0.0
+> you build the IPA yourself, on Linux or a Mac ([SETUP.md](SETUP.md)). Windows alone is not enough.
 
 [SideStore](https://sidestore.io) installs apps on an iPhone with a free Apple ID, without a computer after the first
 setup. It signs the app for you and refreshes it before it expires. Homelab needs nothing else: no paid developer
@@ -14,14 +14,18 @@ account, no TestFlight.
 Follow the official guide: <https://docs.sidestore.io>. In short, you need a computer once to install SideStore and
 create its pairing file. After that, SideStore works on the phone alone.
 
-You need iOS 18 or newer for Homelab.
+You need iOS 18 or newer for Homelab, and Tailscale (or another VPN to your servers) for everything but the demo:
+[TAILSCALE.md](TAILSCALE.md) explains it. iOS runs only one VPN at a time, see the refresh section below.
+
+**Just want to try it?** After the install, open Homelab and tap the demo on the welcome screen: it shows made-up
+data and needs no server and no Tailscale.
 
 ## 2. Install Homelab
 
 | Way | Steps |
 |---|---|
-| Add the source (gets updates; available after the first release) | SideStore → Sources → + → paste `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` → open the source → Homelab → install. |
-| Import an IPA | Download `Homelab-<version>.ipa` from [GitHub Releases](https://github.com/Qantrex/homelab-ios/releases) (or build one, see [SETUP.md](SETUP.md)). In Files: Share → SideStore, or in SideStore: My Apps → + → pick the IPA |
+| Add the source (only **after the first release**: the address does not exist yet, so skip this row today) | SideStore → Sources → + → paste `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` → open the source → Homelab → install. |
+| Import an IPA (the way today: build one, see [SETUP.md](SETUP.md); a download from [GitHub Releases](https://github.com/Qantrex/homelab-ios/releases) only exists after the first release) | Get `Homelab-<version>.ipa` or the IPA you built. In Files: Share → SideStore, or in SideStore: My Apps → + → pick the IPA |
 
 The release IPA has a `.sha256` file next to it if you want to check the download. Releases are built by hand
 from the owner's own build ([RELEASE.md](RELEASE.md)); each one carries `source.json`, which is why the source URL

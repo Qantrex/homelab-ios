@@ -4,13 +4,19 @@ The app is a SwiftPM package. [xtool](https://github.com/xtool-org/xtool) turns 
 extension, on Linux or macOS. There is no Xcode project. `xtool.yml` names the bundle ID, the Info.plists, the
 entitlements, the icon and the widget extension.
 
-Until the first release ([Install](../README.md#install)) you build and install it yourself: from Linux see
-[INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md). After the first release you can take the release IPA instead
-([SIDESTORE.md](SIDESTORE.md), tested 2026-11-07).
+There is no release yet, so no IPA to download ([Install](../README.md#install)): until the owner calls a version 1.0.0,
+you build the app yourself, once, on a Linux or Mac computer. From Linux see
+[INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md). A release IPA, once there is one, would go onto the phone with
+SideStore instead ([SIDESTORE.md](SIDESTORE.md), tested 2026-11-07 with an IPA built here).
+
+**Windows:** building needs Linux or macOS. xtool's own docs describe Windows only through WSL (Windows Subsystem for
+Linux) with USB passthrough set up by you. This project has not tried WSL2, so it is untested here. With the SideStore
+route no USB is needed for the app itself, only for SideStore's one-time setup.
 
 ## Linux
 
 You need Swift 6.4, usbmuxd (to talk to the iPhone over USB), the xtool AppImage, and the iOS SDK from Xcode 27.1.
+The commands change the packages on your own computer, so they use `sudo` where your distro needs it.
 
 ### Arch
 
@@ -33,29 +39,46 @@ tar zxf "swiftly-$(uname -m).tar.gz" && ./swiftly init
 swiftly install 6.4 && swift --version
 ```
 
-### xtool and the iOS SDK (both distros)
-
-Pin the version, and check the file before you install it:
+### Fedora
 
 ```bash
-XTOOL_VERSION=1.24.0   # the newest release on 2026-11-07; it needs the App Group patch below
+sudo dnf install usbmuxd libimobiledevice-utils fuse-libs
+```
+
+Swift 6.4: use swiftly as in the Debian block, or the Fedora tarball from <https://www.swift.org/install/linux/>.
+(Package names and Fedora were not tested here; the Arch and Debian blocks were.)
+
+### xtool and the iOS SDK (all distros)
+
+Pin the version, and check the file before you install it. The sha256 values are the ones GitHub shows for the
+1.24.0 release assets (`gh api repos/xtool-org/xtool/releases/tags/1.24.0`, 2026-11-08):
+
+```bash
+XTOOL_VERSION=1.24.0   # the newest release on 2026-11-07; for USB installs with widgets see "patched xtool" below
+case $(uname -m) in
+  x86_64)  XTOOL_SHA256=dbfd9d7216f077c84c171b688c4173c37c23ca76bf7fd185d1a9ae8a53dab59f ;;
+  aarch64) XTOOL_SHA256=4bc0515fed71efb86e82564f358efa0c4c6d76bf1bcfd4c5f256727b53ec59c8 ;;
+esac
 mkdir -p ~/.local/bin
 curl -fL "https://github.com/xtool-org/xtool/releases/download/$XTOOL_VERSION/xtool-$(uname -m).AppImage" \
   -o ~/Downloads/xtool-$XTOOL_VERSION.AppImage
-sha256sum ~/Downloads/xtool-$XTOOL_VERSION.AppImage
-# Compare with <sha256 of xtool-1.24.0-x86_64.AppImage, recorded at the first download>. Different: don't install it.
+echo "$XTOOL_SHA256  $HOME/Downloads/xtool-$XTOOL_VERSION.AppImage" | sha256sum -c -   # "OK", or don't install it
 install -m 755 ~/Downloads/xtool-$XTOOL_VERSION.AppImage ~/.local/bin/xtool
 ```
 
-Record the checksum the first time (with the version and the date), so a later download can be compared with it.
+For another version, read the checksum on its [release page](https://github.com/xtool-org/xtool/releases) (each
+asset shows its sha256).
 
-Download **Xcode 27.1** in the browser (Apple login) from <https://developer.apple.com/download/all/?q=Xcode>, then:
+Download **Xcode 27.1** in the browser from <https://developer.apple.com/download/all/?q=Xcode>. It needs an Apple ID
+login (a free one works) and the file `Xcode_27.1.xip` is about 2 GB (measured: 2.0 GB on the owner's disk); the
+download time depends on your line. Then:
 
 ```bash
 xtool sdk install ~/Downloads/Xcode_27.1.xip
 ```
 
-This is a one-time step. xtool only takes the SDK from it.
+This is a one-time step (it unpacks the xip, which needs several GB of free disk while it runs; not measured). xtool
+only takes the SDK from it.
 
 ## macOS
 
@@ -82,6 +105,21 @@ phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
   again, your data stays. Today warns 2 days before, and Settings → Advanced → Diagnostics → Install expires shows the date).
 - The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
 - On Linux, usbmuxd must be running.
+- With xtool 1.24.0 the widgets stay empty on a free Apple ID: see [Only for USB installs with widgets](#only-for-usb-installs-with-widgets-patched-xtool).
+
+### Known xtool bug: recorded SDK version on Linux builds
+
+Linux builds record the deployment target (iOS 18) as the SDK version in the binary
+([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). The minimum iOS is correct, so the app
+installs on iOS 18 and newer. Only an App Store upload would be refused, and this app doesn't use the App Store.
+CI never builds an IPA to install: releases are built by hand ([RELEASE.md](RELEASE.md)).
+
+## Only for USB installs with widgets: patched xtool
+
+**The SideStore route doesn't need this.** SideStore registers the App Group itself ([SIDESTORE.md](SIDESTORE.md)).
+It matters only if you install over USB with `scripts/install-dev` (xtool signs) and want the widgets to show data,
+and only while xtool is 1.24.0 or older. If you only want to try the app, or you use SideStore, skip to
+[Tests](#tests).
 
 ### Known xtool bug: no App Group with a free Apple ID (xtool 1.24.0 and older)
 
@@ -137,13 +175,6 @@ from the profile, see `AppGroup.swift`). The app copies the server list, setting
 the group on its first start (`Storage.adoptFiles`), so nothing has to be set up again; the Keychain tokens stay where
 they are. Open the app once so it writes the widgets' snapshot. Widgets already on the Home Screen pick it up with
 their next reload; remove and add them again if one still shows the old text after a minute.
-
-### Known xtool bug: recorded SDK version on Linux builds
-
-Linux builds record the deployment target (iOS 18) as the SDK version in the binary
-([xtool issue #351](https://github.com/xtool-org/xtool/issues/351)). The minimum iOS is correct, so the app
-installs on iOS 18 and newer. Only an App Store upload would be refused, and this app doesn't use the App Store.
-CI never builds an IPA to install: releases are built by hand ([RELEASE.md](RELEASE.md)).
 
 ## Tests
 
