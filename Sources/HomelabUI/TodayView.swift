@@ -18,8 +18,10 @@ struct TodayView: View {
     @State private var home = HomeModel()
     /// The time the show rules check (Settings → Today → Sections); ticks every 30 s while a rule is set.
     @State private var ruleClock = Date.now
-    /// The folded cards and Also rows the owner opened (card ids, "also:<kind>"). Only for this launch.
+    /// The folded cards the owner opened (card ids). Only for this launch.
     @State private var expanded: Set<String> = []
+    /// The tile whose full list is open in a sheet.
+    @State private var tileSheet: TodayFold.TileKind?
 
     private var status: ServerStatus { model.selectedStatus }
     private var density: Density { model.settings.todayDensity }
@@ -93,6 +95,7 @@ struct TodayView: View {
             .sensoryFeedback(trigger: mood.level) { old, new in
                 new == .alarm && old != .alarm ? .error : nil
             }
+            .sheet(item: $tileSheet) { kind in tileList(kind) }
         }
     }
 
@@ -204,16 +207,7 @@ struct TodayView: View {
                             .accessibilityHidden(true)
                     }
                     Text(dateLine).font(.footnote.weight(.medium)).foregroundStyle(Palette.secondary)
-                    // Shows that the headline opens Lab (a tap there was invisible before; VoiceOver has the hint).
-                    if model.availableTabs.contains(.lab) {
-                        Spacer(minLength: 8)
-                        HStack(spacing: 2) {
-                            Text("Lab")
-                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
-                        }
-                        .font(.footnote.weight(.medium)).foregroundStyle(Palette.tertiary)
-                        .accessibilityHidden(true)
-                    }
+                    // No "Lab ›" link here (owner 2026-11-08): the Lab tab is one tap away; the headline still opens it.
                 }
                 .accessibilityElement(children: .combine)
                 Text(m.headline)
@@ -352,12 +346,16 @@ struct TodayView: View {
     private func section(for section: TodaySection, shown: [TodaySection]) -> some View {
         switch section {
         case .day:
-            if let dayCard { DaySection(card: dayCard, plainLines: density != .calm) }
+            if let dayCard {
+                // Departures live in the day section, and only while a Leave-by is near (`TodayFold.departuresMatter`).
+                DaySection(card: dayCard, plainLines: density != .calm, model: model,
+                           departures: state?.cards.first(where: TodayFold.isDeparturesCard))
+            }
         case .waiting:
             if let state, model.selected != nil, !state.pending.isEmpty { waiting(state.pending) }
         case .deals:
-            // Deals are a row of the Also panel (with the cards); alone only when the cards are not on Today.
-            if !shown.contains(.cards), model.selected != nil, !freshDeals.isEmpty { alsoOnly }
+            // Deals are a tile (with the cards' tiles); alone only when the cards are not on Today.
+            if !shown.contains(.cards), model.selected != nil, !freshDeals.isEmpty { tilesOnly }
         case .home:
             if let ha = model.homeAssistant { HomeTiles(model: model, server: ha, home: home) }
         case .cards:
@@ -434,8 +432,8 @@ struct TodayView: View {
     /// The "act now" deals from the last day (empty for a server without deals).
     private var freshDeals: [Deal] { status.deals?.freshAct() ?? [] }
 
-    /// A deal's rows, opened in the Also panel; at accessibility sizes the figures go under the title. The last row
-    /// opens the Deals screen.
+    /// The deals' rows, in the Deals sheet; at accessibility sizes the figures go under the title. The last row
+    /// opens the Deals screen (and closes the sheet).
     private func dealRows(_ fresh: [Deal]) -> some View {
         let stacked = typeSize.isAccessibilitySize
         let shown = Array(fresh.prefix(density == .overkill ? fresh.count : 4))
@@ -461,7 +459,7 @@ struct TodayView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(deal.spoken)
             }
-            Button { model.showDeals() } label: {
+            Button { tileSheet = nil; model.showDeals() } label: {
                 HStack {
                     Text(fresh.count > shown.count ? "All \(fresh.count) deals" : "Open Deals")
                         .font(Typo.secondary).foregroundStyle(Palette.secondary)
@@ -482,7 +480,7 @@ struct TodayView: View {
         TodayFoldContext(density: density, expanded: expanded.contains(card.id)) { toggle(card.id, title: card.title ?? card.id) }
     }
 
-    /// Opens or closes a fold or an Also row; VoiceOver hears what happened.
+    /// Opens or closes a fold; VoiceOver hears what happened.
     private func toggle(_ id: String, title: String) {
         if expanded.remove(id) == nil {
             expanded.insert(id)
@@ -492,54 +490,46 @@ struct TodayView: View {
         }
     }
 
-    /// The Also panel's rows: deals first (when the Deals section is on), then the summarised cards.
-    private func alsoItems(_ cards: [Card], deals: [Deal], now: Date) -> [AlsoItem] {
-        var items: [AlsoItem] = []
-        if let text = TodayFold.summary(deals: deals, density: density) {
-            items.append(AlsoItem(kind: .deals, summary: text, count: deals.count, content: AnyView(dealRows(deals))))
-        }
-        for card in cards {
-            guard let kind = TodayFold.alsoKind(card), let text = TodayFold.summary(card, now: now, density: density) else { continue }
-            let count = kind == .departures ? nil : card.items.count
-            items.append(AlsoItem(kind: kind, summary: text, count: count,
-                                  content: AnyView(CardView(card: card, model: model, bare: true))))
-        }
-        return items
+    /// The tiles: deals first (when the Deals section is on), then the downloads and grades cards.
+    private func tiles(_ cards: [Card], deals: [Deal]) -> [TodayFold.Tile] {
+        TodayFold.tiles(cards: cards, deals: deals, density: density)
     }
 
-    /// The Also panel with deals only (the cards section is off).
+    /// The tiles alone (the cards section is off but deals are on).
     @ViewBuilder
-    private var alsoOnly: some View {
-        let items = alsoItems([], deals: freshDeals, now: .now)
-        if !items.isEmpty {
-            AlsoPanel(items: items, density: density, expanded: expanded) { toggle($0, title: String(localized: "Deals")) }
+    private var tilesOnly: some View {
+        let tiles = tiles([], deals: freshDeals)
+        if !tiles.isEmpty { TodayTiles(tiles: tiles, density: density) { tileSheet = $0.kind } }
+    }
+
+    /// The full list of a tile in a sheet: the deals' rows, or the card as the Lab and chat draw it (all its rows).
+    @ViewBuilder
+    private func tileList(_ kind: TodayFold.TileKind) -> some View {
+        TileSheet(title: kind.title) {
+            if kind == .deals {
+                dealRows(freshDeals)
+            } else if let card = state?.cards.first(where: { TodayFold.tileKind($0) == kind }) {
+                CardView(card: card, model: model, bare: true)
+            }
         }
     }
 
     /// The server's other Today cards, folded (`TodayFold`): the weather is the hero's, a short list card is one line,
-    /// deals, downloads, grades and departures are the Also panel (departures a full board while "Leave by" is near).
+    /// deals, downloads and grades are tiles; departures are not here but in the day section.
     @ViewBuilder
     private func otherCards(_ state: HomelabState, withDeals: Bool) -> some View {
-        let deals = withDeals ? freshDeals : []
-        let any = state.cards.contains { $0.id != dayCard?.id && $0.place != .lab && TodayFold.drawsOnToday($0) } || !deals.isEmpty
-        if any {
-            // Every minute: a departure board appears when "Leave by" gets near, its trains drop off.
-            TimelineView(.everyMinute) { context in
-                let now = context.date
-                let board = state.departuresCard.map(DepartureBoard.init(card:))
-                let matters = board.map { TodayFold.departuresMatter($0, day: dayCard, now: now) } ?? false
-                let plan = TodayFold.plan(state.cards, dayCardID: dayCard?.id, departuresMatter: matters)
-                let items = alsoItems(plan.also, deals: deals, now: now)
-                VStack(alignment: .leading, spacing: Space.section) {
-                    ForEach(Array(plan.blocks.enumerated()), id: \.offset) { _, block in
-                        switch block {
-                        case .card(let card): CardView(card: card, model: model, fold: foldContext(card))
-                        case .line(let card, let text): OneLineCard(card: card, text: text)
-                        }
+        let plan = TodayFold.plan(state.cards, dayCardID: dayCard?.id)
+        let tiles = tiles(plan.tileCards, deals: withDeals ? freshDeals : [])
+        if !plan.blocks.isEmpty || !tiles.isEmpty {
+            VStack(alignment: .leading, spacing: Space.section) {
+                ForEach(Array(plan.blocks.enumerated()), id: \.offset) { _, block in
+                    switch block {
+                    case .card(let card): CardView(card: card, model: model, fold: foldContext(card))
+                    case .line(let card, let text): OneLineCard(card: card, text: text)
                     }
-                    if !items.isEmpty {
-                        AlsoPanel(items: items, density: density, expanded: expanded) { toggle($0, title: String(localized: "Also")) }
-                    }
+                }
+                if !tiles.isEmpty {
+                    TodayTiles(tiles: tiles, density: density) { tileSheet = $0.kind }
                 }
             }
         }
@@ -586,6 +576,10 @@ struct DaySection: View {
     /// A day that is only a short sentence ("No school") is one plain line without a panel (Standard and Overkill;
     /// Calm keeps its panel).
     var plainLines = false
+    var model: AppModel?
+    /// The departures card: drawn inside the panel, under the stops, only while a "Leave by" is near
+    /// (`TodayFold.departuresMatter`), never on a day without one.
+    var departures: Card?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -638,6 +632,10 @@ struct DaySection: View {
                         if !line.notes.isEmpty {
                             TodaySeparator()
                             notes(line.notes)
+                        }
+                        if let departures, TodayFold.departuresMatter(DepartureBoard(card: departures), day: card, now: context.date) {
+                            TodaySeparator()
+                            CardView(card: departures, model: model, bare: true)
                         }
                     }
                 }

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HomelabKit
 
-/// Today's folds (`TodayFold`): urgent rows stay, long lists fold by density, the Also summaries, the retired
+/// Today's folds (`TodayFold`): urgent rows stay, long lists fold by density, the tiles, the departures rule, the retired
 /// Machines section. A fixed clock and calendar, so nothing depends on the day the tests run.
 @Suite struct TodayFoldTests {
     static var cal: Calendar {
@@ -132,7 +132,7 @@ import Testing
         // Nothing for the hero to say: the card stays.
         #expect(TodayFold.drawsOnToday(Card(id: "weather", style: .metrics)))
         #expect(TodayFold.drawsOnToday(Card(id: "weather-2", subtitle: "x", style: .metrics)))
-        let plan = TodayFold.plan([weather, Card(id: "note", style: .text, text: "Hi")], dayCardID: nil, departuresMatter: false)
+        let plan = TodayFold.plan([weather, Card(id: "note", style: .text, text: "Hi")], dayCardID: nil)
         #expect(plan.blocks.count == 1)
     }
 
@@ -163,7 +163,7 @@ import Testing
         #expect(TodayFold.oneLine(Card(id: "grades", title: "Grades", style: .list, items: [.init(title: "A")])) == nil)
     }
 
-    @Test func planSplitsCardsLinesAndAlso() {
+    @Test func planSplitsCardsLinesTilesAndDepartures() {
         let cards = [
             Card(id: "today", style: .metrics), Card(id: "weather", subtitle: "Sunny, 5 °C now", style: .metrics),
             Card(id: "grades", style: .list, items: [.init(title: "T", subtitle: "Maths", value: "85 %")]),
@@ -173,14 +173,12 @@ import Testing
             Card(id: "todos", style: .checklist, items: [.init(title: "x")]),
             Card(id: "tailnet", style: .list, items: [.init(title: "x")], place: .lab),
         ]
-        let plan = TodayFold.plan(cards, dayCardID: "today", departuresMatter: false)
-        #expect(plan.also.map(\.id) == ["recent", "grades", "departures"])      // the Also order: downloads, grades, departures
+        let plan = TodayFold.plan(cards, dayCardID: "today")
+        #expect(plan.tileCards.map(\.id) == ["recent", "grades"])      // the tile order: downloads, grades
+        #expect(plan.departures == cards[5])                              // never a block of its own
         #expect(plan.blocks.count == 2)
         #expect(plan.blocks[0] == .line(cards[3], "Minecraft: Vicky playing"))
         #expect(plan.blocks[1] == .card(cards[6]))
-        // Departures that matter stay a full card, in the server's order.
-        let matter = TodayFold.plan(cards, dayCardID: "today", departuresMatter: true)
-        #expect(matter.also.map(\.id) == ["recent", "grades"] && matter.blocks.contains(.card(cards[5])))
     }
 
     // MARK: Departures that matter
@@ -206,52 +204,36 @@ import Testing
         ], date: date)
     }
 
-    @Test func departuresMatterWithinAnHourOfLeavingOrOnADisruption() {
+    @Test func departuresMatterOnlyWithALeaveByWithinAnHour() {
         func matters(_ b: DepartureBoard, _ day: Card?) -> Bool { TodayFold.departuresMatter(b, day: day, now: Self.now, calendar: Self.cal) }
         #expect(matters(Self.board(), Self.day(leaveIn: 45)))
         #expect(matters(Self.board(), Self.day(leaveIn: 60)))
         #expect(!matters(Self.board(), Self.day(leaveIn: 61)))
         #expect(!matters(Self.board(), Self.day(leaveIn: 180)))
         #expect(!matters(Self.board(), nil))
-        #expect(matters(Self.board(disruption: "U6: Schadhaftes Fahrzeug"), nil))
-        #expect(matters(Self.board(disruption: "x"), Self.day(leaveIn: 300)))
+        // A disruption alone shows nothing (owner 2026-11-08): it counts only with a Leave-by within the hour.
+        #expect(!matters(Self.board(disruption: "U6: Schadhaftes Fahrzeug"), nil))
+        #expect(!matters(Self.board(disruption: "x"), Self.day(leaveIn: 300)))
+        #expect(matters(Self.board(disruption: "x"), Self.day(leaveIn: 20)))
+        // A day without a Leave-by at all (no school): nothing, with or without a disruption.
+        let noSchool = Card(id: "today", style: .metrics, items: [.init(title: "Wake-up", value: "11:00")], date: "2026-11-08")
+        #expect(!matters(Self.board(disruption: "x"), noSchool) && !matters(Self.board(), noSchool))
+        // Nothing to show: no departures and no disruption.
+        #expect(!matters(DepartureBoard(card: Card(id: "departures", style: .departures)), Self.day(leaveIn: 30)))
         // Tomorrow's card or an old one is not about now; once "Leave by" has passed the next stop is the lesson.
         #expect(!matters(Self.board(), Self.day(leaveIn: 30, date: "2026-11-09")))
         #expect(!matters(Self.board(), Self.day(leaveIn: 30, date: "2026-11-07")))
         #expect(!matters(Self.board(), Self.day(leaveIn: -20)))
     }
 
-    // MARK: Summaries
+    // MARK: Tiles
 
     static let deals: [Deal] = [
         Deal(id: 1, title: "GPU", price: 140, discount: 0.7), Deal(id: 2, title: "RAM kit", price: 100, discount: 0.5),
         Deal(id: 3, title: "Monitor", price: 90, discount: 0.3), Deal(id: 4, title: "Desk", price: 50, discount: nil)]
 
-    @Test func dealsSummary() {
-        let m = "\u{2212}"
-        #expect(TodayFold.summary(deals: Array(Self.deals.prefix(2)), density: .standard) == "2 deals · best \(m)70\u{00A0}%")
-        #expect(TodayFold.summary(deals: [Self.deals[1]], density: .standard) == "1 deal · \(m)50\u{00A0}%")
-        #expect(TodayFold.summary(deals: [Self.deals[3]], density: .standard) == "1 deal")
-        #expect(TodayFold.summary(deals: [], density: .standard) == nil && TodayFold.summary(deals: [], density: .overkill) == nil)
-        let overkill = TodayFold.summary(deals: Self.deals, density: .overkill)
-        #expect(overkill == "4 deals · best \(m)70\u{00A0}% · GPU €140, RAM kit €100")
-        #expect(overkill!.count > TodayFold.summary(deals: Self.deals, density: .standard)!.count)
-        let huge = (1...200).map { Deal(id: Int64($0), title: String(repeating: "T", count: 200), price: 1, discount: 0.4) }
-        #expect(TodayFold.summary(deals: huge, density: .overkill)!.count < 100)
-    }
-
     static func downloads(_ n: Int, title: String = "Night Signals") -> Card {
         Card(id: "recent", title: "Recently added", style: .list, items: (0..<n).map { .init(title: "\(title) \($0)", subtitle: "Music") })
-    }
-
-    @Test func downloadsSummary() {
-        #expect(TodayFold.summary(downloads: Self.downloads(8), density: .standard) == "Latest: Night Signals 0 · +7 more")
-        #expect(TodayFold.summary(downloads: Self.downloads(8), density: .overkill) == "Latest: Night Signals 0, Night Signals 1 · +6 more")
-        #expect(TodayFold.summary(downloads: Self.downloads(1), density: .standard) == "Latest: Night Signals 0")
-        #expect(TodayFold.summary(downloads: Self.downloads(2), density: .overkill) == "Latest: Night Signals 0, Night Signals 1")
-        #expect(TodayFold.summary(downloads: Self.downloads(0), density: .standard) == nil)
-        let long = TodayFold.summary(downloads: Self.downloads(500, title: String(repeating: "x", count: 500)), density: .standard)!
-        #expect(long.count < 70 && long.hasSuffix("+499 more"))
     }
 
     static func grades(_ n: Int) -> Card {
@@ -260,49 +242,75 @@ import Testing
         return Card(id: "grades", title: "New grades", style: .list, items: Array(all.prefix(n)))
     }
 
-    @Test func gradesSummary() {
-        #expect(TodayFold.summary(grades: Self.grades(3), density: .standard) == "3 new grades · latest ITP 95 %")
-        #expect(TodayFold.summary(grades: Self.grades(3), density: .overkill) == "3 new grades · ITP 95 %, SEW 88 %, D 2")
-        #expect(TodayFold.summary(grades: Self.grades(1), density: .standard) == "1 new grade · ITP 95 %")
-        #expect(TodayFold.summary(grades: Self.grades(4), density: .overkill) == "4 new grades · ITP 95 %, SEW 88 %, D 2")
-        #expect(TodayFold.summary(grades: Self.grades(0), density: .standard) == nil)
-        let bare = Card(id: "grades", style: .list, items: [.init(), .init()])
-        #expect(TodayFold.summary(grades: bare, density: .standard) == "2 new grades")
+    @Test func dealsTile() {
+        let m = "\u{2212}"
+        func tile(_ d: [Deal], _ density: Density) -> TodayFold.Tile? { TodayFold.tiles(cards: [], deals: d, density: density).first }
+        #expect(tile(Array(Self.deals.prefix(2)), .standard)?.line == "best \(m)70\u{00A0}%")
+        #expect(tile(Array(Self.deals.prefix(2)), .standard)?.count == 2)
+        #expect(tile([Self.deals[1]], .standard)?.line == "\(m)50\u{00A0}%")
+        #expect(tile([Self.deals[3]], .standard)?.line == "act now")
+        #expect(tile([], .standard) == nil && tile([], .overkill) == nil)
+        #expect(tile(Self.deals, .overkill)?.line == "best \(m)70\u{00A0}% · GPU €140")
+        let huge = (1...200).map { Deal(id: Int64($0), title: String(repeating: "T", count: 200), price: 1, discount: 0.4) }
+        #expect(tile(huge, .overkill)!.line.count < 50)
+        #expect(tile(Array(Self.deals.prefix(2)), .standard)?.urgent == false)
     }
 
-    @Test func departuresSummary() {
-        let b = Self.board()
-        #expect(TodayFold.summary(departures: b, now: Self.now, density: .standard) == "U6 Floridsdorf 10:03 · 10:10")
-        #expect(TodayFold.summary(departures: b, now: Self.now, density: .overkill)
-                == "U6 Floridsdorf 10:03 · 10:10 · 10:17 · Siebenhirten 10:05 · 10:11")
-        #expect(TodayFold.summary(departures: Self.board(late: true), now: Self.now, density: .standard) == "U6 Floridsdorf 10:03 · 10:10+2")
-        // Trains that have left drop out; none left says so; no board, no row.
-        #expect(TodayFold.summary(departures: b, now: Self.now.addingTimeInterval(4 * 60), density: .standard) == "U6 Floridsdorf 10:10 · 10:17")
-        #expect(TodayFold.summary(departures: b, now: Self.now.addingTimeInterval(3600), density: .standard) == "U6 · no more departures soon")
-        #expect(TodayFold.summary(departures: DepartureBoard(card: Card(id: "departures", style: .departures)), now: Self.now,
-                                  density: .standard) == nil)
+    @Test func downloadsTile() {
+        func line(_ c: Card, _ d: Density) -> String? { TodayFold.tiles(cards: [c], deals: [], density: d).first?.line }
+        #expect(line(Self.downloads(8, title: "Dune"), .standard) == "Dune 0 +7")
+        #expect(line(Self.downloads(1, title: "Dune"), .standard) == "Dune 0")
+        #expect(line(Self.downloads(2, title: "Dune"), .overkill) == "Dune 0, Dune 1")
+        #expect(line(Self.downloads(8, title: "Dune"), .overkill) == "Dune 0, Dune 1 +6")
+        #expect(line(Self.downloads(0), .standard) == nil)
+        let long = line(Self.downloads(500, title: String(repeating: "x", count: 500)), .standard)!
+        #expect(long.count < 24 && long.hasSuffix("+499"))
+        #expect(TodayFold.tiles(cards: [Self.downloads(8)], deals: [], density: .standard)[0].count == 8)
     }
 
-    @Test func overkillSaysMoreInEveryLine() {
-        let cards: [Card] = [Self.downloads(8), Self.grades(3), Card(id: "departures", title: "U6", style: .departures, items: Self.board().groups.flatMap { g in
-            g.departures.map { Card.Item(title: g.towards, subtitle: g.stop, value: $0.value, due: $0.due) } })]
-        for card in cards {
-            let s = TodayFold.summary(card, now: Self.now, density: .standard)!, o = TodayFold.summary(card, now: Self.now, density: .overkill)!
-            #expect(o.count > s.count, "\(card.id): \(s) | \(o)")
+    @Test func gradesTile() {
+        func tile(_ n: Int, _ d: Density) -> TodayFold.Tile? { TodayFold.tiles(cards: [Self.grades(n)], deals: [], density: d).first }
+        #expect(tile(3, .standard)?.line == "ITP 95 %" && tile(3, .standard)?.count == 3)
+        #expect(tile(3, .overkill)?.line == "ITP 95 %, SEW 88 %")
+        #expect(tile(1, .overkill)?.line == "ITP 95 %")
+        #expect(tile(0, .standard) == nil)
+    }
+
+    @Test func tilesAreInOrderAndUrgentOnlyWithAWarmRow() {
+        let warn = Card(id: "grades", style: .list, items: [.init(title: "T", subtitle: "Maths", value: "5", tint: .red)])
+        let tiles = TodayFold.tiles(cards: [Self.grades(2), Self.downloads(3)], deals: Array(Self.deals.prefix(2)), density: .standard)
+        #expect(tiles.map(\.kind) == [.deals, .downloads, .grades])
+        #expect(tiles.map(\.urgent) == [false, false, false])
+        #expect(TodayFold.tiles(cards: [warn], deals: [], density: .standard).first?.urgent == true)
+        // Departures and unknown cards are never tiles.
+        #expect(TodayFold.tiles(cards: [Card(id: "departures", style: .departures, items: [.init(title: "x")])], deals: [], density: .standard).isEmpty)
+    }
+
+    @Test func tileLayoutByCountIsNeverUneven() {
+        #expect(TodayFold.tileRows(count: 0, stacked: false) == [])
+        #expect(TodayFold.tileRows(count: 1, stacked: false) == [1])
+        #expect(TodayFold.tileRows(count: 2, stacked: false) == [2])
+        #expect(TodayFold.tileRows(count: 3, stacked: false) == [3])
+        #expect(TodayFold.tileRows(count: 4, stacked: false) == [2, 2])
+        for n in 1...4 { #expect(TodayFold.tileRows(count: n, stacked: true) == Array(repeating: 1, count: n)) }
+        for n in [1, 2, 3, 4, 6, 8] {
+            let rows = TodayFold.tileRows(count: n, stacked: false)
+            #expect(Set(rows).count == 1 && rows.reduce(0, +) == n, "\(n)")
         }
-        #expect(TodayFold.summary(Card(id: "x", style: .list, items: [.init(title: "a")]), now: Self.now, density: .standard) == nil)
     }
 
-    @Test func alsoKindsAndSpokenLabel() {
-        #expect(TodayFold.alsoKind(Self.downloads(1)) == .downloads && TodayFold.alsoKind(Self.grades(1)) == .grades)
-        #expect(TodayFold.alsoKind(Card(id: "dl", title: "Downloads", style: .list)) == nil)
-        #expect(TodayFold.alsoKind(Card(id: "downloads", style: .list)) == .downloads)
-        #expect(TodayFold.alsoKind(Card(id: "downloads", style: .metrics)) == nil)
-        #expect(TodayFold.alsoKind(Card(id: "whatever", style: .departures)) == .departures)
-        #expect(TodayFold.alsoKind(Card(id: "grades", style: .list, place: .lab)) == nil)
-        #expect(TodayFold.spokenAlso(.downloads, count: 8, summary: "Latest: Night Signals · +7 more")
-                == "Recent downloads, 8, Latest: Night Signals · +7 more")
-        #expect(TodayFold.spokenAlso(.departures, count: nil, summary: "U6 x") == "Departures, U6 x")
+    @Test func tileSpokenLabelAndKinds() {
+        let deals = TodayFold.tiles(cards: [], deals: Array(Self.deals.prefix(2)), density: .standard)[0]
+        #expect(deals.spoken == "Deals, 2, best minus 70 percent")
+        let overkill = TodayFold.tiles(cards: [], deals: Self.deals, density: .overkill)[0]
+        #expect(overkill.spoken == "Deals, 4, best minus 70 percent · GPU 140 euros")
+        let dl = TodayFold.tiles(cards: [Self.downloads(8)], deals: [], density: .standard)[0]
+        #expect(dl.spoken.hasPrefix("Downloads, 8, ") && dl.spoken.hasSuffix("plus 7"))
+        #expect(TodayFold.tileKind(Card(id: "dl", title: "Downloads", style: .list)) == nil)
+        #expect(TodayFold.tileKind(Card(id: "downloads", style: .list)) == .downloads)
+        #expect(TodayFold.tileKind(Card(id: "downloads", style: .metrics)) == nil)
+        #expect(TodayFold.tileKind(Card(id: "grades", style: .list, place: .lab)) == nil)
+        #expect(TodayFold.isDeparturesCard(Card(id: "whatever", style: .departures)))
     }
 
     // MARK: Machines are not on Today

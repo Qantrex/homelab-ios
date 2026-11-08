@@ -1,8 +1,9 @@
 import Foundation
 
 /// How much of a card Today shows (docs/DESIGN.md "Today folds"): long lists fold behind one "Show N more" row, but a
-/// row that needs me is never folded; deals, downloads, grades and departures become one-line summaries in the
-/// "Also" panel; a card the hero already says (the weather) is not drawn twice. Pure, so it is tested on Linux. All
+/// row that needs me is never folded; deals, downloads and grades become small tiles that open the full list in a
+/// sheet; departures are not a card on Today but sit in the day section while a "Leave by" is near; a card the hero
+/// already says (the weather) is not drawn twice. Pure, so it is tested on Linux. All
 /// numbers are for the default text size; larger sizes simply scroll further.
 public enum TodayFold {
     // MARK: Caps
@@ -113,9 +114,9 @@ public enum TodayFold {
 
     /// An unknown card as one line: a `list` card with 1…3 short, plain items (no link, action, progress, cancellation
     /// or tint) and no header action: "Minecraft: Vicky playing". By the card's shape, not its id; the cards that
-    /// have their own look (parcels, lessons) and the Also kinds never. Nil: draw the card.
+    /// have their own look (parcels, lessons) and the tile kinds never. Nil: draw the card.
     public static func oneLine(_ card: Card) -> String? {
-        guard card.style == .list, card.place == .today, card.action == nil, alsoKind(card) == nil,
+        guard card.style == .list, card.place == .today, card.action == nil, tileKind(card) == nil,
               !["parcels", "lessons"].contains(card.id), (1...3).contains(card.items.count) else { return nil }
         var parts: [String] = []
         for item in card.items {
@@ -129,18 +130,19 @@ public enum TodayFold {
         return name.isEmpty ? parts.joined(separator: ", ") : name + ": " + parts.joined(separator: ", ")
     }
 
-    // MARK: The "Also" panel
+    // MARK: Tiles (deals, downloads, grades)
 
-    /// What the "Also" panel summarises, in this order.
-    public enum AlsoKind: String, CaseIterable, Sendable {
-        case deals, downloads, grades, departures
+    /// What the tiles on Today stand for, in this order. A tap opens the full list in a sheet.
+    public enum TileKind: String, CaseIterable, Sendable, Identifiable {
+        case deals, downloads, grades
+
+        public var id: String { rawValue }
 
         public var title: String {
             switch self {
             case .deals: "Deals"
-            case .downloads: "Recent downloads"
-            case .grades: "New grades"
-            case .departures: "Departures"
+            case .downloads: "Downloads"
+            case .grades: "Grades"
             }
         }
 
@@ -149,29 +151,32 @@ public enum TodayFold {
             case .deals: "tag"
             case .downloads: "arrow.down.circle"
             case .grades: "graduationcap"
-            case .departures: "tram.fill"
             }
         }
 
         var order: Int { Self.allCases.firstIndex(of: self) ?? 9 }
     }
 
-    /// The Also kind of a Today card: the departures style, the downloads card ("downloads", "recent"), "grades".
-    public static func alsoKind(_ card: Card) -> AlsoKind? {
-        guard card.place == .today else { return nil }
-        if card.style == .departures { return .departures }
+    /// The tile kind of a Today card: the downloads card ("downloads", "recent"), "grades". Deals come from the deals
+    /// list, not a card.
+    public static func tileKind(_ card: Card) -> TileKind? {
+        guard card.place == .today, card.style == .list else { return nil }
         switch card.id {
-        case "downloads", "recent": return card.style == .list ? .downloads : nil
-        case "grades": return card.style == .list ? .grades : nil
+        case "downloads", "recent": return .downloads
+        case "grades": return .grades
         default: return nil
         }
     }
 
-    /// Departures show as the full board, not a summary, when "Leave by" is within 60 minutes or a disruption is
-    /// reported: then it is what the morning is about.
+    /// The departures card of Today. It is never a block of its own: the day section draws it while
+    /// `departuresMatter`.
+    public static func isDeparturesCard(_ card: Card) -> Bool { card.place == .today && card.style == .departures }
+
+    /// Departures are on Today only while the day has an upcoming "Leave by" within 60 minutes (owner 2026-11-08), and
+    /// then in the day section. A disruption alone does not show them on a day without one; tomorrow's or an old day
+    /// card never counts. A board without departures and without a disruption has nothing to show.
     public static func departuresMatter(_ board: DepartureBoard, day: Card?, now: Date, calendar: Calendar = .current) -> Bool {
-        if board.isDisrupted { return true }
-        guard let day else { return false }
+        guard !board.isEmpty || board.isDisrupted, let day else { return false }
         let line = DayTimeline(card: day, now: now, calendar: calendar)
         guard !line.isTomorrow, !line.isStale, let next = line.next, let minutes = line.minutesToNext else { return false }
         return (next.item.title ?? "").lowercased().contains("leave") && (0...60).contains(minutes)
@@ -185,104 +190,123 @@ public enum TodayFold {
 
     public struct Plan: Equatable, Sendable {
         public var blocks: [Block]
-        /// The Also cards in the Also order (deals come from the deals list, not a card).
-        public var also: [Card]
+        /// The cards that become tiles, in the tile order (deals come from the deals list, not a card).
+        public var tileCards: [Card]
+        /// The departures card, for the day section (whether it shows is `departuresMatter`).
+        public var departures: Card?
     }
 
-    /// Splits the server's Today cards into cards, one-liners and the Also summaries. `departuresMatter` keeps the
-    /// departures card as a card.
-    public static func plan(_ cards: [Card], dayCardID: String?, departuresMatter: Bool) -> Plan {
+    /// Splits the server's Today cards into cards, one-liners, tile cards and the departures card.
+    public static func plan(_ cards: [Card], dayCardID: String?) -> Plan {
         var blocks: [Block] = []
-        var also: [Card] = []
+        var tileCards: [Card] = []
+        var departures: Card?
         for card in cards where card.id != dayCardID && card.place != .lab && drawsOnToday(card) {
-            if let kind = alsoKind(card), !(kind == .departures && departuresMatter) {
-                also.append(card)
+            if isDeparturesCard(card) {
+                departures = departures ?? card
+            } else if tileKind(card) != nil {
+                tileCards.append(card)
             } else if let line = oneLine(card) {
                 blocks.append(.line(card, line))
             } else {
                 blocks.append(.card(card))
             }
         }
-        also.sort { (alsoKind($0)?.order ?? 9) < (alsoKind($1)?.order ?? 9) }
-        return Plan(blocks: blocks, also: also)
+        tileCards.sort { (tileKind($0)?.order ?? 9) < (tileKind($1)?.order ?? 9) }
+        return Plan(blocks: blocks, tileCards: tileCards, departures: departures)
     }
 
-    // MARK: Summaries
+    /// One tile: icon + title, a big count, one short line.
+    public struct Tile: Equatable, Sendable, Identifiable {
+        public var kind: TileKind
+        public var count: Int
+        /// "best −50 %", "Dune +7", "ITP 95 %"; Overkill says more ("best −70 % · GPU €140").
+        public var line: String
+        /// A row in it needs me (a warm tint); never for deals.
+        public var urgent: Bool
+        public var id: String { kind.rawValue }
+
+        /// VoiceOver: "Deals, 2, best minus 50 percent" (the hint says "Opens the list").
+        public var spoken: String {
+            [kind.title, String(count), TodayFold.spokenLine(line)].filter { !$0.isEmpty }.joined(separator: ", ")
+        }
+    }
+
+    /// The tiles in order: deals, downloads, grades; a kind without anything is not there.
+    public static func tiles(cards: [Card], deals: [Deal], density: Density) -> [Tile] {
+        var tiles: [Tile] = []
+        if !deals.isEmpty { tiles.append(Tile(kind: .deals, count: deals.count, line: line(deals: deals, density: density), urgent: false)) }
+        for card in cards.sorted(by: { (tileKind($0)?.order ?? 9) < (tileKind($1)?.order ?? 9) }) {
+            guard let kind = tileKind(card), !card.items.isEmpty, !tiles.contains(where: { $0.kind == kind }) else { continue }
+            let text = kind == .downloads ? line(downloads: card, density: density) : line(grades: card, density: density)
+            tiles.append(Tile(kind: kind, count: card.items.count, line: text,
+                              urgent: card.items.contains { LabRows.warns($0, in: card) }))
+        }
+        return tiles
+    }
+
+    /// How the tiles sit: the number of tiles per row. 4 is 2 by 2, 3 one row of 3, 2 one row of 2, 1 full width; at
+    /// accessibility text sizes one full-width tile per row. Never uneven.
+    public static func tileRows(count: Int, stacked: Bool) -> [Int] {
+        guard count > 0 else { return [] }
+        if stacked { return Array(repeating: 1, count: count) }
+        switch count {
+        case 1: return [1]
+        case 2: return [2]
+        case 3: return [3]
+        case 4: return [2, 2]
+        default:   // more than four never happens today; keep rows even where possible
+            return count % 3 == 0 ? Array(repeating: 3, count: count / 3)
+                 : count % 2 == 0 ? Array(repeating: 2, count: count / 2) : Array(repeating: 1, count: count)
+        }
+    }
+
+    // MARK: Tile lines
 
     static func short(_ text: String, _ max: Int = 24) -> String {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.count > max ? String(t.prefix(max - 1)) + "…" : t
     }
 
-    private static func plural(_ n: Int, _ one: String, _ many: String) -> String { n == 1 ? "\(n) \(one)" : "\(n) \(many)" }
-
-    /// "2 deals · best −50 %"; Overkill names the best ones: "4 deals · best −70 % · GPU €140, RAM kit €100".
-    public static func summary(deals: [Deal], density: Density) -> String? {
-        guard !deals.isEmpty else { return nil }
-        var parts = [plural(deals.count, "deal", "deals")]
-        if let word = DealFormat.discount(deals.compactMap(\.share).max()) { parts.append((deals.count > 1 ? "best " : "") + word) }
-        if density == .overkill {
-            let named = deals.sorted { ($0.share ?? 0) > ($1.share ?? 0) }.prefix(2).map { deal in
-                short(deal.title, 18) + (deal.price.map { " " + DealFormat.price($0).replacingOccurrences(of: "\u{00A0}", with: "") } ?? "")
-            }
-            parts.append(named.joined(separator: ", "))
+    /// "best −50 %" (one deal: "−50 %"); no discount: "act now". Overkill adds the best deal: "best −70 % · GPU €140".
+    static func line(deals: [Deal], density: Density) -> String {
+        var parts: [String] = []
+        if let word = DealFormat.discount(deals.compactMap(\.share).max()) {
+            parts.append((deals.count > 1 ? "best " : "") + word)
+        } else {
+            parts.append("act now")
+        }
+        if density == .overkill, let top = deals.max(by: { ($0.share ?? 0) < ($1.share ?? 0) }) {
+            parts.append(short(top.title, 16) + (top.price.map { " " + DealFormat.price($0).replacingOccurrences(of: "\u{00A0}", with: "") } ?? ""))
         }
         return parts.joined(separator: " · ")
     }
 
-    /// "Latest: <title> · +7 more"; Overkill names two: "Latest: A, B · +6 more". Nil without titles.
-    public static func summary(downloads card: Card, density: Density) -> String? {
-        let titles = card.items.compactMap { $0.title.map { short($0, density == .overkill ? 28 : 36) } }.filter { !$0.isEmpty }
-        guard !titles.isEmpty else { return nil }
+    /// "Dune +7" (the latest and how many more); Overkill names two: "Dune, Arrival +6".
+    static func line(downloads card: Card, density: Density) -> String {
+        let titles = card.items.compactMap { $0.title.map { short($0, 14) } }.filter { !$0.isEmpty }
+        guard !titles.isEmpty else { return "" }
         let named = min(density == .overkill ? 2 : 1, titles.count)
-        let more = titles.count - named
-        return "Latest: " + titles.prefix(named).joined(separator: ", ") + (more > 0 ? " · +\(more) more" : "")
+        let more = card.items.count - named
+        return titles.prefix(named).joined(separator: ", ") + (more > 0 ? " +\(more)" : "")
     }
 
-    /// "3 new grades · latest Maths 85 %"; Overkill lists up to three: "3 new grades · ITP 95 %, SEW 88 %, D 2".
-    public static func summary(grades card: Card, density: Density) -> String? {
-        guard !card.items.isEmpty else { return nil }
+    /// "ITP 95 %" (the latest); Overkill names two: "ITP 95 %, SEW 88 %".
+    static func line(grades card: Card, density: Density) -> String {
         let entries: [String] = card.items.compactMap { item in
-            let subject = (item.subtitle ?? item.title).map { short($0, 18) } ?? ""
+            let subject = (item.subtitle ?? item.title).map { short($0, 12) } ?? ""
             let words = [subject, item.value?.trimmingCharacters(in: .whitespaces) ?? ""].filter { !$0.isEmpty }
             return words.isEmpty ? nil : words.joined(separator: " ")
         }
-        let head = plural(card.items.count, "new grade", "new grades")
-        guard !entries.isEmpty else { return head }
-        if density == .overkill { return head + " · " + entries.prefix(3).joined(separator: ", ") }
-        return head + " · " + (card.items.count > 1 ? "latest " : "") + entries[0]
+        return entries.prefix(density == .overkill ? 2 : 1).joined(separator: ", ")
     }
 
-    /// "U6 Floridsdorf 00:03 · 00:10"; Overkill names both directions: "U6 Floridsdorf 00:03 · 00:10 · 00:17 ·
-    /// Siebenhirten 00:05 · 00:11 · 00:18". A late train has its "+2". Nil for a board without departures.
-    public static func summary(departures board: DepartureBoard, now: Date, density: Density) -> String? {
-        guard !board.isEmpty else { return nil }
-        let up = board.upcoming(now: now)
-        guard !up.groups.isEmpty else { return board.line + " · no more departures soon" }
-        func times(_ group: DepartureBoard.Group, _ count: Int) -> String {
-            group.departures.prefix(count)
-                .map { DepartureBoard.clock($0.due) + ($0.late ? ($0.delay.map { "+\($0)" } ?? " late") : "") }
-                .joined(separator: " · ")
-        }
-        let overkill = density == .overkill
-        let line = up.groups.prefix(overkill ? 2 : 1).map { "\(short($0.towards, 20)) \(times($0, overkill ? 3 : 2))" }
-            .joined(separator: " · ")
-        return board.line + " " + line
-    }
-
-    /// The Also card's summary for its kind.
-    public static func summary(_ card: Card, now: Date, density: Density) -> String? {
-        switch alsoKind(card) {
-        case .downloads: summary(downloads: card, density: density)
-        case .grades: summary(grades: card, density: density)
-        case .departures: summary(departures: DepartureBoard(card: card), now: now, density: density)
-        default: nil
-        }
-    }
-
-    /// VoiceOver's label of an Also row: the title, the count when there is one, the summary ("Recent downloads, 8,
-    /// Latest: Night Signals"); the hint says "Double-tap to expand".
-    public static func spokenAlso(_ kind: AlsoKind, count: Int?, summary: String) -> String {
-        [kind.title, count.map(String.init), summary].compactMap { $0 }.joined(separator: ", ")
+    /// A tile line for VoiceOver: "best −50 %" -> "best minus 50 percent", "GPU €140" -> "GPU 140 euros", "+7" -> "plus 7".
+    static func spokenLine(_ text: String) -> String {
+        var t = Format.spoken(text).replacingOccurrences(of: "\u{2212}", with: "minus ")
+        t = t.replacingOccurrences(of: "\u{00A0}%", with: " percent").replacingOccurrences(of: " %", with: " percent")
+        t = t.replacing(/€\s?([0-9][0-9.,]*)/) { "\($0.output.1) euros" }
+        t = t.replacing(/\+([0-9]+)/) { "plus \($0.output.1)" }
+        return t
     }
 }

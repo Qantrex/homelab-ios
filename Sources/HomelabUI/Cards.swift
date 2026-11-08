@@ -19,7 +19,7 @@ struct CardView: View {
     var allowsItemActions = true
     /// Today only: long lists and texts fold (`TodayFold`). Nil = every row.
     var fold: TodayFoldContext?
-    /// Only the content, without header and panel: inside the "Also" panel, whose row is the header.
+    /// Only the content, without header and panel: inside a Today sheet or the day section, which have their own header.
     var bare = false
 
     /// A chat bubble shows this many rows at most.

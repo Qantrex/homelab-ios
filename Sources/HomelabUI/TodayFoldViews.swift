@@ -98,67 +98,100 @@ struct OneLineCard: View {
     }
 }
 
-/// One row of the "Also" panel.
-struct AlsoItem: Identifiable {
-    let kind: TodayFold.AlsoKind
-    let summary: String
-    /// How many things the summary counts (for VoiceOver); nil when it does not count.
-    let count: Int?
-    let content: AnyView
-    var id: String { "also:" + kind.rawValue }
-}
-
-/// "Also": deals, recent downloads, new grades and departures as one-line summaries in one quiet panel. A tap opens a
-/// row in place (session-only, TodayView's set). Each row is one VoiceOver element.
-struct AlsoPanel: View {
-    let items: [AlsoItem]
+/// The small tiles of Today (deals, downloads, grades): icon and name, a big number, one short line. Laid out by count
+/// (`TodayFold.tileRows`: 4 is 2 by 2, 3 one row of 3, 2 one row of 2, 1 full width; one per row at accessibility
+/// sizes), so a row is never uneven. A tap opens the full list in a sheet; Today never grows.
+struct TodayTiles: View {
+    let tiles: [TodayFold.Tile]
     let density: Density
-    let expanded: Set<String>
-    let toggle: (String) -> Void
+    let open: (TodayFold.Tile) -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.titleToPanel) {
-            SectionTitle(text: "Also")
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
-                    if i > 0 { TodaySeparator() }
-                    row(item)
-                }
-            }
-            .rowsPanel()
-            .rowMotion(expanded)
+    private var rows: [[TodayFold.Tile]] {
+        var rest = tiles[...]
+        return TodayFold.tileRows(count: tiles.count, stacked: typeSize.isAccessibilitySize).map { n in
+            defer { rest = rest.dropFirst(n) }
+            return Array(rest.prefix(n))
         }
     }
 
-    private func row(_ item: AlsoItem) -> some View {
-        let open = expanded.contains(item.id)
-        return VStack(alignment: .leading, spacing: 0) {
-            Button { toggle(item.id) } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Image(systemName: item.kind.symbol).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                        .frame(width: 22).accessibilityHidden(true)
-                    Text(verbatim: item.summary).font(Typo.secondary).foregroundStyle(Palette.text)
-                        .lineLimitAtStandardSizes(density == .overkill ? 3 : 2)
-                        .multilineTextAlignment(.leading)
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.down").font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.tertiary)
-                        .rotationEffect(.degrees(open ? 180 : 0)).accessibilityHidden(true)
+    var body: some View {
+        VStack(spacing: 12) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                // Equal heights in a row: every tile fills the tallest one.
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(row) { tile in TileButton(tile: tile, density: density) { open(tile) } }
                 }
-                .padding(.horizontal, 16).padding(.vertical, 12)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PressStyle(scale: 1))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(verbatim: TodayFold.spokenAlso(item.kind, count: item.count, summary: item.summary)))
-            .accessibilityValue(open ? Text("expanded") : Text("collapsed"))
-            .accessibilityHint(open ? Text("Double-tap to collapse") : Text("Double-tap to expand"))
-            .accessibilityAddTraits(.isButton)
-            if open {
-                item.content
-                    .padding(.horizontal, 16).padding(.bottom, 12)
-                    .transition(.opacity)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// One tile: a button of at least 44 pt and one VoiceOver element ("Deals, 2, best minus 50 percent. Opens the list.").
+/// No blue; a warm tint only while something in it needs me.
+struct TileButton: View {
+    let tile: TodayFold.Tile
+    let density: Density
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: tile.kind.symbol).font(Typo.meta)
+                        .foregroundStyle(tile.urgent ? Palette.gold : Palette.secondary).accessibilityHidden(true)
+                    Text(tile.kind.title).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(1)
+                }
+                Text(verbatim: String(tile.count)).font(Typo.data(.title, weight: .semibold)).foregroundStyle(Palette.text)
+                    .minimumScaleFactor(0.6).lineLimit(1)
+                Text(verbatim: tile.line).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                    .lineLimitAtStandardSizes(density == .overkill ? 3 : 2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 44, maxHeight: .infinity, alignment: .topLeading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                if tile.urgent { RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.gold.opacity(0.12)) }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.press)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: tile.spoken))
+        .accessibilityValue(tile.urgent ? Text("needs you") : Text(""))
+        .accessibilityHint(Text("Opens the list"))
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// The full list of a tile, in a sheet: the title and Done; the content is the card's own rendering (or the deals).
+struct TileSheet<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                content
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
+            }
+            .scrollContentBackground(.hidden)
+            .background(Palette.background.ignoresSafeArea())
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+        }
+        .tint(Palette.accent)
+        .presentationDetents([.medium, .large])
+        .presentationBackground(Palette.background)
     }
 }
