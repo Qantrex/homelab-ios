@@ -70,7 +70,7 @@ For another version, read the checksum on its [release page](https://github.com/
 asset shows its sha256).
 
 Download **Xcode 27.1** in the browser from <https://developer.apple.com/download/all/?q=Xcode>. It needs an Apple ID
-login (a free one works) and the file `Xcode_27.1.xip` is about 2 GB (measured: 2.0 GB on the owner's disk); the
+login (a free one works) and the file `Xcode_27.1.xip` is about 2 GB (`Xcode_27.1.xip`: 2.0 GB); the
 download time depends on your line. Then:
 
 ```bash

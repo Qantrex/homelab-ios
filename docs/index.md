@@ -12,8 +12,8 @@ The [README on GitHub](../README.md) has the screenshots, the quick start and th
 > **Is this for me? What you need**
 >
 > - An iPhone with iOS 18 or newer and a free Apple ID.
-> - A **Linux or Mac computer to build the app once**. There is no download yet: the owner publishes a release only
->   when he calls it 1.0.0, and no date is promised. Building takes a couple of hours the first time (an Xcode download
+> - A **Linux or Mac computer to build the app once**. There is no download yet: the author publishes a release only
+>   once the app is ready for 1.0.0, and no date is promised. Building takes a couple of hours the first time (estimate) (an Xcode download
 >   of about 2 GB, see [Install from Linux](INSTALL-FROM-LINUX.md)).
 > - **Windows only: not yet.** Building needs Linux or macOS; xtool describes WSL for Windows, which is untested here.
 > - [Tailscale](TAILSCALE.md) or another HTTPS route to your servers (free for personal use; the page explains it).
