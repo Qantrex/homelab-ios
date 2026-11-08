@@ -117,6 +117,21 @@ import Testing
         #expect(Array(m.shownTabs.prefix(2)) == [.settings, .lab])
     }
 
+    @Test func hiddenTabLinkKeepsTheShownTabAndHostCaseDoesNotMatter() async throws {
+        let (m, _, _, _) = makeModel()
+        let lab = ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity)
+        try m.save(lab, token: nil)
+        await m.refresh()
+        m.settings.tabOrder = ItemOrder(order: [], hidden: ["chat"])
+        m.pick(.lab)
+        m.open(URL(string: "homelab://chat")!)
+        #expect(m.tab == .lab && m.hiddenTabNotice == .chat)
+        m.open(URL(string: "homelab://Lab/media")!)
+        #expect(m.openHost == "media")
+        m.open(URL(string: "homelab://Actions/todo-add")!)
+        #expect(m.openAction == "todo-add")
+    }
+
     // MARK: Chat
 
     @Test func chatTextSizeShiftsOneStepAndStopsAtTheEnds() {

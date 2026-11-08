@@ -265,7 +265,7 @@ public final class AppModel {
     public var locked = false
     /// The first run while it lasts (`FirstRun`): it only starts with no server saved. In memory only.
     public internal(set) var firstRun: FirstRun?
-    /// After a first run, Today ends with a line pointing to Settings → Today, until the app quits. In memory only.
+    /// After a first run, Today ends with a line pointing to Settings → Advanced → Sections, until the app quits. In memory only.
     public internal(set) var showsStartTip = false
     /// Today sections the user tapped "Show" for on the "Hidden now" line: they pass their rules until the app
     /// closes (`showAnyway`, ShowRuleEditing.swift). Never stored.
@@ -969,6 +969,8 @@ public final class AppModel {
 
     // MARK: Quick actions (ActionUsage)
 
+    @ObservationIgnored private var quickActionsHidden: [String] = []
+
     /// The owner started `name` on `server`: one more use for the quick actions' ranking.
     func noteStarted(_ name: String, server: UUID) {
         var usage = storage.read(ActionUsage.self, ActionUsage.fileName) ?? ActionUsage()
@@ -1019,6 +1021,10 @@ public final class AppModel {
             return
         }
         try? storage.write(settings, AppSettings.fileName)
+        if quickActionsHidden != settings.startTileOrder.hidden {
+            quickActionsHidden = settings.startTileOrder.hidden
+            onQuickActionsChange()      // a hidden Start tile leaves the quick actions
+        }
         onWidgetDataChange()   // the widget hides details while the app lock is on
     }
 
@@ -1113,18 +1119,19 @@ public final class AppModel {
         }
         guard let t = AppTab(url: url) else { return }
         dropRequests()   // a new link replaces a request that still waits (its tab, form and host)
-        if !shownTabs.contains(t) { tab = shownTabs.first ?? .settings }
+        // A hidden tab's link leaves the shown tab alone (DESIGN §9); only a current tab that isn't shown falls back.
+        if !shownTabs.contains(tab) { tab = shownTabs.first ?? .settings }
         request(t)
         // homelab://actions/<name>: that action's form (it waits like the tab).
         let path = url.pathComponents.filter { $0 != "/" }
         // homelab://actions/<name>?arg=…&<field>=…: that form, filled in (ActionLink).
-        if t == .actions, tab == .actions || requestedTab == .actions, url.host == "actions", path.count == 1,
+        if t == .actions, tab == .actions || requestedTab == .actions, url.host?.lowercased() == "actions", path.count == 1,
            ActionSpec.isValidName(path[0]) {
             openAction = path[0]
             openActionLink = ActionLink(url)
         }
         // homelab://lab/<host-id>: that host's details (they wait like the tab).
-        if t == .lab, tab == .lab || requestedTab == .lab, url.host == "lab", path.count == 1,
+        if t == .lab, tab == .lab || requestedTab == .lab, url.host?.lowercased() == "lab", path.count == 1,
            LaunchArguments.isHostID(path[0]) { openHost = path[0] }
     }
 }

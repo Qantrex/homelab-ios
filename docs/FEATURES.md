@@ -153,7 +153,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Face ID lock](#app-lock) | shipped | – | 4 | L1, L2, L3, L4, L5, L6 | 1 |
+| [Face ID lock](#app-lock) | shipped | – | 4 | L1, L2, L3, L4, L5, L6, L7 | 1 |
 | [Tokens: Keychain and transport rules](#token-security) | shipped | – | 9 | R1b, **R7**, ST2b, ST3, D5 | 3 |
 | [Network hardening and tolerant decoding](#transport-hardening) | shipped | – | 8 | n/a | 3 |
 
@@ -1499,7 +1499,7 @@ Optional: Face ID or the passcode when the app starts and comes back; while lock
 |---|---|
 | Sources | [Components.swift#Biometrics](../Sources/HomelabUI/Components.swift), [Components.swift#LockView](../Sources/HomelabUI/Components.swift), [Components.swift#PrivacyCover](../Sources/HomelabUI/Components.swift), [RootView.swift#dismissPresentedScreens](../Sources/HomelabUI/RootView.swift) |
 | Tests | `IntegrationReviewTests/lockAndResetForgetSheetsAndRequests`, `ProposalNoticeTests/withTheLockOnlyAnswerableProposalsNameTheirAction`, `DealAlertTests/theAppLockHidesTheDeal`, `GlanceTests/redactionRule` |
-| Phone (DeviceTest.md) | L1, L2, L3, L4, L5, L6 |
+| Phone (DeviceTest.md) | L1, L2, L3, L4, L5, L6, L7 |
 | Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does) |
 | Settings | Settings → Lock with Face ID |
 | Depends on | [localauthentication](#dep-localauthentication) |

@@ -116,9 +116,14 @@ public enum HomeShortcuts {
     }
 
     /// The quick actions for `server` (nil: none), from what it offered last and how often each was started.
-    public static func items(_ usage: ActionUsage, server: UUID?) -> [Item] {
+    /// A Start tile the owner hid (`order`) is no quick action either.
+    public static func items(_ usage: ActionUsage, server: UUID?, tiles order: ItemOrder? = nil) -> [Item] {
         guard let server else { return [] }
-        return usage.top(server: server, limit: limit).compactMap { a in
+        let hidden = Set((order ?? .standard).hidden)
+        let offered = usage.offered[ActionUsage.key(server)] ?? []
+        let counts = usage.counts[ActionUsage.key(server)] ?? [:]
+        let shown = offered.filter { !hidden.contains($0.name) }
+        return ActionUsage.ranked(shown, counts: counts, limit: limit).compactMap { a in
             guard let link = ActionLink(name: a.name).url else { return nil }
             return Item(type: actionType, title: a.label, icon: a.icon, link: link)
         }

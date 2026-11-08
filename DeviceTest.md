@@ -293,6 +293,7 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | L4 | Open dialogs close | Actions → Approve (confirm sheet open) → leave the app → come back: the sheet is gone, only the lock shows | | |
 | L5 | App switcher | With the lock on, swipe up to the app switcher: the Homelab card shows a blurred lock, not your data | | |
 | L6 | Notifications stay vague | With the lock on, a problem notification says only "Something needs a look", a proposal without buttons only "An action is waiting for you". A proposal with Approve / Deny names its action (B10) | | |
+| L7 | Lock asks again on return | Lock on, leave the app, come back: Face ID is asked at once (no tap on Unlock). Cancel it, leave and come back again: it asks again. TO VERIFY ON THE PHONE (the prompt now follows the app becoming active) | | |
 
 ## Settings
 

@@ -68,6 +68,11 @@ struct FoundView: View {
             } else if let error = status.error {
                 problemRow(error.message)
                 Button("Try again") { Task { await model.refresh() } }
+            } else if status.snapshot != nil, !status.loading {
+                // /info failed but /state answered: what the data shows, and a way to ask again. No endless spinner.
+                ForEach(FirstRun.offers(features: status.features)) { offerRow($0) }
+                problemRow(FirstRun.unreadableOffers)
+                Button("Try again") { Task { await model.refresh() } }
             } else {
                 HStack(spacing: 12) {
                     ProgressView()
@@ -155,7 +160,7 @@ struct FoundView: View {
         } header: {
             Text("Start with")
         } footer: {
-            SettingsFooter("Sets which sections Today shows and how much. Change it any time in Settings → Today.")
+            SettingsFooter(verbatim: FirstRun.startWithFooter)
         }
     }
 

@@ -7,7 +7,7 @@ import Foundation
 /// 3. Found (`.found`): what the saved servers offer, and "Start with" the three presets (`StartPreset`), the
 ///    suggested one picked. "Add Home Assistant too" (or a Homelab server) opens the editor again.
 /// 4. With Home Assistant tiles to pick: the tile picker (`.tiles`).
-/// 5. Today, with a line pointing to Settings → Today (`AppModel.showsStartTip`).
+/// 5. Today, with a line pointing to Settings → Advanced → Sections (`AppModel.showsStartTip`).
 ///
 /// Every step can be skipped. A run only starts while no server is saved (`AppModel.beginFirstRun`), so the owner
 /// never sees one. Nothing of it is stored: the run lives in memory, and a preset writes only Today's layout and
@@ -15,6 +15,15 @@ import Foundation
 public struct FirstRun: Equatable, Sendable {
     /// One line on the welcome screen, under the add buttons (the first run only).
     public static let vpnNote = "Turn on Tailscale (or your VPN) first: the app talks to your servers directly."
+
+    /// Found: /info didn't answer but /state did. The row under what the data itself shows.
+    public static let unreadableOffers = "Couldn't read what it offers"
+
+    /// Where sections are changed now (Settings → Advanced → Sections). The first-run tip on Today and the footer under
+    /// "Start with" use these.
+    public static let sectionsPath = "Settings → Advanced → Sections"
+    public static let startTipText = "Change what Today shows in \(sectionsPath)"
+    public static let startWithFooter = "Sets which sections Today shows and how much. Change it any time in \(sectionsPath)."
 
     public enum Step: Equatable, Sendable {
         /// The server editor is open for a new server of this kind.
@@ -216,7 +225,7 @@ public extension AppModel {
         }
     }
 
-    /// The run is over: Today, with the line pointing to Settings → Today until the app quits.
+    /// The run is over: Today, with the line pointing to Settings → Advanced → Sections until the app quits.
     func finishFirstRun() {
         guard firstRun != nil else { return }
         firstRun = nil

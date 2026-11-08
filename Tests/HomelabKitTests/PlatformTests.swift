@@ -136,6 +136,11 @@ import Testing
                                                        "homelab://actions/dns-pause"])
         #expect(items.first?.title == "Living room" && items.first?.icon == "lightbulb")
 
+        // A hidden Start tile is no quick action.
+        let hiddenItems = HomeShortcuts.items(after, server: lab.id, tiles: ItemOrder(order: [], hidden: ["ha-control"]))
+        #expect(hiddenItems.map(\.link.absoluteString) == ["homelab://actions/todo-add", "homelab://actions/dns-pause",
+                                                           "homelab://actions/calendar-add"])
+
         // The same list again writes nothing.
         await m.refresh()
         #expect(changes == 2)

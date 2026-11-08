@@ -120,7 +120,7 @@ public enum URLPolicy {
     }
 
     public static let tokenOverHTTPMessage =
-        "This server uses a token over plain http. Use its https://….ts.net address (tailscale serve)."
+        "This server uses a token over plain http. Use its https://….ts.net address (tailscale serve) or a local https address. See docs/TAILSCALE.md."
 
     /// A name without dots that DNS (or mDNS) resolves on the LAN. A label of digits or `0x` hex is not one: it is
     /// an IPv4 address in another notation.
