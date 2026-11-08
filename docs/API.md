@@ -22,7 +22,7 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `GET /poster/<size>/<file>` (or any path an item's `image` names) | – | the picture | Posters for `poster-grid` cards; see "Pictures" |
 | `GET /deals` | – | `{updated, deals: [...]}` | Feature `deals` (optional): the Deals screen, Today's "Deals to act on" and the new-deal notification; 404 hides it |
 | `GET /news/sources` | – | `{countries, sources, prefs, can_summarize}` | Feature-less and optional: the News settings; 404 hides them (see "News") |
-| `PUT /news/prefs` | a full prefs object | `{ok, prefs}` | Settings → Today → News stores the choices on the server |
+| `PUT /news/prefs` | a full prefs object | `{ok, prefs}` | Settings → Advanced → Today → News stores the choices on the server |
 | `POST /share` | `{id, kind: "url", url, title}` | `{ok, id, route, text}` | Feature `share`: the share extension sends a web link; the server routes it (a willhaben ad, or a read-later list) |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429

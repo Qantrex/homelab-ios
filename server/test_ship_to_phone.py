@@ -57,6 +57,8 @@ class ShipToPhone(unittest.TestCase):
         self.env = dict(os.environ, PATH=bindir + os.pathsep + os.environ["PATH"], SHIP_HOST="fake-host",
                         SHIP_DIR=self.remote, SHIP_VERIFY="true", IPA=os.path.join(self.tmp, "Homelab.ipa"))
         self.env.pop("FAKE_CORRUPT", None)
+        # CI runs as root on a checkout owned by another user: let git read it
+        self.env.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="safe.directory", GIT_CONFIG_VALUE_0="*")
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -126,8 +128,11 @@ class ShipToPhone(unittest.TestCase):
         self.assertIn("dry run", r.stdout)
         self.assertEqual(os.listdir(self.remote), [])
 
-    @unittest.skipUnless(os.path.exists(os.path.join(ROOT, ".git")), "needs a git checkout")
     def test_stale_ipa_refused(self):
+        log = subprocess.run(["git", "log", "-1", "--format=%ct", "--", "Sources"], cwd=ROOT, env=self.env,
+                             capture_output=True, text=True)
+        if log.returncode != 0 or not log.stdout.strip():
+            self.skipTest("needs a git checkout with history")
         make_ipa(self.env["IPA"], "1.0.0", 6)
         os.utime(self.env["IPA"], (946684800, 946684800))   # 2000-01-01, older than any commit
         r = subprocess.run([SCRIPT], cwd=ROOT, env=self.env, capture_output=True, text=True)

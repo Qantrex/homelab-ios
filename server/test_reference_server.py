@@ -936,6 +936,29 @@ class FixtureModeTest(unittest.TestCase):
         finally:
             stop_app(httpd)
 
+    def test_state_comes_with_its_own_info_and_actions(self):
+        """state-bridge.json and state-huge.json name actions the plain actions.json lacks: every action a card, item
+        or restartable container needs is served with them, and switching back restores the plain documents."""
+        app = rs.FixtureApp(FIXTURES, "state-bridge.json")
+        httpd = start_app(app)
+        port = httpd.server_address[1]
+        try:
+            def names():
+                return [a["name"] for a in call(port, "GET", "/api/v1/actions")[2]["actions"]]
+            self.assertIn("dns-pause", names())
+            self.assertEqual(call(port, "GET", "/api/v1/info")[2], app._load("info-bridge.json"))
+            call(port, "GET", "/__control?state=state-huge.json")
+            self.assertEqual(names(), ["restart-container"])
+            options = call(port, "GET", "/api/v1/actions")[2]["actions"][0]["arg"][0]["parts"][0]["options"]
+            hosts = {h["id"] for h in app.state_doc["hosts"] if any(c.get("restartable") for c in h["container_list"])}
+            self.assertEqual({o["value"] for o in options}, hosts)
+            self.assertEqual(call(port, "POST", "/api/v1/actions/dns-pause", {"arg": "5"})[0], 404)
+            call(port, "GET", "/__control?state=state-ok.json")
+            self.assertEqual(names(), [a["name"] for a in app._load("actions.json")["actions"]])
+            self.assertEqual(call(port, "GET", "/api/v1/info")[2], app._load("info.json"))
+        finally:
+            stop_app(httpd)
+
 
 GOLDENS = os.path.join(HERE, "goldens")
 

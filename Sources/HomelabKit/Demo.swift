@@ -24,15 +24,18 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     /// demo Home Assistant, no demo homelab, so Today looks like it does for someone without a Companion server
     /// (M2.1); its homelab side, never shown, is the calm one. `bridge`: a neutral homelab as a Homelab Bridge user
     /// sees it (Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news) without the
-    /// owner's school, commute, deals or grades; made-up data only (`-HomelabDemoScene bridge`).
+    /// owner's school, commute, deals or grades; made-up data only (`-HomelabDemoScene bridge`). `minimal`: a server that
+    /// sends only /info and /state (one quiet host, no cards, no chat), every other endpoint answers 404, the way a
+    /// bare Companion server behaves (`-HomelabDemoScene minimal`).
     public enum Scene: String, Sendable, CaseIterable {
-        case calm, problem, bridge
+        case calm, problem, bridge, minimal
         case haOnly = "ha-only"
 
         public var stateFixture: String {
             switch self {
             case .problem: "state-problem.json"
             case .bridge: "state-bridge.json"
+            case .minimal: "state-minimal.json"
             case .calm, .haOnly: "state-demo.json"
             }
         }
@@ -40,11 +43,18 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             switch self {
             case .problem: "messages.json"
             case .bridge: "messages-bridge.json"
+            case .minimal: "messages-bridge.json"   // never served: /messages answers 404
             case .calm, .haOnly: "messages-demo.json"
             }
         }
         public var actionsFixture: String { self == .bridge ? "actions-bridge.json" : "actions.json" }
-        public var infoFixture: String { self == .bridge ? "info-bridge.json" : "info.json" }
+        public var infoFixture: String {
+            switch self {
+            case .bridge: "info-bridge.json"
+            case .minimal: "info-minimal.json"
+            default: "info.json"
+            }
+        }
         /// The scene adds the demo homelab (a Companion server), not only the demo Home Assistant.
         public var hasHomelab: Bool { self != .haOnly }
     }
@@ -93,7 +103,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             case .problem:
                 // Always today (the fixture card is dated), so it never counts as a stale or tomorrow card.
                 var day = Self.demoDay(c, now: now); day.date = nil; return day
-            case .bridge:
+            case .bridge, .minimal:
                 return card(c)
             }
         }
@@ -104,12 +114,12 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             state.commute = state.commute.map { Self.schoolCommute($0, day: day, now: now) }
         case .problem:
             state.commute = state.commute.map { Self.shiftCommute($0, by: shift) }
-        case .bridge:
+        case .bridge, .minimal:
             state.commute = nil   // no commute in a neutral homelab
         }
         // Lab shows the tailnet, ad blocking and backups cards of a server that has them.
         // (The bridge scene has its own.)
-        let labCards = scene == .bridge ? []
+        let labCards = scene == .bridge || scene == .minimal ? []
             : Fixtures.decode(HomelabState.self, "state-lab-cards.json")?.cards.filter { $0.place == .lab } ?? []
         state.cards += labCards.filter { lab in !state.cards.contains { $0.id == lab.id } }.map { lab in
             var lab = lab
@@ -289,11 +299,13 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func messages(after: Int64) async throws -> MessagePage {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         return MessagePage(messages: page.messages.filter { $0.id > after }, busy: page.busy)
     }
 
     public func send(_ text: String) async throws -> Int64? {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         let id = nextID()
         page.messages.append(ChatMessage(id: id, ts: Date(), from: .me, text: text))
@@ -313,6 +325,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func press(_ button: String) async throws -> String {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay * 3)
         guard let action = current.pending.first(where: { $0.buttons.values.contains(button) }),
               let verb = action.buttons.first(where: { $0.value == button })?.key else {
@@ -330,16 +343,19 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func services() async throws -> [Service] {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         return Fixtures.decode(ServiceList.self, "services.json")?.services ?? []
     }
 
     public func actions() async throws -> [ActionSpec] {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         return Fixtures.decode(ActionList.self, scene.actionsFixture)?.actions ?? []
     }
 
     public func run(_ action: String, arg: String, payload: [String: String]) async throws -> ActionResult {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay * 3)
         guard let spec = Fixtures.decode(ActionList.self, scene.actionsFixture)?.actions.first(where: { $0.name == action }) else {
             throw APIError.notFound
@@ -360,6 +376,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func upload(pdf: Data, title: String?, id: String) async throws -> ShareReply {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay * 3)
         let name = ShareRouter.cleanTitle(title, max: ShareLimits.maxPDFTitle) ?? "Scan"
         let kb = max(1, pdf.count / 1024)
@@ -371,6 +388,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func share(url: URL, title: String?, id: String) async throws -> ShareReply {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay * 2)
         let wh = ShareRouter.willhabenAdID(url) != nil
         return ShareReply(id: id, route: wh ? "willhaben" : "read-later",
@@ -379,6 +397,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
 
     /// The fixture's deals, with their times moved so the newest one was seen 40 minutes ago (a current list).
     public func deals() async throws -> DealList {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         guard var list = Fixtures.decode(DealList.self, "deals.json") else { throw APIError.notFound }
         let now = Date()
@@ -390,6 +409,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func search(q: String) async throws -> SearchResult {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay * 2)
         guard let clean = SearchQuery.clean(q) else { throw APIError.badRequest(SearchQuery.rule) }
         guard var all = Fixtures.decode(SearchResult.self, "search.json") else { return SearchResult(query: clean) }
@@ -411,6 +431,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func newsSources() async throws -> NewsCatalog {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         guard var catalog = Fixtures.decode(NewsCatalog.self, "news-sources.json") else { throw APIError.notFound }
         if let prefs = newsPrefs { catalog.prefs = prefs }
@@ -418,6 +439,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func setNewsPrefs(_ prefs: NewsPrefs) async throws -> NewsPrefs {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         guard let catalog = Fixtures.decode(NewsCatalog.self, "news-sources.json") else { throw APIError.notFound }
         let known = Set(catalog.sources.map(\.id))
@@ -428,6 +450,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     }
 
     public func image(path: String) async throws -> Data {
+        if scene == .minimal { throw APIError.notFound }   // a bare server: only /info and /state
         try await Task.sleep(for: delay)
         guard let ref = URLPolicy.cleanImageReference(path), ref.hasPrefix("/api/v1/poster/") else {
             throw APIError.notFound

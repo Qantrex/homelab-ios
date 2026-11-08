@@ -47,6 +47,7 @@ fi
 # A stale IPA is the usual mistake: the source changed after it was built.
 src_time=$(git log -1 --format=%ct -- Sources ':(glob)**/*Info.plist' 2>/dev/null || true)
 ipa_time=$(stat -c %Y "$ipa" 2>/dev/null || stat -f %m "$ipa")
+[ -n "$src_time" ] || echo "ship-to-phone: warning: cannot read the commit time from git here, so the IPA is not checked for being stale" >&2
 if [ -n "$src_time" ] && [ "$ipa_time" -lt "$src_time" ]; then
   die "$ipa is older than the newest commit that touched Sources/ or an Info.plist; build again (--build)"
 fi

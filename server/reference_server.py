@@ -1194,6 +1194,7 @@ class FixtureApp:
         self.echo_delay = echo_delay
         self.lock = threading.Lock()
         self.info_doc = self._load("info.json")
+        self.default_info_doc = self.info_doc
         self.services_doc = self._load("services.json", optional=True)
         self.messages_doc = self._load("messages.json", optional=True)
         self.state_name = None
@@ -1228,12 +1229,30 @@ class FixtureApp:
         if self.deals_doc is not None:
             self.routes["deals"] = {"GET": lambda q, b: (200, self.deals_doc)}
         # Actions the app may start (feature run-actions): actions.json, one POST route per listed name.
-        self.actions_doc = self._load("actions.json", optional=True)
-        if isinstance(self.actions_doc, dict):
+        self.default_actions_doc = self._load("actions.json", optional=True)
+        self.actions_doc = self.default_actions_doc
+        self.routes["info"] = {"GET": lambda q, b: (200, self.info_doc)}
+        self._set_actions(self.actions_doc)
+        self._pair_documents(self.state_name)
+
+    def _set_actions(self, doc):
+        """Serve `doc` as /actions with one POST route per listed name (the routes of a former document go)."""
+        self.actions_doc = doc
+        for key in [k for k in self.routes if k == "actions" or k.startswith("actions/")]:
+            del self.routes[key]
+        if isinstance(doc, dict):
             self.routes["actions"] = {"GET": lambda q, b: (200, self.actions_doc)}
-            for a in self.actions_doc.get("actions") or []:
+            for a in doc.get("actions") or []:
                 if isinstance(a, dict) and re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", str(a.get("name", ""))):
                     self.routes["actions/" + a["name"]] = {"POST": lambda q, b, a=a: self.run_action(a, b)}
+
+    def _pair_documents(self, state_name):
+        """state-X.json comes with info-X.json and actions-X.json when they exist (the bridge and huge states list
+        actions the plain actions.json does not have); otherwise info.json and actions.json."""
+        suffix = state_name[len("state-"):] if state_name.startswith("state-") else None
+        pair = lambda kind, default: (self._load("%s-%s" % (kind, suffix), optional=True) if suffix else None) or default
+        self.info_doc = pair("info", self.default_info_doc)
+        self._set_actions(pair("actions", self.default_actions_doc))
 
     def _load(self, name, optional=False):
         path = os.path.join(self.dir, name)
@@ -1250,6 +1269,8 @@ class FixtureApp:
         doc = self._load(name)
         with self.lock:
             self.state_name, self.state_doc = name, doc
+            if hasattr(self, "routes"):
+                self._pair_documents(name)
 
     def start(self):
         pass

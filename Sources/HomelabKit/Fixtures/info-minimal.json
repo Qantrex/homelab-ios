@@ -1,0 +1,11 @@
+{
+ "api": 1,
+ "name": "Minimal homelab",
+ "server": "homelab-minimal",
+ "version": "1.0.0",
+ "features": [
+  "status",
+  "hosts"
+ ],
+ "auth": "identity"
+}

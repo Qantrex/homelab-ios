@@ -9,6 +9,7 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Server and tooling fixes: the fixture server serves the info and actions that belong to `state-bridge.json` and `state-huge.json`; the Homelab Bridge cuts and scrubs host, container and service names, lets only http(s) links and images through, and reads .NET times with 7 fraction digits on Python before 3.11; `scripts/ship-to-phone` never waits for a password or a dead host; demo scene `minimal` (only /info and /state). Settings paths in the docs follow Settings → Advanced.
 - Hyperdetail, a fourth detail level after Overkill (Settings → Today → Detail; asks once first): nothing folds anywhere,
   every field the server sends is shown (a host with all its history numbers, ids, exact times, the server's name,
   version and fetch time), and with a personality on, each fact gets a remark in that voice. With the personality Off
@@ -172,7 +173,7 @@ App:
   (never hidden fields; you always confirm). See docs/SHORTCUTS.md.
 - Your whole day: in the evening the "today" card can be tomorrow's (`date`): header "Tomorrow", countdown to the
   first stop, also in the Day widget. Cancelled lessons (`cancelled`) are struck through, substitutions get a gold dot,
-  the weather card's line sits under the headline's facts.
+  the weather card's line sits under the headline's facts (in every detail level, Calm too).
 - Today: a mood headline on top (calm when all is fine, gold or love with a glow and a haptic when not), the server's
   "today" card as a day line (clock times in order, filled up to now, countdown to the next stop), actions waiting,
   pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Calm,
