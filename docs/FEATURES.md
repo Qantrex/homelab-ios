@@ -359,7 +359,7 @@ Today's sections can be reordered and hidden; Calm, Standard or Overkill picks h
 
 **Today is short by design (folds, tiles)** · Today · shipped · since 2026-11-08
 
-Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
+Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
 
 | | |
 |---|---|

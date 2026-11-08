@@ -39,8 +39,12 @@ public enum TodayFold {
 
     // MARK: Urgency
 
-    /// A row that is never folded: a warm or red tint (`LabRows.warns`), a deadline overdue, due today or within
-    /// 48 hours, a to-do past its time. A done to-do is not urgent by its date.
+    /// A deadline counts as urgent when it is overdue or due within this many days (owner 2026-11-09: "deadlines that
+    /// show without folding should only be 3d or less").
+    public static let urgentDays = 3
+
+    /// A row that is never folded: a warm or red tint (`LabRows.warns`), a deadline overdue or due within
+    /// `urgentDays` days, a to-do past its time. A done to-do is not urgent by its date.
     public static func isUrgent(_ item: Card.Item, in card: Card, now: Date, calendar: Calendar = .current) -> Bool {
         if LabRows.warns(item, in: card) { return true }
         guard item.done != true, let due = item.due else { return false }
@@ -49,9 +53,9 @@ public enum TodayFold {
         case .countdown:
             if item.dueIsDay {
                 let days = calendar.dateComponents([.day], from: today, to: Format.dueDay(due, calendar: calendar)).day ?? 0
-                return days <= 1   // today, tomorrow (that day's end is within 48 h) or overdue
+                return days <= urgentDays   // overdue, today ... in 3 days
             }
-            return due <= now.addingTimeInterval(48 * 3600)
+            return due <= now.addingTimeInterval(Double(urgentDays) * 24 * 3600)
         case .checklist:
             return item.dueIsDay ? Format.dueDay(due, calendar: calendar) < today : due < now
         default:
@@ -79,20 +83,23 @@ public enum TodayFold {
 
     /// The rows Today draws for `items` (the card's rows in display order, e.g. countdown sorted): all of them when
     /// expanded or when folding would hide fewer than `minHidden`; else every urgent row, topped up with the next
-    /// rows in order to the density's cap. The order of the rows stays.
+    /// rows in order to the density's cap. The order of the rows stays. A countdown card (deadlines) is the exception
+    /// (owner 2026-11-09): it shows only the urgent rows (overdue or within `urgentDays` days), never topped up, and
+    /// folds as soon as one later deadline is behind it; if none is urgent only the fold row is left.
     public static func rows(_ items: [Card.Item], in card: Card, density: Density, expanded: Bool, now: Date,
                             calendar: Calendar = .current) -> Rows {
         let cap = cap(density)
-        guard foldsStyle(card.style), items.count - cap >= minHidden else {
+        let strict = card.style == .countdown
+        guard foldsStyle(card.style), strict ? !items.isEmpty : items.count - cap >= minHidden else {
             return Rows(items: items, hidden: 0, folds: false, hint: nil)
         }
         if expanded { return Rows(items: items, hidden: 0, folds: true, hint: nil) }
         var keep = Set(items.indices.filter { isUrgent(items[$0], in: card, now: now, calendar: calendar) })
-        for i in items.indices where keep.count < cap { keep.insert(i) }
+        if !strict { for i in items.indices where keep.count < cap { keep.insert(i) } }
         let shown = items.indices.filter(keep.contains).map { items[$0] }
         let hiddenRows = items.indices.filter { !keep.contains($0) }.map { items[$0] }
         // Urgent rows can leave fewer than `minHidden` behind: then show them all.
-        guard hiddenRows.count >= minHidden else { return Rows(items: items, hidden: 0, folds: false, hint: nil) }
+        guard hiddenRows.count >= (strict ? 1 : minHidden) else { return Rows(items: items, hidden: 0, folds: false, hint: nil) }
         var hint: String?
         if card.style == .countdown, let next = hiddenRows.first?.dueText(now: now, calendar: calendar) { hint = "next " + next }
         return Rows(items: shown, hidden: hiddenRows.count, folds: true, hint: hint)

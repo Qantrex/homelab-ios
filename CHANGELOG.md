@@ -10,8 +10,8 @@ Highlights:
   and the server's cards.
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
   "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
-- Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 48
-  hours, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
+- Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 3
+  days, later ones always folded, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
   downloads and grades are small tiles (a count and one line: "best −50 %", "Dune +7", "ITP 95 %"; 2 by 2, one row of
   3, 2 or 1 by count, one per row at large text) that open the full list in a sheet; departures show only inside the
   day card, at the top, while a "Leave by" is within the hour (a disruption alone shows nothing); Today has no "Lab ›"

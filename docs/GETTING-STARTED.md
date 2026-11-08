@@ -175,7 +175,7 @@ Today is short by design. Settings → Today → **Detail** picks how much it sh
 
 - **Calm**: one screen, your day and the Home tiles.
 - **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")
-  and every row that needs you come first: a deadline that is overdue, due today or within 48 hours, a delay, a
+  and every row that needs you come first: a deadline that is overdue or within 3 days (later deadlines are always behind "Show N more"), a delay, a
   to-do past its time. Longer lists show 3 rows and a "Show N more" row. Deals, recent downloads and new grades
   are small tiles with a count and one line ("best −50 %", "Dune +7", "ITP 95 %"); tap one to open the full list in a
   sheet. Departures appear in the day card, at the top, only while your "Leave by" is within the hour.

@@ -166,15 +166,16 @@ the default text size with typical data on an iPhone 12 mini:
 | Standard | Two screens at most. The first screen has the hero, Tomorrow, the approvals and every urgent row |
 | Overkill | Three screens at most |
 
-- **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue,
-  due today or due within 48 hours; a to-do past its time; a proposal. Warm tints belong to urgent rows only, and
+- **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue
+  or due within 3 days; a to-do past its time; a proposal. Warm tints belong to urgent rows only, and
   colour is never the only sign (the row says why in words).
 - **Standard folds the rest.**
   - The hero stays. The weather card is not drawn on Today: the hero line says it. The hero has no "Lab ›" link: the
     headline and the machines line lead to Lab, and the Lab tab is one tap away (owner, 2026-11-08).
   - The short "today" text is one plain line. Tomorrow's "No school" is a caption without a panel.
   - To approve shows 2 proposals and "and N more", which opens Actions.
-  - To-dos and parcels fold after 3 rows. Deadlines show the urgent ones topped up to 3, then "Show N more · next Fri".
+  - To-dos and parcels fold after 3 rows. Deadlines show only the urgent ones (overdue or within 3 days), never topped up with later ones: everything
+    later is behind "Show N more · next Fri", and with none urgent the card is just that row (owner, 2026-11-09).
     The briefing shows 3 lines and "Show more".
   - A small list card (a game server: "Mira is playing") is one line. An unknown card folds after 3 rows or 3 lines.
 - **Tiles hold what is nice to know: deals, recent downloads and grades.** No panel title. Each tile has the icon and

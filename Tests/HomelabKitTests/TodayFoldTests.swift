@@ -27,15 +27,17 @@ import Testing
 
     // MARK: Urgency
 
-    @Test func deadlinesAreUrgentWhenOverdueTodayOrWithin48Hours() {
+    @Test func deadlinesAreUrgentWhenOverdueOrWithinThreeDays() {
         let card = Self.deadlines([])
         func urgent(_ d: Card.Item) -> Bool { TodayFold.isUrgent(d, in: card, now: Self.now, calendar: Self.cal) }
         #expect(urgent(.init(title: "late", due: Self.day(-3), dueIsDay: true)))
         #expect(urgent(.init(title: "today", due: Self.day(0), dueIsDay: true)))
         #expect(urgent(.init(title: "tomorrow", due: Self.day(1), dueIsDay: true)))
-        #expect(!urgent(.init(title: "in 2 days", due: Self.day(2), dueIsDay: true)))
-        #expect(urgent(.init(title: "in 47 h", due: Self.now.addingTimeInterval(47 * 3600))))
-        #expect(!urgent(.init(title: "in 49 h", due: Self.now.addingTimeInterval(49 * 3600))))
+        #expect(urgent(.init(title: "in 2 days", due: Self.day(2), dueIsDay: true)))
+        #expect(urgent(.init(title: "in 3 days", due: Self.day(3), dueIsDay: true)))
+        #expect(!urgent(.init(title: "in 4 days", due: Self.day(4), dueIsDay: true)))
+        #expect(urgent(.init(title: "in 71 h", due: Self.now.addingTimeInterval(71 * 3600))))
+        #expect(!urgent(.init(title: "in 73 h", due: Self.now.addingTimeInterval(73 * 3600))))
         #expect(!urgent(.init(title: "no due")))
     }
 
@@ -54,29 +56,46 @@ import Testing
     // MARK: Rows
 
     @Test func shortListsDoNotFold() {
-        let r = Self.rows(Self.deadlines([1, 3, 5, 9]))                 // 4 rows, cap 3: hiding one row saves nothing
+        let items: [Card.Item] = (0..<4).map { .init(title: "P\($0)") }
+        let r = Self.rows(Card(id: "parcels", style: .list, items: items))   // 4 rows, cap 3: hiding one row saves nothing
         #expect(r.hidden == 0 && !r.folds && r.items.count == 4)
-        #expect(Self.rows(Self.deadlines([1, 3])).folds == false)
+        #expect(Self.rows(Self.deadlines([1, 3])).folds == false)           // both within 3 days
     }
 
     @Test func standardFoldsAfterThreeAndSaysWhatComesNext() {
-        let r = Self.rows(Self.deadlines([5, 6, 7, 8, 9, 10, 11, 12]))  // none urgent
-        #expect(Self.titles(r) == ["D0", "D1", "D2"] && r.hidden == 5 && r.folds)
-        #expect(r.hint == "next " + Self.deadlines([8]).items[0].dueText(now: Self.now, calendar: Self.cal)!)
-        #expect(TodayFold.foldLabel(r, expanded: false).hasPrefix("Show 5 more · next "))
+        let r = Self.rows(Self.deadlines([5, 6, 7, 8, 9, 10, 11, 12]))  // none urgent: only the fold row
+        #expect(r.items.isEmpty && r.hidden == 8 && r.folds)
+        #expect(r.hint == "next " + Self.deadlines([5]).items[0].dueText(now: Self.now, calendar: Self.cal)!)
+        #expect(TodayFold.foldLabel(r, expanded: false).hasPrefix("Show 8 more · next "))
         #expect(TodayFold.foldLabel(r, expanded: true) == "Show less")
     }
 
-    @Test func urgentRowsNeverFoldAndAreToppedUp() {
-        // Two urgent: topped up to 3 with the next soonest; the fold counts only the rest.
+    @Test func urgentDeadlinesStayAndNothingFillsThemUp() {
+        // Two urgent, the rest later: just the two, no top-up; the fold counts every later one.
         var r = Self.rows(Self.deadlines([-2, 0, 5, 6, 7, 8, 9]))
-        #expect(Self.titles(r) == ["D0", "D1", "D2"] && r.hidden == 4)
+        #expect(Self.titles(r) == ["D0", "D1"] && r.hidden == 5)
         // Five urgent: all five show, over the cap.
         r = Self.rows(Self.deadlines([-2, -1, 0, 1, 1, 6, 7, 8]))
         #expect(Self.titles(r) == ["D0", "D1", "D2", "D3", "D4"] && r.hidden == 3)
-        // Urgent rows that leave one row behind: nothing folds.
+        // One later deadline behind urgent ones still folds (nothing later than 3 days shows by itself).
         r = Self.rows(Self.deadlines([-2, -1, 0, 1, 1, 1, 6]))
-        #expect(r.items.count == 7 && r.hidden == 0 && !r.folds)
+        #expect(r.items.count == 6 && r.hidden == 1 && r.folds)
+        // A deadline on day 3 shows, day 4 does not.
+        r = Self.rows(Self.deadlines([3, 4]))
+        #expect(Self.titles(r) == ["D0"] && r.hidden == 1)
+        // All urgent: no fold row at all.
+        r = Self.rows(Self.deadlines([0, 1, 2]))
+        #expect(r.items.count == 3 && !r.folds)
+        // Expanded shows everything, with "Show less".
+        r = Self.rows(Self.deadlines([0, 7, 8]), expanded: true)
+        #expect(r.items.count == 3 && r.folds && r.hidden == 0)
+    }
+
+    @Test func otherListsStillTopUpToTheCap() {
+        var items: [Card.Item] = (0..<8).map { .init(title: "T\($0)") }
+        items[5].tint = .red
+        let r = Self.rows(Card(id: "todos", style: .checklist, items: items))
+        #expect(Self.titles(r) == ["T0", "T1", "T5"] && r.hidden == 5)
     }
 
     @Test func tintedRowsOfAnyListStay() {
@@ -92,7 +111,7 @@ import Testing
     }
 
     @Test func overkillShowsAFewMoreRows() {
-        let card = Self.deadlines([5, 6, 7, 8, 9, 10, 11, 12])
+        let card = Card(id: "todos", style: .checklist, items: (0..<8).map { .init(title: "T\($0)") })
         #expect(Self.rows(card, .standard).items.count == 3)
         #expect(Self.rows(card, .overkill).items.count == 5 && Self.rows(card, .overkill).hidden == 3)
         #expect(TodayFold.cap(.overkill) > TodayFold.cap(.standard))
@@ -101,10 +120,10 @@ import Testing
     }
 
     @Test func countdownRowsFoldInTheirSortedOrder() {
-        var card = Self.deadlines([9, 3, 7, 4, 8, 6])
+        var card = Self.deadlines([9, 3, 7, 2, 8, 1])
         card.items[0].title = "last"
         let r = Self.rows(card)
-        #expect(Self.titles(r) == ["D1", "D3", "D5"])                      // 3, 4, 6 days
+        #expect(Self.titles(r) == ["D5", "D3", "D1"] && r.hidden == 3)     // 1, 2, 3 days; the rest is folded
     }
 
     @Test func otherStylesAndOddCardsNeverFold() {
