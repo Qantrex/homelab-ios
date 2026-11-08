@@ -79,7 +79,7 @@ phone with AirDrop, LocalSend or Files, then SideStore → My Apps → +).
 `scripts/install-dev` signs with your own Apple ID. Before the first run:
 
 - `xtool auth login` (a free Apple ID works; the app then stops opening after 7 days: run `scripts/install-dev`
-  again, your data stays. Today warns 2 days before, and Settings → Diagnostics → Install expires shows the date).
+  again, your data stays. Today warns 2 days before, and Settings → Advanced → Diagnostics → Install expires shows the date).
 - The iPhone trusts this computer and has Developer Mode on (Settings → Privacy & Security).
 - On Linux, usbmuxd must be running.
 
@@ -91,7 +91,7 @@ app and the widget have no `com.apple.security.application-groups`, so each one 
 widgets never see the app's data:
 
 - Every widget says "No App Group: see Diagnostics" (before 2026-11-06: "Open the app" / "Open Homelab to load …").
-- Settings → Diagnostics → App Group says "none".
+- Settings → Advanced → Diagnostics → App Group says "none".
 - `pymobiledevice3 provision list` shows the `XTL profile` entries with only `application-identifier`,
   `keychain-access-groups`, `get-task-allow` and the team ID.
 

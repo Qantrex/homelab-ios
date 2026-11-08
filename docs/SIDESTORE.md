@@ -56,7 +56,7 @@ SideStore then says "This action cannot be completed at this time. (-80045)". Wh
 
 Apps signed with a free Apple ID stop opening after 7 days. SideStore refreshes them in the background over Wi-Fi.
 To be safe, open SideStore every few days, or tap My Apps → Refresh All. Homelab warns on Today 2 days before its
-install stops opening, and Settings → Diagnostics → Install expires shows the date.
+install stops opening, and Settings → Advanced → Diagnostics → Install expires shows the date.
 
 - SideStore needs its own VPN helper (LocalDevVPN) while it refreshes. iOS runs only one VPN at a time, so with
   Tailscale always on, background refresh never runs. A Shortcuts automation does it instead (Shortcuts →
@@ -91,7 +91,7 @@ So the app never hard-codes the group. At start, app and widget each try, in ord
 profile, the declared group with the team ID added, then the declared group. They use the first one that exists and
 is writable.
 
-**Settings → Diagnostics → Shared storage** shows the group in use and each candidate (`ok`, `read-only` or `–`).
+**Settings → Advanced → Diagnostics → Shared storage** shows the group in use and each candidate (`ok`, `read-only` or `–`).
 If it says "none (widget can't see data)", the app still works, but the widgets say "No App Group: see Diagnostics".
 Installed with xtool 1.24.0 or older from Linux, that is an xtool bug (SETUP.md, "Known xtool bug: no App Group");
 after SideStore, copy the report (Diagnostics → Copy report: host names with the tailnet part masked, no tokens)
@@ -102,7 +102,7 @@ and open an issue.
 | You see | Likely cause | Fix |
 |---|---|---|
 | Widget shows "Open the app" or "Open Homelab to load your machines." | The app has no data yet | Open the app and pull down on Today |
-| Widget shows "No App Group: see Diagnostics" | No App Group was granted: Settings → Diagnostics → App Group is "none" | Installed with xtool 1.24.0 or older: update xtool and install again (SETUP.md, "Known xtool bug: no App Group"). After SideStore: reinstall through SideStore and send the report |
+| Widget shows "No App Group: see Diagnostics" | No App Group was granted: Settings → Advanced → Diagnostics → App Group is "none" | Installed with xtool 1.24.0 or older: update xtool and install again (SETUP.md, "Known xtool bug: no App Group"). After SideStore: reinstall through SideStore and send the report |
 | Widget is grey with a clock and its age, or says "Data from … open the app" | The last data is more than 2 hours old. Widgets fetch `/state` themselves only for a Homelab API server with the Tailscale login (when the data is older than 5 minutes; Diagnostics → At a glance → Widget fetch shows the last try). For a token server or with Tailscale off they show only what the app saved | Turn Tailscale on, or open the app. Background refresh also updates it when iOS allows |
 | "Can't reach `<host>`. Is Tailscale (or your VPN) on?" | Tailscale is off (often after a SideStore refresh), the server is down, or `tailscale serve` doesn't serve that port | Turn Tailscale on. On the server: `tailscale serve status` and `curl https://<machine>.<tailnet>.ts.net:<port>/api/v1/info` from another tailnet device |
 | "Can't find `<host>`. Check the address." | Typo, or MagicDNS is off (a `.ts.net` name that can't be found says "Can't reach … Is Tailscale on?" instead, the row above) | Check the name in the Tailscale app, and that MagicDNS is on (Tailscale app → Settings, and the admin console → DNS). The `100.x` address won't work with `tailscale serve`: its certificate is for the `.ts.net` name |
