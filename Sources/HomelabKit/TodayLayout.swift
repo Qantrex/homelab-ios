@@ -100,20 +100,34 @@ public struct TodayLayout: Codable, Equatable, Sendable {
     }
 }
 
-/// How much Today shows, like a weather app's "overkill" layout. Calm: the headline, the day's numbers and Home.
-/// Standard: every section I turned on. Overkill: everything, plus every machine's numbers and exact times.
-/// Hyperdetail (owner 2026-11-08): Overkill and then some: nothing folded anywhere, every field the server sent,
+/// How much Today shows. Shown as Minimal / Standard / Detailed / Hyperdetail (owner 2026-11-08, review row 29); the
+/// stored words stay `calm` and `overkill` so settings files and goldens do not change. Minimal: the headline, the
+/// day's numbers and Home (Lab is compact too). Standard: every section I turned on. Detailed: the same sections, plus
+/// every machine's numbers and exact times. A section switched off in Settings stays off at every level.
+/// Hyperdetail (owner 2026-11-08): Detailed and then some: nothing folded anywhere, every field the server sent,
 /// and (with a personality on) a remark on every fact (`Hyper`, Hyperdetail.swift). The UX is allowed to suffer.
 public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
     case calm, standard, overkill, hyperdetail
 
     public var id: String { rawValue }
 
-    /// Case-insensitive like `Personality`: a hand-edited "Overkill" reads as overkill. A word this version does not
-    /// know throws, so the caller's lenient decode drops it (the rest of the file survives).
+    /// The level a word names, old or new, any case: "calm" or "minimal", "overkill" or "detailed" (the stored and the
+    /// shown words), "standard", "hyperdetail". Nil for anything else.
+    public static func parse(_ word: String) -> Density? {
+        let w = word.trimmingCharacters(in: .whitespaces).lowercased()
+        if let d = Density(rawValue: w) { return d }
+        switch w {
+        case "minimal": return .calm
+        case "detailed": return .overkill
+        default: return nil
+        }
+    }
+
+    /// Case-insensitive like `Personality`: a hand-edited "Overkill" reads as overkill ("Detailed" too). A word this
+    /// version does not know throws, so the caller's lenient decode drops it (the rest of the file survives).
     public init(from decoder: any Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
-        guard let value = Density(rawValue: raw.trimmingCharacters(in: .whitespaces).lowercased()) else {
+        guard let value = Density.parse(raw) else {
             throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "unknown detail level \(raw)"))
         }
         self = value
@@ -121,9 +135,9 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
 
     public var title: String {
         switch self {
-        case .calm: "Calm"
+        case .calm: "Minimal"
         case .standard: "Standard"
-        case .overkill: "Overkill"
+        case .overkill: "Detailed"
         case .hyperdetail: "Hyperdetail"
         }
     }
@@ -131,14 +145,14 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
     /// One short line of what this detail shows (Settings → Today lists all three under the picker).
     public var summary: String {
         switch self {
-        case .calm: "The day and your Home tiles. One screen."
+        case .calm: "The day and your Home tiles. One screen, in Lab too."
         case .standard: "Folds long lists; urgent things stay open. About two screens."
-        case .overkill: "The same, with more detail in every line."
-        case .hyperdetail: "Everything, unfolded; commentary when a personality is on. Not recommended."
+        case .overkill: "The same sections, with more detail in every line."
+        case .hyperdetail: "Everything on, unfolded; commentary with a personality. Not recommended."
         }
     }
 
-    /// "Calm: The day and …", one line per detail, for the footer under the picker.
+    /// "Minimal: The day and …", one line per detail, for the footer under the picker.
     public static var explanation: String {
         allCases.map { "\($0.title): \($0.summary)" }.joined(separator: "\n")
     }
@@ -147,8 +161,9 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
     public func sections(_ layout: TodayLayout) -> [TodaySection] {
         switch self {
         case .calm: layout.visible.filter { $0 == .day || $0 == .home }
-        case .standard: layout.visible.filter(\.isOnToday)
-        case .overkill, .hyperdetail: layout.listed   // every section, hidden ones too: that's the point
+        // A section switched off in Settings stays off at every level (review row 38); Detailed and Hyperdetail only
+        // show more of what is on.
+        case .standard, .overkill, .hyperdetail: layout.visible.filter(\.isOnToday)
         }
     }
 

@@ -61,7 +61,7 @@ import Testing
             let s = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"density":"\#(word)"}"#.utf8))
             #expect(s.todayDensity == level)
         }
-        #expect(Density.hyperdetail.summary == "Everything, unfolded; commentary when a personality is on. Not recommended.")
+        #expect(Density.hyperdetail.summary == "Everything on, unfolded; commentary with a personality. Not recommended.")
     }
 
     @Test func builtInTilesAndNotSentGetFields() {

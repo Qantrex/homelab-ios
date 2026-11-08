@@ -32,7 +32,7 @@ gets no tab or section for it. `AppModel.availableTabs` (`Sources/HomelabKit/App
 | Deals | `deals` (and a 404 on `/deals`) | `Deals.swift` (`Deal`, `DealList`, order, `DealsFetch`), `AlertTracker` (new deals) | `DealsView.swift`, the Deals tile in `ActionFormView.swift`, Today's `deals` section | Leave out `deals` and answer 404 on `/deals`; Settings → Advanced → Sections hides the section |
 | Chat | `chat` | `ChatTimeline.swift`; `commands` in `/info` | `ChatView.swift` | Leave out `chat` |
 | Lab (hosts, problems, history, containers) | `hosts` | `Host`, `Problem` in `Models.swift`, `Format.swift`; `HostHistory.swift` (24 h history, containers, restart form) | `LabView.swift`, `HostDetailView.swift`, `HomelabDesign/Sparkline.swift` | Tab shows whenever a server is set; history and containers show when hosts send them |
-| Machines (Overkill) | `hosts` | `TodayLayout.swift` (`Density`) | `MachineList` in `TodayView.swift` | Settings → Today → Detail; Settings → Advanced → Sections → "Machines" |
+| Machines (Detailed) | `hosts` | `TodayLayout.swift` (`Density`) | `MachineList` in `TodayView.swift` | Settings → Today → Detail; Settings → Advanced → Sections → "Machines" |
 | Service launcher | `services` | `Service` in `Models.swift` | `ServicesSection` in `LabView.swift` | Leave out `services` (or send an empty list) |
 | Home Assistant tiles | – (a Home Assistant server in Settings) | `HomeAssistant.swift`; `HomeGlance.swift` (the headline without a Companion server) | `HomeTiles.swift`; `homeGlance` in `TodayView.swift` | Don't add an HA server; or Settings → Advanced → Sections → "Home tiles" |
 | Last report | `last_message` in `/state` | `Models.swift` | `TodayView.swift` (`lastReport`) | Settings → Advanced → Sections → "Last report" |
@@ -54,7 +54,7 @@ Start on the server. Change the app only if you want the code gone.
 | Where | What to do | Code change |
 |---|---|---|
 | Server | Leave the feature out of `features` in `/info` (reference server: leave its config key out, see [REFERENCE_SERVER.md](REFERENCE_SERVER.md)) | None |
-| Phone | Settings → Advanced → Sections: hide a section, or give it a show rule (Always, When it needs me, a time, At home / Away; [GETTING-STARTED.md](GETTING-STARTED.md#show-rules)); Calm/Standard/Overkill picks how much shows | None |
+| Phone | Settings → Advanced → Sections: hide a section, or give it a show rule (Always, When it needs me, a time, At home / Away; [GETTING-STARTED.md](GETTING-STARTED.md#show-rules)); Minimal/Standard/Detailed picks how much shows | None |
 | Demo | Remove the feature from `Fixtures/info.json`. Tests that expect it fail: fix or delete those | Fixture + tests |
 
 To delete a module from the app:

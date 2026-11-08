@@ -50,7 +50,7 @@ public enum Hyper {
         case hostUp, hostDown, hostFull, hostHot, hostBusy
         case approval, todo, deadline, departure
         case deal, download, grade, news
-        case homeTile, chatReply, list, server, action, row
+        case homeTile, homeScene, chatReply, list, server, action, row
 
         /// Placeholders every fact of this kind fills.
         public var required: Set<String> {
@@ -65,6 +65,7 @@ public enum Hyper {
             case .departure: ["towards", "when"]
             case .grade: ["subject", "value"]
             case .homeTile: ["name", "state"]
+            case .homeScene: ["name", "when"]
             case .chatReply: ["words"]
             case .list: ["count", "title"]
             case .server: ["name"]
@@ -97,7 +98,7 @@ public enum Hyper {
 
     /// The longest each placeholder's value can get (longer values are cut with an ellipsis).
     public static let caps: [String: Int] = [
-        "host": 14, "title": 24, "name": 20, "towards": 20, "line": 12, "subject": 14, "value": 12, "state": 16,
+        "host": 14, "title": 24, "name": 28, "towards": 20, "line": 12, "subject": 14, "value": 12, "state": 16,
         "status": 8, "mount": 12, "containers": 14, "checked": 14, "age": 14, "words": 12, "count": 12, "progress": 5,
         "off": 5, "price": 10, "when": 16, "pct": 5, "temp": 7, "load": 6, "cores": 10, "fields": 10,
     ]
@@ -132,16 +133,50 @@ public enum Hyper {
     /// Every line of a kind, placeholders unfilled (for the tests).
     public static func lines(_ kind: Kind, _ personality: Personality) -> [String] { HyperLines.all(kind, personality) }
 
+    /// Which line each fact got today, and where the next one of its kind starts. Facts of one kind take the lines in
+    /// turn (review rows 25 and 26): neighbours never repeat, and a list of up to as many facts as the kind has lines
+    /// never repeats at all. A fact keeps its line for the day (redraws and scrolling do not change it). The tests use
+    /// their own ledger; the app uses `shared`.
+    public final class Ledger: @unchecked Sendable {
+        private let lock = NSLock()
+        private var picks: [String: String] = [:]
+        private var next: [String: Int] = [:]
+
+        public static let shared = Ledger()
+        public init() {}
+
+        /// The line (still unfilled) this fact says today, among `options` (the eligible ones, in `all`'s order).
+        func line(for fact: Fact, personality: Personality, options: [String], all: [String], day: Int) -> String {
+            lock.lock(); defer { lock.unlock() }
+            let kindKey = "\(day)|\(personality)|\(fact.kind.rawValue)"
+            let key = kindKey + "|" + fact.seed
+            if let known = picks[key], options.contains(known) { return known }
+            if picks.count > 4000 { picks.removeAll(); next.removeAll() }
+            let start = next[kindKey] ?? Int(Voice.stableHash(kindKey) % UInt64(max(all.count, 1)))
+            var chosen = options[0]
+            var at = start
+            for step in 0..<all.count {
+                let i = (start + step) % all.count
+                if options.contains(all[i]) { chosen = all[i]; at = i; break }
+            }
+            next[kindKey] = (at + 1) % max(all.count, 1)
+            picks[key] = chosen
+            return chosen
+        }
+    }
+
     /// The remark for a fact, nil when the personality is Off or the fact is incomplete. Fixed for the day (and the
-    /// fact's seed); `variant` moves on to the next line.
+    /// fact's seed); `variant` moves on to the next line. Facts of one kind take the kind's lines in turn (`Ledger`).
     public static func remark(_ fact: Fact?, _ personality: Personality, now: Date = Date(),
-                              calendar: Calendar = .current, variant: Int = 0) -> String? {
+                              calendar: Calendar = .current, variant: Int = 0, ledger: Ledger = .shared) -> String? {
         guard personality != .off, let fact, fact.isComplete else { return nil }
         let options = eligible(fact, personality)
         guard !options.isEmpty else { return nil }
         let n = options.count
-        let base = (UInt64(Voice.dayNumber(now, calendar)) &+ Voice.stableHash(fact.kind.rawValue + "|" + fact.seed)) % UInt64(n)
-        let index = ((Int(base) + variant % n) % n + n) % n
+        let picked = ledger.line(for: fact, personality: personality, options: options,
+                                 all: HyperLines.all(fact.kind, personality), day: Voice.dayNumber(now, calendar))
+        let base = options.firstIndex(of: picked) ?? 0
+        let index = ((base + variant % n) % n + n) % n
         return fill(options[index], fact.values)
     }
 
@@ -477,8 +512,22 @@ public enum Hyper {
         return out
     }
 
-    public static func fact(entity e: HAEntity) -> Fact {
-        Fact(.homeTile, ["name": e.name, "state": e.unit.map { Format.withUnit(e.state, $0) } ?? e.state], seed: e.entityID)
+    /// A scene (or a button) keeps the time it last ran as its state: "ran 3 h ago", never the raw timestamp.
+    public static func fact(entity e: HAEntity, now: Date = Date()) -> Fact {
+        if let ran = timestamp(e.state) {
+            return Fact(.homeScene, ["name": e.name, "when": Format.age(ran, now: now)], seed: e.entityID)
+        }
+        return Fact(.homeTile, ["name": e.name, "state": e.unit.map { Format.withUnit(e.state, $0) } ?? e.state], seed: e.entityID)
+    }
+
+    /// A state that is an ISO 8601 time ("2026-11-08T09:03:11.482+00:00"), else nil.
+    static func timestamp(_ state: String) -> Date? {
+        let text = state.trimmingCharacters(in: .whitespaces)
+        guard text.count >= 16, text.count <= 40, text.first?.isNumber == true, text.contains("T") else { return nil }
+        let plain = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: text) ?? plain.date(from: text)
     }
 
     /// Which server answered and how fresh it is: name, software, API version, auth, features, fetch and check times.

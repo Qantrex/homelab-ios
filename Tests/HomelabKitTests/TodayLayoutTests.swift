@@ -49,7 +49,7 @@ import Testing
     @Test func everyDensityHasOneShortLine() {
         for d in Density.allCases { #expect(!d.summary.isEmpty && d.summary.count < 80 && !d.summary.contains("\n")) }
         #expect(Density.explanation.split(separator: "\n").count == Density.allCases.count)
-        #expect(Density.calm.summary == "The day and your Home tiles. One screen.")
+        #expect(Density.calm.summary == "The day and your Home tiles. One screen, in Lab too.")
     }
 
     @Test func whatEachDensityShows() {
@@ -57,7 +57,8 @@ import Testing
         l.setVisible(.report, false)
         #expect(Density.calm.sections(l) == [.day, .home])
         #expect(Density.standard.sections(l) == [.day, .waiting, .deals, .home, .cards])          // report hidden
-        #expect(Density.overkill.sections(l) == [.day, .waiting, .deals, .home, .cards, .report])   // no machines in any density
+        #expect(Density.overkill.sections(l) == [.day, .waiting, .deals, .home, .cards])   // a switched-off section stays off; no machines in any density
+        #expect(Density.hyperdetail.sections(l) == Density.overkill.sections(l))
         #expect(AppSettings().todayDensity == .standard)
     }
 

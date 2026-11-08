@@ -60,7 +60,7 @@ import Testing
     // MARK: Copy
 
     @Test func neutralTexts() {
-        #expect(StartPreset.everything.summary == "Every section, exact times.")
+        #expect(StartPreset.everything.summary == "Every section, in the standard order.")
         #expect(ChatCommands.known["/sick"]?.help == "No wake-up and no train alert")
     }
 

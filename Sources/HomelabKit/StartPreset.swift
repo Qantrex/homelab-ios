@@ -4,9 +4,12 @@ import Foundation
 /// preset, and a preset becomes a `TodayLayout` and a `Density`. Only for a first run, while no server is saved
 /// (`AppModel.hasServers` false), so the owner never sees one. Pure: no clock, no storage, no model.
 ///
-/// - Home: Calm, Home tiles first; deals, the last report and the machines off.
-/// - Watch: Standard, the lab first (to approve, the day, cards); deals off.
-/// - Everything: Overkill, every section in the standard order.
+/// - Home: Home tiles first; deals, the last report and the machines off.
+/// - Watch: the lab first (to approve, the day, cards); deals off.
+/// - Everything: every section in the standard order.
+///
+/// Every preset writes the Standard detail level (owner 2026-11-08, review row 42: Standard is what most people use);
+/// the detail level is a choice in Settings, not a preset's.
 ///
 /// In each preset the sections the servers offer come first, in the preset's order; the others follow in the same
 /// order and stay on, so they show up by themselves once a server offers them (Today skips a section without data).
@@ -26,18 +29,16 @@ public enum StartPreset: String, CaseIterable, Sendable, Identifiable {
     /// One line under the title in the "Start with" list.
     public var summary: String {
         switch self {
-        case .home: "Home tiles and the day. Calm."
+        case .home: "Home tiles and the day."
         case .watch: "The lab first: what waits for you, the day, cards."
-        case .everything: "Every section, exact times."
+        case .everything: "Every section, in the standard order."
         }
     }
 
     /// The density the preset writes.
     public var density: Density {
         switch self {
-        case .home: .calm
-        case .watch: .standard
-        case .everything: .overkill
+        case .home, .watch, .everything: .standard
         }
     }
 

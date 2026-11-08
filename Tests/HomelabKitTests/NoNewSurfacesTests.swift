@@ -29,6 +29,6 @@ extension OwnerInvarianceTests {
         #expect(m.settings.quietHours == nil && m.settings.presenceEntity == nil)                    // both off
         // The rule sheet offers no presence rules until Where you are is set.
         #expect(m.ruleKinds(for: .deals) == [.always, .needsMe, .times])
-        #expect(m.settings.todayLayout.sections.allSatisfy { m.settings.todayLayout.ruleWords(for: $0) == ($0 == .machines ? "Only in Overkill" : "Always") })
+        #expect(m.settings.todayLayout.sections.allSatisfy { m.settings.todayLayout.ruleWords(for: $0) == ($0 == .machines ? "Only in Detailed" : "Always") })
     }
 }
