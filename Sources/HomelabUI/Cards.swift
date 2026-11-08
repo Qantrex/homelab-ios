@@ -26,6 +26,8 @@ struct CardView: View {
     static let compactRows = 6
 
     @Environment(\.openURL) private var openURL
+    /// Hyperdetail only: every row and every field, with a remark (`Hyper`).
+    @Environment(\.hyper) private var hyper
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     /// A progress ring in a row's right column (research #5): 20 pt, scaled with the text.
@@ -67,6 +69,9 @@ struct CardView: View {
     }
 
     private var stacked: Bool { typeSize.isAccessibilitySize }
+    /// One or two lines, and no limit at all in Hyperdetail: nothing is cut there.
+    private var cap1: Int? { hyper == nil ? 1 : nil }
+    private var cap2: Int? { hyper == nil ? 2 : nil }
 
     var body: some View {
         layout
@@ -104,6 +109,19 @@ struct CardView: View {
     /// bubble (`compact`): one small panel with a quiet header.
     @ViewBuilder
     private var layout: some View {
+        if let hyper {
+            // Hyperdetail: the same card, then its own fields, and the rows a custom layout cannot hang a note on.
+            VStack(alignment: .leading, spacing: 8) {
+                plainLayout
+                hyperTail(hyper)
+            }
+        } else {
+            plainLayout
+        }
+    }
+
+    @ViewBuilder
+    private var plainLayout: some View {
         if bare {
             content
         } else if compact {
@@ -121,6 +139,26 @@ struct CardView: View {
                     Text(subtitle).font(Typo.secondary).foregroundStyle(Palette.secondary).padding(.top, -8)
                 }
                 if usesRows { content.rowsPanel() } else { content.panel() }
+            }
+        }
+    }
+
+    /// A list, checklist or countdown card notes each row under it (`rows`); every other layout gets its items listed here.
+    private var notesRowsInline: Bool {
+        (card.style == .list || card.style == .checklist || card.style == .countdown) && !usesRows
+    }
+
+    private func hyperTail(_ hyper: HyperContext) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HyperNote(lines: Hyper.card(card, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(card: card))
+            if !notesRowsInline {
+                ForEach(Array(card.items.enumerated()), id: \.offset) { _, item in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title ?? item.value ?? "–").font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.secondary)
+                        HyperNote(lines: Hyper.item(item, now: hyper.now, calendar: hyper.calendar),
+                                  fact: Hyper.fact(item: item, in: card, now: hyper.now, calendar: hyper.calendar))
+                    }
+                }
             }
         }
     }
@@ -255,12 +293,12 @@ struct CardView: View {
         let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
         return VStack(alignment: .leading, spacing: 2) {
             layout {
-                Text(group.towards).font(compact ? .footnote : .body).foregroundStyle(Palette.text).lineLimit(2)
+                Text(group.towards).font(compact ? .footnote : .body).foregroundStyle(Palette.text).lineLimit(cap2)
                 if !stacked { Spacer(minLength: 8) }
                 departureTime(first, color: Palette.text, weight: .semibold)
             }
             layout {
-                Text(stop).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(1)
+                Text(stop).font(compact ? .caption : .subheadline).foregroundStyle(Palette.secondary).lineLimit(cap1)
                 if !stacked { Spacer(minLength: 8) }
                 HStack(spacing: 10) {
                     ForEach(Array(later.enumerated()), id: \.offset) { _, d in departureTime(d, color: Palette.secondary, weight: .regular) }
@@ -279,7 +317,7 @@ struct CardView: View {
                 Text(d.delay.map { "+\($0)" } ?? String(localized: "late")).font(Typo.data(.caption, weight: .semibold)).foregroundStyle(Palette.gold)
             }
         }
-        .lineLimit(1)
+        .lineLimit(cap1)
     }
 
     /// "Floridsdorf from Westbahnhof: 20:54, then 20:59 (3 minutes late), 21:04".
@@ -309,11 +347,15 @@ struct CardView: View {
             let folded = compact ? nil : fold.map {
                 TodayFold.rows(items, in: card, density: $0.density, expanded: $0.expanded, now: now)
             }
-            let shown = compact ? Array(items.prefix(Self.compactRows)) : folded?.items ?? items
+            let shown = compact && hyper == nil ? Array(items.prefix(Self.compactRows)) : folded?.items ?? items
             VStack(alignment: .leading, spacing: compact ? 8 : 12) {
                 ForEach(Array(Self.keyed(shown).enumerated()), id: \.element.key) { i, keyed in
                     if i > 0, !compact { TodaySeparator() }
                     row(keyed.item).transition(.opacity)
+                    if let hyper {
+                        HyperNote(lines: Hyper.item(keyed.item, now: hyper.now, calendar: hyper.calendar),
+                                  fact: Hyper.fact(item: keyed.item, in: card, now: hyper.now, calendar: hyper.calendar))
+                    }
                 }
                 if compact, shown.count < items.count {
                     Text("and \(items.count - shown.count) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
@@ -340,7 +382,7 @@ struct CardView: View {
                 let meaning = Self.meaning(item.tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.title ?? "").font(compact ? .caption : Typo.secondary).foregroundStyle(Palette.secondary)
-                        .lineLimit(stacked ? nil : 1)
+                        .lineLimit(stacked ? nil : cap1)
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         // Colour alone never says it: with Differentiate Without Colour the status glyph comes too.
                         if differentiateWithoutColor, let meaning {
@@ -348,7 +390,7 @@ struct CardView: View {
                                 .accessibilityHidden(true)
                         }
                         Text(item.value ?? "–").font(Typo.data(hero ? .title : compact ? .headline : .title3, weight: .semibold))
-                            .minimumScaleFactor(0.6).lineLimit(1)
+                            .minimumScaleFactor(0.6).lineLimit(cap1)
                             .foregroundStyle(item.tint?.color ?? Palette.text)
                             .numberMotion(item.value)
                     }
@@ -412,11 +454,11 @@ struct CardView: View {
                 Circle().fill(changed ? Palette.gold : Color.clear).frame(width: 8, height: 8).accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title ?? "").font(nameFont).lineLimit(2)
+                Text(item.title ?? "").font(nameFont).lineLimit(cap2)
                     .strikethrough(cancelled).foregroundStyle(cancelled ? Palette.tertiary : Palette.text)
                 if let s = item.subtitle {
                     Text(s).font(reasonFont).foregroundStyle(cancelled ? Palette.tertiary : Palette.secondary)
-                        .strikethrough(cancelled).lineLimit(stacked ? nil : 2)
+                        .strikethrough(cancelled).lineLimit(stacked ? nil : cap2)
                 }
                 if stacked, let value {
                     Text(value).font(valueFont).foregroundStyle(valueColor).strikethrough(cancelled).numberMotion(value)
@@ -424,7 +466,7 @@ struct CardView: View {
             }
             Spacer(minLength: 8)
             if !stacked, let value {
-                Text(value).font(valueFont).foregroundStyle(valueColor).strikethrough(cancelled).lineLimit(1)
+                Text(value).font(valueFont).foregroundStyle(valueColor).strikethrough(cancelled).lineLimit(cap1)
                     .numberMotion(value)
             }
             if let p = item.progress {
@@ -489,13 +531,13 @@ struct CardView: View {
     /// The rows in one panel, split by separators. A list with more than three rows shows three and a "Show 5 more"
     /// row that opens the rest ("Show less" closes them); the rows spring in and out (`rowMotion`).
     private var labRows: some View {
-        let shown = LabRows.shown(card, expanded: expanded)
+        let shown = LabRows.shown(card, expanded: expanded, density: hyper == nil ? .standard : .hyperdetail)
         return VStack(spacing: 0) {
             ForEach(Array(Self.keyed(shown).enumerated()), id: \.element.key) { i, keyed in
                 if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
                 labRow(keyed.item).transition(.opacity)
             }
-            if LabRows.folds(card) {
+            if LabRows.folds(card, density: hyper == nil ? .standard : .hyperdetail) {
                 Divider().overlay(Palette.line).padding(.leading, 16)
                 moreRow(hidden: card.items.count - LabRows.folded)
             }
@@ -588,7 +630,7 @@ struct CardView: View {
     /// Posters 2:3 in 3 columns (2 at accessibility sizes), then title, subtitle and value; a request button when the
     /// server lets the app start the item's action (it asks first: "Request <title>?").
     private var posterGrid: some View {
-        let items = compact ? Array(card.items.prefix(Self.compactRows)) : card.items
+        let items = compact && hyper == nil ? Array(card.items.prefix(Self.compactRows)) : card.items
         let count = stacked ? 2 : 3
         let columns = Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: count)
         return Group {
@@ -610,12 +652,12 @@ struct CardView: View {
         return VStack(alignment: .leading, spacing: 4) {
             PosterImage(model: model, path: item.image, icon: card.icon)
             Text(item.title ?? "").font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
-                .lineLimit(2, reservesSpace: false).fixedSize(horizontal: false, vertical: true)
+                .lineLimit(hyper == nil ? 2 : 1000, reservesSpace: false).fixedSize(horizontal: false, vertical: true)
             // Requested here: the server's "· not requested" goes, the value says "requested".
             if let s = item.subtitle.map({ done ? PosterText.withoutRequestState($0) : $0 }) {
-                Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(2)
+                Text(s).font(Typo.meta).foregroundStyle(Palette.tertiary).lineLimit(cap2)
             }
-            if let value { Text(value).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(2) }
+            if let value { Text(value).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(cap2) }
             if let action, let spec {
                 actionButton(TickOff(item: item, action: action, spec: spec), busy: running.contains(action),
                              wraps: true)
@@ -651,13 +693,13 @@ struct CardView: View {
                     .foregroundStyle(done ? Palette.tertiary : Palette.text)
                 if let s = item.subtitle {
                     Text(s).font(reasonFont).foregroundStyle(done ? Palette.tertiary : Palette.secondary)
-                        .lineLimit(stacked ? nil : 2)
+                        .lineLimit(stacked ? nil : cap2)
                 }
                 if stacked, let due { Text(due.text).font(valueFont).foregroundStyle(dueColor).numberMotion(due.text) }
             }
             Spacer(minLength: 8)
             if !stacked, let due {
-                Text(due.text).font(valueFont).foregroundStyle(dueColor).lineLimit(1).numberMotion(due.text)
+                Text(due.text).font(valueFont).foregroundStyle(dueColor).lineLimit(cap1).numberMotion(due.text)
             }
         }
         .contentShape(Rectangle())
@@ -732,15 +774,15 @@ struct CardView: View {
                              : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
         return layout {
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title ?? "").font(nameFont).lineLimit(stacked ? nil : 2)
+                Text(item.title ?? "").font(nameFont).lineLimit(stacked ? nil : cap2)
                 if let s = item.subtitle {
-                    Text(s).font(reasonFont).foregroundStyle(Palette.secondary).lineLimit(stacked ? nil : 2)
+                    Text(s).font(reasonFont).foregroundStyle(Palette.secondary).lineLimit(stacked ? nil : cap2)
                 }
             }
             if !stacked { Spacer(minLength: 8) }
             Text(c?.text ?? "–")
                 .font(valueFont)
-                .lineLimit(1)
+                .lineLimit(cap1)
                 .foregroundStyle(c.map { Self.color($0.level, later: Palette.text) } ?? Palette.tertiary)
                 .numberMotion(c?.text)
         }

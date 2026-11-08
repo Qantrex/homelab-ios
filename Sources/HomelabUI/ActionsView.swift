@@ -24,6 +24,7 @@ struct ActionsView: View {
     @State private var searching: SearchRequest?
     /// The Deals screen (feature `deals`): from the Deals tile, `homelab://deals` or Today's card.
     @State private var showingDeals = false
+    @Environment(\.hyper) private var hyper
 
     /// Scan tile: only where the server takes documents.
     private var canScan: Bool { model.selected != nil && model.selectedStatus.features.contains(.documents) }
@@ -53,6 +54,13 @@ struct ActionsView: View {
                                     retry: { Task { await model.refresh() } },
                                     edit: model.selected.map { s in { model.requestEdit(s.id) } })
                     }
+                    if let hyper, model.selected != nil {
+                        HyperSection(title: "Server", lines: Hyper.server(
+                            name: model.selected?.name ?? "none", snapshot: model.selectedStatus.snapshot,
+                            info: model.selectedStatus.knownInfo, failures: model.selectedStatus.failures,
+                            busy: model.selectedStatus.snapshot?.state.busy ?? [], now: hyper.now, calendar: hyper.calendar),
+                                     fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: model.selectedStatus.snapshot, now: hyper.now) })
+                    }
                     // What waits for me first (it is time-critical), then what I can start (research #7).
                     if approves { approveSection }
                     if hasStart {
@@ -60,7 +68,7 @@ struct ActionsView: View {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startTiles, scanWaiting: canScan ? model.outboxCount : nil,
                                       features: model.selectedStatus.knownInfo?.features,
-                                      showIds: model.settings.todayDensity == .overkill,
+                                      showIds: model.settings.todayDensity.atLeastOverkill,
                                       open: { spec in
                                           formPrefill = nil
                                           guard !model.actionsRunning.contains(spec.name) else { return }   // still on its way
@@ -69,6 +77,14 @@ struct ActionsView: View {
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil,
                                       deals: canDeals ? { showingDeals = true } : nil,
                                       dealsToAct: model.selectedStatus.deals?.freshAct().count ?? 0)
+                            if hyper != nil {
+                                ForEach(startTiles) { spec in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(spec.label).font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.secondary)
+                                        HyperNote(lines: Hyper.action(spec), fact: Hyper.fact(action: spec))
+                                    }
+                                }
+                            }
                             if !model.outboxDropped.isEmpty {
                                 NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
                                     .padding(.top, Space.row - Space.titleToPanel)
@@ -167,6 +183,11 @@ struct ActionsView: View {
                                 confirm = ProposalConfirmation(action: action, verb: verb)
                             }
                             .transition(.opacity)
+                            if let hyper {
+                                HyperNote(lines: Hyper.pending(action, now: hyper.now, calendar: hyper.calendar),
+                                          fact: Hyper.fact(pending: action, now: hyper.now))
+                                    .padding(.horizontal, 16).padding(.bottom, 12)
+                            }
                         }
                     }
                     .rowsPanel()

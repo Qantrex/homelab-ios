@@ -8,6 +8,7 @@ struct LabView: View {
     @State private var path: [Host] = []
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.hyper) private var hyper
 
     private var status: ServerStatus { model.selectedStatus }
     private var state: HomelabState? { status.snapshot?.state }
@@ -17,6 +18,13 @@ struct LabView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Space.section) {
                     header
+                    // Hyperdetail: which server answered, and when.
+                    if let hyper, model.selected != nil {
+                        HyperSection(title: "Server", lines: Hyper.server(
+                            name: model.selected?.name ?? "none", snapshot: status.snapshot, info: status.knownInfo,
+                            failures: status.failures, busy: state?.busy ?? [], now: hyper.now, calendar: hyper.calendar),
+                                     fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: status.snapshot, now: hyper.now) })
+                    }
                     if let error = status.error {
                         ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched, retry: { refresh() },
                                     edit: model.selected.map { s in { model.requestEdit(s.id) } })
@@ -154,6 +162,11 @@ struct LabView: View {
                         if index > 0 { Divider().padding(.leading, 16) }
                         NavigationLink(value: host) { HostRow(host: host, health: state.health(of: host)) }
                             .buttonStyle(PressStyle(scale: 1))
+                        if let hyper {
+                            HyperNote(lines: Hyper.host(host, now: hyper.now, calendar: hyper.calendar),
+                                      fact: Hyper.fact(host: host, now: hyper.now))
+                                .padding(.horizontal, 16).padding(.bottom, 12)
+                        }
                     }
                 }
                 .rowsPanel()
@@ -175,12 +188,17 @@ struct LabView: View {
                     if !state.pending.isEmpty {
                         Divider().padding(.leading, 16)
                         pendingRow(state.pending.count)
+                        pendingNotes(state.pending)
                     }
                 }
                 .rowsPanel()
             }
         } else if !state.pending.isEmpty {
-            pendingRow(state.pending.count).rowsPanel()
+            VStack(spacing: 0) {
+                pendingRow(state.pending.count)
+                pendingNotes(state.pending)
+            }
+            .rowsPanel()
         }
 
         // Hosts, the server's lab cards (tailnet, ad blocking, backups) and the services, in the owner's order and
@@ -215,6 +233,22 @@ struct LabView: View {
         .accessibilityHint(Text("Connection, storage and background details for a bug report"))
     }
 
+    /// Hyperdetail: every action that waits, with its fields and a remark.
+    @ViewBuilder
+    private func pendingNotes(_ pending: [PendingAction]) -> some View {
+        if let hyper {
+            ForEach(pending) { p in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(p.title).font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.secondary)
+                    HyperNote(lines: Hyper.pending(p, now: hyper.now, calendar: hyper.calendar),
+                              fact: Hyper.fact(pending: p, now: hyper.now))
+                }
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
     private func pendingRow(_ count: Int) -> some View {
         Button {
             model.go(.actions)
@@ -240,6 +274,7 @@ fileprivate struct ProblemRow: View {
     let problem: Problem
     /// The personality's aside under the status line (`Voice.aside`), nil when off.
     var aside: String?
+    @Environment(\.hyper) private var hyper
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -254,6 +289,7 @@ fileprivate struct ProblemRow: View {
                     + Text(age.map { " · \($0)" } ?? "").font(Typo.secondary).foregroundStyle(Palette.tertiary))
                     .accessibilityLabel(Format.spoken(([word] + (age.map { [$0] } ?? [])).joined(separator: ", ")))
                 if let aside { Text(aside).font(Typo.secondary).foregroundStyle(Palette.secondary).fixedSize(horizontal: false, vertical: true) }
+                if let hyper { HyperFields(lines: Hyper.problem(problem, now: hyper.now, calendar: hyper.calendar)) }
             }
             Spacer(minLength: 0)
         }
@@ -338,6 +374,7 @@ struct HostRow: View {
     let host: Host
     let health: HostHealth
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.hyper) private var hyper
     @ScaledMetric(relativeTo: .subheadline) private var column: CGFloat = 50
 
     private var shownFlags: [String] { host.flags.filter { $0 != "asleep" } }
@@ -410,7 +447,7 @@ struct HostRow: View {
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
             VStack(alignment: .leading, spacing: 2) {
                 // Two lines, never cut and never shrunk ("pi-me…" and "media…" on the 5.4" phone, 2026-11-06).
-                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(hyper == nil ? 2 : nil)
                     .fixedSize(horizontal: false, vertical: true)
                 if withMeta, let meta { meta.font(Typo.secondary).foregroundStyle(Palette.secondary) }
             }
@@ -486,6 +523,7 @@ fileprivate func hostSpokenMetrics(_ host: Host, flags shownFlags: [String]) -> 
 struct ServicesSection: View {
     let services: [Service]
     @Environment(\.openURL) private var openURL
+    @Environment(\.hyper) private var hyper
 
     var groups: [(String, [Service])] {
         let byGroup = Dictionary(grouping: services) { $0.group ?? String(localized: "Services") }
@@ -509,6 +547,10 @@ struct ServicesSection: View {
                     ForEach(Array(entry.1.enumerated()), id: \.element.id) { si, s in
                         if si > 0 { Divider().padding(.leading, 16) }
                         serviceRow(s)
+                        if hyper != nil {
+                            HyperNote(lines: Hyper.service(s), fact: Hyper.Fact(.row, ["title": s.name, "value": s.group ?? ""], seed: s.id))
+                                .padding(.horizontal, 16).padding(.bottom, 8)
+                        }
                     }
                 }
                 if groups.count > 1 { Color.clear.frame(height: 4) }

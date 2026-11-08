@@ -47,7 +47,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var lastBackgroundResult: String?
     /// Today's section order and hidden sections; nil = the standard layout (also for settings from older versions).
     public var today: TodayLayout?
-    /// Calm, Standard or Overkill; nil = Standard.
+    /// Calm, Standard, Overkill or Hyperdetail; nil = Standard.
     public var density: Density?
     /// Off, Dry, Snarky or Ultrakill; nil = Off.
     public var personality: Personality?
@@ -61,6 +61,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// True once the owner confirmed the one-time Ultrakill warning (`UltrakillWarning`); nil (omitted from the file)
     /// until then, so settings without it stay byte for byte as before.
     public var ultrakillWarned: Bool?
+    /// The same for Hyperdetail (`HyperdetailWarning`): nil (omitted from the file) until the owner said "Do it" once.
+    public var hyperdetailWarned: Bool?
     /// Settings → Advanced (`Customization.swift`): order and hidden Start tiles (by action name), Lab blocks (by card
     /// id), tabs; chat text size and folding. All nil = the standard, and omitted from the file then.
     public var startTiles: ItemOrder?
@@ -103,6 +105,15 @@ public struct AppSettings: Codable, Sendable, Equatable {
         voice = .ultrakill
     }
 
+    /// Choosing `level` needs the one-time warning first: Hyperdetail, until the owner has confirmed it once.
+    public func needsWarning(for level: Density) -> Bool { level == .hyperdetail && hyperdetailWarned != true }
+
+    /// The warning's "Do it": remembers that it was seen and switches to Hyperdetail.
+    public mutating func confirmHyperdetail() {
+        hyperdetailWarned = true
+        todayDensity = .hyperdetail
+    }
+
     public var todayLayout: TodayLayout {
         get { today ?? .standard }
         set { today = newValue == .standard ? nil : newValue }
@@ -113,7 +124,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Every stored field; the encoder is the synthesized one, so a saved file stays byte for byte as before.
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
-        case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned
+        case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned, hyperdetailWarned
         case startTiles, labBlocks, tabs, chatText, chatFold
     }
 }
@@ -138,6 +149,7 @@ extension AppSettings {
         presenceEntity = c.lenient(String.self, .presenceEntity)
         quietHours = c.lenient(TimeWindow.self, .quietHours)
         ultrakillWarned = c.lenient(Bool.self, .ultrakillWarned)
+        hyperdetailWarned = c.lenient(Bool.self, .hyperdetailWarned)
         startTiles = c.lenient(ItemOrder.self, .startTiles).flatMap { $0.isStandard ? nil : $0 }
         labBlocks = c.lenient(ItemOrder.self, .labBlocks).flatMap { $0.isStandard ? nil : $0 }
         tabs = c.lenient(ItemOrder.self, .tabs).flatMap { $0.isStandard ? nil : $0 }
@@ -237,6 +249,9 @@ public final class AppModel {
     public var formSheetOpen: Bool { !openForms.isEmpty }
     /// A host's detail to open in Lab (deep link `homelab://lab/<host-id>`, launch argument `-HomelabHost`). Lab opens
     /// it once the state has that host (`takeOpenHost`), and clears it.
+    /// A Settings page to push (launch argument `-HomelabSettingsPage advanced`, for screenshots); Settings opens it
+    /// and clears it.
+    public var openSettingsPage: String?
     public var openHost: String? { didSet { openHostSince = openHost == nil ? nil : Date() } }
     /// When `openHost` was asked for: a snapshot fetched after it that lacks the host drops the request.
     @ObservationIgnored private var openHostSince: Date?
@@ -1061,6 +1076,10 @@ public final class AppModel {
             request(.lab)
         }
         if let d = args.density { settings.todayDensity = d }
+        if let page = args.settingsPage {
+            openSettingsPage = page
+            request(.settings)
+        }
         // Stored like the setting: `-HomelabRules deals=always` removes the Deals rule again.
         for (section, rule) in args.rules ?? [] { settings.todayLayout.setRule(rule, for: section) }
         if let t = args.time { fixedTime = t }
@@ -1132,6 +1151,8 @@ struct LaunchArguments {
     var tab: AppTab?
     var density: Density?
     var personality: Personality?
+    /// `-HomelabSettingsPage advanced`: Settings opens with the Advanced page pushed (screenshots).
+    var settingsPage: String?
     var action: String?
     var host: String?
     /// `-HomelabDeals list|detail`: the Deals screen, with the first deal's detail for `detail` (screenshots).
@@ -1166,6 +1187,7 @@ struct LaunchArguments {
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }
         density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
+        settingsPage = value("HomelabSettingsPage").flatMap { $0.lowercased() == "advanced" ? "advanced" : nil }
         personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
         action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }
         deals = value("HomelabDeals").flatMap { ["list", "detail"].contains($0) ? $0 : nil }

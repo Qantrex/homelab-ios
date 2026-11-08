@@ -255,6 +255,9 @@ public extension AppSettings {
         set { chatFold = newValue == .standard ? nil : newValue }
     }
 
+    /// How long chat replies fold on screen: never in Hyperdetail, else the owner's choice (`chatFolding`).
+    var shownChatFolding: ChatFoldMode { todayDensity.isHyper ? .never : chatFolding }
+
     /// Whether anything customized here differs from the default (Settings → Advanced says "Customized").
     var customizedElsewhere: Bool {
         startTiles != nil || labBlocks != nil || tabs != nil || chatText != nil || chatFold != nil

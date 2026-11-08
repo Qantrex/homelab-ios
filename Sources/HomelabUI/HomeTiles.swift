@@ -74,6 +74,7 @@ struct HomeTiles: View {
     let home: HomeModel
     @State private var picking = false
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.hyper) private var hyper
 
     private var pinned: [HAEntity] {
         let byID = Dictionary(home.entities.map { ($0.entityID, $0) }, uniquingKeysWith: { a, _ in a })
@@ -104,8 +105,15 @@ struct HomeTiles: View {
                                                                 : [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                           spacing: 12) {
                     ForEach(pinned) { e in
-                        HomeTile(entity: e, customName: server.tileName(for: e.entityID), customIcon: server.tileIcon(for: e.entityID), busy: home.busy.contains(e.entityID)) {
-                            Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
+                        VStack(alignment: .leading, spacing: 4) {
+                            HomeTile(entity: e, customName: server.tileName(for: e.entityID), customIcon: server.tileIcon(for: e.entityID), busy: home.busy.contains(e.entityID)) {
+                                Task { await home.tap(e, api: model.homeAssistantAPI(for: server), host: server.host) }
+                            }
+                            // Hyperdetail: the entity's fields and a remark under each tile.
+                            if let hyper {
+                                HyperNote(lines: Hyper.entity(e, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(entity: e))
+                                    .padding(.horizontal, 4)
+                            }
                         }
                     }
                 }
@@ -142,6 +150,7 @@ struct HomeTile: View {
     let tap: () -> Void
 
     @State private var taps = 0
+    @Environment(\.hyper) private var hyper
     /// The icon column grows with the text, so a big symbol isn't clipped at large sizes.
     @ScaledMetric(relativeTo: .title3) private var iconWidth: CGFloat = 28
 
@@ -161,8 +170,9 @@ struct HomeTile: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(TileName.shown(custom: customName, haName: entity.name)).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
-                        .lineLimit(2).multilineTextAlignment(.leading)
-                    Text(stateText).font(Typo.meta).foregroundStyle(on ? Palette.text : Palette.tertiary).lineLimitAtStandardSizes(1)
+                        .lineLimit(hyper == nil ? 2 : nil).multilineTextAlignment(.leading)
+                    Text(stateText).font(Typo.meta).foregroundStyle(on ? Palette.text : Palette.tertiary)
+                        .lineLimitAtStandardSizes(hyper == nil ? 1 : 1000)
                 }
                 Spacer(minLength: 0)
                 if busy { ProgressView().controlSize(.small).tint(Palette.text) }

@@ -8,6 +8,8 @@ struct TodayView: View {
     let model: AppModel
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
+    /// Hyperdetail only: every field and a remark on every fact (`Hyper`).
+    @Environment(\.hyper) private var hyper
     /// Taps on the voice line (each one: the next comment).
     @State private var pokes = 0
     /// A pull to refresh runs or just ended: the hero says where the data is from (`showsFacts`).
@@ -179,11 +181,34 @@ struct TodayView: View {
                     .accessibilityLabel(Format.spoken(facts))
                     .transition(.opacity)
             }
+            if hyper != nil, model.selected != nil { heroDetails.padding(.top, 16) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 28)
         .padding(.bottom, 8)
         .motion(.snappy, value: showsFacts)
+    }
+
+    /// Hyperdetail under the hero: which server answered and when, and every problem with its fields and an aside.
+    @ViewBuilder
+    private var heroDetails: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HyperSection(title: "Server", lines: Hyper.server(
+                name: model.selected?.name ?? "none", snapshot: status.snapshot, info: status.knownInfo, failures: status.failures,
+                busy: state?.busy ?? [], now: hyper?.now ?? .now),
+                         fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: status.snapshot) })
+            if let state {
+                ForEach(state.problems) { p in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(p.text).font(Typo.secondary).foregroundStyle(Palette.text).fixedSize(horizontal: false, vertical: true)
+                        if let aside = Voice.aside(for: p, in: state, personality: model.settings.voice) {
+                            Text(aside).font(Typo.secondary.italic()).foregroundStyle(Palette.secondary)
+                        }
+                        HyperFields(lines: Hyper.problem(p, now: hyper?.now ?? .now))
+                    }
+                }
+            }
+        }
     }
 
     /// "☁ Partly cloudy, 7 °C now": one sentence in the secondary style with the weather card's own symbol.
@@ -305,7 +330,7 @@ struct TodayView: View {
     /// the data is older than 10 min. Overkill shows it always (it also lists what the server is busy with).
     private var showsFacts: Bool {
         guard model.selected != nil else { return false }
-        if density == .overkill { return true }
+        if density.atLeastOverkill { return true }
         return FreshnessLine.shows(pulled: pulled, failed: status.error != nil, fetched: status.snapshot?.fetched,
                                    checked: state?.checked)
     }
@@ -334,7 +359,7 @@ struct TodayView: View {
         if let fetched = status.snapshot?.fetched, status.snapshot?.isStale() == true {
             parts.append(String(localized: "data from \(when(fetched))"))
         }
-        if density == .overkill, let busy = state?.busy, !busy.isEmpty {
+        if density.atLeastOverkill, let busy = state?.busy, !busy.isEmpty {
             parts.append(String(localized: "busy: \(busy.joined(separator: ", "))"))
         }
         return parts.joined(separator: " · ")
@@ -350,6 +375,7 @@ struct TodayView: View {
                 // Departures live in the day section, and only while a Leave-by is near (`TodayFold.departuresMatter`).
                 DaySection(card: dayCard, plainLines: density != .calm, model: model,
                            departures: state?.cards.first(where: TodayFold.isDeparturesCard))
+                if hyper != nil { HyperCardDump(card: dayCard) }
             }
         case .waiting:
             if let state, model.selected != nil, !state.pending.isEmpty { waiting(state.pending) }
@@ -386,10 +412,10 @@ struct TodayView: View {
                                 .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text([p.action, p.arg].compactMap { $0 }.joined(separator: " "))
-                                    .font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                                    .font(Typo.headline).foregroundStyle(Palette.text).lineLimit(hyper == nil ? 2 : nil)
                                 if let reason = p.reason {
                                     Text(reason).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                                        .lineLimit(density == .overkill ? nil : 2)
+                                        .lineLimit(density.atLeastOverkill ? nil : 2)
                                 }
                                 // Overkill's exact times are long, and at AX sizes every line is: their own line,
                                 // so the title keeps its room.
@@ -407,6 +433,7 @@ struct TodayView: View {
                             }
                         }
                         .multilineTextAlignment(.leading)
+                        HyperNote(lines: Hyper.pending(p, now: hyper?.now ?? .now), fact: Hyper.fact(pending: p, now: hyper?.now ?? .now))
                     }
                     if pending.count > cap {
                         // A real row: the whole panel opens Actions, and this says how many more wait there.
@@ -436,24 +463,25 @@ struct TodayView: View {
     /// opens the Deals screen (and closes the sheet).
     private func dealRows(_ fresh: [Deal]) -> some View {
         let stacked = typeSize.isAccessibilitySize
-        let shown = Array(fresh.prefix(density == .overkill ? fresh.count : 4))
+        let shown = Array(fresh.prefix(density.atLeastOverkill ? fresh.count : 4))
         return VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(shown.enumerated()), id: \.element.id) { i, deal in
                 if i > 0 { TodaySeparator() }
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                            Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(hyper == nil ? 2 : nil)
                             if let line = deal.note ?? deal.place {
                                 Text(line).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                                    .lineLimit(density == .overkill ? nil : 2)
+                                    .lineLimit(density.atLeastOverkill ? nil : 2)
                             }
                         }
                         Spacer(minLength: 8)
                         if !stacked { DealFigures(deal: deal) }
                     }
                     if stacked { DealFigures(deal: deal, leading: true) }
-                    if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: 1) }
+                    if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: hyper == nil ? 1 : deal.flags.count) }
+                    HyperNote(lines: Hyper.deal(deal, now: hyper?.now ?? .now), fact: Hyper.fact(deal: deal))
                 }
                 .multilineTextAlignment(.leading)
                 .accessibilityElement(children: .ignore)
@@ -499,7 +527,26 @@ struct TodayView: View {
     @ViewBuilder
     private var tilesOnly: some View {
         let tiles = tiles([], deals: freshDeals)
-        if !tiles.isEmpty { TodayTiles(tiles: tiles, density: density) { tileSheet = $0.kind } }
+        if TodayFold.tilesInline(density) {
+            inlineTiles(tiles, [])
+        } else if !tiles.isEmpty {
+            TodayTiles(tiles: tiles, density: density) { tileSheet = $0.kind }
+        }
+    }
+
+    /// Hyperdetail has no tiles that open a sheet: each one is its full list, open (the deals' rows, then the cards).
+    @ViewBuilder
+    private func inlineTiles(_ tiles: [TodayFold.Tile], _ cards: [Card]) -> some View {
+        VStack(alignment: .leading, spacing: Space.section) {
+            if tiles.contains(where: { $0.kind == .deals }) {
+                VStack(alignment: .leading, spacing: Space.titleToPanel) {
+                    SectionTitle(text: "Deals", trailing: "\(freshDeals.count)")
+                    HyperNote(lines: [], fact: Hyper.Fact(.list, ["count": "\(freshDeals.count) deal" + (freshDeals.count == 1 ? "" : "s"), "title": "Deals"], seed: "deals"))
+                    dealRows(freshDeals).panel()
+                }
+            }
+            ForEach(cards) { card in CardView(card: card, model: model) }
+        }
     }
 
     /// The full list of a tile in a sheet: the deals' rows, or the card as the Lab and chat draw it (all its rows).
@@ -522,7 +569,7 @@ struct TodayView: View {
     /// deals, downloads and grades are tiles; departures are not here but in the day section.
     @ViewBuilder
     private func otherCards(_ state: HomelabState, withDeals: Bool) -> some View {
-        let plan = TodayFold.plan(state.cards, dayCardID: dayCard?.id)
+        let plan = TodayFold.plan(state.cards, dayCardID: dayCard?.id, density: density)
         let tiles = tiles(plan.tileCards, deals: withDeals ? freshDeals : [])
         if !plan.blocks.isEmpty || !tiles.isEmpty {
             VStack(alignment: .leading, spacing: Space.section) {
@@ -532,7 +579,9 @@ struct TodayView: View {
                     case .line(let card, let text): OneLineCard(card: card, text: text)
                     }
                 }
-                if !tiles.isEmpty {
+                if TodayFold.tilesInline(density) {
+                    inlineTiles(tiles, plan.tileCards)
+                } else if !tiles.isEmpty {
                     TodayTiles(tiles: tiles, density: density) { tileSheet = $0.kind }
                 }
             }
@@ -557,13 +606,14 @@ struct TodayView: View {
                             .accessibilityValue(statusWord(m.status).map { Text($0) } ?? Text(""))
                         }
                         Text(markdown(m.text)).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                            .lineLimit(typeSize.isAccessibilitySize || density == .overkill ? 10 : 4).multilineTextAlignment(.leading)
+                            .lineLimit(typeSize.isAccessibilitySize || density.atLeastOverkill ? (density.isHyper ? 1000 : 10) : 4).multilineTextAlignment(.leading)
                             .tint(Palette.iris)
                     }
                     .panel()
                 }
                 .buttonStyle(.press)
                 .disabled(!model.shownTabs.contains(.chat))
+                HyperNote(lines: Hyper.message(m, now: hyper?.now ?? .now), fact: Hyper.fact(message: m, now: hyper?.now ?? .now))
             }
         }
     }
@@ -637,7 +687,8 @@ struct DaySection: View {
                             TodaySeparator()
                             notes(line.notes)
                         }
-                        if let departures, TodayFold.departuresMatter(DepartureBoard(card: departures), day: card, now: context.date) {
+                        if let departures, TodayFold.departuresMatter(DepartureBoard(card: departures), day: card, now: context.date,
+                                                              density: model?.settings.todayDensity ?? .standard) {
                             TodaySeparator()
                             CardView(card: departures, model: model, bare: true)
                         }

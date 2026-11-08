@@ -102,8 +102,10 @@ public struct TodayLayout: Codable, Equatable, Sendable {
 
 /// How much Today shows, like a weather app's "overkill" layout. Calm: the headline, the day's numbers and Home.
 /// Standard: every section I turned on. Overkill: everything, plus every machine's numbers and exact times.
+/// Hyperdetail (owner 2026-11-08): Overkill and then some: nothing folded anywhere, every field the server sent,
+/// and (with a personality on) a remark on every fact (`Hyper`, Hyperdetail.swift). The UX is allowed to suffer.
 public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
-    case calm, standard, overkill
+    case calm, standard, overkill, hyperdetail
 
     public var id: String { rawValue }
 
@@ -112,6 +114,7 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
         case .calm: "Calm"
         case .standard: "Standard"
         case .overkill: "Overkill"
+        case .hyperdetail: "Hyperdetail"
         }
     }
 
@@ -121,6 +124,7 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
         case .calm: "The day and your Home tiles. One screen."
         case .standard: "Folds long lists; urgent things stay open. About two screens."
         case .overkill: "The same, with more detail in every line."
+        case .hyperdetail: "Everything, unfolded, with commentary. Not recommended."
         }
     }
 
@@ -134,10 +138,16 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .calm: layout.visible.filter { $0 == .day || $0 == .home }
         case .standard: layout.visible.filter(\.isOnToday)
-        case .overkill: layout.listed   // every section, hidden ones too: that's the point
+        case .overkill, .hyperdetail: layout.listed   // every section, hidden ones too: that's the point
         }
     }
 
-    /// "23:41" instead of "2 min ago".
-    public var exactTimes: Bool { self == .overkill }
+    /// "23:41" instead of "2 min ago" (Hyperdetail says both, with the date).
+    public var exactTimes: Bool { atLeastOverkill }
+
+    /// Overkill or Hyperdetail: everything Overkill shows, Hyperdetail on top of it.
+    public var atLeastOverkill: Bool { self == .overkill || self == .hyperdetail }
+
+    /// Hyperdetail: no folding, every field, a remark on every fact.
+    public var isHyper: Bool { self == .hyperdetail }
 }

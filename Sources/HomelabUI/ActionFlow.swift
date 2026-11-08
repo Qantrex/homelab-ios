@@ -32,19 +32,19 @@ struct ResultMessage: Identifiable {
     /// it didn't run.
     @MainActor static func started(_ spec: ActionSpec, _ r: Result<ActionResult, APIError>, model: AppModel) -> (ok: Bool, message: ResultMessage) {
         let report = ActionReport.started(spec.label, r, hasChat: model.hasChat)
-        return (report.ok, ResultMessage(report.voiced(model.settings.voice)))
+        return (report.ok, ResultMessage(report.voiced(model.settings.voice).hyperdetailed(model.hyper)))
     }
 
     /// A container restart from Lab.
     @MainActor static func restart(_ container: String, _ r: Result<ActionResult, APIError>, model: AppModel) -> (ok: Bool, message: ResultMessage) {
         let report = ActionReport.restart(container, r, hasChat: model.hasChat)
-        return (report.ok, ResultMessage(report.voiced(model.settings.voice)))
+        return (report.ok, ResultMessage(report.voiced(model.settings.voice).hyperdetailed(model.hyper)))
     }
 
     /// A proposal's button.
     @MainActor static func pressed(_ title: String, _ r: Result<String, APIError>, model: AppModel) -> (ok: Bool, message: ResultMessage) {
         let report = ActionReport.pressed(title, r, hasChat: model.hasChat)
-        return (report.ok, ResultMessage(report.voiced(model.settings.voice)))
+        return (report.ok, ResultMessage(report.voiced(model.settings.voice).hyperdetailed(model.hyper)))
     }
 }
 

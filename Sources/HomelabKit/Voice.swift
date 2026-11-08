@@ -9,7 +9,7 @@ public enum Personality: String, Codable, CaseIterable, Sendable, Identifiable {
     case off, dry, snarky
     /// The far end, a different tier from Snarky: harsh, profane, over the top, merciless about the owner and the lab,
     /// with satire of politics and the news cycle in general terms (EU regulation, the AI hype, rent, inflation,
-    /// surveillance, the Magistrat). It mocks the owner, ideas, institutions and systems. Never slurs, jokes about
+    /// surveillance, city bureaucracy). It mocks the owner, ideas, institutions and systems. Never slurs, jokes about
     /// protected groups, anything sexual, self-harm, real people or threats (TakeTests). Choosing it asks once first
     /// (`UltrakillWarning`).
     case ultrakill
@@ -39,6 +39,15 @@ public enum UltrakillWarning {
     public static let title = "Ultrakill"
     public static let message = "It will insult you, your servers and your life choices. No refunds."
     public static let enable = "Enable"
+    public static let back = "Back"
+}
+
+/// The one-time warning when Hyperdetail is chosen (`AppSettings.needsWarning(for: Density)`). "Back" keeps the
+/// previous level. Plain on purpose: the personality is not asked to speak here.
+public enum HyperdetailWarning {
+    public static let title = "Hyperdetail"
+    public static let message = "Everything. Every number, every timestamp, everywhere, unfolded. Your screen will scroll forever. Why would you want that?"
+    public static let enable = "Do it"
     public static let back = "Back"
 }
 

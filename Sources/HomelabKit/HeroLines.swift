@@ -52,6 +52,13 @@ public enum LabRows {
         folds(card) && !expanded ? Array(card.items.prefix(folded)) : card.items
     }
 
+    /// Hyperdetail folds nothing: every row of every Lab card.
+    public static func folds(_ card: Card, density: Density) -> Bool { !density.isHyper && folds(card) }
+
+    public static func shown(_ card: Card, expanded: Bool, density: Density) -> [Card.Item] {
+        shown(card, expanded: expanded || density.isHyper)
+    }
+
     /// The value in the right column. A tailnet device that is "online" says nothing (it is simply there; servers
     /// may also send no value), so only the devices that are away or need a look have a word there. "–" and empty
     /// values are no value.

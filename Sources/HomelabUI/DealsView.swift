@@ -135,16 +135,17 @@ struct DealFigures: View {
 struct DealRow: View {
     let deal: Deal
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.hyper) private var hyper
 
     var body: some View {
         let stacked = typeSize.isAccessibilitySize
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(2)
+                    Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(hyper == nil ? 2 : nil)
                         .multilineTextAlignment(.leading)
                     if let specs = deal.specs {
-                        Text(specs).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(2)
+                        Text(specs).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(hyper == nil ? 2 : nil)
                     }
                     DealFacts(deal: deal)
                 }
@@ -153,10 +154,13 @@ struct DealRow: View {
             }
             if stacked { DealFigures(deal: deal, leading: true) }
             if let note = deal.note {
-                Text(note).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(3)
+                Text(note).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(hyper == nil ? 3 : nil)
                     .multilineTextAlignment(.leading)
             }
-            if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: 2) }
+            if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: hyper == nil ? 2 : deal.flags.count) }
+            if let hyper {
+                HyperNote(lines: Hyper.deal(deal, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(deal: deal))
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

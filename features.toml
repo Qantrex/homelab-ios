@@ -275,6 +275,22 @@ settings = ["Settings → Today → Personality"]
 notes = "Four levels: Off, Dry, Snarky, Ultrakill (2026-11-06, rude on purpose)."
 known_gaps = ["no DeviceTest row for the personality itself (DL10 only touches it)"]
 
+[[feature]]
+id = "hyperdetail"
+name = "Hyperdetail (fourth detail level)"
+area = "Today"
+status = "shipped"
+since = "2026-11-08"
+summary = "Everything unfolded in the whole app: no folding, every field the server sends, a remark on every fact when a personality is on (details only when Off). Asks once before it switches on."
+sources = ["Sources/HomelabKit/Hyperdetail.swift", "Sources/HomelabKit/HyperLines.swift", "Sources/HomelabUI/HyperdetailViews.swift", "Sources/HomelabKit/TodayLayout.swift#Density"]
+tests = ["HyperdetailTests"]
+device_tests = ["ST9", "ST10", "ST11", "ST12"]
+docs = ["docs/DESIGN.md#hyperdetail-the-fourth-detail-level", "docs/GETTING-STARTED.md#how-long-today-is", "docs/SETUP.md#launch-arguments"]
+launch_args = ["-HomelabSettingsPage"]
+settings = ["Settings → Today → Detail → Hyperdetail"]
+depends_on = ["personality", "today-layout"]
+notes = "Owner decision 2026-11-08. Overkill is unchanged. Widgets are not changed. Latency is not measured."
+
 # ==================================================================================================== Cards
 
 [[feature]]

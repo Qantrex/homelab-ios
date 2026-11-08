@@ -173,6 +173,7 @@ the default text size with typical data on an iPhone 12 mini:
 | Calm | One screen: the day card and the Home tiles. Unchanged |
 | Standard | Two screens at most. The first screen has the hero, Tomorrow, the approvals and every urgent row |
 | Overkill | Three screens at most |
+| Hyperdetail | As long as the data is. No limit: see "Hyperdetail" below |
 
 - **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue
   or due within 3 days; a to-do past its time; a proposal. Warm tints belong to urgent rows only, and
@@ -215,6 +216,35 @@ the default text size with typical data on an iPhone 12 mini:
   high, and expanding announces itself. At accessibility text sizes the tiles are one per row and their lines wrap,
   so Today may be longer than the budget; the budget is for the default size.
 - Colours as in 3: white and grey, never blue.
+
+### Hyperdetail (the fourth detail level)
+
+Owner decision 2026-11-08: Calm / Standard / Overkill / **Hyperdetail**. Overkill stays exactly as it is. Hyperdetail is
+everything, in the whole app, and the user experience is allowed to suffer; it is a joke that works. The decisions are
+in HomelabKit (`Hyperdetail.swift`, `HyperLines.swift`, tested), the views only draw them (`HyperdetailViews.swift`).
+
+- **No folding anywhere.** Every list is open (Today's cards, the approvals, the Lab cards, a chat bubble's cards, long
+  chat replies, the departures with or without a "Leave by", the weather card, one-line cards drawn as cards). The
+  tiles (deals, downloads, grades, news) do not open a sheet: their full lists sit open on Today. Every section shows
+  and no show rule hides one. Text wraps and is never cut.
+- **Every field.** Under each fact a block of quiet monospaced rows with what the server sent: ids, units, states,
+  `updated`, tint, icon, due as an exact time and an age, thresholds, sources, counts. A host shows load with its
+  cores, RAM, temperature, each disk, containers with state, health and restarts, updates, backup, flags and every
+  history number of the last 24 h. Under Today, Lab, Actions and Chat the server block: name, software, version, API
+  version, auth, features, fetch and check time, whether the data is stale, failures in a row. Latency is not measured.
+  Settings shows `settings.json` key by key and the saved servers (never a token). Notifications carry the fields in
+  their body; an action's result lists its fields after the text.
+- **A remark on every fact**, when a personality is on, in the chosen voice: a host, a problem, an approval, a deadline, a
+  to-do, a departure, a deal, a download, a grade, a news item, a Home tile, a chat reply, a list, the server, an action,
+  any other row. Each is picked from lines bound to the true value of that fact (`Hyper.Fact`: kind, values, seed);
+  fixed for the day; a tap on it says the next one. Same limits as every other line (HyperdetailTests).
+- **Personality Off: details only.** No remark appears; the extra fields still do.
+- **The warning.** Choosing Hyperdetail asks once: "Hyperdetail. Everything. Every number, every timestamp, everywhere,
+  unfolded. Your screen will scroll forever. Why would you want that?" with "Do it" / "Back" (Back keeps the previous
+  level). Like Ultrakill's, it is remembered (`hyperdetailWarned`, omitted from the file until then).
+- The detail menu describes it as "Everything, unfolded, with commentary. Not recommended." Widgets and the share
+  extension are unchanged.
+- Test it with `-HomelabDensity hyperdetail` (no warning) and `-HomelabPersonality off|dry|snarky|ultrakill`.
 
 ## 9. Settings and Advanced
 

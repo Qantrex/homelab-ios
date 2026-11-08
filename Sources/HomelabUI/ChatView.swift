@@ -103,6 +103,8 @@ struct ChatView: View {
     /// Bumped on every send, for a light tap.
     @State private var sent = 0
     @Environment(\.scenePhase) private var scenePhase
+    /// Hyperdetail only: each message's fields and, for the agent's, a remark in its header.
+    @Environment(\.hyper) private var hyper
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var systemTypeSize
@@ -151,7 +153,7 @@ struct ChatView: View {
             // Settings -> Advanced -> Chat: one step smaller or larger than the system's text size, and how long a
             // reply is before "Show more".
             .dynamicTypeSize(chatTypeSize)
-            .environment(\.chatFoldMode, model.settings.chatFolding)
+            .environment(\.chatFoldMode, model.settings.shownChatFolding)
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -200,6 +202,14 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
+                    if let hyper, model.selected != nil {
+                        HyperSection(title: "Server", lines: Hyper.server(
+                            name: model.selected?.name ?? "none", snapshot: model.selectedStatus.snapshot,
+                            info: model.selectedStatus.knownInfo, failures: model.selectedStatus.failures,
+                            busy: chat.timeline.busy, now: hyper.now, calendar: hyper.calendar),
+                                     fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: model.selectedStatus.snapshot, now: hyper.now) })
+                            .padding(.bottom, 12)
+                    }
                     let cleared = chat.timeline.clearedThrough > 0
                     if chat.loadedOnce && chat.timeline.messages.isEmpty && chat.timeline.outgoing.isEmpty {
                         if cleared {
@@ -228,6 +238,11 @@ struct ChatView: View {
                                 StampLine(stamp: stamp)
                                     .padding(.top, i == 0 ? 8 : 24)
                                     .padding(.bottom, 12)
+                            }
+                            if let hyper {
+                                HyperNote(lines: Hyper.message(m, now: hyper.now, calendar: hyper.calendar),
+                                          fact: Hyper.fact(message: m, now: hyper.now))
+                                    .padding(.bottom, 6)
                             }
                             if m.from == .me {
                                 MyBubble(text: m.text, time: m.ts)
@@ -302,7 +317,7 @@ struct ChatView: View {
     private var composer: some View {
         VStack(spacing: 8) {
             if !suggestions.isEmpty {
-                CommandSuggestions(commands: Array(suggestions.prefix(5)), pick: pick)
+                CommandSuggestions(commands: hyper == nil ? Array(suggestions.prefix(5)) : suggestions, pick: pick)
                     .padding(.horizontal)
                     .transition(.opacity)
             }
