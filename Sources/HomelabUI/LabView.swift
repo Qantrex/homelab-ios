@@ -11,7 +11,6 @@ struct LabView: View {
 
     private var status: ServerStatus { model.selectedStatus }
     private var state: HomelabState? { status.snapshot?.state }
-    private var overkill: Bool { model.settings.todayDensity == .overkill }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -165,29 +164,19 @@ struct LabView: View {
         if !state.hosts.isEmpty {
             VStack(alignment: .leading, spacing: Space.titleToPanel) {
                 SectionTitle(text: "Hosts", trailing: String(localized: "\(state.hosts.filter { $0.reachable == true }.count) of \(state.hosts.count) up"))
-                if overkill {
-                    // Overkill keeps the tiles; large text: one per row.
-                    LazyVGrid(columns: typeSize.isAccessibilitySize ? [GridItem(.flexible())]
-                                                                    : [GridItem(.adaptive(minimum: 165), spacing: 12)], spacing: 12) {
-                        ForEach(state.hosts) { host in
-                            NavigationLink(value: host) { HostTile(host: host, health: state.health(of: host)) }
-                                .buttonStyle(.press)
-                        }
+                // One panel, a row per host in every density and text size: Load, RAM and Disk in three right-hand
+                // columns (stacked under the name from xxLarge). Never tiles: three hosts made an uneven grid (owner 2026-11-08).
+                VStack(spacing: 0) {
+                    if !HostRow.stacked(typeSize) {
+                        HostColumnHeader().padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 2)
                     }
-                } else {
-                    // Standard: one panel, a row per host, the numbers in three right-hand columns.
-                    VStack(spacing: 0) {
-                        if !HostRow.stacked(typeSize) {
-                            HostColumnHeader().padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 2)
-                        }
-                        ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
-                            if index > 0 { Divider().padding(.leading, 16) }
-                            NavigationLink(value: host) { HostRow(host: host, health: state.health(of: host)) }
-                                .buttonStyle(PressStyle(scale: 1))
-                        }
+                    ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
+                        if index > 0 { Divider().padding(.leading, 16) }
+                        NavigationLink(value: host) { HostRow(host: host, health: state.health(of: host)) }
+                            .buttonStyle(PressStyle(scale: 1))
                     }
-                    .rowsPanel()
                 }
+                .rowsPanel()
             }
         }
 
@@ -310,104 +299,7 @@ struct StatePolling: ViewModifier {
     }
 }
 
-// MARK: - Host tile (the details are in HostDetailView.swift)
-
-struct HostTile: View {
-    let host: Host
-    /// With the server's problems for this host (`HomelabState.health(of:)`).
-    let health: HostHealth
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    /// Flags the tile lists below the numbers; "asleep" is already the state word.
-    private var shownFlags: [String] { host.flags.filter { $0 != "asleep" } }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // The name is never cut: it wraps. The state is a dot and its word under it.
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: Symbols.host(kind: host.kind)).foregroundStyle(Palette.secondary).accessibilityHidden(true)
-                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if health != .ok {
-                HStack(spacing: 6) {
-                    Circle().fill(health.color).frame(width: 8, height: 8)
-                    Text(health.label).font(.footnote).foregroundStyle(Palette.secondary)
-                }
-                .accessibilityHidden(true)
-            }
-            if let history = host.history, history.last(.load) != nil {
-                // 24 h of load; also for a host that is down now (its last hours are a gap).
-                Sparkline(history, .load, cores: host.cpuCount, label: String(localized: "Load, last 24 hours"), lineWidth: 1, fill: false)
-                    .frame(height: 20)
-            }
-            if host.reachable == true {
-                metric("Load", Format.load(host.load), Format.loadShare(host.load, cores: host.cpuCount),
-                       host.loadLevel)
-                metric("RAM", Format.percent(host.memPct), host.memPct.map { Double($0) / 100 }, host.ramLevel)
-                if let d = Format.worstDisk(host.disks) {
-                    metric("Disk", "\(d.percent)%", Double(d.percent) / 100, host.diskLevel)
-                }
-                HStack(spacing: 12) {
-                    if host.temp != nil {
-                        chip(Format.temperature(host.temp), symbol: "thermometer.medium", warn: host.tempLevel != .normal)
-                    }
-                    if host.containersTotal != nil {
-                        chip(Format.containers(up: host.containersUp, total: host.containersTotal), symbol: "shippingbox",
-                             warn: (host.containersUp ?? 0) < (host.containersTotal ?? 0))
-                    }
-                }
-            } else if let checked = host.checked {
-                Text("last seen \(Format.age(checked))").font(.footnote).foregroundStyle(Palette.tertiary)
-                    .accessibilityLabel(Text("last seen \(Format.spokenAge(checked))"))
-            }
-            if !shownFlags.isEmpty {
-                Label {
-                    Text(shownFlags.map(Format.flag).joined(separator: ", ")).font(.footnote).foregroundStyle(Palette.secondary)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill").font(.footnote)
-                        .foregroundStyle(health == .problem ? Palette.love : Palette.gold)   // flags alone are a warning; the server decides problems
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        // Equal heights in a row: every tile has the same minimum, taller only for more text.
-        .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 0 : 176, alignment: .topLeading)
-        .panel()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(host.name), \(health.label)"))
-        .accessibilityValue(Text(spokenMetrics))
-        .accessibilityHint(Text("Shows details"))
-        .accessibilityAddTraits(.isButton)
-    }
-
-    private var spokenMetrics: String { hostSpokenMetrics(host, flags: shownFlags) }
-
-    /// Label in sentence case (secondary), value in the data font, a thin meter under them.
-    private func metric(_ label: LocalizedStringKey, _ value: String, _ share: Double?, _ level: ValueLevel) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(label).font(.footnote).foregroundStyle(Palette.secondary)
-                Spacer(minLength: 8)
-                Text(value).font(Typo.data(.footnote))
-                    .foregroundStyle(Meter.valueColor(level))   // the bar stays grey; the number turns gold/love at its limits
-                    .numberMotion(value)
-            }
-            if let share { Meter(share, warns: true) }
-        }
-    }
-
-    /// A fact without a border: an icon and the value. Only the icon turns gold.
-    private func chip(_ text: String, symbol: String, warn: Bool) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: symbol).font(.footnote).foregroundStyle(warn ? Palette.gold : Palette.secondary)
-            Text(text).font(Typo.data(.footnote)).foregroundStyle(Palette.secondary)
-        }
-        .lineLimit(1)
-    }
-}
-
-// MARK: - Host row (Standard density)
+// MARK: - Host row (every density)
 
 /// The header over the three value columns of the host rows. The columns are as wide as `HostRow`'s (same scaled
 /// width), so "Load", "RAM" and "Disk" stay over their numbers at every text size.
