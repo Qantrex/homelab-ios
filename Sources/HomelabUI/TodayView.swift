@@ -547,7 +547,10 @@ struct TodayView: View {
                     dealRows(freshDeals).panel()
                 }
             }
-            ForEach(cards) { card in CardView(card: card, model: model) }
+            ForEach(cards) { card in
+                // News opens its stories in the in-app reader, like the sheet does.
+                if TodayFold.tileKind(card) == .news { NewsHyperBlock(card: card) } else { CardView(card: card, model: model) }
+            }
         }
     }
 
@@ -563,6 +566,8 @@ struct TodayView: View {
                 } else {
                     CardView(card: card, model: model, bare: true)
                 }
+            } else {
+                TileGonePlaceholder()   // the kind left while the sheet was open (news off, deals gone)
             }
         }
     }
