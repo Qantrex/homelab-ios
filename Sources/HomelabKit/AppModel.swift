@@ -47,7 +47,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var lastBackgroundResult: String?
     /// Today's section order and hidden sections; nil = the standard layout (also for settings from older versions).
     public var today: TodayLayout?
-    /// Calm, Standard or Overkill; nil = Standard.
+    /// Calm, Standard, Overkill or Hyperdetail; nil = Standard.
     public var density: Density?
     /// Off, Dry, Snarky or Ultrakill; nil = Off.
     public var personality: Personality?
@@ -61,6 +61,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// True once the owner confirmed the one-time Ultrakill warning (`UltrakillWarning`); nil (omitted from the file)
     /// until then, so settings without it stay byte for byte as before.
     public var ultrakillWarned: Bool?
+    /// The same for Hyperdetail (`HyperdetailWarning`): nil (omitted from the file) until the owner said "Do it" once.
+    public var hyperdetailWarned: Bool?
     /// Settings → Advanced (`Customization.swift`): order and hidden Start tiles (by action name), Lab blocks (by card
     /// id), tabs; chat text size and folding. All nil = the standard, and omitted from the file then.
     public var startTiles: ItemOrder?
@@ -103,6 +105,15 @@ public struct AppSettings: Codable, Sendable, Equatable {
         voice = .ultrakill
     }
 
+    /// Choosing `level` needs the one-time warning first: Hyperdetail, until the owner has confirmed it once.
+    public func needsWarning(for level: Density) -> Bool { level == .hyperdetail && hyperdetailWarned != true }
+
+    /// The warning's "Do it": remembers that it was seen and switches to Hyperdetail.
+    public mutating func confirmHyperdetail() {
+        hyperdetailWarned = true
+        todayDensity = .hyperdetail
+    }
+
     public var todayLayout: TodayLayout {
         get { today ?? .standard }
         set { today = newValue == .standard ? nil : newValue }
@@ -113,7 +124,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Every stored field; the encoder is the synthesized one, so a saved file stays byte for byte as before.
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
-        case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned
+        case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned, hyperdetailWarned
         case startTiles, labBlocks, tabs, chatText, chatFold
     }
 }
@@ -138,6 +149,7 @@ extension AppSettings {
         presenceEntity = c.lenient(String.self, .presenceEntity)
         quietHours = c.lenient(TimeWindow.self, .quietHours)
         ultrakillWarned = c.lenient(Bool.self, .ultrakillWarned)
+        hyperdetailWarned = c.lenient(Bool.self, .hyperdetailWarned)
         startTiles = c.lenient(ItemOrder.self, .startTiles).flatMap { $0.isStandard ? nil : $0 }
         labBlocks = c.lenient(ItemOrder.self, .labBlocks).flatMap { $0.isStandard ? nil : $0 }
         tabs = c.lenient(ItemOrder.self, .tabs).flatMap { $0.isStandard ? nil : $0 }

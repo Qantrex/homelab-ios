@@ -48,7 +48,7 @@ import Testing
 @Suite struct DensityTests {
     @Test func everyDensityHasOneShortLine() {
         for d in Density.allCases { #expect(!d.summary.isEmpty && d.summary.count < 70 && !d.summary.contains("\n")) }
-        #expect(Density.explanation.split(separator: "\n").count == 3)
+        #expect(Density.explanation.split(separator: "\n").count == Density.allCases.count)
         #expect(Density.calm.summary == "The day and your Home tiles. One screen.")
     }
 

@@ -289,7 +289,7 @@ extension Density {
     /// and Home by their rules, plus every visible section set to "When it needs me" while it needs me.
     public func sections(_ layout: TodayLayout, _ context: ShowContext) -> [TodaySection] {
         switch self {
-        case .overkill:
+        case .overkill, .hyperdetail:
             return layout.listed
         case .standard:
             return layout.visible.filter { $0.isOnToday && layout.shows($0, context) }
@@ -306,7 +306,7 @@ extension Density {
     /// (Evenings) · Show". "When it needs me" isn't listed: such a section is there as soon as it has something.
     public func hiddenNow(_ layout: TodayLayout, _ context: ShowContext) -> [TodaySection] {
         let candidates: [TodaySection] = switch self {
-        case .overkill: []
+        case .overkill, .hyperdetail: []
         case .standard: layout.visible.filter(\.isOnToday)
         case .calm: layout.visible.filter { $0 == .day || $0 == .home }
         }

@@ -9,16 +9,19 @@ public enum TodayFold {
     // MARK: Caps
 
     /// Rows a folded list shows (urgent rows come on top of this): Standard 3, Overkill a couple more.
-    public static func cap(_ density: Density) -> Int { density == .overkill ? 5 : 3 }
+    public static func cap(_ density: Density) -> Int { density.isHyper ? unlimited : density == .overkill ? 5 : 3 }
+
+    /// "No limit" for Hyperdetail: large enough to never fold, small enough to add to.
+    public static let unlimited = 100_000
 
     /// A fold hides at least this many rows; "Show 1 more" costs the row it would hide.
     public static let minHidden = 2
 
     /// Proposals "To approve" lists before "and N more".
-    public static func approvals(_ density: Density) -> Int { density == .overkill ? 4 : 2 }
+    public static func approvals(_ density: Density) -> Int { density.isHyper ? unlimited : density == .overkill ? 4 : 2 }
 
     /// Lines a folded text card (the briefing) shows.
-    public static func textLines(_ density: Density) -> Int { density == .overkill ? 6 : 3 }
+    public static func textLines(_ density: Density) -> Int { density.isHyper ? unlimited : density == .overkill ? 6 : 3 }
 
     /// Fold text only when that hides at least two lines.
     public static func textFolds(lines: Int, limit: Int) -> Bool { lines >= limit + 2 }
@@ -30,6 +33,14 @@ public enum TodayFold {
     public static func drawsOnToday(_ card: Card) -> Bool {
         !(card.id == "weather" && WeatherLine.text(card) != nil)
     }
+
+    /// Hyperdetail draws every card, the weather too (the hero says it, the card has the rest).
+    public static func drawsOnToday(_ card: Card, density: Density) -> Bool {
+        density.isHyper || drawsOnToday(card)
+    }
+
+    /// Hyperdetail has no tiles that open a sheet: the deals' rows and the tile cards sit open on Today.
+    public static func tilesInline(_ density: Density) -> Bool { density.isHyper }
 
     /// A day card that is only a short sentence ("No school") is a plain line without a panel.
     public static func isPlainLine(_ text: String?) -> Bool {
@@ -88,6 +99,8 @@ public enum TodayFold {
     /// folds as soon as one later deadline is behind it; if none is urgent only the fold row is left.
     public static func rows(_ items: [Card.Item], in card: Card, density: Density, expanded: Bool, now: Date,
                             calendar: Calendar = .current) -> Rows {
+        // Hyperdetail never folds: every row of every list, urgent or not.
+        if density.isHyper { return Rows(items: items, hidden: 0, folds: false, hint: nil) }
         let cap = cap(density)
         let strict = card.style == .countdown
         guard foldsStyle(card.style), strict ? !items.isEmpty : items.count - cap >= minHidden else {
@@ -185,7 +198,10 @@ public enum TodayFold {
     /// Departures are on Today only while the day has an upcoming "Leave by" within 60 minutes (owner 2026-11-08), and
     /// then in the day section. A disruption alone does not show them on a day without one; tomorrow's or an old day
     /// card never counts. A board without departures and without a disruption has nothing to show.
-    public static func departuresMatter(_ board: DepartureBoard, day: Card?, now: Date, calendar: Calendar = .current) -> Bool {
+    public static func departuresMatter(_ board: DepartureBoard, day: Card?, now: Date, calendar: Calendar = .current,
+                                        density: Density = .standard) -> Bool {
+        // Hyperdetail hides nothing a card has: the board shows whenever it has departures or a disruption.
+        if density.isHyper { return !board.isEmpty || board.isDisrupted }
         guard !board.isEmpty || board.isDisrupted, let day else { return false }
         let line = DayTimeline(card: day, now: now, calendar: calendar)
         guard !line.isTomorrow, !line.isStale, let next = line.next, let minutes = line.minutesToNext else { return false }
@@ -207,16 +223,16 @@ public enum TodayFold {
     }
 
     /// Splits the server's Today cards into cards, one-liners, tile cards and the departures card.
-    public static func plan(_ cards: [Card], dayCardID: String?) -> Plan {
+    public static func plan(_ cards: [Card], dayCardID: String?, density: Density = .standard) -> Plan {
         var blocks: [Block] = []
         var tileCards: [Card] = []
         var departures: Card?
-        for card in cards where card.id != dayCardID && card.place != .lab && drawsOnToday(card) {
+        for card in cards where card.id != dayCardID && card.place != .lab && drawsOnToday(card, density: density) {
             if isDeparturesCard(card) {
                 departures = departures ?? card
             } else if tileKind(card) != nil {
                 tileCards.append(card)
-            } else if let line = oneLine(card) {
+            } else if !density.isHyper, let line = oneLine(card) {   // Hyperdetail: no one-liners, the card in full
                 blocks.append(.line(card, line))
             } else {
                 blocks.append(.card(card))
@@ -291,7 +307,7 @@ public enum TodayFold {
         } else {
             parts.append("act now")
         }
-        if density == .overkill, let top = deals.max(by: { ($0.share ?? 0) < ($1.share ?? 0) }) {
+        if density.atLeastOverkill, let top = deals.max(by: { ($0.share ?? 0) < ($1.share ?? 0) }) {
             parts.append(short(top.title, 16) + (top.price.map { " " + DealFormat.price($0).replacingOccurrences(of: "\u{00A0}", with: "") } ?? ""))
         }
         return parts.joined(separator: " · ")
@@ -301,7 +317,7 @@ public enum TodayFold {
     static func line(downloads card: Card, density: Density) -> String {
         let titles = card.items.compactMap { $0.title.map { short($0, 14) } }.filter { !$0.isEmpty }
         guard !titles.isEmpty else { return "" }
-        let named = min(density == .overkill ? 2 : 1, titles.count)
+        let named = min(density.atLeastOverkill ? 2 : 1, titles.count)
         let more = card.items.count - named
         return titles.prefix(named).joined(separator: ", ") + (more > 0 ? " +\(more)" : "")
     }
@@ -310,7 +326,7 @@ public enum TodayFold {
     static func line(news card: Card, density: Density) -> String {
         let top = card.items.compactMap { $0.title?.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty } ?? ""
         let digest = card.subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if density == .overkill, !digest.isEmpty { return short(digest, 120) }
+        if density.atLeastOverkill, !digest.isEmpty { return short(digest, 120) }
         return short(top, 60)
     }
 
@@ -321,7 +337,7 @@ public enum TodayFold {
             let words = [subject, item.value?.trimmingCharacters(in: .whitespaces) ?? ""].filter { !$0.isEmpty }
             return words.isEmpty ? nil : words.joined(separator: " ")
         }
-        return entries.prefix(density == .overkill ? 2 : 1).joined(separator: ", ")
+        return entries.prefix(density.atLeastOverkill ? 2 : 1).joined(separator: ", ")
     }
 
     /// A tile line for VoiceOver: "best −50 %" -> "best minus 50 percent", "GPU €140" -> "GPU 140 euros", "+7" -> "plus 7".

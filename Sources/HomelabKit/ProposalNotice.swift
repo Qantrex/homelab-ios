@@ -152,7 +152,9 @@ public enum ProposalNotice {
     /// The notification for `alert`. `locked` (the app lock is on): a problem or a summary only says that something
     /// needs a look, and a proposal without buttons that an action waits; a proposal with Approve / Deny names its
     /// action and keeps its buttons, so it can be answered after Face ID (see the type's comment).
-    public static func content(for alert: AlertTracker.Alert, locked: Bool, voice: Personality = .off) -> Content {
+    /// `extra`: Hyperdetail's fields and remark (`Hyper.noticeExtra`), added to the body; never on a locked one.
+    public static func content(for alert: AlertTracker.Alert, locked: Bool, voice: Personality = .off,
+                               extra: String? = nil) -> Content {
         let buttons = alert.proposal.flatMap { Self.category(for: $0) }
         if locked && buttons == nil {
             let body = switch alert.kind {
@@ -163,7 +165,8 @@ public enum ProposalNotice {
             return Content(title: "Homelab", subtitle: nil, body: body, category: nil)
         }
         let line = locked ? nil : alert.moment.flatMap { Voice.line($0, voice) }
-        return Content(title: alert.title, subtitle: line, body: alert.body, category: buttons)
+        let body = extra.flatMap { locked ? nil : alert.body + "\n" + $0 } ?? alert.body
+        return Content(title: alert.title, subtitle: line, body: body, category: buttons)
     }
 
     static func short(_ text: String) -> String {

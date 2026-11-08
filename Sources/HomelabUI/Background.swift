@@ -78,7 +78,10 @@ public enum BackgroundRefresh {
             // None while notifications are off or quiet hours hold (the tracker has learned them all the same).
             let now = Date()
             for a in settings.notificationsToPost(alerts, now: now) {
-                await Notifier.post(a, server: server.id, private: settings.faceIDLock, voice: settings.voice)
+                // Hyperdetail: the fields of what it is about and a remark, in the body.
+                let extra = settings.todayDensity.isHyper
+                    ? Hyper.noticeExtra(a, state: state, deals: deals, personality: settings.voice, now: now) : nil
+                await Notifier.post(a, server: server.id, private: settings.faceIDLock, voice: settings.voice, extra: extra)
             }
             // The Start list for the Home-screen quick actions (the app writes it too; the action list itself
             // isn't cached): only from a server known to offer it.
@@ -104,8 +107,9 @@ enum Notifier {
     /// Approve / Deny: it names its action and keeps its buttons (they need Face ID; iOS hides the preview on the
     /// locked lock screen by default). `voice`: the personality's line as the subtitle (not when private).
     /// What it says and which buttons it gets: `ProposalNotice.content`.
-    static func post(_ alert: AlertTracker.Alert, server: UUID, private hidden: Bool, voice: Personality = .off) async {
-        let shown = ProposalNotice.content(for: alert, locked: hidden, voice: voice)
+    static func post(_ alert: AlertTracker.Alert, server: UUID, private hidden: Bool, voice: Personality = .off,
+                     extra: String? = nil) async {
+        let shown = ProposalNotice.content(for: alert, locked: hidden, voice: voice, extra: extra)
         let content = UNMutableNotificationContent()
         content.title = shown.title
         if let line = shown.subtitle { content.subtitle = line }

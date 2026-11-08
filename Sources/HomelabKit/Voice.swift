@@ -42,6 +42,15 @@ public enum UltrakillWarning {
     public static let back = "Back"
 }
 
+/// The one-time warning when Hyperdetail is chosen (`AppSettings.needsWarning(for: Density)`). "Back" keeps the
+/// previous level. Plain on purpose: the personality is not asked to speak here.
+public enum HyperdetailWarning {
+    public static let title = "Hyperdetail"
+    public static let message = "Everything. Every number, every timestamp, everywhere, unfolded. Your screen will scroll forever. Why would you want that?"
+    public static let enable = "Do it"
+    public static let back = "Back"
+}
+
 public enum Voice {
     /// Where a line can appear.
     public enum Moment: CaseIterable, Sendable {
