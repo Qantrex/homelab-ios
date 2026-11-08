@@ -106,6 +106,36 @@ A button on a card item works the same way: `collect` sends `{"action": {"name":
 again at the next tick, so the card shows the change. The `actions` value is per type (`{"restart": [...]}`,
 `{"pause": [5, 15]}`); check its shape in `check(cfg)`.
 
+## Example: the News module (`rss`)
+
+`rss` is a source with a second job: besides its card it serves the app's News settings. It shows the parts a
+source can use beyond `collect`:
+
+```json
+{"name": "News", "type": "rss", "every": 600, "max": 8, "feeds": [
+  {"id": "orf", "name": "ORF", "url": "https://rss.orf.at/news.xml", "country": "at", "topic": "general"},
+  {"id": "derstandard", "name": "Der Standard", "url": "https://www.derstandard.at/rss", "country": "at", "topic": "general"},
+  {"id": "heise", "name": "heise", "url": "https://www.heise.de/rss/heise-atom.xml", "country": "de", "topic": "tech"},
+  {"id": "hn", "name": "Hacker News", "url": "https://news.ycombinator.com/rss", "country": "int", "topic": "tech"},
+  {"id": "bbc", "name": "BBC", "url": "https://feeds.bbci.co.uk/news/rss.xml", "country": "gb", "topic": "general"}
+]}
+```
+
+- One config key holds a list of feeds, checked in `check` (`_news.check_config`): ids, `http(s)` addresses without
+  credentials, bounded numbers.
+- The user's choices (country, sources, count, window) are not config: the reference server stores them in its state
+  dir and hands the file's path to `collect` as `cfg["_prefs_file"]`; `collect` loads and re-validates them on each
+  run. `PUT /api/v1/news/prefs` then calls `Runner.read_soon`, so the card follows in seconds.
+- Its card id `news` is the one id that is **not** prefixed with the source name (the app looks for exactly `news`),
+  so there can be only one `rss` source. The Runner makes that exception for the `rss` type and nobody else.
+- Feeds are untrusted XML: a `DOCTYPE`/`ENTITY` is refused before parsing, answers are capped, one feed failing
+  never fails the others, and titles are plain text. The recordings (`recordings/rss/normal.json`, `odd.json`) hold
+  the feeds as bodies, including a hostile one with entities.
+- Headlines only. A summary with a model is not part of the bridge; a server that can summarise says so in
+  `can_summarize` ([API.md](API.md)).
+
+Details for users: [REFERENCE_SERVER.md → News](REFERENCE_SERVER.md#news-rss-and-atom).
+
 ## Rules for a source module
 
 - Stdlib only. Import the helpers from `.` (`as_list`, `as_dict`, `as_text`, `SourceError`), nothing from
@@ -114,6 +144,9 @@ again at the next tick, so the card shows the change. The `actions` value is per
   `urllib`, `socket` or `open(` (a test greps for them). The one exception is a type that doesn't speak HTTP:
   `gameserver` opens its own TCP and UDP sockets (`SourceModuleRules.OWN_SOCKETS`), and its tests use fake servers
   on localhost instead of a recording.
+- Anything a source needs that the rules above forbid (reading a file, parsing URLs) goes in a helper module with a
+  leading `_` (`_news.py`, `_homepage.py`, `_dns.py`): it is not a type and the rule test does not read it. Keep
+  the helper small and never let it reach the network.
 - Read-only. `collect` never calls an endpoint that changes something upstream (a login and the logout after it are
   fine: Pi-hole and qBittorrent). Writes happen only in `act`, for an item the config lists (see
   [Actions](#actions-optional-off-by-default)).
