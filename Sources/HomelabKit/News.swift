@@ -156,28 +156,62 @@ public enum NewsAvailability {
     }
 }
 
-/// The News card as the sheet shows it: the digest, then the rows in the server's order.
+/// The language of the News sheet: Settings → Advanced → Today → News sets the default, the switch at the top left of
+/// the sheet changes it for the session. A missing `_de` field falls back to English and the other way round.
+public enum NewsLanguage: String, Codable, Sendable, CaseIterable, Identifiable {
+    case en, de
+    public var id: String { rawValue }
+    public var label: String { rawValue.uppercased() }
+
+    /// The text in this language, else the other one; blank counts as missing.
+    public func pick(en: String?, de: String?) -> String? {
+        func clean(_ t: String?) -> String? {
+            let t = t?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (t?.isEmpty ?? true) ? nil : t
+        }
+        let (e, d) = (clean(en), clean(de))
+        return self == .de ? (d ?? e) : (e ?? d)
+    }
+}
+
+/// The News card as the sheet shows it: the digest, then the rows newest first (by `published`; items without one
+/// keep the server's order after the dated ones).
 public struct NewsList: Equatable, Sendable {
     public struct Row: Equatable, Sendable, Identifiable {
         public var title: String
         /// "ORF · 2 h"
         public var meta: String
+        /// The 2-3 sentence summary under the headline; nil when the server sent none.
+        public var summary: String?
         public var url: URL?
+        public var published: Date?
+        /// The card item this row was made from (Hyperdetail's notes read it).
+        public var item: Card.Item
         public var id: Int
     }
 
     public var digest: String?
     public var rows: [Row]
 
-    public init(card: Card) {
-        let digest = card.subtitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.digest = (digest?.isEmpty ?? true) ? nil : digest
+    public init(card: Card, language: NewsLanguage = .en) {
+        self.digest = language.pick(en: card.subtitle, de: card.subtitleDE)
         var rows: [Row] = []
         for item in card.items {
-            guard let title = item.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else { continue }
+            guard let title = language.pick(en: item.title, de: item.titleDE) else { continue }
             rows.append(Row(title: title, meta: item.subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
-                            url: item.url.flatMap { URLPolicy.webURL($0.absoluteString) }, id: rows.count))
+                            summary: language.pick(en: item.summary, de: item.summaryDE),
+                            url: item.url.flatMap { URLPolicy.webURL($0.absoluteString) }, published: item.published,
+                            item: item, id: 0))
         }
-        self.rows = rows
+        // Stable: equal or missing times keep the server's order.
+        let sorted = rows.enumerated().sorted { a, b in
+            switch (a.element.published, b.element.published) {
+            case let (x?, y?): x == y ? a.offset < b.offset : x > y
+            case (_?, nil): true
+            case (nil, _?): false
+            case (nil, nil): a.offset < b.offset
+            }
+        }.map(\.element)
+        self.rows = sorted.enumerated().map { var r = $0.element; r.id = $0.offset; return r }
     }
 }

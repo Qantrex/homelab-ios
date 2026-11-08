@@ -31,6 +31,8 @@ struct AdvancedSettingsView: View {
                     SettingsFooter("Which sections Today shows, in which order and when. Where you are lets the At home and Away rules follow you.")
                 }
 
+                DealCategoriesSection(model: model)
+
                 Section {
                     NavigationLink {
                         StartTilesEditor(model: model)

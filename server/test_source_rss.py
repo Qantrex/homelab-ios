@@ -111,7 +111,9 @@ class Headlines(TmpCase, unittest.TestCase):
         first = card["items"][1]
         self.assertEqual(first["url"], "https://www.heise.de/news/linux-7-3-1.html")
         self.assertEqual(first["tags"], ["source:heise", "country:de", "topic:tech"])
-        self.assertEqual({k for i in card["items"] for k in i}, {"title", "subtitle", "url", "tags"})
+        self.assertEqual({k for i in card["items"] for k in i}, {"title", "subtitle", "url", "tags", "published"})
+        self.assertEqual(first["published"], "2026-11-08T11:20:00Z")   # the feed's own time, UTC with zone
+        self.assertEqual([i["published"] for i in card["items"]], sorted((i["published"] for i in card["items"]), reverse=True))
         self.assertNotIn("body", json.dumps(card))   # never article bodies or images
         self.assertNotIn("img.example", json.dumps(card))
 

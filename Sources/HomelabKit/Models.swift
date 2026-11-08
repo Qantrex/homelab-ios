@@ -435,6 +435,8 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
     public var date: String?
     /// Where the card shows: Today (default) or Lab. Unknown values mean Today.
     public var place: Place
+    /// The News card's German digest (`subtitle_de`); other cards don't send it.
+    public var subtitleDE: String?
 
     public enum Place: String, Codable, Sendable {
         case today, lab
@@ -480,10 +482,18 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         /// scheme, host and port as the server. Anything else is dropped when decoding; `URLPolicy.imageURL` decides
         /// again before anything is loaded.
         public var image: String?
+        /// News items (docs/API.md "News"): the German headline, the 2-3 sentence summary in both languages and when it
+        /// was published. All optional; `NewsList` picks the language and sorts by `published`.
+        public var titleDE: String?
+        public var summary: String?
+        public var summaryDE: String?
+        public var published: Date?
 
         public init(title: String? = nil, subtitle: String? = nil, value: String? = nil, progress: Double? = nil,
                     icon: String? = nil, url: URL? = nil, tint: Tint? = nil, done: Bool? = nil, due: Date? = nil,
-                    dueIsDay: Bool = false, action: ItemAction? = nil, cancelled: Bool? = nil, image: String? = nil) {
+                    dueIsDay: Bool = false, action: ItemAction? = nil, cancelled: Bool? = nil, image: String? = nil,
+                    titleDE: String? = nil, summary: String? = nil, summaryDE: String? = nil, published: Date? = nil) {
+            self.titleDE = titleDE; self.summary = summary; self.summaryDE = summaryDE; self.published = published
             self.title = title; self.subtitle = subtitle; self.value = value
             self.progress = ServerNumber.clamp(progress, ServerNumber.progressRange); self.icon = icon; self.url = url; self.tint = tint
             self.done = done; self.due = due; self.dueIsDay = due != nil && dueIsDay; self.action = action
@@ -506,7 +516,9 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             due.map { Format.due($0, dayOnly: dueIsDay, now: now, calendar: calendar) }
         }
 
-        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action, cancelled, image }
+        enum CodingKeys: String, CodingKey { case title, subtitle, value, progress, icon, url, tint, done, due, action, cancelled, image
+            case titleDE = "title_de", summary, summaryDE = "summary_de", published
+        }
 
         public init(from decoder: any Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -515,7 +527,8 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                       url: c.text(.url).flatMap(URLPolicy.webURL),
                       tint: c.text(.tint).map { Tint(lenient: $0) }, done: c.bool(.done), due: c.date(.due),
                       dueIsDay: c.text(.due).map(Self.isPlainDay) ?? false, action: c.lenient(ItemAction.self, .action),
-                      cancelled: c.bool(.cancelled), image: c.text(.image))
+                      cancelled: c.bool(.cancelled), image: c.text(.image), titleDE: c.text(.titleDE), summary: c.text(.summary),
+                      summaryDE: c.text(.summaryDE), published: c.date(.published))
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -533,19 +546,26 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
             try c.encodeIfPresent(action, forKey: .action)
             try c.encodeIfPresent(cancelled, forKey: .cancelled)
             try c.encodeIfPresent(image, forKey: .image)
+            try c.encodeIfPresent(titleDE, forKey: .titleDE)
+            try c.encodeIfPresent(summary, forKey: .summary)
+            try c.encodeIfPresent(summaryDE, forKey: .summaryDE)
+            try c.encodeIfPresent(published.map(ServerDate.string), forKey: .published)
         }
     }
 
     public init(id: String, title: String? = nil, subtitle: String? = nil, icon: String? = nil, tint: Tint = .gray,
                 style: Style = .list, updated: String? = nil, text: String? = nil, items: [Item] = [],
-                action: ItemAction? = nil, date: String? = nil, place: Place = .today) {
+                action: ItemAction? = nil, date: String? = nil, place: Place = .today, subtitleDE: String? = nil) {
+        self.subtitleDE = subtitleDE
         self.id = id; self.title = title; self.subtitle = subtitle; self.icon = icon; self.tint = tint
         self.place = place
         self.style = style; self.updated = updated; self.text = text; self.items = items; self.action = action
         self.date = date.flatMap { Item.isPlainDay($0) ? $0.trimmingCharacters(in: .whitespaces) : nil }
     }
 
-    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action, date, place }
+    enum CodingKeys: String, CodingKey { case id, title, subtitle, icon, tint, style, updated, text, items, action, date, place
+        case subtitleDE = "subtitle_de"
+    }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -557,7 +577,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
                   style: c.text(.style).flatMap { Style(rawValue: $0.lowercased()) } ?? .list,
                   updated: c.text(.updated), text: c.text(.text), items: c.array(Item.self, .items),
                   action: c.lenient(ItemAction.self, .action), date: c.text(.date),
-                  place: Place(lenient: c.text(.place)))
+                  place: Place(lenient: c.text(.place)), subtitleDE: c.text(.subtitleDE))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -574,6 +594,7 @@ public struct Card: Codable, Sendable, Equatable, Hashable, Identifiable {
         try c.encodeIfPresent(action, forKey: .action)
         try c.encodeIfPresent(date, forKey: .date)
         if place != .today { try c.encode(place, forKey: .place) }
+        try c.encodeIfPresent(subtitleDE, forKey: .subtitleDE)
     }
 
     /// Items in countdown order: soonest `due` first (overdue ones lead), items without `due` last, ties in the

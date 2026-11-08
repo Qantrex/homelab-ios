@@ -22,7 +22,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 2 | O12g | 3 |
-| [News (tile, sheet, Settings → News)](#news) | shipped | – | 1 | NW1, NW2, NW3 | 2 |
+| [News (tile, sheet, Settings → News)](#news) | shipped | – | 6 | NW1, NW2, NW3 | 2 |
 | [Machines list (Overkill)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
 | [Where you are (presence from Home Assistant)](#presence) | partial | – | 4 | H8, H9 | 3 |
@@ -74,7 +74,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Deals (used-market ads below value)](#deals) | shipped | `deals` | 6 | **DL1**, **DL2**, DL3, **DL4**, DL5, **DL6**, DL7, DL9, DL10 | 2 |
+| [Deals (used-market ads below value)](#deals) | shipped | `deals` | 12 | **DL1**, **DL2**, DL3, **DL4**, DL5, **DL6**, DL7, DL9, DL10 | 2 |
 | [New-deal notification](#deal-notifications) | shipped | `deals` | 1 | DL8 | 2 |
 
 ### Lab (4)
@@ -387,7 +387,7 @@ The server fetches and summarises the owner's news; Today shows a News tile (cou
 | Server | `GET /news/sources`, `PUT /news/prefs`, `cards[id=news]`, `can_summarize`, `prefs` |
 | Sources | [News.swift](../Sources/HomelabKit/News.swift), [NewsViews.swift](../Sources/HomelabUI/NewsViews.swift) |
 | Fixtures | [news-sources.json](../Sources/HomelabKit/Fixtures/news-sources.json) |
-| Tests | `NewsTests` |
+| Tests | `NewsTests`, `NewsDealsReviewTests/newsItemFieldsDecodeAndStayOutWhenAbsent`, `NewsDealsReviewTests/newsSortsNewestFirstByPublishedAndKeepsUndatedLast`, `NewsDealsReviewTests/newsLanguageAndFallbacks`, `NewsDealsReviewTests/newsLanguageSettingIsOptionalAndOmittedAtDefault`, `NewsDealsReviewTests/demoNewsHasGermanAndSummaries` |
 | Phone (DeviceTest.md) | NW1, NW2, NW3 |
 | CI screenshots | `demo-today-light` |
 | Docs | [docs/API.md#news-card-news-get-newssources-put-newsprefs](API.md#news-card-news-get-newssources-put-newsprefs), [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is) |
@@ -842,7 +842,7 @@ Ads the server found clearly below market value and judged: a Deals tile on Acti
 | Server | `deals`, `GET /deals` |
 | Sources | [Deals.swift](../Sources/HomelabKit/Deals.swift), [DealsView.swift](../Sources/HomelabUI/DealsView.swift), [ActionFormView.swift#StartGrid](../Sources/HomelabUI/ActionFormView.swift) |
 | Fixtures | [deals.json](../Sources/HomelabKit/Fixtures/deals.json), [deals-odd.json](../Sources/HomelabKit/Fixtures/deals-odd.json) |
-| Tests | `DealsTests`, `DealsModelTests`, `IntegrationTests/dealsOverRealHTTP`, `AppReviewFixTests/coldLaunchDealsLinkOnADealsOnlyServer`, `AppReviewFixTests/reloadDealsIsNotUndoneByARunningPoll`, `AppReviewFixTests/aFutureSeenDealIsNotFreshForever` |
+| Tests | `DealsTests`, `DealsModelTests`, `IntegrationTests/dealsOverRealHTTP`, `AppReviewFixTests/coldLaunchDealsLinkOnADealsOnlyServer`, `AppReviewFixTests/reloadDealsIsNotUndoneByARunningPoll`, `AppReviewFixTests/aFutureSeenDealIsNotFreshForever`, `NewsDealsReviewTests/dealCategoriesDecode`, `NewsDealsReviewTests/chosenCategoriesFilterTheList`, `NewsDealsReviewTests/tileAndTodayCountUseChosenCategories`, `NewsDealsReviewTests/notificationsOnlyForChosenCategories`, `NewsDealsReviewTests/categoryChoiceToggles`, `NewsDealsReviewTests/dealSettingIsOptionalAndLenient` |
 | Phone (DeviceTest.md) | **DL1**, **DL2**, DL3, **DL4**, DL5, **DL6**, DL7, DL9, DL10 |
 | Docs | [docs/API.md#deals-deals](API.md#deals-deals), [README.md#what-it-does](../README.md#what-it-does) |
 | Links | `homelab://deals` |

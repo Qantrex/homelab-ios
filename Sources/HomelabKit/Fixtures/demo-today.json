@@ -186,10 +186,15 @@
    "style": "list",
    "icon": "newspaper",
    "subtitle": "Parliament debates the budget while a new open-source kernel release lands.",
+   "subtitle_de": "Das Parlament debattiert das Budget, während eine neue Open-Source-Kernel-Version erscheint.",
    "updated": "21:30",
    "items": [
     {
      "title": "Parliament starts the budget debate",
+     "title_de": "Parlament startet die Budgetdebatte",
+     "summary": "The National Council opened the budget debate with the finance minister's speech. The opposition criticised the planned cuts. A vote is expected at the end of next week.",
+     "summary_de": "Der Nationalrat hat die Budgetdebatte mit der Rede des Finanzministers eröffnet. Die Opposition kritisierte die geplanten Kürzungen. Die Abstimmung wird für Ende nächster Woche erwartet.",
+     "published": "2026-11-08T19:30:00+01:00",
      "subtitle": "ORF · 2 h",
      "url": "https://orf.at/stories/demo-budget",
      "tags": [
@@ -200,6 +205,10 @@
     },
     {
      "title": "Linux 7.3 brings faster storage drivers",
+     "title_de": "Linux 7.3 bringt schnellere Speichertreiber",
+     "summary": "Linux 7.3 reworks the NVMe and SATA drivers for lower latency. Early benchmarks show up to 15 percent faster small reads. Distributions should ship it within weeks.",
+     "summary_de": "Linux 7.3 überarbeitet die NVMe- und SATA-Treiber für geringere Latenz. Erste Benchmarks zeigen bis zu 15 Prozent schnellere kleine Lesezugriffe. Distributionen sollen den Kernel in wenigen Wochen ausliefern.",
+     "published": "2026-11-08T18:30:00+01:00",
      "subtitle": "heise · 3 h",
      "url": "https://www.heise.de/news/demo-linux",
      "tags": [
@@ -210,6 +219,10 @@
     },
     {
      "title": "Rail strike ends after overnight talks",
+     "title_de": "Bahnstreik nach nächtlichen Verhandlungen beendet",
+     "summary": "The rail strike ended after overnight talks between union and employers. Trains should run normally from the morning. Both sides agreed on a wage increase in two steps.",
+     "summary_de": "Der Bahnstreik ist nach nächtlichen Verhandlungen zwischen Gewerkschaft und Arbeitgebern beendet. Ab dem Morgen sollen die Züge wieder normal fahren. Beide Seiten einigten sich auf eine Lohnerhöhung in zwei Schritten.",
+     "published": "2026-11-08T16:30:00+01:00",
      "subtitle": "ORF · 5 h",
      "url": "https://orf.at/stories/demo-rail",
      "tags": [
@@ -220,6 +233,10 @@
     },
     {
      "title": "New open laptop ships with replaceable parts",
+     "title_de": "Neuer offener Laptop mit austauschbaren Teilen",
+     "summary": "A new laptop ships with a replaceable mainboard, battery and ports. The maker publishes all schematics. It starts at 1,100 euros.",
+     "summary_de": "Ein neuer Laptop kommt mit austauschbarem Mainboard, Akku und Anschlüssen. Der Hersteller veröffentlicht alle Schaltpläne. Er startet bei 1.100 Euro.",
+     "published": "2026-11-08T14:30:00+01:00",
      "subtitle": "heise · 7 h",
      "url": "https://www.heise.de/news/demo-laptop",
      "tags": [
@@ -230,6 +247,10 @@
     },
     {
      "title": "Snow expected in the Alps from Thursday",
+     "title_de": "Schnee in den Alpen ab Donnerstag erwartet",
+     "summary": "Snow is expected in the Alps from Thursday, down to 1,200 metres. Forecasters warn of icy roads on mountain passes. Ski resorts plan to open the first lifts at the weekend.",
+     "summary_de": "Ab Donnerstag wird in den Alpen Schnee bis auf 1.200 Meter erwartet. Meteorologen warnen vor Glätte auf Passstraßen. Skigebiete wollen am Wochenende die ersten Lifte öffnen.",
+     "published": "2026-11-08T12:30:00+01:00",
      "subtitle": "ORF · 9 h",
      "url": "https://orf.at/stories/demo-snow",
      "tags": [

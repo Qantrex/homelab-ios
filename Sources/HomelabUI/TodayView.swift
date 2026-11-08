@@ -459,7 +459,7 @@ struct TodayView: View {
     }
 
     /// The "act now" deals from the last day (empty for a server without deals).
-    private var freshDeals: [Deal] { status.deals?.freshAct() ?? [] }
+    private var freshDeals: [Deal] { status.deals?.freshAct(categories: model.settings.dealCategories) ?? [] }
 
     /// The deals' rows, in the Deals sheet; at accessibility sizes the figures go under the title. The last row
     /// opens the Deals screen (and closes the sheet).
@@ -549,7 +549,7 @@ struct TodayView: View {
             }
             ForEach(cards) { card in
                 // News opens its stories in the in-app reader, like the sheet does.
-                if TodayFold.tileKind(card) == .news { NewsHyperBlock(card: card) } else { CardView(card: card, model: model) }
+                if TodayFold.tileKind(card) == .news { NewsHyperBlock(card: card, language: model.settings.newsLang) } else { CardView(card: card, model: model) }
             }
         }
     }
@@ -557,17 +557,17 @@ struct TodayView: View {
     /// The full list of a tile in a sheet: the deals' rows, or the card as the Lab and chat draw it (all its rows).
     @ViewBuilder
     private func tileList(_ kind: TodayFold.TileKind) -> some View {
-        TileSheet(title: kind.title) {
-            if kind == .deals {
-                dealRows(freshDeals)
-            } else if let card = state?.cards.first(where: { TodayFold.tileKind($0) == kind }) {
-                if kind == .news {
-                    NewsSheetContent(card: card)
-                } else {
+        if kind == .news, let card = state?.cards.first(where: { TodayFold.tileKind($0) == .news }) {
+            NewsSheet(card: card, defaultLanguage: model.settings.newsLang)
+        } else {
+            TileSheet(title: kind.title) {
+                if kind == .deals {
+                    dealRows(freshDeals)
+                } else if let card = state?.cards.first(where: { TodayFold.tileKind($0) == kind }) {
                     CardView(card: card, model: model, bare: true)
+                } else {
+                    TileGonePlaceholder()   // the kind left while the sheet was open (news off, deals gone)
                 }
-            } else {
-                TileGonePlaceholder()   // the kind left while the sheet was open (news off, deals gone)
             }
         }
     }

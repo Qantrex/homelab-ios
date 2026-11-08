@@ -284,7 +284,7 @@ extension AppModel {
         switch section {
         case .day: return state?.dayCard != nil
         case .waiting: return server && !(state?.pending.isEmpty ?? true)
-        case .deals: return server && !(status.deals?.freshAct(now: now).isEmpty ?? true)
+        case .deals: return server && !(status.deals?.freshAct(now: now, categories: settings.dealCategories).isEmpty ?? true)
         case .home: return homeAssistant != nil
         case .cards:
             let day = state?.dayCard?.id
