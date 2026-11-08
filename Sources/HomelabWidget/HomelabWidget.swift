@@ -19,6 +19,7 @@ struct HomelabWidgets: WidgetBundle {
         DeadlinesWidget()
         TodosWidget()
         LeaveActivityWidget()
+        ActionsWidget()
     }
 }
 

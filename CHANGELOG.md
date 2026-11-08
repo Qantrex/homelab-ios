@@ -9,6 +9,11 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Actions widget (configurable): tiles for your Start actions, like the Hue widgets. Small (1 or 2), medium (4), large (8)
+  and a lock-screen circle (1); pick the actions in the widget's Edit menu (none picked = your first visible Start
+  tiles). A tap runs an action without fields right from the widget on a Tailscale server (result on the tile, Face ID
+  first when the app lock is on); actions with fields, destructive ones, and everything on a token server open the form
+  in the app. The widget never reads the Keychain. Needs App Intents metadata that xtool does not write yet (DeviceTest W13).
 - Hyperdetail, a fourth detail level after Overkill (Settings → Today → Detail; asks once first): nothing folds anywhere,
   every field the server sends is shown (a host with all its history numbers, ids, exact times, the server's name,
   version and fetch time), and with a personality on, each fact gets a remark in that voice. With the personality Off
