@@ -13,6 +13,9 @@ import Foundation
 /// never sees one. Nothing of it is stored: the run lives in memory, and a preset writes only Today's layout and
 /// density (`StartLayout.apply`).
 public struct FirstRun: Equatable, Sendable {
+    /// One line on the welcome screen, under the add buttons (the first run only).
+    public static let vpnNote = "Turn on Tailscale (or your VPN) first: the app talks to your servers directly."
+
     public enum Step: Equatable, Sendable {
         /// The server editor is open for a new server of this kind.
         case adding(ServerConfig.Kind)

@@ -80,7 +80,7 @@ struct AdvancedSettingsView: View {
                         Toggle("Leave-by on the lock screen", isOn: Binding(
                             get: { model.settings.leaveByOn }, set: { model.settings.leaveByOn = $0 }))
                     } footer: {
-                        SettingsFooter("When the server sends a leave-by time for the morning, opening the app puts it on the lock screen (for example \"Leave by 07:26 · U6 07:31\") until you're there. It only starts while the app is open, and needs Live Activities allowed for Homelab in iOS Settings.")
+                        SettingsFooter(verbatim: "When the server sends a leave-by time for the morning, opening the app puts it on the lock screen (for example \"\(leaveByExample)\") until you're there. It only starts while the app is open, and needs Live Activities allowed for Homelab in iOS Settings.")
                     }
                 }
 
@@ -130,6 +130,12 @@ struct AdvancedSettingsView: View {
 
     private var tabSummary: String {
         String(localized: "\(model.shownTabs.count) of \(model.availableTabs.count)")
+    }
+
+    /// "Leave by 07:26 · U6 07:31", with the line of this server's own commute or departures.
+    private var leaveByExample: String {
+        let state = model.selectedStatus.snapshot?.state
+        return CommutePlan.leaveByExample(plan: state?.commute, departures: state?.departuresCard)
     }
 
     private var chatFooter: String {

@@ -64,6 +64,64 @@ import Testing
         let when = Date(timeIntervalSince1970: 1_793_973_600 - 3600 + 300)   // 2026-11-06 14:05 Vienna
         #expect(ShareRouter.defaultScanTitle(now: when, timeZone: vienna) == "Scan 2026-11-06 14:05")
     }
+
+    // Outsider review 2026-11-08: no owner-specific words unless the server's data says so.
+    @Test func widgetGalleryNamesNoLine() {
+        #expect(DepartureBoard.galleryName == "Departures")
+        #expect(!DepartureBoard.galleryDescription.contains("U6"))
+        #expect(DepartureBoard.galleryDescription == "Next departures from your server, with delays and disruptions.")
+    }
+
+    @Test func lineComesFromTheServer() {
+        #expect(DepartureBoard(card: Card(id: "departures", title: "U6", style: .departures)).line == "U6")
+        #expect(DepartureBoard(card: Card(id: "departures", title: "S1", style: .departures)).line == "S1")
+        #expect(DepartureBoard(card: Card(id: "departures", style: .departures)).line == "Train")
+    }
+
+    @Test func leaveContentLine() throws {
+        let t = Date(timeIntervalSince1970: 1_800_000_000)
+        func content(_ line: String?) throws -> LeaveContent {
+            try #require(CommutePlan(date: "2026-11-08", mode: "u6", line: line, firstLesson: t.addingTimeInterval(7200),
+                                     leaveBy: t, train: t.addingTimeInterval(300)).leaveContent)
+        }
+        #expect(try content("U6").line == "U6")
+        #expect(try content(nil).line == "Train")
+    }
+
+    @Test func leaveByExampleUsesTheServersLine() {
+        let u6 = CommutePlan(date: "2026-11-08", mode: "u6", line: "U6")
+        let bike = CommutePlan(date: "2026-11-08", mode: "bike")
+        let board = Card(id: "departures", title: "U6", style: .departures)
+        #expect(CommutePlan.leaveByExample(plan: u6, departures: nil) == "Leave by 07:26 · U6 07:31")
+        #expect(CommutePlan.leaveByExample(plan: bike, departures: board) == "Leave by 07:26 · U6 07:31")
+        #expect(CommutePlan.leaveByExample(plan: nil, departures: nil) == "Leave by 07:26 · Train 07:31")
+    }
+
+    @Test func shareLabels() throws {
+        let owner: Set<ServerInfo.Feature> = [.share, .documents]
+        let wh = ShareDestination.willhaben(adID: "1234567890")
+        #expect(wh.label(features: owner) == "Price check on willhaben")
+        #expect(ShareDestination.paperless.label(features: owner) == "To Paperless")
+        #expect(ShareDestination.readLater.label(features: owner) == "Read later")
+        for none: Set<ServerInfo.Feature>? in [nil, [.status, .hosts]] {
+            #expect(wh.label(features: none) == "Send link to your homelab")
+            #expect(ShareDestination.paperless.label(features: none) == "Send to your homelab")
+            #expect(ShareDestination.readLater.label(features: none) == "Read later")
+        }
+        #expect(ShareDestination.paperless.label(features: [.share]) == "Send to your homelab")
+    }
+
+    @Test func scanTarget() {
+        #expect(ScanTarget.footnote(server: "Home", features: [.documents]) == "To Home, into Paperless.")
+        #expect(ScanTarget.footnote(server: "Home", features: [.status]) == "To Home, into your homelab.")
+        #expect(ScanTarget.footnote(server: "Home", features: nil) == "To Home, into your homelab.")
+        #expect(ScanTarget.hint(features: [.documents]) == "Opens the camera and sends the PDF to Paperless.")
+        #expect(ScanTarget.hint(features: []) == "Opens the camera and sends the PDF to your homelab.")
+    }
+
+    @Test func welcomeNote() {
+        #expect(FirstRun.vpnNote == "Turn on Tailscale (or your VPN) first: the app talks to your servers directly.")
+    }
 }
 
 @Suite struct ShareRequestTests {

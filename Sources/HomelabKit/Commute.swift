@@ -103,6 +103,16 @@ public struct LeaveContent: Codable, Sendable, Equatable, Hashable {
 }
 
 extension CommutePlan {
+    /// The line's name when the server sends none: neutral, never a particular city's line.
+    public static let defaultLine = "Train"
+
+    /// The example in Settings → Leave-by: "Leave by 07:26 · U6 07:31", with the line of the server's own plan or
+    /// departures (the neutral word when it sends none).
+    public static func leaveByExample(plan: CommutePlan?, departures: Card?) -> String {
+        let line = plan?.line ?? departures?.title ?? defaultLine
+        return "Leave by 07:26 · \(line) 07:31"
+    }
+
     /// The activity's content, or nil when the plan has nothing to show (error, not active, no leave-by or train,
     /// no first lesson).
     public var leaveContent: LeaveContent? {
@@ -114,7 +124,7 @@ extension CommutePlan {
                                 bike: true, ride: ride, day: date, firstLesson: firstLesson)
         }
         guard let train else { return nil }
-        return LeaveContent(leaveBy: leaveBy, line: line ?? "U6", departure: train, next: next, nextTooLate: nextTooLate,
+        return LeaveContent(leaveBy: leaveBy, line: line ?? Self.defaultLine, departure: train, next: next, nextTooLate: nextTooLate,
                             disruption: first, moreDisruptions: more, day: date, firstLesson: firstLesson)
     }
 

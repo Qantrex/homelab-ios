@@ -18,7 +18,7 @@ final class ShareModel {
     /// One id per shared item: a retry (or the outbox later) is the same item for the server, never a second one.
     private let itemID = UUID().uuidString.lowercased()
     private(set) var server: ServerConfig?
-    private var features: Set<ServerInfo.Feature>?
+    private(set) var features: Set<ServerInfo.Feature>?
     private let storage = Storage.shared()
 
     init() {
@@ -124,7 +124,7 @@ struct ShareView: View {
                 Image(systemName: symbol(destination)).font(.title3).foregroundStyle(Palette.text)
                     .frame(width: 28).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(destination.label).font(.headline).foregroundStyle(Palette.text)
+                    Text(destination.label(features: model.features)).font(.headline).foregroundStyle(Palette.text)
                     Text(share.detail).font(.subheadline).foregroundStyle(Palette.secondary).lineLimit(2)
                 }
                 Spacer(minLength: 0)

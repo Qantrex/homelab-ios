@@ -174,6 +174,7 @@ struct WelcomeView: View {
                     .controlSize(.large)
                 }
                 VStack(spacing: 4) {
+                    Text(verbatim: FirstRun.vpnNote)
                     Text("A Homelab server is anything that speaks the Homelab API, like the small Homelab Bridge for any Linux box:")
                     Link("Set up a Homelab Bridge", destination: URL(string: "https://github.com/Qantrex/homelab-ios/blob/main/docs/GETTING-STARTED.md#b-homelab-bridge")!)
                 }

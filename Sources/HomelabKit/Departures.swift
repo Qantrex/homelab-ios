@@ -10,6 +10,10 @@ extension HomelabState {
 /// The `departures` card as a board: rows grouped by direction and stop, in the server's order (the relevant
 /// direction comes first). Pure, so it is tested on Linux.
 public struct DepartureBoard: Equatable, Sendable {
+    /// The departures widget in the gallery: no city's line in its name (what it shows is the server's line).
+    public static let galleryName = "Departures"
+    public static let galleryDescription = "Next departures from your server, with delays and disruptions."
+
     public struct Departure: Equatable, Sendable {
         public var due: Date
         /// The server's clock text ("20:54"), used when the time can't be computed from `due`.
@@ -31,7 +35,7 @@ public struct DepartureBoard: Equatable, Sendable {
         public var id: String { towards + "|" + (stop ?? "") }
     }
 
-    /// "U6"
+    /// The card's title ("U6"); the neutral word when the server sends none.
     public var line: String
     public var groups: [Group]
     /// The card's `text`: the disruption titles. Nil when there is none.
@@ -40,7 +44,7 @@ public struct DepartureBoard: Equatable, Sendable {
     public var updated: String?
 
     public init(card: Card) {
-        line = card.title ?? "U6"
+        line = card.title ?? CommutePlan.defaultLine
         disruption = card.text.flatMap { $0.isEmpty ? nil : $0 }
         updated = card.updated
         var groups: [Group] = []
