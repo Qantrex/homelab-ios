@@ -149,7 +149,7 @@ struct TileButton: View {
                 Text(verbatim: String(tile.count)).font(Typo.data(.title, weight: .semibold)).foregroundStyle(Palette.text)
                     .minimumScaleFactor(0.6).lineLimit(1)
                 Text(verbatim: tile.line).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                    .lineLimitAtStandardSizes(density == .overkill ? 3 : 2)
+                    .lineLimitAtStandardSizes(density.atLeastOverkill ? 3 : 2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }

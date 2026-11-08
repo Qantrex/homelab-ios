@@ -79,7 +79,7 @@ enum VoiceLines {
 
         case .done:
             ["Done. As requested.", "Done. Quietly and without fuss.",
-             "Done. Fewer forms than the Magistrat would need."]
+             "Done. Fewer forms than the city would need."]
         case .failed:
             ["That didn't work. The details are above.", "No luck this time. Worth another try."]
 
@@ -113,7 +113,7 @@ enum VoiceLines {
              "Cheaper than the cloud, they said.", "Something died. Go find the body."]
         case .todayUnknown:
             ["The lab is giving you the silent treatment.", "Tailscale off again?", "Did someone trip over a cable?",
-             "No signal. The ÖBB calls this a delay."]
+             "No signal. The railway calls this a delay."]
 
         case .labAllGood:
             ["All good. Don't touch anything.", "Nothing broken. Must be a public holiday.",
@@ -137,22 +137,22 @@ enum VoiceLines {
              "Restart it. Bailouts work for banks, why not here?"]
         case .reasonDisk:
             ["You don't need all of that. You know you don't.", "Delete something. Anything. Please.",
-             "Full, like Vienna's housing waitlist."]
+             "Full, like the city's housing waitlist."]
         case .reasonHot:
             ["Toasty. Maybe not next to the heater?", "Hot enough to heat the flat. Cheaper than gas.",
              "Free heating. The energy ministry calls that policy."]
         case .reasonLoad:
             ["Working harder than you, apparently.", "It's not slow. It's overcommitted. Like you.",
-             "Slow. Still faster than the U5 construction."]
+             "Slow. Still faster than a city construction site."]
         case .reasonPower:
-            ["That USB charger was never a power supply.", "Underfed, like the school budget.",
+            ["That USB charger was never a power supply.", "Underfed, like the public budget.",
              "Rationed power. The energy crisis never ended."]
         case .reasonBackup:
             ["No backup. Bold move.", "Your data is one bad day from gone. Fun.",
              "No backup. Like the pension system."]
         case .reasonOther:
             ["This is why the cloud costs money.", "Self-hosting: free as in free time.",
-             "Fixable. By you. Today, ideally.", "Officially a 'temporary disruption'. Ask the ÖBB."]
+             "Fixable. By you. Today, ideally.", "Officially a 'temporary disruption'. Ask the railway."]
 
         case .emptyApprovals:
             ["Nothing to approve. The agent is behaving.", "Nothing to approve. The robot is napping.",
@@ -221,11 +221,11 @@ enum VoiceLines {
              "Another casualty of your shit homelab."]
         case .todayUnknown:
             ["The lab's ignoring you. Smart lab.", "No signal. Dead, or unionising.",
-             "Lost contact. Even Chat Control can't find it.", "Silence. Like the Magistrat on a Friday.",
+             "Lost contact. Even Chat Control can't find it.", "Silence. Like the city office on a Friday.",
              "No answer. Not even your damn lab likes you."]
 
         case .labAllGood:
-            ["No problems. Rarer than an affordable flat in Vienna.", "All good. A fucking miracle, given who runs it.",
+            ["No problems. Rarer than an affordable flat in a big city.", "All good. A fucking miracle, given who runs it.",
              "All quiet. Entropy is only on a coffee break.", "All good. A consultant somewhere bills for that."]
         case .labWarnings:
             ["{count}. Transitory, like inflation was supposed to be.", "{count}. The EU is drafting a regulation.",
@@ -259,7 +259,7 @@ enum VoiceLines {
             ["No backup. The pension system sends solidarity.", "Your data's gone. The cloud would've sold it first.",
              "Failed. Even data retention keeps better copies.", "No backup. Enjoy losing everything, genius."]
         case .reasonOther:
-            ["Broken. Someone will hold a damn press conference.", "Not my department. Try the Magistrat, form B-17.",
+            ["Broken. Someone will hold a damn press conference.", "Not my department. Try the city office, form B-17.",
              "The market will fix it. It won't.", "Fix it, dumbass. Nobody else is coming."]
 
         case .emptyApprovals:
@@ -287,7 +287,7 @@ enum VoiceLines {
              "No bargains. Late capitalism sends its regards."]
 
         case .done:
-            ["Done. Faster than any ministry has ever managed.", "Done. No Magistrat, no stamp. Revolutionary.",
+            ["Done. Faster than any ministry has ever managed.", "Done. No city office, no stamp. Revolutionary.",
              "Done. More delivery than the last election promised.", "Done. Put it on LinkedIn, you pretentious prick.",
              "Done. Even a broken clock, you absolute fluke."]
         case .failed:
@@ -304,7 +304,7 @@ enum VoiceLines {
             ["It recovered. Unlike housing affordability.", "Resurrected. No miracle, just a restart.",
              "Fixed itself. You were useless, as usual, shit."]
         case .noticeWaiting:
-            ["Decide. Faster than the Magistrat, ideally.", "The bot did the work. Press the button.",
+            ["Decide. Faster than the city office, ideally.", "The bot did the work. Press the button.",
              "Approve it before entropy does.", "The bot asks first. Unlike the data brokers.",
              "Click yes, you indecisive wreck."]
 

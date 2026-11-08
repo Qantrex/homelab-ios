@@ -9,7 +9,7 @@ public enum Personality: String, Codable, CaseIterable, Sendable, Identifiable {
     case off, dry, snarky
     /// The far end, a different tier from Snarky: harsh, profane, over the top, merciless about the owner and the lab,
     /// with satire of politics and the news cycle in general terms (EU regulation, the AI hype, rent, inflation,
-    /// surveillance, the Magistrat). It mocks the owner, ideas, institutions and systems. Never slurs, jokes about
+    /// surveillance, city bureaucracy). It mocks the owner, ideas, institutions and systems. Never slurs, jokes about
     /// protected groups, anything sexual, self-harm, real people or threats (TakeTests). Choosing it asks once first
     /// (`UltrakillWarning`).
     case ultrakill

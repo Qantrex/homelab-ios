@@ -249,6 +249,9 @@ public final class AppModel {
     public var formSheetOpen: Bool { !openForms.isEmpty }
     /// A host's detail to open in Lab (deep link `homelab://lab/<host-id>`, launch argument `-HomelabHost`). Lab opens
     /// it once the state has that host (`takeOpenHost`), and clears it.
+    /// A Settings page to push (launch argument `-HomelabSettingsPage advanced`, for screenshots); Settings opens it
+    /// and clears it.
+    public var openSettingsPage: String?
     public var openHost: String? { didSet { openHostSince = openHost == nil ? nil : Date() } }
     /// When `openHost` was asked for: a snapshot fetched after it that lacks the host drops the request.
     @ObservationIgnored private var openHostSince: Date?
@@ -1073,6 +1076,10 @@ public final class AppModel {
             request(.lab)
         }
         if let d = args.density { settings.todayDensity = d }
+        if let page = args.settingsPage {
+            openSettingsPage = page
+            request(.settings)
+        }
         // Stored like the setting: `-HomelabRules deals=always` removes the Deals rule again.
         for (section, rule) in args.rules ?? [] { settings.todayLayout.setRule(rule, for: section) }
         if let t = args.time { fixedTime = t }
@@ -1144,6 +1151,8 @@ struct LaunchArguments {
     var tab: AppTab?
     var density: Density?
     var personality: Personality?
+    /// `-HomelabSettingsPage advanced`: Settings opens with the Advanced page pushed (screenshots).
+    var settingsPage: String?
     var action: String?
     var host: String?
     /// `-HomelabDeals list|detail`: the Deals screen, with the first deal's detail for `detail` (screenshots).
@@ -1178,6 +1187,7 @@ struct LaunchArguments {
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }
         density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
+        settingsPage = value("HomelabSettingsPage").flatMap { $0.lowercased() == "advanced" ? "advanced" : nil }
         personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
         action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }
         deals = value("HomelabDeals").flatMap { ["list", "detail"].contains($0) ? $0 : nil }

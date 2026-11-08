@@ -444,4 +444,28 @@ import Testing
         #expect(ProposalNotice.content(for: alert, locked: false, voice: .snarky).body == "Proposed by nightly.")
         #expect(!ProposalNotice.content(for: alert, locked: true, voice: .snarky, extra: on).body.contains("id: 7"))
     }
+
+    // MARK: Lab, chat, results, launch
+
+    @Test func labCardsChatAndResultsAreUnfolded() {
+        let card = Card(id: "tailnet", style: .list, items: Self.items(8))
+        #expect(LabRows.folds(card, density: .standard) && LabRows.shown(card, expanded: false, density: .standard).count == 3)
+        #expect(!LabRows.folds(card, density: .hyperdetail) && LabRows.shown(card, expanded: false, density: .hyperdetail).count == 8)
+        var s = AppSettings()
+        s.chatFolding = .short
+        #expect(s.shownChatFolding == .short)
+        s.todayDensity = .hyperdetail
+        #expect(s.shownChatFolding == .never && s.chatFolding == .short)
+        let r = ActionReport(ok: true, title: "Restarted sonarr", text: "running.")
+        #expect(r.hyperdetailed(nil) == r)
+        let h = r.hyperdetailed(HyperContext(personality: .off, now: Self.now, calendar: Self.utc))
+        #expect(h.text.hasPrefix("running.\n\nok: true\ntitle: Restarted sonarr") && h.text.contains("at: 2026-11-08 10:00:00 +00:00"))
+    }
+
+    @MainActor @Test func settingsPageLaunchArgument() {
+        let (m, _, _, _) = makeModel(args: ["app", "-HomelabDemo", "YES", "-HomelabSettingsPage", "Advanced"])
+        #expect(m.openSettingsPage == "advanced")
+        let (n, _, _, _) = makeModel(args: ["app", "-HomelabSettingsPage", "nope"])
+        #expect(n.openSettingsPage == nil)
+    }
 }

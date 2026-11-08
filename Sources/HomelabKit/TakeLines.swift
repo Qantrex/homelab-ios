@@ -129,7 +129,7 @@ enum TakeLines {
             "{host} is down. Off and on again is technically a plan.",
             "{host} ghosted you. Most things you plug in eventually do.",
             "No ping from {host}. Very minimalist.",
-            "{host} is gone. Faster than the Magistrat ever answered anything.",
+            "{host} is gone. Faster than the city ever answered anything.",
         ]
         case .container: [
             "{container} on {host} is {state}. You never update it, do you?",
@@ -168,7 +168,7 @@ enum TakeLines {
             "{flag} on {host}. Running on vibes and a dodgy cable.",
             "{host}: {flag}. Ten euros saved on the PSU, well spent.",
             "{host} reports {flag}. Powered by a USB port and optimism.",
-            "{flag} on {host}. Underfed, like the school budget.",
+            "{flag} on {host}. Underfed, like the public budget.",
         ]
         case .backupFailed: [
             "{host}'s backup failed. RAID is not a backup, as you'll recall.",
@@ -248,7 +248,7 @@ enum TakeLines {
             "{host} is gone. Fix it, you tinkering gremlin, or cry in the cupboard.",
             "{host} died to end your hobby. Honour its sacrifice, reboot it.",
             "{host} is down. Fucking brilliant. Reboot it, numpty.",
-            "{host} is unreachable. The Magistrat answers faster, and they don't answer.",
+            "{host} is unreachable. The city answers faster, and it doesn't answer.",
         ]
         case .container: [
             "{container} on {host} is {state}. 400 lines of YAML, for nothing.",
@@ -327,7 +327,7 @@ enum TakeLines {
             "{title} is due {when}. Do it, you procrastinating wanker.",
             "{when}: {title}. The homelab can wait. Your future can't, dumbass.",
             "{title}, due {when}. Death, taxes and this. Only one is your fault.",
-            "{title} is due {when}. The Magistrat won't take your shit excuses.",
+            "{title} is due {when}. The tax office won't take your shit excuses.",
             "{title} due {when}. Panic now, you prick. It's cheaper than later.",
             "{title} is due {when}. Stop optimising your lab and fucking start.",
         ]
@@ -338,7 +338,7 @@ enum TakeLines {
             "{actions} waiting on you. The slowest part of this homelab is you, dumbass.",
             "{actions} to approve. The AI hype was real. Your reaction time isn't.",
             "{actions} pending. Approve the shit. Nobody's watching, it's not LinkedIn.",
-            "{actions} waiting. A Magistrat clerk answers faster than you.",
+            "{actions} waiting. A bureaucrat answers faster than you.",
             "{actions} waiting. You doomscrolled past all of them, didn't you?",
         ]
         case .parcel: [

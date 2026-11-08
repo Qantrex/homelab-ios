@@ -10,6 +10,9 @@ struct SettingsView: View {
     @State private var confirmReset = false
     @State private var deleting: ServerConfig?
     @State private var notificationNote: String?
+    /// The Advanced page pushed by `-HomelabSettingsPage advanced`.
+    @State private var showAdvanced = false
+    @Environment(\.hyper) private var hyper
 
     var body: some View {
         NavigationStack {
@@ -52,6 +55,7 @@ struct SettingsView: View {
                             ForEach(Density.allCases) { Text($0.title).tag($0) }
                         }
                         .accessibilityHint(Text(verbatim: model.settings.todayDensity.summary))
+                        .hyperdetailWarning(model)
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
@@ -106,6 +110,26 @@ struct SettingsView: View {
                         SettingsFooter("Today's sections and rules, Start tiles, Lab, Chat, the tab bar, quiet hours, Diagnostics and Demo servers.")
                     }
 
+                    // Hyperdetail: everything the app holds, as the file and the server say it.
+                    if hyper != nil {
+                        Section {
+                            HyperSection(title: "settings.json", lines: Hyper.settings(model.settings))
+                            HyperSection(title: "Server", lines: Hyper.server(
+                                name: model.selected?.name ?? "none", snapshot: model.selectedStatus.snapshot,
+                                info: model.selectedStatus.knownInfo, failures: model.selectedStatus.failures,
+                                busy: model.selectedStatus.snapshot?.state.busy ?? [], now: hyper?.now ?? .now),
+                                         fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: model.selectedStatus.snapshot) })
+                            ForEach(model.servers.servers) { s in
+                                HyperSection(title: "Saved server \(s.name)",
+                                             lines: Hyper.serverConfig(s, selected: s.id == model.selected?.id))
+                            }
+                            HyperSection(title: "App", lines: [HyperLine("version", AppVersion.short), HyperLine("build", AppVersion.build),
+                                                               HyperLine("user agent", AppVersion.userAgent)])
+                        } header: {
+                            Text("Hyperdetail")
+                        }
+                    }
+
                     Section {
                         NavigationLink("About Homelab") { AboutView() }
                         DataRow("Version", "\(AppVersion.short) (\(AppVersion.build))")
@@ -118,6 +142,10 @@ struct SettingsView: View {
             }
             .screenBackground()
             .navigationTitle("Settings")
+            .navigationDestination(isPresented: $showAdvanced) { AdvancedSettingsView(model: model) }
+            .onAppear {
+                if model.openSettingsPage == "advanced" { model.openSettingsPage = nil; showAdvanced = true }
+            }
             .sheet(item: $editing) { ServerEditor(model: model, server: $0) }
             // "Edit server" on an error banner elsewhere: open that server's editor here.
             .onAppear { openRequestedEditor() }

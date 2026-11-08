@@ -299,7 +299,7 @@ enum HyperLines {
             "{value} in {subject}. Mediocrity, certified.",
             "{subject}: {value}. Study less shit, learn more.",
             "{value} in {subject}. A fucking participation trophy.",
-            "{subject} at {value}. The Matura is watching, you slacker.",
+            "{subject} at {value}. The final exam is watching, you slacker.",
         ]
         case .news: [
             "{title}. The news cycle shits again.",

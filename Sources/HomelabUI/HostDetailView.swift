@@ -14,6 +14,7 @@ struct HostDetailView: View {
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
     @Environment(\.openURL) private var openURL
+    @Environment(\.hyper) private var hyper
 
     private var current: Host { model.selectedStatus.snapshot?.state.hosts.first { $0.id == host.id } ?? host }
 
@@ -116,6 +117,13 @@ struct HostDetailView: View {
                         Button { openURL(url) } label: { Label("Open web interface", systemImage: "safari") }
                             .foregroundStyle(Palette.text)
                     }
+                }
+                // Hyperdetail: every field the server sent for this host, all history numbers included.
+                if let hyper {
+                    Section {
+                        HyperNote(lines: Hyper.host(host, now: hyper.now, calendar: hyper.calendar),
+                                  fact: Hyper.fact(host: host, now: hyper.now))
+                    } header: { sectionHeader("Everything") }
                 }
             }
             .surfaceRows()

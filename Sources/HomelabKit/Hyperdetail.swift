@@ -409,6 +409,14 @@ public enum Hyper {
          HyperLine("text", "\(r.text.count) characters"), HyperLine("at", stamp(now, now: now, calendar: calendar))]
     }
 
+    public static func service(_ s: Service) -> [HyperLine] {
+        var out = [HyperLine("name", s.name), HyperLine("url", s.url.absoluteString)]
+        if let v = s.group { out.append(HyperLine("group", v)) }
+        if let v = s.icon { out.append(HyperLine("icon", v)) }
+        if let v = s.description { out.append(HyperLine("description", v)) }
+        return out
+    }
+
     public static func entity(_ e: HAEntity, now: Date = Date(), calendar: Calendar = .current) -> [HyperLine] {
         var out = [HyperLine("entity_id", e.entityID), HyperLine("domain", e.domain), HyperLine("state", e.state),
                    HyperLine("friendly_name", e.name)]
@@ -467,6 +475,15 @@ public enum Hyper {
         }
     }
 
+    /// A saved server as the app holds it (never its token): id, kind, address, auth, pinned Home entities.
+    public static func serverConfig(_ c: ServerConfig, selected: Bool = false) -> [HyperLine] {
+        var out = [HyperLine("id", c.id.uuidString), HyperLine("name", c.name), HyperLine("kind", c.kind.rawValue),
+                   HyperLine("url", c.baseURL.absoluteString), HyperLine("auth", c.auth.rawValue)]
+        if selected { out.append(HyperLine("selected", "true")) }
+        if !c.pinnedEntities.isEmpty { out.append(HyperLine("pinned", c.pinnedEntities.joined(separator: ", "))) }
+        return out
+    }
+
     // MARK: Notifications
 
     /// What a notification gets on top in Hyperdetail: the fields of what it is about, and with a personality the
@@ -496,6 +513,18 @@ public enum Hyper {
         let remark = remark(fact, personality, now: now, calendar: calendar)
         let text = ([parts.joined(separator: " · ")] + [remark].compactMap { $0 }).filter { !$0.isEmpty }.joined(separator: "\n")
         return text.isEmpty ? nil : text
+    }
+}
+
+public extension ActionReport {
+    /// In Hyperdetail the result also lists its fields (ok, title, size of the text, the exact time) after the text
+    /// and the remark. Unchanged outside it (`hyper` nil).
+    func hyperdetailed(_ hyper: HyperContext?) -> ActionReport {
+        guard let hyper else { return self }
+        var report = self
+        let fields = Hyper.report(self, now: hyper.now, calendar: hyper.calendar).map { "\($0.label): \($0.value)" }.joined(separator: "\n")
+        report.text = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fields : text + "\n\n" + fields
+        return report
     }
 }
 

@@ -54,6 +54,8 @@ public struct RootView: View {
         .task { await model.drainOutbox() }
         .tint(Palette.accent)
         .labeledContentStyle(.adaptive)
+        // Hyperdetail only (nil elsewhere): the views below add every field and a remark to what they draw.
+        .environment(\.hyper, model.hyper)
     }
 
     /// Sheets, alerts and confirmation dialogs live above the root view; close them all before locking.
