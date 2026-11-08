@@ -105,6 +105,7 @@ struct ChatView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var systemTypeSize
     @FocusState private var focused: Bool
     /// The send circle, growing with the text size; its tap area is at least 44 pt.
     @ScaledMetric(relativeTo: .body) private var sendSize: CGFloat = 34
@@ -118,6 +119,12 @@ struct ChatView: View {
         let hint = commands.isEmpty ? String(localized: "Ask your homelab anything.")
                                     : String(localized: "Ask your homelab anything, or tap / for its commands.")
         return LocalizedStringKey(Voice.line(.emptyChat, model.settings.voice).map { $0 + " " + hint } ?? hint)
+    }
+
+    private var chatTypeSize: DynamicTypeSize {
+        let all = DynamicTypeSize.allCases
+        let at = all.firstIndex(of: systemTypeSize) ?? 0
+        return all[model.settings.chatSize.shifted(at, count: all.count)]
     }
 
     /// The commands the server says its chat understands, each with what it does (none = no "/" button).
@@ -141,6 +148,10 @@ struct ChatView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             }
             .background(Palette.background.ignoresSafeArea())
+            // Settings -> Advanced -> Chat: one step smaller or larger than the system's text size, and how long a
+            // reply is before "Show more".
+            .dynamicTypeSize(chatTypeSize)
+            .environment(\.chatFoldMode, model.settings.chatFolding)
             .navigationTitle("Chat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -455,12 +466,13 @@ struct AgentMessage: View {
 
     @State private var expanded = false
     @State private var fullHeight: CGFloat = 0
+    @Environment(\.chatFoldMode) private var foldMode
     /// One body line, for "fold after 12 lines" at every text size.
     @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = 22
 
     /// Only text: one VoiceOver element. With buttons or cards inside, each part is its own.
     private var plain: Bool { pending.isEmpty && message.cards.isEmpty }
-    private var folds: Bool { ChatFold.folds(height: Double(fullHeight), lineHeight: Double(lineHeight)) }
+    private var folds: Bool { ChatFold.folds(height: Double(fullHeight), lineHeight: Double(lineHeight), mode: foldMode) }
     private var folded: Bool { folds && !expanded }
 
     var body: some View {
@@ -506,7 +518,7 @@ struct AgentMessage: View {
             ChatText(message.text)
                 .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
-                .frame(height: folded ? CGFloat(ChatFold.foldedHeight(lineHeight: lineHeight)) : nil, alignment: .top)
+                .frame(height: folded ? CGFloat(ChatFold.foldedHeight(lineHeight: lineHeight, mode: foldMode)) : nil, alignment: .top)
                 .clipped()
                 .mask {
                     LinearGradient(stops: [.init(color: .black, location: 0),
@@ -764,5 +776,16 @@ struct ChatText: View {
             }
         }
         return a
+    }
+}
+
+
+private struct ChatFoldModeKey: EnvironmentKey { static let defaultValue = ChatFoldMode.standard }
+
+extension EnvironmentValues {
+    /// How long a chat reply is before "Show more" (Settings -> Advanced -> Chat).
+    var chatFoldMode: ChatFoldMode {
+        get { self[ChatFoldModeKey.self] }
+        set { self[ChatFoldModeKey.self] = newValue }
     }
 }

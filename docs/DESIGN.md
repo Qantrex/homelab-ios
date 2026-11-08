@@ -174,15 +174,16 @@ the default text size with typical data on an iPhone 12 mini:
 | Standard | Two screens at most. The first screen has the hero, Tomorrow, the approvals and every urgent row |
 | Overkill | Three screens at most |
 
-- **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue,
-  due today or due within 48 hours; a to-do past its time; a proposal. Warm tints belong to urgent rows only, and
+- **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue
+  or due within 3 days; a to-do past its time; a proposal. Warm tints belong to urgent rows only, and
   colour is never the only sign (the row says why in words).
 - **Standard folds the rest.**
   - The hero stays. The weather card is not drawn on Today: the hero line says it. The hero has no "Lab ›" link: the
     headline and the machines line lead to Lab, and the Lab tab is one tap away (owner, 2026-11-08).
   - The short "today" text is one plain line. Tomorrow's "No school" is a caption without a panel.
   - To approve shows 2 proposals and "and N more", which opens Actions.
-  - To-dos and parcels fold after 3 rows. Deadlines show the urgent ones topped up to 3, then "Show N more · next Fri".
+  - To-dos and parcels fold after 3 rows. Deadlines show only the urgent ones (overdue or within 3 days), never topped up with later ones: everything
+    later is behind "Show N more · next Fri", and with none urgent the card is just that row (owner, 2026-11-09).
     The briefing shows 3 lines and "Show more".
   - A small list card (a game server: "Mira is playing") is one line. An unknown card folds after 3 rows or 3 lines.
 - **Tiles hold what is nice to know: deals, recent downloads and grades.** No panel title. Each tile has the icon and
@@ -212,3 +213,29 @@ the default text size with typical data on an iPhone 12 mini:
   high, and expanding announces itself. At accessibility text sizes the tiles are one per row and their lines wrap,
   so Today may be longer than the budget; the budget is for the default size.
 - Colours as in 3: white and grey, never blue.
+
+## 9. Settings and Advanced
+
+Settings is short: what most people touch, then one row for the rest (owner, 2026-11-09: "too detailed settings should
+live in an advanced section").
+
+- **Top level:** Data (which server), Servers, Today (Detail, Personality), Notifications (the three toggles),
+  Privacy (Face ID, Reset everything), the **Advanced** row, About (About Homelab, Version).
+- **Advanced:** Today's Sections (order, hide, show rules) and Where you are; Layout (Start tiles, Lab, Tab bar);
+  Chat (Text size, Long replies); Quiet hours; Leave-by on the lock screen; Diagnostics; Demo servers; a reset for the
+  layout and chat options. The row says "Customized" while something there differs from the default.
+- **The title follows the personality** (`AdvancedTitle`, its own small table): Off and Dry "Advanced", Snarky
+  "Nerd section", Ultrakill "Nerd shit". The words never replace what is inside.
+- **Order editors** (Start tiles, Lab, Tab bar; `OrderEditor`): a list in edit mode, each row is the name, an optional
+  meta line and a switch; drag by the handle, or VoiceOver's Move up and Move down actions; rows are at least 44 pt;
+  hidden rows say "hidden" to VoiceOver. "Standard order" resets one list.
+- **Hide and reorder rules** (`ItemOrder`): things are named by a stable id (action `name`, lab card `id`, tab name).
+  What the server adds later appears at the end and visible; a name that is gone is skipped, a hidden one stays hidden
+  if it returns. Lab keeps Problems on top; the Hosts and Services blocks and every lab card can be hidden. The tab bar
+  never hides Settings (also not from a hand-edited file); the first shown tab is where the app opens. A link or tap
+  that wants a hidden tab (`homelab://chat`, the approvals row) leaves the shown tab and says "Chat is hidden" in an
+  alert; a hidden Start tile can still be opened by `homelab://actions/<name>`.
+- **Chat:** text size is one Dynamic Type step smaller or larger than the system's (Small, Default, Large). Long
+  replies fold after 12 lines by default (Default), after 6 (Short), or never.
+- Everything is optional in `settings.json` and written only once it differs from the default, so an older file saves
+  back byte for byte (OwnerInvarianceTests).

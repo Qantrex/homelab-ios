@@ -248,7 +248,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
 | `api` | Must be `1`. Anything else: an error that asks to update the app |
-| `sources` | Settings → Diagnostics gets a "Sources" section: per source its name and type, the state in words (`ok`, red `failing: 401`, `not yet`), when it last worked, a gold "Certificate not checked (insecure)" for `insecure: true` and "Key sent without encryption (http://)" for `plain_http: true`; Copy report has one line per source (tailnet names masked). Missing, `null` or not a list: no section. Entries without a `name` are dropped; an unknown `state` reads "unknown"; `error` is cut to its first line and 120 characters |
+| `sources` | Settings → Advanced → Diagnostics gets a "Sources" section: per source its name and type, the state in words (`ok`, red `failing: 401`, `not yet`), when it last worked, a gold "Certificate not checked (insecure)" for `insecure: true` and "Key sent without encryption (http://)" for `plain_http: true`; Copy report has one line per source (tailnet names masked). Missing, `null` or not a list: no section. Entries without a `name` are dropped; an unknown `state` reads "unknown"; `error` is cut to its first line and 120 characters |
 
 ## Source status (`sources` in `/info`)
 

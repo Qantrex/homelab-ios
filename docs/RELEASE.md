@@ -10,7 +10,7 @@ There is no release yet (2026-11-07). The release channel is decided: see "Relea
 The version lives in three Info.plists, and all three must say the same: `App-Info.plist`, `Widget-Info.plist` and
 `Share-Info.plist`. `CFBundleShortVersionString` is the version people see (`1.0.0`), `CFBundleVersion` the build
 number (count it up by one for every release, also a pre-release). The app reads them (`AppVersion`, shown in
-Settings → Diagnostics); `xtool.yml` has no version of its own.
+Settings → Advanced → Diagnostics); `xtool.yml` has no version of its own.
 
 ```bash
 V=1.0.0
@@ -70,7 +70,7 @@ Not a fresh `xtool dev` build: the file in `dist/`.
 `push-ipa` copies the IPA into SideStore's folder. On the phone: SideStore → My Apps → + → the IPA. (Without
 SideStore, `xtool install "dist/Homelab-$V.ipa"` over USB also works.)
 
-On the phone: Settings → Diagnostics shows `$V` and the build number from step 0. Then go through the
+On the phone: Settings → Advanced → Diagnostics shows `$V` and the build number from step 0. Then go through the
 **release-blocking rows** of [DeviceTest.md](../DeviceTest.md) (listed at its top) with a real server, and write the
 date, phone, iOS and version in its header. Every ❌ in a release-blocking row stops the release.
 

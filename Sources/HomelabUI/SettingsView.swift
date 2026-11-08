@@ -52,15 +52,6 @@ struct SettingsView: View {
                             ForEach(Density.allCases) { Text($0.title).tag($0) }
                         }
                         .pickerStyle(.segmented)
-                        NavigationLink {
-                            TodayLayoutEditor(model: model)
-                        } label: {
-                            LabeledContent("Sections") {
-                                Text("\(model.settings.todayLayout.listedVisibleCount) of \(TodaySection.allCases.filter(\.isOnToday).count)")
-                                    .font(Typo.secondary).foregroundStyle(Palette.secondary)
-                            }
-                        }
-                        PresenceRow(model: model)
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
@@ -80,21 +71,10 @@ struct SettingsView: View {
                         if model.selectedStatus.hasDeals || model.settings.notifyDeals {
                             Toggle("New deals to act on", isOn: notifyBinding(\.notifyDeals))
                         }
-                        QuietHoursRow(model: model)
                     } header: {
                         Text("Notifications")
                     } footer: {
                         SettingsFooter(verbatim: notificationNote ?? String(localized: "Checked in the background when iOS allows it (often every 15–60 minutes, not exact). If your homelab already pushes alerts (ntfy, Home Assistant), leave these off. Deals: the server already pushes the strong ones."))
-                    }
-
-                    // Only for a server that sends a commute (or while on, so it can be turned off).
-                    if model.selectedStatus.snapshot?.state.commute != nil || model.settings.leaveByOn {
-                        Section {
-                            Toggle("Leave-by on the lock screen", isOn: Binding(
-                                get: { model.settings.leaveByOn }, set: { model.settings.leaveByOn = $0 }))
-                        } footer: {
-                            SettingsFooter("When the server sends a leave-by time for the morning, opening the app puts it on the lock screen (for example \"Leave by 07:26 · U6 07:31\") until you're there. It only starts while the app is open, and needs Live Activities allowed for Homelab in iOS Settings.")
-                        }
                     }
 
                     Section {
@@ -110,17 +90,24 @@ struct SettingsView: View {
                         SettingsFooter("Face ID or the passcode when the app opens; tokens always stay in the Keychain. Reset deletes all servers, tokens, cached data and settings from this phone.")
                     }
 
+                    // The detailed settings: Today's sections and rules, Start tiles, Lab, Chat, the tab bar, quiet hours,
+                    // Leave-by, Diagnostics and Demo servers. The title follows the personality (`AdvancedTitle`).
                     Section {
-                        Toggle("Demo servers", isOn: Binding(get: { model.isDemo }, set: { model.setDemo($0) }))
-                    } header: {
-                        Text("Demo")
+                        NavigationLink {
+                            AdvancedSettingsView(model: model)
+                        } label: {
+                            LabeledContent(LocalizedStringKey(AdvancedTitle.text(model.settings.voice))) {
+                                if model.settings.customizedElsewhere || model.settings.today != nil {
+                                    Text("Customized").font(Typo.secondary).foregroundStyle(Palette.secondary)
+                                }
+                            }
+                        }
                     } footer: {
-                        SettingsFooter("Two servers with made-up example data, marked Demo in the lists. Your own servers stay.")
+                        SettingsFooter("Today's sections and rules, Start tiles, Lab, Chat, the tab bar, quiet hours, Diagnostics and Demo servers.")
                     }
 
                     Section {
                         NavigationLink("About Homelab") { AboutView() }
-                        NavigationLink("Diagnostics") { DiagnosticsView(model: model) }
                         DataRow("Version", "\(AppVersion.short) (\(AppVersion.build))")
                     } header: {
                         Text("About")

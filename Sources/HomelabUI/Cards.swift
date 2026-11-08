@@ -319,7 +319,7 @@ struct CardView: View {
                     Text("and \(items.count - shown.count) more").font(Typo.meta).foregroundStyle(Palette.tertiary)
                 }
                 if let fold, let folded, folded.folds {
-                    TodaySeparator()
+                    if !shown.isEmpty { TodaySeparator() }
                     FoldRow(title: card.title ?? card.id,
                             label: fold.expanded ? String(localized: "Show less")
                                                  : folded.hint.map { String(localized: "Show \(folded.hidden) more · \($0)") }

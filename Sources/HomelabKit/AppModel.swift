@@ -53,14 +53,21 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var personality: Personality?
     /// The "Leave by" Live Activity on school mornings; nil = on.
     public var leaveActivity: Bool?
-    /// Settings → Today → Where you are: the Home Assistant `person.*` or `device_tracker.*` entity the "At home" and
+    /// Settings → Advanced → Where you are: the Home Assistant `person.*` or `device_tracker.*` entity the "At home" and
     /// "Away" rules read (`HomePresence.swift`); nil = off.
     public var presenceEntity: String?
-    /// Settings → Notifications → Quiet hours: no local notifications in this window (`QuietHours.swift`); nil = off.
+    /// Settings → Advanced → Quiet hours: no local notifications in this window (`QuietHours.swift`); nil = off.
     public var quietHours: TimeWindow?
     /// True once the owner confirmed the one-time Ultrakill warning (`UltrakillWarning`); nil (omitted from the file)
     /// until then, so settings without it stay byte for byte as before.
     public var ultrakillWarned: Bool?
+    /// Settings → Advanced (`Customization.swift`): order and hidden Start tiles (by action name), Lab blocks (by card
+    /// id), tabs; chat text size and folding. All nil = the standard, and omitted from the file then.
+    public var startTiles: ItemOrder?
+    public var labBlocks: ItemOrder?
+    public var tabs: ItemOrder?
+    public var chatText: ChatTextSize?
+    public var chatFold: ChatFoldMode?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -107,6 +114,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
         case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned
+        case startTiles, labBlocks, tabs, chatText, chatFold
     }
 }
 
@@ -130,6 +138,11 @@ extension AppSettings {
         presenceEntity = c.lenient(String.self, .presenceEntity)
         quietHours = c.lenient(TimeWindow.self, .quietHours)
         ultrakillWarned = c.lenient(Bool.self, .ultrakillWarned)
+        startTiles = c.lenient(ItemOrder.self, .startTiles).flatMap { $0.isStandard ? nil : $0 }
+        labBlocks = c.lenient(ItemOrder.self, .labBlocks).flatMap { $0.isStandard ? nil : $0 }
+        tabs = c.lenient(ItemOrder.self, .tabs).flatMap { $0.isStandard ? nil : $0 }
+        chatText = c.lenient(ChatTextSize.self, .chatText)
+        chatFold = c.lenient(ChatFoldMode.self, .chatFold)
     }
 }
 
@@ -312,15 +325,32 @@ public final class AppModel {
         return t
     }
 
-    /// Falls back to Today when the shown tab went away (feature list changed, server removed), and switches to a
-    /// waiting requested tab once it is available.
+    /// The tabs the bar shows, in the owner's order: the available ones without the hidden ones (Settings is never
+    /// hidden). The first is where the app opens.
+    public var shownTabs: [AppTab] { TabBar.shown(available: availableTabs, settings.tabs) }
+
+    /// A tab a link or a tap asked for that the owner hid (Settings → Advanced → Tabs): the app stays where it is and
+    /// RootView says so once. Cleared by `dismissHiddenTabNotice`.
+    public private(set) var hiddenTabNotice: AppTab?
+    public func dismissHiddenTabNotice() { hiddenTabNotice = nil }
+
+    /// Shows `t` if the bar has it; a hidden but available tab says it is hidden instead.
+    @discardableResult
+    public func go(_ t: AppTab) -> Bool {
+        if shownTabs.contains(t) { tab = t; return true }
+        if availableTabs.contains(t) { hiddenTabNotice = t }
+        return false
+    }
+
+    /// Falls back to the first shown tab (Today unless hidden) when the shown tab went away (feature list changed,
+    /// server removed, tab hidden), and switches to a waiting requested tab once it is available.
     public func validateTab() {
         let wanted = requestedTab
-        if !availableTabs.contains(tab) { tab = .today }
+        if !shownTabs.contains(tab) { tab = shownTabs.first ?? .settings }
         requestedTab = wanted   // the fallback isn't the user's choice: the request still waits
         guard let wanted else { return }
         if availableTabs.contains(wanted) {
-            tab = wanted
+            go(wanted)
             requestedTab = nil
         } else if selected == nil || selectedStatus.knownInfo != nil {
             requestedTab = nil   // no server, or its features are known and don't include the tab
@@ -431,7 +461,7 @@ public final class AppModel {
     func request(_ t: AppTab) {
         requestedTab = nil   // the newest request counts
         if availableTabs.contains(t) {
-            tab = t
+            go(t)
         } else {
             requestedTab = t
             validateTab()
@@ -1064,7 +1094,7 @@ public final class AppModel {
         }
         guard let t = AppTab(url: url) else { return }
         dropRequests()   // a new link replaces a request that still waits (its tab, form and host)
-        if !availableTabs.contains(t) { tab = .today }
+        if !shownTabs.contains(t) { tab = shownTabs.first ?? .settings }
         request(t)
         // homelab://actions/<name>: that action's form (it waits like the tab).
         let path = url.pathComponents.filter { $0 != "/" }

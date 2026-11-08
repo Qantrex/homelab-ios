@@ -1,6 +1,6 @@
 import Foundation
 
-// What the rule editor (Settings → Today → Sections) and Today's "Hidden now" line need from the show rules
+// What the rule editor (Settings → Advanced → Sections) and Today's "Hidden now" line need from the show rules
 // (docs/plans/MODULAR.md, M3.2). Pure where it can be; the views only show these words.
 
 /// One choice in a section's rule sheet.

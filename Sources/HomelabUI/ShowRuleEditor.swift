@@ -2,10 +2,10 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-// Show rules in the app (docs/plans/MODULAR.md, M3.2): the rule under each row of Settings → Today → Sections, the
+// Show rules in the app (docs/plans/MODULAR.md, M3.2): the rule under each row of Settings → Advanced → Sections, the
 // sheet that picks it, and Today's "Hidden now" line. The words and the logic are in the kit (ShowRuleEditing.swift).
 
-/// One row of Settings → Today → Sections: the section's name with its rule in words under it ("Evenings", "Not on
+/// One row of Settings → Advanced → Sections: the section's name with its rule in words under it ("Evenings", "Not on
 /// your servers"); a tap opens the rule sheet. The switch shows or hides the section, as before.
 struct SectionRuleRow: View {
     let model: AppModel
@@ -53,7 +53,7 @@ struct SectionRuleRow: View {
 }
 
 /// When one section shows: Always, When it needs me, a named time (Mornings … Weekends), Custom (from, to, days),
-/// and At home or Away once Settings → Today → Where you are is set (`AppModel.ruleKinds(for:)`). Done saves, Cancel
+/// and At home or Away once Settings → Advanced → Where you are is set (`AppModel.ruleKinds(for:)`). Done saves, Cancel
 /// keeps the old rule.
 struct ShowRuleSheet: View {
     let model: AppModel

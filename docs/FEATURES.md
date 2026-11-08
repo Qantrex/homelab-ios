@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 99 | 72 | 25 | 1 | 41 | 4 |
+| 100 | 73 | 25 | 1 | 41 | 4 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -130,10 +130,11 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [homelab:// links to tabs and hosts](#deep-links) | shipped | – | 7 | B3b | 2 |
 | [Launch arguments (tests, screenshots, first run over USB)](#launch-arguments) | shipped | – | 3 | n/a | 1 |
 
-### Settings (10)
+### Settings (11)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
+| [Settings → Advanced and layout customization](#advanced-settings) | shipped | – | 2 | ST6, ST7, ST8 | 3 |
 | [Welcome screen](#onboarding) | shipped | – | 1 | **FS1** | 2 |
 | [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
 | [Demo mode](#demo-mode) | shipped | – | 9 | **FS2**, **FS3**, **FS4** | 3 |
@@ -335,7 +336,7 @@ The server's `today` card as a line through the day: clock times in order, fille
 | CI screenshots | `live-today-tomorrow` |
 | Docs | [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules), [docs/API.md#how-the-app-shows-cards](API.md#how-the-app-shows-cards) |
 | Today section | `day` |
-| Settings | Settings → Today → "The day in numbers" |
+| Settings | Settings → Advanced → Sections → "The day in numbers" |
 | Depends on | [companion-api](#companion-api) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
 
@@ -353,13 +354,13 @@ Today's sections can be reordered and hidden; Calm, Standard or Overkill picks h
 | CI screenshots | `demo-today-light`, `demo-today-dark`, `demo-today-xxl` |
 | Docs | [README.md#what-it-does](../README.md#what-it-does), [docs/ADAPTING.md#turn-a-module-off](ADAPTING.md#turn-a-module-off), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
 | Launch arguments | `-HomelabDensity` |
-| Settings | Settings → Today: order, hide, detail |
+| Settings | Settings → Advanced → Sections; Settings → Today → Detail |
 
 ### today-folding
 
 **Today is short by design (folds, tiles)** · Today · shipped · since 2026-11-08
 
-Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
+Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
 
 | | |
 |---|---|
@@ -409,7 +410,7 @@ One optional rule per Today section says when it shows: Always (the default, and
 
 **Where you are (presence from Home Assistant)** · Today · partial · since 2026-11-07
 
-Settings → Today → "Where you are" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass.
+Settings → Advanced → "Where you are" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass.
 
 | | |
 |---|---|
@@ -418,7 +419,7 @@ Settings → Today → "Where you are" (only with a Home Assistant server, off b
 | Tests | `HomePresenceTests`, `PresenceModelTests`, `ModularReviewFixTests/homePollsWhileAnythingOnTodayNeedsIt`, `ModularReviewFixTests/badPresenceEntityKeepsOtherSettings` |
 | Phone (DeviceTest.md) | H8, H9 |
 | Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
-| Settings | Settings → Today → Where you are |
+| Settings | Settings → Advanced → Where you are |
 | Depends on | [show-rules](#show-rules), [home-tiles](#home-tiles), [home-assistant-api](#dep-home-assistant-api) |
 | Through those | [keychain](#dep-keychain) |
 | Notes | docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), AppModel.todaySections). Today reads Home Assistant in one loop (TodayView.homePoll, HomePoll.shouldPoll), also while the Home section is hidden. |
@@ -427,7 +428,7 @@ Settings → Today → "Where you are" (only with a Home Assistant server, off b
 
 **Show rules: editor and "Hidden now"** · Today · partial · since 2026-11-07
 
-Settings → Today → Sections shows each section's rule in words under its name ("Always", "Evenings", Machines "Only in Overkill"; "Not on your servers" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line "Hidden now: Deals (evenings) · Show"; Show brings them back until the app closes. Without rules Today is exactly as before.
+Settings → Advanced → Sections shows each section's rule in words under its name ("Always", "Evenings", Machines "Only in Overkill"; "Not on your servers" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line "Hidden now: Deals (evenings) · Show"; Show brings them back until the app closes. Without rules Today is exactly as before.
 
 | | |
 |---|---|
@@ -437,7 +438,7 @@ Settings → Today → Sections shows each section's rule in words under its nam
 | CI screenshots | `demo-rule-hidden`, `demo-rule-shown` |
 | Docs | [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments), [docs/CI.md#screenshots](CI.md#screenshots), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
 | Launch arguments | `-HomelabRules`, `-HomelabTime` |
-| Settings | Settings → Today → Sections → tap a section |
+| Settings | Settings → Advanced → Sections → tap a section |
 | Depends on | [show-rules](#show-rules), [today-layout](#today-layout), [presence](#presence) |
 | Through those | [home-assistant-api](#dep-home-assistant-api), [keychain](#dep-keychain) |
 | Notes | docs/plans/MODULAR.md M3.2. The sheet offers what AppModel.ruleKinds(for:) allows (At home and Away once Where you are is set, feature presence). The rule clock ticks every 30 s on Today only while a rule is set. |
@@ -456,7 +457,7 @@ The agent's last chat report (morning, watchdog, …) at the end of Today; tap o
 | Phone (DeviceTest.md) | **T2** |
 | Docs | [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules) |
 | Today section | `report` |
-| Settings | Settings → Today → "Last report" |
+| Settings | Settings → Advanced → Sections → "Last report" |
 | Unsure | No test checks the last_message section itself; FixtureDecoding only decodes it. |
 
 ### start-presets
@@ -537,7 +538,7 @@ Cards the server sends show on Today (and compact in chat): list, metrics and te
 | Docs | [docs/API.md#how-the-app-shows-cards](API.md#how-the-app-shows-cards), [docs/ADAPTING.md#a-new-card-style](ADAPTING.md#a-new-card-style), [docs/REFERENCE_SERVER.md#cards-from-your-own-scripts](REFERENCE_SERVER.md#cards-from-your-own-scripts) |
 | Today section | `cards` |
 | Card styles | `list`, `metrics`, `text` |
-| Settings | Settings → Today → "Cards" |
+| Settings | Settings → Advanced → Sections → "Cards" |
 | Depends on | [companion-api](#companion-api) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
 
@@ -1200,7 +1201,7 @@ Optional, off by default: one notification per new problem or new action to appr
 
 **Quiet hours for notifications** · Notifications · partial · since 2026-11-07
 
-Settings → Notifications → "Quiet hours" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with ", quiet hours". Without it nothing changes.
+Settings → Advanced → "Quiet hours" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with ", quiet hours". Without it nothing changes.
 
 | | |
 |---|---|
@@ -1208,7 +1209,7 @@ Settings → Notifications → "Quiet hours" (shown while a notification is on, 
 | Tests | `QuietHoursTests`, `ModularReviewFixTests/badQuietHoursKeepsOtherSettings`, `ModularReviewFixTests/theModelKeepsSettingsWithABadNewKey`, `TimeWindowEditingTests/pickerTimesSurviveClockChanges` |
 | Phone (DeviceTest.md) | B12, B13 |
 | Docs | [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included](plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included) |
-| Settings | Settings → Notifications → Quiet hours |
+| Settings | Settings → Advanced → Quiet hours |
 | Depends on | [notifications](#notifications), [show-rules](#show-rules) |
 | Through those | [backgroundtasks](#dep-backgroundtasks), [usernotifications](#dep-usernotifications) |
 | Notes | docs/plans/MODULAR.md M3.3. The window is a TimeWindow (ShowRule.swift), every day, by the phone's time zone. |
@@ -1258,6 +1259,22 @@ A "waiting for you" notification has Approve and Deny (not Always), both behind 
 | Docs | [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
 | Launch arguments | `-HomelabDemo`, `-HomelabServer`, `-HomelabTab`, `-HomelabResetState`, `-HomelabDemoScene` |
 
+### advanced-settings
+
+**Settings → Advanced and layout customization** · Settings · shipped · since 2026-11-09
+
+The detailed settings live on one Advanced page (its title follows the personality: Advanced, Nerd section, Nerd shit): Today's sections and rules, Where you are, Quiet hours, Leave-by, Diagnostics and Demo servers, plus new options: hide and reorder the Start tiles on Actions (by action name), the blocks in Lab (Hosts, the server's cards, Services) and the tabs (Settings can never be hidden; a link to a hidden tab says it is hidden), and Chat text size (one step smaller or larger than the system's) and folding (Short 6 lines, Default 12, Never). New server tiles and cards appear at the end, visible. Defaults are not written, so older settings files save back unchanged.
+
+| | |
+|---|---|
+| Sources | [Customization.swift](../Sources/HomelabKit/Customization.swift), [AdvancedSettings.swift](../Sources/HomelabUI/AdvancedSettings.swift), [RootView.swift](../Sources/HomelabUI/RootView.swift), [ChatView.swift#chatFoldMode](../Sources/HomelabUI/ChatView.swift) |
+| Tests | `CustomizationTests`, `OwnerInvarianceTests` |
+| Phone (DeviceTest.md) | ST6, ST7, ST8 |
+| Docs | [docs/DESIGN.md#9-settings-and-advanced](DESIGN.md#9-settings-and-advanced), [docs/GETTING-STARTED.md#customize](GETTING-STARTED.md#customize), [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
+| Settings | Settings → Advanced |
+| Depends on | [today-layout](#today-layout) |
+| Notes | Owner decisions 2026-11-09 (review rows 7 and 10). Hidden tabs: AppModel.go(_:) keeps the shown tab and sets hiddenTabNotice, RootView alerts. |
+
 ### onboarding
 
 **Welcome screen** · Settings · shipped · since 2026-11-04
@@ -1305,7 +1322,7 @@ A demo homelab and a demo Home Assistant from built-in fixtures, no network, tha
 | CI screenshots | `demo-today-light`, `demo-settings-light` |
 | Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
 | Launch arguments | `-HomelabDemo`, `-HomelabDemoScene` |
-| Settings | Settings → Demo servers |
+| Settings | Settings → Advanced → Demo servers |
 
 ### servers
 
@@ -1403,7 +1420,7 @@ App, widget and share extension find their shared App Group at runtime (profile 
 
 **Sources in Diagnostics** · Settings · partial · since 2026-11-07
 
-With a Homelab Bridge, Settings → Diagnostics has a "Sources" section: per source its name and type, the state in words ("ok", red "failing: 401", "not yet"), "checked … ago" or "last ok … ago", and a gold "Certificate not checked (insecure)" for a source with `insecure: true`. Copy report has one line per source, tailnet names masked. A server that doesn't send `sources` (the owner's, the demo) gets no section and no line.
+With a Homelab Bridge, Settings → Advanced → Diagnostics has a "Sources" section: per source its name and type, the state in words ("ok", red "failing: 401", "not yet"), "checked … ago" or "last ok … ago", and a gold "Certificate not checked (insecure)" for a source with `insecure: true`. Copy report has one line per source, tailnet names masked. A server that doesn't send `sources` (the owner's, the demo) gets no section and no line.
 
 | | |
 |---|---|

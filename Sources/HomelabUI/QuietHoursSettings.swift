@@ -2,7 +2,7 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-/// Settings → Notifications → "Quiet hours": the row. Only while a notification is on (or quiet hours are set, so
+/// Settings → Advanced → "Quiet hours": the row. Only while a notification is on (or quiet hours are set, so
 /// they can be turned off); off by default.
 struct QuietHoursRow: View {
     let model: AppModel

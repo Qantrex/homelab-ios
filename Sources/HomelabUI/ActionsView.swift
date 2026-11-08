@@ -33,9 +33,11 @@ struct ActionsView: View {
     private var startable: [ActionSpec] {
         model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
     }
+    /// The Start tiles as the owner arranged them (Settings → Advanced → Start tiles): hidden ones left out.
+    private var startTiles: [ActionSpec] { StartTiles.arrange(startable, model.settings.startTiles) }
     private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
     /// The Start section: tiles to start actions, or the Scan tile.
-    private var hasStart: Bool { !startable.isEmpty || canScan || canSearch || canDeals }
+    private var hasStart: Bool { !startTiles.isEmpty || canScan || canSearch || canDeals }
     private var nothingToApprove: LocalizedStringKey {
         Voice.line(.nothingToApprove, model.settings.voice)
             .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
@@ -56,7 +58,7 @@ struct ActionsView: View {
                     if hasStart {
                         VStack(alignment: .leading, spacing: Space.titleToPanel) {
                             SectionTitle(text: "Start")
-                            StartGrid(actions: startable, scanWaiting: canScan ? model.outboxCount : nil,
+                            StartGrid(actions: startTiles, scanWaiting: canScan ? model.outboxCount : nil,
                                       showIds: model.settings.todayDensity == .overkill,
                                       open: { spec in
                                           formPrefill = nil
@@ -83,7 +85,7 @@ struct ActionsView: View {
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startable.isEmpty && !canScan && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
+                } else if pending.isEmpty && startTiles.isEmpty && !canScan && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
@@ -133,7 +135,7 @@ struct ActionsView: View {
     /// "To approve": a title and one panel; the proposals inside are rows (`ProposalRow`) split by separators, each
     /// with Approve / Deny inline.
     @ViewBuilder private var approveSection: some View {
-        let quiet = pending.isEmpty && (!startable.isEmpty || model.selectedStatus.error != nil)
+        let quiet = pending.isEmpty && (!startTiles.isEmpty || model.selectedStatus.error != nil)
             && model.selectedStatus.snapshot != nil
         // Without Start tiles and without an error the full-screen placeholder says it (it would cover this).
         if !pending.isEmpty || quiet {

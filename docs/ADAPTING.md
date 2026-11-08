@@ -24,8 +24,8 @@ gets no tab or section for it. `AppModel.availableTabs` (`Sources/HomelabKit/App
 | Module | Server feature | Kit (logic) | UI | How it is switched |
 |---|---|---|---|---|
 | Headline (mood) | `status` | `Mood.swift`, `Voice.swift` (personality) | `TodayView.swift` (top) | Always on. Personality: Settings, off by default |
-| Day line | `cards` + a card with `id: "today"` | `DayTimeline.swift` | `TodayView.swift` (`DaySection`), `HomelabDesign/DayLine.swift`, Day widget | Settings → Today → "The day in numbers"; or send no `today` card |
-| Cards | `cards` | `Card` in `Models.swift` | `CardView` in `Cards.swift`, Today's "Cards" section | Settings → Today → "Cards"; or leave out `cards` |
+| Day line | `cards` + a card with `id: "today"` | `DayTimeline.swift` | `TodayView.swift` (`DaySection`), `HomelabDesign/DayLine.swift`, Day widget | Settings → Advanced → Sections → "The day in numbers"; or send no `today` card |
+| Cards | `cards` | `Card` in `Models.swift` | `CardView` in `Cards.swift`, Today's "Cards" section | Settings → Advanced → Sections → "Cards"; or leave out `cards` |
 | Approvals (proposed actions) | `actions` | `PendingAction` in `Models.swift`, `Alerts.swift` | `ActionsView.swift`, Today's "To approve" | Leave out `actions`; Settings → Today |
 | Start actions | `run-actions` | `StartActions.swift` (`ActionSpec`, `ActionForm`) | `ActionsView.swift` ("Start"), `ActionFormView.swift` | Leave out `run-actions`, or list no actions |
 | Scan and share | `documents`, `share` | `Share.swift` (`ShareRouter`, `ShareSender`), `Outbox.swift`, `PDFWriter.swift`, `PageEncoder.swift`; `upload` and `share` in `CompanionClient.swift` | `ScanView.swift` (the tile and the screen), `DocumentScanner.swift`; the extension `Sources/HomelabShare/`; quick actions `Sources/Homelab/QuickActions.swift` (`ActionUsage.swift` ranks the dynamic ones) | Leave out `documents` / `share` (no Scan tile; the extension says the server doesn't take them). To drop the extension: remove `HomelabShare` from `Package.swift` and `xtool.yml` (saves an App ID) |
@@ -35,7 +35,7 @@ gets no tab or section for it. `AppModel.availableTabs` (`Sources/HomelabKit/App
 | Machines (Overkill) | `hosts` | `TodayLayout.swift` (`Density`) | `MachineList` in `TodayView.swift` | Settings → Today → detail; section "Machines" |
 | Service launcher | `services` | `Service` in `Models.swift` | `ServicesSection` in `LabView.swift` | Leave out `services` (or send an empty list) |
 | Home Assistant tiles | – (a Home Assistant server in Settings) | `HomeAssistant.swift`; `HomeGlance.swift` (the headline without a Companion server) | `HomeTiles.swift`; `homeGlance` in `TodayView.swift` | Don't add an HA server; or Settings → Today → "Home tiles" |
-| Last report | `last_message` in `/state` | `Models.swift` | `TodayView.swift` (`lastReport`) | Settings → Today → "Last report" |
+| Last report | `last_message` in `/state` | `Models.swift` | `TodayView.swift` (`lastReport`) | Settings → Advanced → Sections → "Last report" |
 | Find (search and request) | `search` (`GET /search?q=`) | `Search.swift` (`SearchQuery`, picture rules and cache) | `SearchView.swift`, the "Find a movie or show" tile in `ActionFormView.swift` | Leave out `search` |
 | Widgets (status, day, hosts, deadlines, to-dos) | the data above | `AppGroup.swift`, `Storage.swift`, `WidgetPolicy.swift` (when a widget may fetch, what the app lock hides) | `Sources/HomelabWidget/HomelabWidget.swift`, `ListWidgets.swift`, `WidgetData.swift` | Remove from the `HomelabWidgets` bundle |
 | Departures widget ("U6 departures") | a card with `style: "departures"` (`id: "departures"`) | `Departures.swift` (`DepartureBoard`, `DepartureTimeline`) | `Sources/HomelabWidget/DeparturesWidget.swift` | Send no `departures` card; or remove `DeparturesWidget()` from the bundle. Another line: the line comes from the card's `title`; the gallery name and description ("U6 departures") are fixed in `DeparturesWidget.swift` |
@@ -54,7 +54,7 @@ Start on the server. Change the app only if you want the code gone.
 | Where | What to do | Code change |
 |---|---|---|
 | Server | Leave the feature out of `features` in `/info` (reference server: leave its config key out, see [REFERENCE_SERVER.md](REFERENCE_SERVER.md)) | None |
-| Phone | Settings → Today: hide a section, or give it a show rule (Always, When it needs me, a time, At home / Away; [GETTING-STARTED.md](GETTING-STARTED.md#show-rules)); Calm/Standard/Overkill picks how much shows | None |
+| Phone | Settings → Advanced → Sections: hide a section, or give it a show rule (Always, When it needs me, a time, At home / Away; [GETTING-STARTED.md](GETTING-STARTED.md#show-rules)); Calm/Standard/Overkill picks how much shows | None |
 | Demo | Remove the feature from `Fixtures/info.json`. Tests that expect it fail: fix or delete those | Fixture + tests |
 
 To delete a module from the app:

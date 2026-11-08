@@ -138,7 +138,7 @@ You need Docker with Compose 2.17 or newer on Linux.
 
 What you see: Today says "All quiet." or "1 problem."; a down monitor is a problem ("Jellyfin: down"). Lab
 shows the bridge as a machine, Proxmox nodes with a 24 h history, a card per monitor source ("11 of 12 up") and
-monitors with a public link in the launcher. Settings → Diagnostics lists each source as ok or failing. The status and
+monitors with a public link in the launcher. Settings → Advanced → Diagnostics lists each source as ok or failing. The status and
 hosts widgets work, also with the app closed. Actions and Chat stay hidden: they are off on the bridge. Screenshots of
 Lab from the demo (it has more than a new bridge):
 
@@ -175,7 +175,7 @@ Today is short by design. Settings → Today → **Detail** picks how much it sh
 
 - **Calm**: one screen, your day and the Home tiles.
 - **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")
-  and every row that needs you come first: a deadline that is overdue, due today or within 48 hours, a delay, a
+  and every row that needs you come first: a deadline that is overdue or within 3 days (later deadlines are always behind "Show N more"), a delay, a
   to-do past its time. Longer lists show 3 rows and a "Show N more" row. Deals, recent downloads and new grades
   are small tiles with a count and one line ("best −50 %", "Dune +7", "ITP 95 %"); tap one to open the full list in a
   sheet. Departures appear in the day card, at the top, only while your "Leave by" is within the hour.
@@ -185,13 +185,13 @@ What you open folds again the next time you start the app. The machines are not 
 
 ## Show rules
 
-Every section of Today can have a rule for when it shows. Settings → Today → **Sections**: each row says its rule in
+Every section of Today can have a rule for when it shows. Settings → Advanced → **Sections**: each row says its rule in
 words ("Always", "Evenings", "Not on your servers"); tap it and choose when it shows:
 
 - **Always**, or **When it needs me** (it appears as soon as it has something for you).
 - A time: **Mornings**, **Daytime**, **Evenings**, **Weekdays** or **Weekends**, or **Custom** with From, To and the
   days. A time that ends before it starts runs past midnight.
-- **At home** or **Away**, once **Where you are** is set (Settings → Today → Where you are). It follows one person or
+- **At home** or **Away**, once **Where you are** is set (Settings → Advanced → Where you are). It follows one person or
   device tracker in Home Assistant, so it needs a Home Assistant server. Homelab asks for no location. When Home
   Assistant hasn't answered for 30 minutes, both rules show their sections.
 
@@ -201,6 +201,19 @@ sections through until you close the app; the rule stays.
 
 Related: Settings → Notifications → **Quiet hours** mutes the app's own notifications in a time window (from, to).
 It doesn't hide anything on Today.
+
+## Customize
+
+Settings is short on purpose. **Settings → Advanced** (called Nerd section with a snarky personality) holds the rest:
+
+- **Sections**: Today's order, hide and show rules (see above), and **Where you are**.
+- **Start tiles**, **Lab** and **Tab bar**: switch an item off to hide it, drag the handles to reorder. Start tiles are
+  your server's actions (by name); Lab has Hosts, your server's cards and Services (Problems always stay on top); the
+  tab bar never hides Settings. What your server adds later shows up at the end. A link to a hidden tab shows an alert
+  saying it is hidden.
+- **Chat**: **Text size** (Small, Default, Large; one step from the iPhone's size) and **Long replies** (Short folds
+  after 6 lines, Default 12, Never fold).
+- Quiet hours, Leave-by on the lock screen, Diagnostics and Demo servers.
 
 ## Limits
 
@@ -230,9 +243,9 @@ It doesn't hide anything on Today.
 | Home Assistant: "The server rejected the request." (400) | HA doesn't trust the proxy: `use_x_forwarded_for` and `trusted_proxies` as in A, step 1 |
 | "This server uses a token over plain http. …" | Use the `https://….ts.net` address from `tailscale serve` |
 | "The server's answer couldn't be read. …" | The address points at a web page. Use the base address; the app adds `/api/v1` |
-| A source shows as one warning, for example "Kuma: 401" | Its key, URL or slug is wrong, or the service is down. Settings → Diagnostics → Sources and `docker compose logs bridge` say which |
+| A source shows as one warning, for example "Kuma: 401" | Its key, URL or slug is wrong, or the service is down. Settings → Advanced → Diagnostics → Sources and `docker compose logs bridge` say which |
 | The widgets stay empty | Open the app once. With only Home Assistant they have nothing to show (see A) |
 | The app doesn't open | It expired after 7 days: install it again |
 
 SideStore and widget problems, and every message with more detail: [SIDESTORE.md → Troubleshooting](SIDESTORE.md#troubleshooting). In the
-app, Settings → Diagnostics → **Copy report** gives a report without tokens to paste into an issue.
+app, Settings → Advanced → Diagnostics → **Copy report** gives a report without tokens to paste into an issue.

@@ -50,7 +50,7 @@ public struct RootView: View {
                 break
             }
         }
-        .onChange(of: model.availableTabs) { _, _ in model.validateTab() }
+        .onChange(of: model.shownTabs) { _, _ in model.validateTab() }
         .task { await model.drainOutbox() }
         .tint(Palette.accent)
         .labeledContentStyle(.adaptive)
@@ -70,33 +70,38 @@ public struct RootView: View {
         // The tab bar is the user's own pick: it ends a link's request that still waits (AppModel.pick). Only this
         // setter, not every change of `tab`: validateTab and links set it too.
         TabView(selection: Binding(get: { model.tab }, set: { model.pick($0) })) {
-            Tab("Today", systemImage: "sun.horizon", value: AppTab.today) {
-                TodayView(model: model)
-            }
-            // Proposals to approve, or actions the app starts itself (like AppModel.availableTabs).
-            if model.selectedStatus.features.contains(.actions) || model.selectedStatus.features.contains(.runActions)
-                || model.selectedStatus.features.contains(.documents) || model.selectedStatus.features.contains(.search) {
-                Tab("Actions", systemImage: "checkmark.shield", value: AppTab.actions) {
-                    ActionsView(model: model)
+            // The owner's order, without the tabs they hid (Settings -> Advanced -> Tab bar); the feature checks live in
+            // `AppModel.availableTabs`: proposals to approve or actions the app starts itself for Actions, and so on.
+            ForEach(model.shownTabs, id: \.self) { tab in
+                Tab(LocalizedStringKey(tab.title), systemImage: tab.symbol, value: tab) {
+                    content(of: tab)
                 }
-                .badge(model.pendingCount)
+                .badge(tab == .actions ? model.pendingCount : 0)
             }
-            if model.selectedStatus.features.contains(.chat) {
-                Tab("Chat", systemImage: "bubble.left.and.bubble.right", value: AppTab.chat) {
-                    ChatView(model: model)
-                }
-            }
-            if model.selected != nil {
-                Tab("Lab", systemImage: "server.rack", value: AppTab.lab) {
-                    LabView(model: model)
-                }
-            }
-            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
-                SettingsView(model: model)
-            }
+        }
+        .alert(hiddenTitle, isPresented: Binding(get: { model.hiddenTabNotice != nil },
+                                                 set: { if !$0 { model.dismissHiddenTabNotice() } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You hid it under Settings → \(AdvancedTitle.text(model.settings.voice)) → Tab bar. Show it there to open it.")
         }
         // A new problem on a refresh is felt on every tab (Motion).
         .newProblemFeedback(model)
+    }
+
+    private var hiddenTitle: String {
+        String(localized: "\(model.hiddenTabNotice?.title ?? "") is hidden")
+    }
+
+    @ViewBuilder
+    private func content(of tab: AppTab) -> some View {
+        switch tab {
+        case .today: TodayView(model: model)
+        case .actions: ActionsView(model: model)
+        case .chat: ChatView(model: model)
+        case .lab: LabView(model: model)
+        case .settings: SettingsView(model: model)
+        }
     }
 }
 

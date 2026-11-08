@@ -76,7 +76,7 @@ device_tests = ["T2", "W7b"]
 screenshots = ["live-today-tomorrow"]
 docs = ["docs/ADAPTING.md#the-modules", "docs/API.md#how-the-app-shows-cards"]
 today_sections = ["day"]
-settings = ["Settings → Today → \"The day in numbers\""]
+settings = ["Settings → Advanced → Sections → \"The day in numbers\""]
 depends_on = ["companion-api"]
 
 [[feature]]
@@ -92,7 +92,7 @@ device_tests = ["T2"]
 screenshots = ["demo-today-light", "demo-today-dark", "demo-today-xxl"]
 docs = ["README.md#what-it-does", "docs/ADAPTING.md#turn-a-module-off", "docs/SETUP.md#launch-arguments"]
 launch_args = ["-HomelabDensity"]
-settings = ["Settings → Today: order, hide, detail"]
+settings = ["Settings → Advanced → Sections; Settings → Today → Detail"]
 
 [[feature]]
 id = "today-folding"
@@ -100,7 +100,7 @@ name = "Today is short by design (folds, tiles)"
 area = "Today"
 status = "shipped"
 since = "2026-11-08"
-summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue, today or within 48 h, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a \"Leave by\" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session."
+summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a \"Leave by\" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session."
 sources = ["Sources/HomelabKit/TodayFold.swift", "Sources/HomelabUI/TodayFoldViews.swift"]
 fixtures = ["Sources/HomelabKit/Fixtures/demo-today.json"]
 tests = ["TodayFoldTests"]
@@ -148,13 +148,13 @@ name = "Where you are (presence from Home Assistant)"
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "Settings → Today → \"Where you are\" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass."
+summary = "Settings → Advanced → \"Where you are\" (only with a Home Assistant server, off by default): pick a person or device tracker of Home Assistant; home is at home, not_home or a zone is away. Read from the states Today already fetches (also while the Home section is hidden), no location permission. Once set, the rule sheet offers At home and Away; unknown or older than 30 min lets both pass."
 api_fields = ["Home Assistant GET /api/states: person.* and device_tracker.* state"]
 sources = ["Sources/HomelabKit/HomePresence.swift", "Sources/HomelabUI/PresenceSettings.swift", "Sources/HomelabUI/HomeTiles.swift#fetched", "Sources/HomelabUI/TodayView.swift#homePoll"]
 tests = ["HomePresenceTests", "PresenceModelTests", "ModularReviewFixTests/homePollsWhileAnythingOnTodayNeedsIt", "ModularReviewFixTests/badPresenceEntityKeepsOtherSettings"]
 device_tests = ["H8", "H9"]
 docs = ["docs/SECURITY.md#what-the-app-does", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
-settings = ["Settings → Today → Where you are"]
+settings = ["Settings → Advanced → Where you are"]
 depends_on = ["show-rules", "home-tiles", "home-assistant-api"]
 notes = "docs/plans/MODULAR.md M3.3. The rule sheet that offers At home and Away is M3.2 (AppModel.ruleKinds(for:), AppModel.todaySections). Today reads Home Assistant in one loop (TodayView.homePoll, HomePoll.shouldPoll), also while the Home section is hidden."
 
@@ -164,14 +164,14 @@ name = "Show rules: editor and \"Hidden now\""
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "Settings → Today → Sections shows each section's rule in words under its name (\"Always\", \"Evenings\", Machines \"Only in Overkill\"; \"Not on your servers\" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line \"Hidden now: Deals (evenings) · Show\"; Show brings them back until the app closes. Without rules Today is exactly as before."
+summary = "Settings → Advanced → Sections shows each section's rule in words under its name (\"Always\", \"Evenings\", Machines \"Only in Overkill\"; \"Not on your servers\" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line \"Hidden now: Deals (evenings) · Show\"; Show brings them back until the app closes. Without rules Today is exactly as before."
 sources = ["Sources/HomelabKit/ShowRuleEditing.swift", "Sources/HomelabUI/ShowRuleEditor.swift", "Sources/HomelabUI/SettingsView.swift#SectionRuleRow", "Sources/HomelabUI/TodayView.swift#HiddenNowLine", "Sources/HomelabKit/AppModel.swift#shownAnyway"]
 tests = ["RuleOptionTests", "TimeWindowEditingTests", "HiddenNowTests", "ShowRuleModelTests", "ShowRuleOwnerTests", "OwnerInvarianceTests"]
 device_tests = ["T9", "T10"]
 screenshots = ["demo-rule-hidden", "demo-rule-shown"]
 docs = ["docs/SETUP.md#launch-arguments", "docs/CI.md#screenshots", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
 launch_args = ["-HomelabRules", "-HomelabTime"]
-settings = ["Settings → Today → Sections → tap a section"]
+settings = ["Settings → Advanced → Sections → tap a section"]
 depends_on = ["show-rules", "today-layout", "presence"]
 notes = "docs/plans/MODULAR.md M3.2. The sheet offers what AppModel.ruleKinds(for:) allows (At home and Away once Where you are is set, feature presence). The rule clock ticks every 30 s on Today only while a rule is set."
 
@@ -190,7 +190,7 @@ tests = ["FixtureDecoding/stateProblem"]
 device_tests = ["T2"]
 docs = ["docs/ADAPTING.md#the-modules"]
 today_sections = ["report"]
-settings = ["Settings → Today → \"Last report\""]
+settings = ["Settings → Advanced → Sections → \"Last report\""]
 unsure = "No test checks the last_message section itself; FixtureDecoding only decodes it."
 
 [[feature]]
@@ -275,7 +275,7 @@ device_tests = ["O9"]
 docs = ["docs/API.md#how-the-app-shows-cards", "docs/ADAPTING.md#a-new-card-style", "docs/REFERENCE_SERVER.md#cards-from-your-own-scripts"]
 today_sections = ["cards"]
 card_styles = ["list", "metrics", "text"]
-settings = ["Settings → Today → \"Cards\""]
+settings = ["Settings → Advanced → Sections → \"Cards\""]
 depends_on = ["companion-api"]
 
 [[feature]]
@@ -925,17 +925,32 @@ settings = ["Settings → Notifications → \"New problems\", \"New actions to a
 depends_on = ["background-refresh", "usernotifications"]
 
 [[feature]]
+id = "advanced-settings"
+name = "Settings → Advanced and layout customization"
+area = "Settings"
+status = "shipped"
+since = "2026-11-09"
+summary = "The detailed settings live on one Advanced page (its title follows the personality: Advanced, Nerd section, Nerd shit): Today's sections and rules, Where you are, Quiet hours, Leave-by, Diagnostics and Demo servers, plus new options: hide and reorder the Start tiles on Actions (by action name), the blocks in Lab (Hosts, the server's cards, Services) and the tabs (Settings can never be hidden; a link to a hidden tab says it is hidden), and Chat text size (one step smaller or larger than the system's) and folding (Short 6 lines, Default 12, Never). New server tiles and cards appear at the end, visible. Defaults are not written, so older settings files save back unchanged."
+sources = ["Sources/HomelabKit/Customization.swift", "Sources/HomelabUI/AdvancedSettings.swift", "Sources/HomelabUI/RootView.swift", "Sources/HomelabUI/ChatView.swift#chatFoldMode"]
+tests = ["CustomizationTests", "OwnerInvarianceTests"]
+device_tests = ["ST6", "ST7", "ST8"]
+docs = ["docs/DESIGN.md#9-settings-and-advanced", "docs/GETTING-STARTED.md#customize", "CHANGELOG.md#100-unreleased"]
+settings = ["Settings → Advanced"]
+depends_on = ["today-layout"]
+notes = "Owner decisions 2026-11-09 (review rows 7 and 10). Hidden tabs: AppModel.go(_:) keeps the shown tab and sets hiddenTabNotice, RootView alerts."
+
+[[feature]]
 id = "quiet-hours"
 name = "Quiet hours for notifications"
 area = "Notifications"
 status = "partial"
 since = "2026-11-07"
-summary = "Settings → Notifications → \"Quiet hours\" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with \", quiet hours\". Without it nothing changes."
+summary = "Settings → Advanced → \"Quiet hours\" (shown while a notification is on, off by default; 22–7 when turned on, past midnight works): no local notification (problems, actions to approve, deals) in the window. The background refresh still runs and learns what it saw, so nothing is announced late; Diagnostics' result ends with \", quiet hours\". Without it nothing changes."
 sources = ["Sources/HomelabKit/QuietHours.swift", "Sources/HomelabUI/QuietHoursSettings.swift", "Sources/HomelabUI/Background.swift#notificationsToPost"]
 tests = ["QuietHoursTests", "ModularReviewFixTests/badQuietHoursKeepsOtherSettings", "ModularReviewFixTests/theModelKeepsSettingsWithABadNewKey", "TimeWindowEditingTests/pickerTimesSurviveClockChanges"]
 device_tests = ["B12", "B13"]
 docs = ["docs/SECURITY.md#what-the-app-does", "CHANGELOG.md#100-unreleased", "docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
-settings = ["Settings → Notifications → Quiet hours"]
+settings = ["Settings → Advanced → Quiet hours"]
 depends_on = ["notifications", "show-rules"]
 notes = "docs/plans/MODULAR.md M3.3. The window is a TimeWindow (ShowRule.swift), every day, by the phone's time zone."
 
@@ -1030,7 +1045,7 @@ device_tests = ["FS2", "FS3", "FS4"]
 screenshots = ["demo-today-light", "demo-settings-light"]
 docs = ["README.md#who-it-is-for", "docs/ADAPTING.md#the-modules", "docs/SETUP.md#launch-arguments"]
 launch_args = ["-HomelabDemo", "-HomelabDemoScene"]
-settings = ["Settings → Demo servers"]
+settings = ["Settings → Advanced → Demo servers"]
 
 [[feature]]
 id = "servers"
@@ -1306,7 +1321,7 @@ name = "Sources in Diagnostics"
 area = "Settings"
 status = "partial"
 since = "2026-11-07"
-summary = "With a Homelab Bridge, Settings → Diagnostics has a \"Sources\" section: per source its name and type, the state in words (\"ok\", red \"failing: 401\", \"not yet\"), \"checked … ago\" or \"last ok … ago\", and a gold \"Certificate not checked (insecure)\" for a source with `insecure: true`. Copy report has one line per source, tailnet names masked. A server that doesn't send `sources` (the owner's, the demo) gets no section and no line."
+summary = "With a Homelab Bridge, Settings → Advanced → Diagnostics has a \"Sources\" section: per source its name and type, the state in words (\"ok\", red \"failing: 401\", \"not yet\"), \"checked … ago\" or \"last ok … ago\", and a gold \"Certificate not checked (insecure)\" for a source with `insecure: true`. Copy report has one line per source, tailnet names masked. A server that doesn't send `sources` (the owner's, the demo) gets no section and no line."
 api_fields = ["info.sources"]
 sources = ["Sources/HomelabKit/SourceStatus.swift", "Sources/HomelabKit/Models.swift#ServerInfo", "Sources/HomelabUI/SourceStatusSection.swift", "Sources/HomelabUI/SettingsView.swift#DiagnosticsView"]
 tests = ["InfoSourcesTests", "OwnerInvarianceTests"]

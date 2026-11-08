@@ -140,9 +140,11 @@ struct TileButton: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Image(systemName: tile.kind.symbol).font(Typo.meta)
-                        .foregroundStyle(tile.urgent ? Palette.gold : Palette.secondary).accessibilityHidden(true)
-                    Text(tile.kind.title).font(Typo.meta).foregroundStyle(Palette.secondary).lineLimit(1)
+                    // Owner review 2026-11-09: the titles were hard to read in meta grey: secondary size, white, semibold.
+                    Image(systemName: tile.kind.symbol).font(Typo.secondary)
+                        .foregroundStyle(tile.urgent ? Palette.gold : Palette.text).accessibilityHidden(true)
+                    Text(tile.kind.title).font(Typo.secondary.weight(.semibold)).foregroundStyle(Palette.text)
+                        .lineLimit(1).minimumScaleFactor(0.85)
                 }
                 Text(verbatim: String(tile.count)).font(Typo.data(.title, weight: .semibold)).foregroundStyle(Palette.text)
                     .minimumScaleFactor(0.6).lineLimit(1)

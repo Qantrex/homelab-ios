@@ -13,19 +13,23 @@ Highlights:
 - Personality: the lines were rewritten to sound like a quick remark about the fact instead of a template. Today's old
   Ultrakill lines moved to Snarky; Ultrakill is now a much harsher, profane, over-the-top tier of its own, and asks
   once before it is switched on (Enable / Back).
-- Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 48
-  hours, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
+- Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 3
+  days, later ones always folded, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
   downloads and grades are small tiles (a count and one line: "best −50 %", "Dune +7", "ITP 95 %"; 2 by 2, one row of
   3, 2 or 1 by count, one per row at large text) that open the full list in a sheet; departures show only inside the
   day card, at the top, while a "Leave by" is within the hour (a disruption alone shows nothing); Today has no "Lab ›"
   link (the headline and the machines line open Lab); Lab shows hosts as rows with Load, RAM and Disk in every
   density, never tiles; the weather card is left to the hero line; the Machines section moved to Lab only. Overkill adds detail per line instead of
   opening everything. What you open folds again on each launch. The demo shows a busy day to match.
-- Show rules: Settings → Today → Sections says under each section when it shows, and a tap picks Always, When it
+- Settings is short, with an **Advanced** page for the rest (named by the personality: "Nerd section" for Snarky).
+  There you can hide and reorder the Start tiles on Actions, the blocks in Lab and the tabs (never Settings), make the
+  chat text one step smaller or larger, and fold long chat replies after 6 lines, 12 or never. Defaults are not
+  stored, so old settings files are untouched.
+- Show rules: Settings → Advanced → Sections says under each section when it shows, and a tap picks Always, When it
   needs me, a time (Mornings, Daytime, Evenings, Weekdays, Weekends) or Custom (from, to, days). While a rule hides
   something, Today ends with "Hidden now: Deals (evenings) · Show". Without rules Today is as before.
 - Where you are and quiet hours (both off by default): Today's "At home" and "Away" rules follow a person or device
-  tracker in Home Assistant (no location permission), and Settings → Notifications → Quiet hours holds back the app's
+  tracker in Home Assistant (no location permission), and Settings → Advanced → Quiet hours holds back the app's
   notifications in a window such as 22–7.
 - Actions: approve, always allow or deny proposals; start your own actions from small forms; Deals, Scan and Find.
 - Lab: hosts, 24 h history, containers with Restart, web UIs.

@@ -4,7 +4,7 @@ The checks that only a real iPhone can do. Use the release candidate (the IPA th
 SideStore's folder with `scripts/phone push-ipa`, then My Apps → + → the IPA), Tailscale on, and a real server (the agent, or the reference server). Mark each row ✅ / ⚠️ /
 ❌ and add a note.
 
-Date: ____  iPhone model: iPhone 12 mini  iOS version: 18.7.3  App version (Settings → Diagnostics): ____ (must match the released build number, `CFBundleVersion`)
+Date: ____  iPhone model: iPhone 12 mini  iOS version: 18.7.3  App version (Settings → Advanced → Diagnostics): ____ (must match the released build number, `CFBundleVersion`)
 
 Installed with: SideStore 0.7.0 (since 2026-11-07, after the -80045 fix in docs/SIDESTORE.md) / xtool 1.24.0 + App Group patch (docs/SETUP.md)
 
@@ -37,7 +37,7 @@ before the release.
 | I1 | Add the source in SideStore | (after publishing, not a pre-release gate) Sources → + → `https://github.com/Qantrex/homelab-ios/releases/latest/download/source.json` shows "Homelab iOS" with the Homelab app | | |
 | I2 | Install the release IPA in SideStore | The IPA from `dist/` (copied into SideStore's folder, My Apps → +) or from the source installs without an error. SideStore → My Apps shows Homelab, active apps 2 of 3 | | |
 | I3 | Icon and name | Home screen shows the Homelab icon (sharp, no white border) and the name "Homelab" | | |
-| I4 | Daily refresh moves the expiry | After the daily Shortcuts automation has run (docs/SIDESTORE.md), the expiry date in `scripts/phone apps` or Settings → Diagnostics → Install expires has moved forward (about 7 days from the refresh) | | |
+| I4 | Daily refresh moves the expiry | After the daily Shortcuts automation has run (docs/SIDESTORE.md), the expiry date in `scripts/phone apps` or Settings → Advanced → Diagnostics → Install expires has moved forward (about 7 days from the refresh) | | |
 
 ## Install with xtool (optional fallback)
 
@@ -45,7 +45,7 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
-| X1 | Reinstall before expiry | With the app set up, plug the phone in and run `scripts/install-dev` (or `xtool install` of the IPA) again before the 7 days end: the app opens with the same servers, settings, Home tiles (names and icons) and Face ID setting; the token server loads without asking for its token; Settings → Diagnostics → Install expires shows a date 7 days after the reinstall | | |
+| X1 | Reinstall before expiry | With the app set up, plug the phone in and run `scripts/install-dev` (or `xtool install` of the IPA) again before the 7 days end: the app opens with the same servers, settings, Home tiles (names and icons) and Face ID setting; the token server loads without asking for its token; Settings → Advanced → Diagnostics → Install expires shows a date 7 days after the reinstall | | |
 | X2 | Expiry warning | With 2 days or less left (Diagnostics → Install expires): Today shows a card with a gold triangle, "This install stops opening in 2 days (free Apple ID, 7 days). Plug the iPhone into the computer and reinstall; your data stays." Under one day it says "in N hours". With more than 2 days left: no card. After X1: the card is gone | | |
 | X3 | Widgets after a reinstall | After X1: Diagnostics → Shared storage shows the same App Group as before (not "none"); the widgets on the Home Screen show data after opening the app once, without removing them; the share extension still sends | | |
 
@@ -56,7 +56,7 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 | FS1 | Welcome screen | After Settings → Reset everything (or a fresh install): "Your homelab, in your pocket", a short text, four points, **Add Home Assistant**, **Add a Homelab server**, **Try the demo** and a link to the server setup. No tabs yet | | |
 | FS2 | Try the demo | Today with the date, a status line, the "today" numbers, actions waiting and Home tiles. Tabs: Today, Actions (with badge), Chat, Lab, Settings | | |
 | FS3 | Demo is alive | Demo chat answers a message. A demo Home tile on Today flips. A demo Approve shows an answer | | |
-| FS4 | Demo off | Settings → Demo servers off → back to the welcome screen (when no own server exists) | | |
+| FS4 | Demo off | Settings → Advanced → Demo servers off → back to the welcome screen (when no own server exists) | | |
 | FS5 | First run with Home Assistant | From the welcome: **Add Home Assistant** → the editor opens with Type Home Assistant → address and token → **Save**. "Found" shows the Home Assistant with its tiles in words ("12 lights, 4 switches and 3 scenes"), and "Start with" Home, Watch and Everything, one line each, **Home** checked and marked Suggested → **Start** → the tile picker opens → tap one light → **Done**: Today with that tile (Calm), and at the bottom "Change what Today shows in Settings → Today". At most 5 taps after typing the token | | |
 | FS6 | First run with a Homelab server | From the welcome: **Add a Homelab server** → Homelab API, address → **Save**. Found shows "Asking `<host>`…", then what the server offers in words (Status and problems, Machines, …); the reference server suggests **Watch**. Tap **Everything** (the checkmark moves) → **Start**: Today in Overkill (Settings → Today shows Overkill). No tile picker without Home Assistant | | |
 | FS7 | Second server in the run | FS6 up to Found → **Add Home Assistant too** → the editor (Home Assistant) → **Cancel**: back to Found. Again with **Save**: Found lists both servers; Start → the tile picker opens | | |
@@ -89,7 +89,7 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 | T6 | Tile icons | Today → Home → Edit: under a pinned entity, "Icon on the tile" → Floor lamp, Done: the tile shows a floor lamp, filled while the light is on. Back to Automatic: the bulb is back. Unpin and re-pin: Automatic again | | |
 | T7 | "On Today" section | Today → Home → Edit: "On Today" at the top lists the pinned tiles in tile order, each with its name, "Name on the tile" (a visible label above the field) and "Icon on the tile". **Order** → drag a tile → **Done ordering** → Done: the tiles on Today are in the new order. Editing the Home Assistant server (new token or name) keeps the names and icons | | |
 | T8 | No "Lab ›" link | Never a "Lab ›" next to the date, with or without a Lab tab | | |
-| T9 | Show rules: editor | Settings → Today → Sections: under each name a grey line with its rule ("Always"; Machines "Only in Overkill"; with only Home Assistant the other sections say "Not on your servers"). Tap Deals: a sheet "Deals" with Always, When it needs me (and what that means), Mornings … Weekends, Custom. Evenings → Done: the row says "Evenings". Custom: From and To pickers and seven day chips (Mon–Fri, then Sat, Sun); turn off Sat and Sun, Done: "Weekdays 18–22". Cancel keeps the old rule. The switch still hides the section, the handles still reorder. No At home or Away until Settings → Today → Where you are is set; then both are offered ("From Home Assistant"). Largest text size: the switch goes under the name, chips two per row, nothing cut. VoiceOver reads "Deals, Evenings", the chips by their full day names with "selected" | | |
+| T9 | Show rules: editor | Settings → Advanced → Sections: under each name a grey line with its rule ("Always"; Machines "Only in Overkill"; with only Home Assistant the other sections say "Not on your servers"). Tap Deals: a sheet "Deals" with Always, When it needs me (and what that means), Mornings … Weekends, Custom. Evenings → Done: the row says "Evenings". Custom: From and To pickers and seven day chips (Mon–Fri, then Sat, Sun); turn off Sat and Sun, Done: "Weekdays 18–22". Cancel keeps the old rule. The switch still hides the section, the handles still reorder. No At home or Away until Settings → Advanced → Where you are is set; then both are offered ("From Home Assistant"). Largest text size: the switch goes under the name, chips two per row, nothing cut. VoiceOver reads "Deals, Evenings", the chips by their full day names with "selected" | | |
 | T10 | Show rules: Today | Deals set to Evenings, before 18:00 (or `-HomelabRules deals=evenings -HomelabTime 14:00`): no Deals panel, and at the end of Today one grey line "Hidden now: Deals (evenings) · Show" (only while there is a deal to show). Tap it: Deals is back and the line goes, until the app is closed from the app switcher. After 18:00 (or `-HomelabTime 19:00`) Deals shows by itself, no line. Without any rule there is never such a line and Today is as before. Overkill shows everything. "Standard layout" removes all rules | | |
 | O1 | Lab header | "All good" or "N problems", "checked … ago", and "N actions waiting" when there are any. A host with a warning (gold dot) but no problem: "No problems · 1 host with a warning" (or "N hosts with a warning"), not "All good"; Today stays calm | | |
 | O2 | Problems | Listed first, with icon and "since …" | | |
@@ -113,7 +113,7 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 | O14 | Pull to refresh | Pull down: spinner, then "checked just now" | | |
 | O15 | Offline banner with age | Tailscale off, wait 10+ min, open the app: orange banner with "Showing data from … ago", old data still visible | | |
 | O16 | Actions shortcut | "N actions are waiting for you" jumps to the Actions tab | | |
-| O17 | Diagnostics in Lab | At the end of Lab a "Diagnostics" row opens the same screen as Settings → Diagnostics | | |
+| O17 | Diagnostics in Lab | At the end of Lab a "Diagnostics" row opens the same screen as Settings → Advanced → Diagnostics | | |
 
 ## Actions
 
@@ -170,7 +170,7 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 
 ## Deals
 
-Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has five deals).
+Needs a server with `/api/v1/deals` (or Settings → Advanced → Demo servers: the demo has five deals).
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
@@ -212,7 +212,7 @@ Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has 
 | H5 | Unavailable | An unavailable device shows "Unavailable" (sensor) or a greyed-out toggle, no crash | | |
 | H6 | Wrong token | Edit HA, paste a wrong token: a clear error text in the Home section on Today, no crash. Put the right one back | | |
 | H7 | Home Assistant only | Only a Home Assistant server, no Homelab server (or the demo: `-HomelabResetState YES -HomelabDemo YES -HomelabDemoScene ha-only`). Today's headline is "Home." with what is true under it ("1 light on", "All lights off", "Front door open"). While a light, switch, fan, lock or pinned tile is unavailable: a gold triangle with "Bedroom fan unavailable" (one) or "2 unavailable" and a gold glow; else a white tick. Switch a light in the HA app: the count follows within 30 s. Only Today and Settings as tabs, no "Lab ›". With a wrong token the headline is a grey "Home." again | | |
-| H8 | Where you are | Settings → Today → "Where you are" (only with a Home Assistant server) says "Off" on a fresh setup. Open it: "Off" ticked, then the people of Home Assistant, then its device trackers, each with its id and state ("person.alex · Home", "… · Away"). iOS asks for no location. Pick yours: the row shows its id; "Off" removes it again. Nothing else on Today changes | | |
+| H8 | Where you are | Settings → Advanced → "Where you are" (only with a Home Assistant server) says "Off" on a fresh setup. Open it: "Off" ticked, then the people of Home Assistant, then its device trackers, each with its id and state ("person.alex · Home", "… · Away"). iOS asks for no location. Pick yours: the row shows its id; "Off" removes it again. Nothing else on Today changes | | |
 | H9 | At home and Away | With Where you are set, a section with an "Away" rule (M3.2 rule sheet) is gone within a minute of Home Assistant showing you home, also with the Home section hidden; "At home" the other way round. Tailscale off for over 30 minutes, then open the app: both sections show (unknown presence passes) | | |
 
 ## Widgets
@@ -230,7 +230,7 @@ Needs a server with `/api/v1/deals` (or Settings → Demo servers: the demo has 
 
 ### At a glance (6c)
 
-Needs a server with the `departures` card and `commute` (or Settings → Demo servers: the demo has both, moved to now).
+Needs a server with the `departures` card and `commute` (or Settings → Advanced → Demo servers: the demo has both, moved to now).
 
 | # | Test | Pass when | Result | Note |
 |---|---|---|---|---|
@@ -238,7 +238,7 @@ Needs a server with the `departures` card and `commute` (or Settings → Demo se
 | W9 | Deadlines widget | Rectangular: the next 2 with "2 d" / "5 h"; inline "SYT hand-in in 2 d"; circular: number due this week; small: 3, medium: 5 with subtitles. Overdue ones read "3 d ago" with a triangle on the lock screen | | |
 | W10 | To-dos widget | Rectangular: 3 open titles; circular: the open count; small: 4; medium: 6. A tap opens Today | | |
 | W11 | Locked privacy | Settings → Lock with Face ID on: deadlines and to-dos show only counts ("3 deadlines this week", "4 to-dos"), never titles; the U6 widget still shows times. On the lock screen of a locked phone the titles are blank | | |
-| W12 | Widget fetches itself | A Homelab API server with Login Tailscale / proxy selected, close the app, Tailscale on: after 15 to 30 min the widgets' age is fresh without opening the app (Settings → Diagnostics → At a glance → Widget fetch: "ok"). Tailscale off: the cached data stays with its age, Diagnostics shows the error. A token server selected: the widget never fetches (only the app and its background refresh update it). StandBy (on its side, charging): the U6 small widget shows | | |
+| W12 | Widget fetches itself | A Homelab API server with Login Tailscale / proxy selected, close the app, Tailscale on: after 15 to 30 min the widgets' age is fresh without opening the app (Settings → Advanced → Diagnostics → At a glance → Widget fetch: "ok"). Tailscale off: the cached data stays with its age, Diagnostics shows the error. A token server selected: the widget never fetches (only the app and its background refresh update it). StandBy (on its side, charging): the U6 small widget shows | | |
 | LA1 | Live Activity starts | On a school morning (or with the demo server) open the app: "Leave by hh:mm" with a countdown and "U6 hh:mm · next hh:mm" is on the lock screen; the disruption is a gold triangle with its words | | |
 | LA2 | It runs by itself | Lock the phone for 10 minutes: the countdown keeps counting. After the train time the activity is greyed (stale) | | |
 | LA3 | Updates and ends | When the pick changes on the server (a delay), a background refresh updates it (Diagnostics → Leave-by: "background: updated"). At the first lesson it is gone. Turn "Leave-by on the lock screen" off in Settings: it ends | | |
@@ -290,6 +290,9 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | ST4 | Diagnostics | Version and build, bundle ID (with the SideStore team suffix after SideStore), Install expires with a date and time (free Apple ID), App Group "ok", each server with "data … ago". Copy report: host names have the tailnet part masked, no tokens | | |
 | ST4b | Sources in Diagnostics | Without a Homelab Bridge (the owner's server, the demo): Diagnostics has no "Sources" section and Copy report no `source` line. With a bridge (`server/examples/sources-example.json`, docs/BRIDGE.md#try-it) as "Show data from": a "Sources" section, "Lab" with "example", "ok" and "checked … ago". Stop the fake upstream and wait a minute and up to 10 for the next /info: red "failing: …" with "last ok … ago". A source with `"insecure": true` has a gold "Certificate not checked (insecure)". VoiceOver reads each source as one line. Copy report: one `source Lab (example): …` line per source, tailnet names masked | | |
 | ST5 | Reset everything | Confirm "Delete all data": welcome screen, no servers, widget shows "Open the app" | | |
+| ST6 | Advanced page | Settings has Data, Servers, Today (Detail, Personality), Notifications (three toggles), Privacy, then one row "Advanced" (Off or Dry; Snarky: "Nerd section"; Ultrakill: "Nerd shit"; "Customized" at its right once something is changed), then About. It opens Sections, Where you are, Start tiles, Lab, Tab bar, Chat, Quiet hours, Leave-by, Diagnostics, Demo servers and a reset | | |
+| ST7 | Start tiles, Lab, tab bar | Advanced → Start tiles: hide "Add an event"; Actions no longer shows that tile. Drag another to the top; Actions follows. VoiceOver: a row offers Move up and Move down. Lab: hide a card and move Services up; Lab follows. Tab bar: hide Chat, move Lab first; the bar follows; Settings has no working switch ("Always on"). Open `homelab://chat` (Notes or Shortcuts): an alert says Chat is hidden. "Standard order" and "Reset layout and chat options" bring everything back | | |
+| ST8 | Chat text and folding | Advanced → Chat → Text size Large: chat text is one step bigger than the iPhone's size, Small one step smaller. Long replies Short: a reply folds after 6 lines; Never fold: a long report shows whole with no "Show more" | | |
 
 ## Accessibility
 
@@ -313,7 +316,7 @@ SideStore installs the app since 2026-11-07; a daily Shortcuts automation refres
 
 ## Report
 
-Paste Settings → Diagnostics → Copy report here (host names with the tailnet part masked, no tokens):
+Paste Settings → Advanced → Diagnostics → Copy report here (host names with the tailnet part masked, no tokens):
 
 ```
 ```
