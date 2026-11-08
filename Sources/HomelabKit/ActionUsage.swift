@@ -16,8 +16,13 @@ public struct ActionUsage: Codable, Sendable, Equatable {
         public var name: String
         public var label: String
         public var icon: String?
-        public init(name: String, label: String, icon: String? = nil) {
+        /// Marked destructive by the server. Nil = an older cache that didn't record it (the widget then opens the app).
+        public var destructive: Bool?
+        /// Needs input: it has fields or a way to build an argument. Nil = unknown, like `destructive`.
+        public var needsInput: Bool?
+        public init(name: String, label: String, icon: String? = nil, destructive: Bool? = nil, needsInput: Bool? = nil) {
             self.name = name; self.label = label; self.icon = icon
+            self.destructive = destructive; self.needsInput = needsInput
         }
     }
 
@@ -52,7 +57,10 @@ public struct ActionUsage: Codable, Sendable, Equatable {
     /// Returns whether anything changed.
     @discardableResult
     public mutating func setOffered(_ specs: [ActionSpec], server: UUID) -> Bool {
-        let list = specs.filter(\.start).map { Offered(name: $0.name, label: $0.label, icon: $0.icon) }
+        let list = specs.filter(\.start).map {
+            Offered(name: $0.name, label: $0.label, icon: $0.icon, destructive: $0.destructive,
+                    needsInput: !$0.fields.isEmpty || !$0.variants.isEmpty)
+        }
         let k = Self.key(server)
         guard offered[k] != list else { return false }
         offered[k] = list.isEmpty ? nil : list

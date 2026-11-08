@@ -229,7 +229,7 @@ Settings is short on purpose. **Settings → Advanced** (called Nerd section wit
 |---|---|
 | The app stops opening after 7 days | A free Apple ID signs for 7 days. Today warns 2 days before. Install again over USB (your data stays), or let SideStore refresh it |
 | 3 sideloaded apps, 10 new App IDs a week | Free Apple ID. Homelab is one app; each install uses 3 App IDs (app, widget, share extension) |
-| No push notifications, no Siri actions, no buttons in widgets | They need a paid account or App Intents. The app checks in the background when iOS lets it and sends a local notification |
+| No push notifications, no Siri actions | They need a paid account or App Intents (the Actions widget uses them; see DESIGN.md). The app checks in the background when iOS lets it and sends a local notification |
 | Tailscale must be on | The app reaches your servers only through your tailnet (or VPN). After a SideStore refresh, check that Tailscale is on again |
 | Tokens only over HTTPS | A Home Assistant or token server at `http://` gets nothing. `tailscale serve` gives HTTPS with a real certificate |
 | Tagged Tailscale devices | They get no login header. Use a token (`HOMELAB_TOKENS`) and Login **Token** |
@@ -252,6 +252,7 @@ Settings is short on purpose. **Settings → Advanced** (called Nerd section wit
 | "This server uses a token over plain http. …" | Use the `https://….ts.net` address from `tailscale serve` |
 | "The server's answer couldn't be read. …" | The address points at a web page. Use the base address; the app adds `/api/v1` |
 | A source shows as one warning, for example "Kuma: 401" | Its key, URL or slug is wrong, or the service is down. Settings → Advanced → Diagnostics → Sources and `docker compose logs bridge` say which |
+| The Actions widget is empty or does nothing | Add it (long-press the Home screen, +, Homelab, Actions), long-press it, Edit Widget, pick actions (none picked = your first Start tiles). Open the app once so it has the list. A tap runs only actions without fields on a Tailscale server; the others open the app |
 | The widgets stay empty | Open the app once. With only Home Assistant they have nothing to show (see A) |
 | The app doesn't open | It expired after 7 days: install it again |
 

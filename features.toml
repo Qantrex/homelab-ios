@@ -893,6 +893,22 @@ widgets = ["TodosWidget"]
 depends_on = ["widget-data", "checklist-card", "widgetkit"]
 
 [[feature]]
+id = "widget-actions"
+name = "Widget: Actions"
+area = "Widgets"
+status = "shipped"
+since = "2026-11-08"
+summary = "Configurable tiles for the server's Start actions (small 1-2, medium 4, large 8, lock screen circular 1), picked in the widget's Edit menu from the cached list. A tap runs an action without fields right from the widget (identity servers only, Face ID first with the app lock on, result on the tile); fields, destructive and token servers open the form in the app."
+server_features = ["run-actions"]
+sources = ["Sources/HomelabKit/WidgetActions.swift", "Sources/HomelabWidget/ActionsWidget.swift#ActionsWidget", "Sources/HomelabKit/ActionUsage.swift"]
+tests = ["WidgetActionsTests"]
+device_tests = ["W13", "W14", "W15"]
+docs = ["README.md#what-it-does", "docs/DESIGN.md#lock-screen-and-live-activity"]
+widgets = ["ActionsWidget"]
+depends_on = ["widget-data", "start-actions", "quick-actions", "widgetkit"]
+unsure = "xtool 1.24.0 writes no App Intents metadata (Metadata.appintents), so on a device the Edit menu list and the run buttons are unverified. The views are not unit-tested."
+
+[[feature]]
 id = "widget-data"
 name = "Widget data: snapshot, self-fetch, stale marks, lock redaction"
 area = "Widgets"
@@ -1935,7 +1951,7 @@ id = "widgetkit"
 name = "WidgetKit"
 kind = "ios-framework"
 version = "iOS 18 SDK"
-why = "The widgets (static configuration only; App Intents can't be built with xtool yet)."
+why = "The widgets (App Intents compile with xtool, but their metadata is not written yet; see widget-actions)."
 pins = ["Sources/HomelabWidget/HomelabWidget.swift: import WidgetKit"]
 
 [[dependency]]

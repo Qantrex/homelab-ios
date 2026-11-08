@@ -134,6 +134,17 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
   normal font. No SF Mono in widgets.
 - The Live Activity is true black with white text; its countdown runs by itself (`Text(timerInterval:)`).
 - With the app lock on, widgets show counts only, except public data (the U6 times).
+- **Actions widget** (the only interactive one): rounded tiles on the surface colour (#141414, 1 pt hairline, radius 16),
+  an icon and the action's name (the icon in white, never blue); a result replaces the name for 20 s: a check and
+  "Done", or a triangle and "Failed: ..." in love with a love hairline. Small: one big tile (icon top, name below) or
+  two stacked rows; medium: 2 x 2; large: 2 x 4; lock screen: one circle with the icon (a check or a triangle for the
+  result; one colour there). Tiles you can run are buttons (an App Intent); tiles that need input, are destructive or
+  sit on a token server are links (`homelab://actions/<name>`) and open the form, where the usual one-tap confirm
+  happens. With the app lock on, a run first asks for Face ID. VoiceOver: "Wake Minecraft, runs it" / "Add a to-do,
+  opens the app". Dynamic Type stops at xxLarge. The widget never reads the Keychain or the network to build the Edit
+  menu: it lists the Start actions the app cached (`action-usage.json`), the owner's hidden tiles last.
+- **Caveat (xtool 1.24.0):** xtool compiles App Intents but does not run Xcode's metadata extraction, so the IPA has no
+  `Metadata.appintents`. iOS may then not offer the Edit menu parameters or run the buttons. Check DeviceTest W13.
 
 ## 6. Row grammar
 

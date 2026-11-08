@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 104 | 76 | 26 | 1 | 41 | 0 |
+| 105 | 77 | 26 | 1 | 41 | 0 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -103,7 +103,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Tile icons of your own](#tile-icons) | shipped | – | 1 | **T6** | 2 |
 | [Today with only Home Assistant](#home-only-today) | partial | – | 3 | H7 | 5 |
 
-### Widgets (8)
+### Widgets (9)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -113,6 +113,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Widget: Departures (departures card)](#widget-departures) | shipped | `cards` | 5 | W8 | 2 |
 | [Widget: Deadlines](#widget-deadlines) | shipped | `cards` | 2 | W9 | 2 |
 | [Widget: To-dos](#widget-todos) | shipped | `cards` | 1 | W10 | 2 |
+| [Widget: Actions](#widget-actions) | shipped (?) | `run-actions` | 1 | W13, W14, W15 | 2 |
 | [Widget data: snapshot, self-fetch, stale marks, lock redaction](#widget-data) | shipped | `status` | 7 | **W6**, W11, **W12** | 3 |
 | ["Leave by" Live Activity](#live-activity) | shipped | `status` | 8 | LA1, LA2, LA3, LA4 | 2 |
 
@@ -216,6 +217,7 @@ Not verified (the registry says so in `unsure`):
 
 - [last-report](#last-report): No test checks the last_message section itself; FixtureDecoding only decodes it.
 - [widget-status](#widget-status): Widget views are not unit-tested (WidgetKit doesn't build on Linux); only the data rules are.
+- [widget-actions](#widget-actions): xtool 1.24.0 writes no App Intents metadata (Metadata.appintents), so on a device the Edit menu list and the run buttons are unverified. The views are not unit-tested.
 - [background-refresh](#background-refresh): The BGTask itself only runs on a device; no test covers BackgroundRefresh.run (HomelabUI doesn't build on Linux).
 - [install-sidestore](#install-sidestore): Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release.
 - [bridge-docker](#bridge-docker): That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here.
@@ -232,7 +234,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [game-server-card](#game-server-card), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-rss](#source-rss), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
-| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
+| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [widget-actions](#widget-actions), [source-actions](#source-actions) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `search` | [find](#find) |
@@ -271,6 +273,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Widgets (`HomelabWidgets`) | `DeadlinesWidget` | [widget-deadlines](#widget-deadlines) |
 | Widgets (`HomelabWidgets`) | `TodosWidget` | [widget-todos](#widget-todos) |
 | Widgets (`HomelabWidgets`) | `LeaveActivityWidget` | [live-activity](#live-activity) |
+| Widgets (`HomelabWidgets`) | `ActionsWidget` | [widget-actions](#widget-actions) |
 | Today sections (`TodaySection`) | `day` | [today-day-line](#today-day-line) |
 | Today sections (`TodaySection`) | `waiting` | [approvals](#approvals) |
 | Today sections (`TodaySection`) | `deals` | [deals](#deals) |
@@ -1164,6 +1167,24 @@ Your open to-dos (small, medium, lock screen circular and rectangular), from the
 | Depends on | [widget-data](#widget-data), [checklist-card](#checklist-card), [widgetkit](#dep-widgetkit) |
 | Through those | [agent-chat](#dep-agent-chat), [app-group-entitlement](#dep-app-group-entitlement), [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale), [widget-extension-target](#dep-widget-extension-target), [xtool-app-group-patch](#dep-xtool-app-group-patch) |
 
+### widget-actions
+
+**Widget: Actions** · Widgets · shipped · since 2026-11-08
+
+Configurable tiles for the server's Start actions (small 1-2, medium 4, large 8, lock screen circular 1), picked in the widget's Edit menu from the cached list. A tap runs an action without fields right from the widget (identity servers only, Face ID first with the app lock on, result on the tile); fields, destructive and token servers open the form in the app.
+
+| | |
+|---|---|
+| Server | `run-actions` |
+| Sources | [WidgetActions.swift](../Sources/HomelabKit/WidgetActions.swift), [ActionsWidget.swift#ActionsWidget](../Sources/HomelabWidget/ActionsWidget.swift), [ActionUsage.swift](../Sources/HomelabKit/ActionUsage.swift) |
+| Tests | `WidgetActionsTests` |
+| Phone (DeviceTest.md) | W13, W14, W15 |
+| Docs | [README.md#what-it-does](../README.md#what-it-does), [docs/DESIGN.md#lock-screen-and-live-activity](DESIGN.md#lock-screen-and-live-activity) |
+| Widgets | `ActionsWidget` |
+| Depends on | [widget-data](#widget-data), [start-actions](#start-actions), [quick-actions](#quick-actions), [widgetkit](#dep-widgetkit) |
+| Through those | [agent-chat](#dep-agent-chat), [app-group-entitlement](#dep-app-group-entitlement), [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale), [widget-extension-target](#dep-widget-extension-target), [xtool-app-group-patch](#dep-xtool-app-group-patch) |
+| Unsure | xtool 1.24.0 writes no App Intents metadata (Metadata.appintents), so on a device the Edit menu list and the run buttons are unverified. The views are not unit-tested. |
+
 ### widget-data
 
 **Widget data: snapshot, self-fetch, stale marks, lock redaction** · Widgets · shipped · since 2026-11-06
@@ -2033,29 +2054,29 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-ios-18"></a>**iOS 18 or newer** | runtime | iOS 18 (deployment target); tested on 18.7.3 | [Package.swift](../Package.swift), [README.md](../README.md) | [install-xtool](#install-xtool), [install-sidestore](#install-sidestore) | 4 |
 | <a id="dep-ios-sdk"></a>**iOS SDK from Xcode 27.1** | sdk | Xcode 27.1 (.xip on Linux, installed Xcode on macOS) | [SETUP.md](SETUP.md), [build-ipa](../scripts/build-ipa), [ci.yml](../.github/workflows/ci.yml) | [install-xtool](#install-xtool) | 2 |
 | <a id="dep-xtool"></a>**xtool** | toolchain | 1.24.0 (CI: release zip with SHA-256) | [ci.yml](../.github/workflows/ci.yml), [SETUP.md](SETUP.md), [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md), [install-dev](../scripts/install-dev), [xtool.yml](../xtool.yml) | [install-xtool](#install-xtool), [ci-checks](#ci-checks), [screenshots](#screenshots) | 4 |
-| <a id="dep-xtool-app-group-patch"></a>**xtool 1.24.0 App Group patch** | toolchain | commit 70e1568f + one line from xtool PR #284 | [SETUP.md](SETUP.md) | [app-group](#app-group), [install-xtool](#install-xtool) | 14 |
+| <a id="dep-xtool-app-group-patch"></a>**xtool 1.24.0 App Group patch** | toolchain | commit 70e1568f + one line from xtool PR #284 | [SETUP.md](SETUP.md) | [app-group](#app-group), [install-xtool](#install-xtool) | 15 |
 | <a id="dep-usbmuxd"></a>**usbmuxd and libimobiledevice** | install | distro packages | [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md) | [install-xtool](#install-xtool) | 2 |
 | <a id="dep-free-apple-id"></a>**Free Apple ID** | account | – | [README.md](../README.md), [SIDESTORE.md](SIDESTORE.md) | [expiry-warning](#expiry-warning), [install-xtool](#install-xtool), [install-sidestore](#install-sidestore) | 5 |
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 31 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 47 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 32 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 48 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
-| <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
+| <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 15 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
 | <a id="dep-seerr"></a>**Seerr (server side)** | server-side | – | [API.md](API.md) | [find](#find) | 1 |
 | <a id="dep-willhaben"></a>**willhaben (server side)** | server-side | – | [API.md](API.md) | [share-extension](#share-extension), [deals](#deals) | 3 |
 | <a id="dep-ntfy"></a>**ntfy push (server side)** | server-side | – | [SHORTCUTS.md](SHORTCUTS.md) | [deals](#deals) | 2 |
-| <a id="dep-widgetkit"></a>**WidgetKit** | ios-framework | iOS 18 SDK | [HomelabWidget.swift](../Sources/HomelabWidget/HomelabWidget.swift) | [widget-status](#widget-status), [widget-day](#widget-day), [widget-hosts](#widget-hosts), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos) | 6 |
+| <a id="dep-widgetkit"></a>**WidgetKit** | ios-framework | iOS 18 SDK | [HomelabWidget.swift](../Sources/HomelabWidget/HomelabWidget.swift) | 7 features | 7 |
 | <a id="dep-activitykit"></a>**ActivityKit** | ios-framework | iOS 18 SDK | [LeaveActivityController.swift](../Sources/HomelabUI/LeaveActivityController.swift), [App-Info.plist](../App-Info.plist) | [live-activity](#live-activity) | 1 |
 | <a id="dep-visionkit"></a>**VisionKit document camera** | ios-framework | iOS 18 SDK | [DocumentScanner.swift](../Sources/HomelabUI/DocumentScanner.swift), [App-Info.plist](../App-Info.plist), [Package.swift](../Package.swift) | [scan](#scan) | 1 |
 | <a id="dep-backgroundtasks"></a>**BackgroundTasks** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift), [App-Info.plist](../App-Info.plist) | [background-refresh](#background-refresh) | 9 |
 | <a id="dep-usernotifications"></a>**UserNotifications** | ios-framework | iOS 18 SDK | [Background.swift](../Sources/HomelabUI/Background.swift) | [notifications](#notifications), [notification-actions](#notification-actions) | 4 |
 | <a id="dep-localauthentication"></a>**LocalAuthentication (Face ID)** | ios-framework | iOS 18 SDK | [Components.swift](../Sources/HomelabUI/Components.swift), [App-Info.plist](../App-Info.plist) | [app-lock](#app-lock) | 1 |
 | <a id="dep-keychain"></a>**Keychain (Security framework)** | ios-framework | iOS 18 SDK | [Keychain.swift](../Sources/HomelabUI/Keychain.swift) | [token-security](#token-security) | 8 |
-| <a id="dep-app-group-entitlement"></a>**App Group entitlement** | runtime | group.com.qantrex.homelab (renamed by SideStore and xtool) | [App.entitlements](../App.entitlements), [Widget.entitlements](../Widget.entitlements), [Share.entitlements](../Share.entitlements) | [app-group](#app-group) | 12 |
-| <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
+| <a id="dep-app-group-entitlement"></a>**App Group entitlement** | runtime | group.com.qantrex.homelab (renamed by SideStore and xtool) | [App.entitlements](../App.entitlements), [Widget.entitlements](../Widget.entitlements), [Share.entitlements](../Share.entitlements) | [app-group](#app-group) | 13 |
+| <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 9 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
 | <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | 7 features | 24 |
@@ -2089,7 +2110,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 - **Seerr (server side)** (`seerr`): Answers the owner's server's /search and posters, and runs the Request action. Unsure: Only the owner's server uses it; another server can answer /search from anything.
 - **willhaben (server side)** (`willhaben`): The used market the server watches for deals; a shared willhaben ad link starts a price check.
 - **ntfy push (server side)** (`ntfy`): The server's push for a strong deal opens `homelab://deals`; the app itself has no APNs (free Apple ID).
-- **WidgetKit** (`widgetkit`): The widgets (static configuration only; App Intents can't be built with xtool yet).
+- **WidgetKit** (`widgetkit`): The widgets (App Intents compile with xtool, but their metadata is not written yet; see widget-actions).
 - **ActivityKit** (`activitykit`): The "Leave by" Live Activity; needs NSSupportsLiveActivities, no entitlement and no extra App ID.
 - **VisionKit document camera** (`visionkit`): The Scan screen; importing it autolinks SwiftUICore, hence the noSwiftUICore flag in Package.swift.
 - **BackgroundTasks** (`backgroundtasks`): The background refresh (BGAppRefreshTask).
@@ -2123,29 +2144,29 @@ Features per area that need each dependency, directly or through another feature
 | iOS 18 or newer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 4 |  |  |
 | iOS SDK from Xcode 27.1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | xtool |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  | 2 |
-| xtool 1.24.0 App Group patch |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  | 2 |  |  |
+| xtool 1.24.0 App Group patch |  |  | 1 | 3 |  |  |  |  |  | 8 |  |  | 1 |  |  | 2 |  |  |
 | usbmuxd and libimobiledevice |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | Free Apple ID | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 4 |  |  |
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 4 |  |  | 2 | 18 |  |
-| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 5 | 1 |  |  | 20 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 8 |  |  | 4 |  |  | 2 | 18 |  |
+| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 3 | 3 |  | 3 | 1 |  | 5 | 1 |  |  | 20 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
-| The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
+| The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 3 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Seerr (server side) |  |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | willhaben (server side) |  |  |  | 1 |  | 2 |  |  |  |  |  |  |  |  |  |  |  |  |
 | ntfy push (server side) |  |  |  |  |  | 2 |  |  |  |  |  |  |  |  |  |  |  |  |
-| WidgetKit |  |  |  |  |  |  |  |  |  | 6 |  |  |  |  |  |  |  |  |
+| WidgetKit |  |  |  |  |  |  |  |  |  | 7 |  |  |  |  |  |  |  |  |
 | ActivityKit |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |  |  |
 | VisionKit document camera |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | BackgroundTasks |  |  |  | 3 |  | 1 |  |  |  | 1 | 4 |  |  |  |  |  |  |  |
 | UserNotifications |  |  |  |  |  | 1 |  |  |  |  | 3 |  |  |  |  |  |  |  |
 | LocalAuthentication (Face ID) |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |  |  |
 | Keychain (Security framework) | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 | 1 |  |  |  |  |
-| App Group entitlement |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  |  |  |  |
-| Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
+| App Group entitlement |  |  | 1 | 3 |  |  |  |  |  | 8 |  |  | 1 |  |  |  |  |  |
+| Widget extension target |  |  |  |  |  |  |  |  |  | 9 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
 | Python 3 |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  | 2 | 19 | 2 |
