@@ -39,7 +39,7 @@ struct SettingsView: View {
                                 .accessibilityHint(Text(s.kind == .demo ? "Demo servers can't be edited" : "Edits this server"))
                                 .swipeActions {
                                     // Demo servers come and go with the Demo switch below (a swiped one couldn't come back).
-                                    if s.kind != .demo { Button("Delete", role: .destructive) { deleting = s } }
+                                    if s.kind != .demo { Button("Delete", role: .destructive) { deleting = s }.tint(Palette.love) }
                                 }
                         }
                         Button { adding = true } label: { Label("Add server", systemImage: "plus") }
@@ -88,6 +88,7 @@ struct SettingsView: View {
                             // Stays usable while on: without a passcode any more, it can still be turned off.
                             .disabled(!Biometrics.available && !model.settings.faceIDLock)
                         Button("Reset everything", role: .destructive) { confirmReset = true }
+                            .foregroundStyle(Palette.love)   // Rosé Pine love, not the system red (iOS keeps red in its own dialogs)
                     } header: {
                         Text("Privacy")
                     } footer: {
@@ -500,6 +501,7 @@ struct ServerEditor: View {
                         if let original {
                             Section {
                                 Button("Delete server", role: .destructive) { confirmDelete = true }
+                                    .foregroundStyle(Palette.love)
                                     .confirmationDialog("Delete \(original.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
                                         Button("Delete server and its token", role: .destructive) {
                                             model.remove(original.id)
