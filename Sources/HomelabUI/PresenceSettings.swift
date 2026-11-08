@@ -2,7 +2,7 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-/// Settings → Today → "Where you are": the row. Only with a real Home Assistant server (the demo one has nobody to
+/// Settings → Advanced → "Where you are": the row. Only with a real Home Assistant server (the demo one has nobody to
 /// follow, and the CI shots of Settings stay as they were), or while one is chosen, so it can be turned off. Off by
 /// default; the "At home" and "Away" rules appear in the rule sheet once it is set.
 struct PresenceRow: View {

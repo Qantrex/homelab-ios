@@ -2,7 +2,7 @@ import Foundation
 
 /// SideStore re-signs the app with a free Apple ID. It changes the bundle ID to `<base>.<TEAMID>` (and the widget to
 /// `<base>.<TEAMID>.HomelabWidget`) and rewrites App Group IDs. So the app never hard-codes its group: it tries the
-/// likely candidates and uses the first one the system actually grants (Settings → Diagnostics shows them all).
+/// likely candidates and uses the first one the system actually grants (Settings → Advanced → Diagnostics shows them all).
 public enum AppGroup {
     public static let baseBundleID = "com.qantrex.homelab"
     public static let declaredGroup = "group.com.qantrex.homelab"

@@ -16,7 +16,7 @@ struct TodayView: View {
     /// Home Assistant's states, read by `homePoll` for the Home tiles, a Home "When it needs me" rule, Where you are and
     /// (without a Companion server) the headline.
     @State private var home = HomeModel()
-    /// The time the show rules check (Settings → Today → Sections); ticks every 30 s while a rule is set.
+    /// The time the show rules check (Settings → Advanced → Sections); ticks every 30 s while a rule is set.
     @State private var ruleClock = Date.now
     /// The folded cards the owner opened (card ids). Only for this launch.
     @State private var expanded: Set<String> = []
@@ -219,7 +219,7 @@ struct TodayView: View {
                     .contentTransition(Motion.numeric)
                     .padding(.top, 4)
                     .accessibilityAddTraits(.isHeader)
-                    .accessibilityHint(model.availableTabs.contains(.lab) ? Text("Opens Lab") : Text(""))
+                    .accessibilityHint(model.shownTabs.contains(.lab) ? Text("Opens Lab") : Text(""))
                     .accessibilityAction { openLab() }
                 // The fact line: the first problem, and the warnings inline (gold glyph, white words; research #8).
                 if m.detail != nil || m.warnings > 0 {
@@ -251,7 +251,7 @@ struct TodayView: View {
     }
 
     private func openLab() {
-        if model.availableTabs.contains(.lab) { model.tab = .lab }
+        if model.shownTabs.contains(.lab) { model.go(.lab) }
     }
 
     /// "sonarr on media is unhealthy · ⚠ 1 warning": only the glyph is gold.
@@ -376,7 +376,7 @@ struct TodayView: View {
         return VStack(alignment: .leading, spacing: Space.titleToPanel) {
             SectionTitle(text: "To approve", trailing: "\(pending.count)")
             Button {
-                model.tab = .actions
+                model.go(.actions)
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(shown.enumerated()), id: \.element.id) { i, p in
@@ -559,7 +559,7 @@ struct TodayView: View {
                     .panel()
                 }
                 .buttonStyle(.press)
-                .disabled(!model.availableTabs.contains(.chat))
+                .disabled(!model.shownTabs.contains(.chat))
             }
         }
     }

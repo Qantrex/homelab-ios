@@ -1,7 +1,7 @@
 import Foundation
 
 // Presence from Home Assistant (docs/plans/MODULAR.md, M3.3): the "At home" and "Away" rules read one `person.*` or
-// `device_tracker.*` entity that the user picks in Settings → Today → Where you are. Home Assistant already knows
+// `device_tracker.*` entity that the user picks in Settings → Advanced → Where you are. Home Assistant already knows
 // where its people are (its companion app, the router): this app asks for no location and no Wi-Fi access. The
 // states come with the Home Assistant refresh Today already does; an entity that is missing, unknown or older than
 // `Presence.maxAge` makes presence unknown, and unknown lets both rules pass.

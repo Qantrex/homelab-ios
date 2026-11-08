@@ -1,6 +1,6 @@
 import Foundation
 
-// Quiet hours (docs/plans/MODULAR.md, M3.3): Settings → Notifications → Quiet hours, off by default. Inside the
+// Quiet hours (docs/plans/MODULAR.md, M3.3): Settings → Advanced → Quiet hours, off by default. Inside the
 // window the background refresh posts no local notification (problems, actions to approve, deals). It still runs:
 // the snapshot, the widget and the alert tracker are updated as always, so what came up during the night is on
 // Today and in the widget, and is not announced again in the morning. Without quiet hours nothing changes.

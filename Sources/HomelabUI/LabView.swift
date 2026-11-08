@@ -140,6 +140,28 @@ struct LabView: View {
     // MARK: Content
 
     @ViewBuilder
+    private func hostsBlock(_ state: HomelabState) -> some View {
+        if !state.hosts.isEmpty {
+            VStack(alignment: .leading, spacing: Space.titleToPanel) {
+                SectionTitle(text: "Hosts", trailing: String(localized: "\(state.hosts.filter { $0.reachable == true }.count) of \(state.hosts.count) up"))
+                // One panel, a row per host in every density and text size: Load, RAM and Disk in three right-hand
+                // columns (stacked under the name from xxLarge). Never tiles: three hosts made an uneven grid (owner 2026-11-08).
+                VStack(spacing: 0) {
+                    if !HostRow.stacked(typeSize) {
+                        HostColumnHeader().padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 2)
+                    }
+                    ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
+                        if index > 0 { Divider().padding(.leading, 16) }
+                        NavigationLink(value: host) { HostRow(host: host, health: state.health(of: host)) }
+                            .buttonStyle(PressStyle(scale: 1))
+                    }
+                }
+                .rowsPanel()
+            }
+        }
+    }
+
+    @ViewBuilder
     private func content(_ state: HomelabState) -> some View {
         if !state.problems.isEmpty {
             VStack(alignment: .leading, spacing: Space.titleToPanel) {
@@ -161,30 +183,17 @@ struct LabView: View {
             pendingRow(state.pending.count).rowsPanel()
         }
 
-        if !state.hosts.isEmpty {
-            VStack(alignment: .leading, spacing: Space.titleToPanel) {
-                SectionTitle(text: "Hosts", trailing: String(localized: "\(state.hosts.filter { $0.reachable == true }.count) of \(state.hosts.count) up"))
-                // One panel, a row per host in every density and text size: Load, RAM and Disk in three right-hand
-                // columns (stacked under the name from xxLarge). Never tiles: three hosts made an uneven grid (owner 2026-11-08).
-                VStack(spacing: 0) {
-                    if !HostRow.stacked(typeSize) {
-                        HostColumnHeader().padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 2)
-                    }
-                    ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
-                        if index > 0 { Divider().padding(.leading, 16) }
-                        NavigationLink(value: host) { HostRow(host: host, health: state.health(of: host)) }
-                            .buttonStyle(PressStyle(scale: 1))
-                    }
-                }
-                .rowsPanel()
+        // Hosts, the server's lab cards (tailnet, ad blocking, backups) and the services, in the owner's order and
+        // without the ones hidden (Settings -> Advanced -> Lab; `LabBlocks`). Problems above stay.
+        let cards = state.cards.filter { $0.place == .lab }
+        ForEach(LabBlocks.visibleIDs(cards: cards, model.settings.labBlocks), id: \.self) { id in
+            switch id {
+            case LabBlocks.hosts: hostsBlock(state)
+            case LabBlocks.services:
+                if !status.services.isEmpty { ServicesSection(services: status.services) }
+            default:
+                if let card = cards.first(where: { $0.id == id }) { CardView(card: card, lab: true, model: model) }
             }
-        }
-
-        // Cards the server wants here (tailnet, ad blocking, backups), as rows, between the hosts and the services.
-        ForEach(state.cards.filter { $0.place == .lab }) { CardView(card: $0, lab: true, model: model) }
-
-        if !status.services.isEmpty {
-            ServicesSection(services: status.services)
         }
 
         // Where to look when something doesn't load: also here, not only under Settings → About.
@@ -208,7 +217,7 @@ struct LabView: View {
 
     private func pendingRow(_ count: Int) -> some View {
         Button {
-            model.tab = .actions
+            model.go(.actions)
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.shield").foregroundStyle(Palette.gold).accessibilityHidden(true)
