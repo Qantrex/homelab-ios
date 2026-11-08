@@ -343,11 +343,10 @@ struct EntityPicker: View {
                     Section(domainTitle(domain)) {
                         ForEach(groups[domain] ?? []) { e in
                             Button { toggle(e.entityID) } label: {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(e.name).foregroundStyle(.primary)
-                                        Text(e.entityID).font(.caption2).foregroundStyle(.secondary)
-                                    }
+                                HStack(spacing: 12) {
+                                    Image(systemName: icons[e.entityID].flatMap { TileIcon.shown($0, on: false) } ?? entitySymbol(e))
+                                        .foregroundStyle(Palette.secondary).frame(width: 26).accessibilityHidden(true)
+                                    Text(e.name).foregroundStyle(Palette.text)
                                     Spacer()
                                     if selected.contains(e.entityID) { Image(systemName: "checkmark").foregroundStyle(.tint) }
                                 }

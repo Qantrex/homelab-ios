@@ -42,7 +42,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [To-dos (checklist card)](#checklist-card) | shipped | `cards`, `run-actions` | 3 | O10, AX2 | 2 |
 | [Deadlines (countdown card)](#countdown-card) | shipped | `cards` | 7 | O12 | 1 |
 | [Parcels (Delivered button, tracking link)](#parcels) | shipped | `cards`, `run-actions` | 1 | O9b | 1 |
-| [Lessons (cancelled and changed)](#lessons-card) | shipped | `cards` | 1 | O12b | 3 |
+| [Lessons (cancelled and changed)](#lessons-card) | shipped | `cards` | 2 | O12b | 3 |
 | [Cards in Lab (place: lab)](#lab-cards) | shipped | `cards` | 5 | O12d, O12e | 1 |
 | [Game server card (status and wake)](#game-server-card) | shipped | `cards` | 2 | O12f | 1 |
 | [Card and item actions (header button, one-tap items)](#card-actions) | shipped | `run-actions` | 8 | O11 | 2 |
@@ -638,8 +638,8 @@ Cancelled lessons are struck through and grey, substitutions and room changes ge
 | | |
 |---|---|
 | Server | `cards`, `GET /state`, `item.cancelled`, `item tint for changes` |
-| Sources | [Cards.swift#CardView](../Sources/HomelabUI/Cards.swift), [DayTimeline.swift](../Sources/HomelabKit/DayTimeline.swift) |
-| Tests | `DayTimelineTests/cancelledAndDateDecode` |
+| Sources | [Cards.swift#CardView](../Sources/HomelabUI/Cards.swift), [DayTimeline.swift](../Sources/HomelabKit/DayTimeline.swift), [LessonRows.swift](../Sources/HomelabKit/LessonRows.swift) |
+| Tests | `DayTimelineTests/cancelledAndDateDecode`, `LessonRowsTests` |
 | Phone (DeviceTest.md) | O12b |
 | Docs | [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/GETTING-STARTED.md#the-weather-line-and-the-lessons](GETTING-STARTED.md#the-weather-line-and-the-lessons), [docs/DESIGN.md#4-the-voice](DESIGN.md#4-the-voice) |
 

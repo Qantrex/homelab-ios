@@ -30,6 +30,9 @@ public enum Palette {
     /// Text on an accent-coloured button.
     public static let onAccent = dynamic(dark: 0x000000, light: 0xFFFFFF)
     public static let accent = text
+    /// Track of a switch that is on: a mid grey, so the white knob stays visible and on/off differ clearly (the knob
+    /// sits right when on). Owner review 2026-11-08 row 28.
+    public static let toggleOn = dynamic(dark: 0x7A7A7A, light: 0x5C5C5C, darkHigh: 0x8F8F8F, lightHigh: 0x3D3D3D)
 
     /// Rosé Pine Moon (dark); light mode darker than Rosé Pine Dawn, so it is 4.5:1 or more on raised (#E6E6E6).
     public static let love = dynamic(dark: 0xEB6F92, light: 0x9E4A63, darkHigh: 0xF28BA8, lightHigh: 0x8A3A52)
@@ -335,5 +338,14 @@ public struct Chip: View {
         .padding(.vertical, 2)
         .overlay(Capsule().strokeBorder(color.opacity(0.45), lineWidth: 1))
         .foregroundStyle(color)
+    }
+}
+
+/// Every switch in the app: the system switch (same knob, same VoiceOver value) with a grey "on" track instead of the
+/// white app tint, which hid the white knob. Set once at the root with `.toggleStyle(HomelabToggleStyle())`.
+public struct HomelabToggleStyle: ToggleStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        Toggle(configuration).tint(Palette.toggleOn)
     }
 }
