@@ -7,10 +7,11 @@ import Foundation
 /// texts, the headline) never change with it and always show plainly next to the line, so the joke can be ignored.
 public enum Personality: String, Codable, CaseIterable, Sendable, Identifiable {
     case off, dry, snarky
-    /// CARROT's far end: gallows humour, bleak cynicism, and politically incorrect satire of institutions, ideologies and
-    /// current politics (EU regulation, the AI hype, rent, inflation, election promises, surveillance, the Magistrat),
-    /// with the odd swear word. It mocks ideas, institutions and systems, never groups of people. Never slurs, jokes
-    /// about protected groups, anything sexual, self-harm, real named people or endorsing violence (VoiceTests).
+    /// The far end, a different tier from Snarky: harsh, profane, over the top, merciless about the owner and the lab,
+    /// with satire of politics and the news cycle in general terms (EU regulation, the AI hype, rent, inflation,
+    /// surveillance, the Magistrat). It mocks the owner, ideas, institutions and systems. Never slurs, jokes about
+    /// protected groups, anything sexual, self-harm, real people or threats (TakeTests). Choosing it asks once first
+    /// (`UltrakillWarning`).
     case ultrakill
 
     public var id: String { rawValue }
@@ -30,6 +31,15 @@ public enum Personality: String, Codable, CaseIterable, Sendable, Identifiable {
         let raw = try decoder.singleValueContainer().decode(String.self)
         self = Personality(rawValue: raw.lowercased()) ?? .off
     }
+}
+
+/// The one-time warning when Ultrakill is chosen, in its own voice. Shown until confirmed once
+/// (`AppSettings.needsWarning(for:)`); "Back" keeps the previous level.
+public enum UltrakillWarning {
+    public static let title = "Ultrakill"
+    public static let message = "It will insult you, your servers and your life choices. No refunds."
+    public static let enable = "Enable"
+    public static let back = "Back"
 }
 
 public enum Voice {

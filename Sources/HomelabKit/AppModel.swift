@@ -58,6 +58,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var presenceEntity: String?
     /// Settings → Notifications → Quiet hours: no local notifications in this window (`QuietHours.swift`); nil = off.
     public var quietHours: TimeWindow?
+    /// True once the owner confirmed the one-time Ultrakill warning (`UltrakillWarning`); nil (omitted from the file)
+    /// until then, so settings without it stay byte for byte as before.
+    public var ultrakillWarned: Bool?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -84,6 +87,15 @@ public struct AppSettings: Codable, Sendable, Equatable {
         set { personality = newValue == .off ? nil : newValue }
     }
 
+    /// Choosing `level` needs the one-time warning first: Ultrakill, until the owner has confirmed it once.
+    public func needsWarning(for level: Personality) -> Bool { level == .ultrakill && ultrakillWarned != true }
+
+    /// The warning's "Enable": remembers that it was seen and switches to Ultrakill.
+    public mutating func confirmUltrakill() {
+        ultrakillWarned = true
+        voice = .ultrakill
+    }
+
     public var todayLayout: TodayLayout {
         get { today ?? .standard }
         set { today = newValue == .standard ? nil : newValue }
@@ -94,7 +106,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Every stored field; the encoder is the synthesized one, so a saved file stays byte for byte as before.
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
-        case today, density, personality, leaveActivity, presenceEntity, quietHours
+        case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned
     }
 }
 
@@ -117,6 +129,7 @@ extension AppSettings {
         leaveActivity = c.lenient(Bool.self, .leaveActivity)
         presenceEntity = c.lenient(String.self, .presenceEntity)
         quietHours = c.lenient(TimeWindow.self, .quietHours)
+        ultrakillWarned = c.lenient(Bool.self, .ultrakillWarned)
     }
 }
 

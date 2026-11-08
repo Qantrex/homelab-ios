@@ -94,6 +94,14 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
   refresh runs, after a failed fetch, or when the data is older than 10 min (`FreshnessLine`; Overkill always).
   A line that is always there says nothing (owner, 2026-11-06).
 - Off by default; Dry, Snarky, Ultrakill in Settings.
+- Lines read like one quick human remark about the actual fact: short, varied rhythm, no setup without a punchline,
+  no sentence pattern repeated from line to line (owner 2026-11-09: "feels forced"). Dry understates, Snarky teases
+  the owner and the hardware with a little everyday politics, **Ultrakill is a different tier**: harsh, profane,
+  absurd and merciless about the owner and the lab, with satire of politics and current events in general terms.
+  Never slurs, jokes about who people are, anything sexual, self-harm, real people or threats (TakeTests enforces it).
+- Ultrakill is special: choosing it asks once ("Ultrakill. It will insult you, your servers and your life choices. No
+  refunds." with Enable / Back; Back keeps the previous level). "Seen" is `AppSettings.ultrakillWarned`, an optional
+  that is omitted from `settings.json` until then (`UltrakillWarningModifier`, UltrakillWarning in Voice.swift).
 
 ## 5. Platform patterns
 

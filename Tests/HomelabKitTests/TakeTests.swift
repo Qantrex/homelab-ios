@@ -392,7 +392,8 @@ import Testing
     static let ultraLines = Fact.Kind.allCases.flatMap { Voice.templates($0, .ultrakill) }
         + Voice.Moment.allCases.flatMap { Voice.lines($0, .ultrakill) }
 
-    static let swears = ["fuck", "fucking", "shit", "damn", "hell", "crap", "bloody", "bugger", "idiot", "sod"]
+    static let swears = ["fuck", "fucking", "shit", "damn", "hell", "crap", "bloody", "bugger", "idiot", "sod",
+                         "arse", "arsehole", "bastard", "prick", "wanker", "fuckwit", "dumbass", "moron", "twat"]
 
     static func allText(_ p: Personality) -> [String] {
         Fact.Kind.allCases.flatMap { Voice.templates($0, p) } + Voice.Moment.allCases.flatMap { Voice.lines($0, p) }
@@ -405,10 +406,9 @@ import Testing
             let w = Self.words(line)
             for bad in Self.banned { #expect(!w.contains(" \(bad) "), "banned word in: \(line)") }
         }
-        // Dark humour first, swearing only now and then: a few lines, at most a fifth of them.
+        // Ultrakill is the profane tier: at least a third of its lines swear or insult outright.
         let sweary = Self.ultraLines.filter { line in Self.swears.contains { Self.words(line).contains(" \($0) ") } }
-        #expect(sweary.count >= 2 && Double(sweary.count) <= Double(Self.ultraLines.count) * 0.2,
-                "\(sweary.count) of \(Self.ultraLines.count)")
+        #expect(Double(sweary.count) >= Double(Self.ultraLines.count) * 0.33, "\(sweary.count) of \(Self.ultraLines.count)")
         // …and the other levels don't.
         for p in [Personality.dry, .snarky] {
             for line in Self.allText(p) {
@@ -416,5 +416,51 @@ import Testing
                 for bad in Self.banned + Self.swears { #expect(!w.contains(" \(bad) "), "\(p): \(line)") }
             }
         }
+    }
+
+    @Test func ultrakillIsADifferentTierFromSnarky() {
+        // No shared line anywhere, and every fact kind and every place has its own Ultrakill set.
+        let snarky = Set(Self.allText(.snarky)), ultra = Set(Self.allText(.ultrakill)), dry = Set(Self.allText(.dry))
+        #expect(snarky.isDisjoint(with: ultra) && dry.isDisjoint(with: ultra) && dry.isDisjoint(with: snarky))
+        for kind in Fact.Kind.allCases {
+            let u = Voice.templates(kind, .ultrakill), s = Voice.templates(kind, .snarky)
+            #expect(u.count >= 5 && s.count >= 4, "\(kind): \(u.count) / \(s.count)")
+            #expect(Set(u).isDisjoint(with: s))
+        }
+        for place in Voice.Place.allCases {
+            #expect(!VoiceLines.all(place, .ultrakill).isEmpty && !VoiceLines.all(place, .snarky).isEmpty)
+            #expect(Set(VoiceLines.all(place, .ultrakill)).isDisjoint(with: VoiceLines.all(place, .snarky)))
+        }
+        // Snarky never swears; Ultrakill does in a good share of its lines.
+        let swears = Self.swears
+        let snarkySweary = Self.allText(.snarky).filter { l in swears.contains { Self.words(l).contains(" \($0) ") } }
+        #expect(snarkySweary.isEmpty)
+    }
+
+    @Test func noLineStartsAnExhaustedPattern() {
+        // No sentence pattern repeated from line to line: within one kind no two templates open the same way
+        // (first three words) except where the fact leads.
+        for p in Self.voiced {
+            for kind in Fact.Kind.allCases {
+                let lines = Voice.templates(kind, p)
+                let tail = lines.map { $0.split(separator: ".").last.map { $0.trimmingCharacters(in: .whitespaces) } ?? "" }
+                #expect(Set(tail).count == tail.count, "same closing in \(p) \(kind)")
+            }
+        }
+    }
+
+    @Test func ultrakillWarningShowsOnceAndIsOptionalInTheFile() throws {
+        var s = AppSettings()
+        #expect(s.needsWarning(for: .ultrakill) && !s.needsWarning(for: .snarky) && !s.needsWarning(for: .off))
+        // Unset: nothing in the file (the owner's settings stay byte for byte).
+        #expect(!String(decoding: try JSONEncoder().encode(s), as: UTF8.self).contains("ultrakillWarned"))
+        s.confirmUltrakill()
+        #expect(s.voice == .ultrakill && !s.needsWarning(for: .ultrakill))
+        let back = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(s))
+        #expect(back.ultrakillWarned == true && !back.needsWarning(for: .ultrakill))
+        // Switching away and back later doesn't ask again.
+        s.voice = .snarky
+        #expect(!s.needsWarning(for: .ultrakill))
+        #expect(UltrakillWarning.message.contains("No refunds"))
     }
 }

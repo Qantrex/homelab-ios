@@ -65,6 +65,7 @@ struct SettingsView: View {
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
                         }
+                        .ultrakillWarning(model)
                         PersonalityPreview(model: model)
                     } header: {
                         Text("Today")

@@ -10,6 +10,9 @@ Highlights:
   and the server's cards.
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or
   "Front door open", and in gold what doesn't answer ("Bedroom fan unavailable"). Demo: `-HomelabDemoScene ha-only`.
+- Personality: the lines were rewritten to sound like a quick remark about the fact instead of a template. Today's old
+  Ultrakill lines moved to Snarky; Ultrakill is now a much harsher, profane, over-the-top tier of its own, and asks
+  once before it is switched on (Enable / Back).
 - Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 48
   hours, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
   downloads and grades are small tiles (a count and one line: "best −50 %", "Dune +7", "ITP 95 %"; 2 by 2, one row of

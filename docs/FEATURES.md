@@ -512,7 +512,7 @@ A line of commentary under Today's headline, on empty screens, after actions and
 
 | | |
 |---|---|
-| Sources | [Voice.swift](../Sources/HomelabKit/Voice.swift), [Takes.swift](../Sources/HomelabKit/Takes.swift), [VoiceLines.swift](../Sources/HomelabKit/VoiceLines.swift), [SettingsView.swift#PersonalityPreview](../Sources/HomelabUI/SettingsView.swift) |
+| Sources | [Voice.swift](../Sources/HomelabKit/Voice.swift), [Takes.swift](../Sources/HomelabKit/Takes.swift), [VoiceLines.swift](../Sources/HomelabKit/VoiceLines.swift), [VoiceLinesText.swift](../Sources/HomelabKit/VoiceLinesText.swift), [TakeLines.swift](../Sources/HomelabKit/TakeLines.swift), [UltrakillWarningModifier.swift](../Sources/HomelabUI/UltrakillWarningModifier.swift), [SettingsView.swift#PersonalityPreview](../Sources/HomelabUI/SettingsView.swift) |
 | Tests | `VoiceTests`, `TakeTests`, `VoiceSpotTests`, `ChatLayoutTests/previewSampleFollowsThePersonality` |
 | Phone (DeviceTest.md) | DL10 |
 | CI screenshots | `demo-today-overkill-snarky` |
