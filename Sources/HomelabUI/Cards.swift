@@ -333,7 +333,9 @@ struct CardView: View {
     /// The rows of a list-like card; its `text` when it has no items ("Nothing open."). A chat bubble shows the
     /// first few and how many more there are.
     @ViewBuilder
-    private func rows<Row: View>(_ items: [Card.Item], now: Date = .now, @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
+    private func rows<Row: View>(_ given: [Card.Item], now: Date = .now, @ViewBuilder row: @escaping (Card.Item) -> Row) -> some View {
+        // Parallel lessons and back-to-back slots are one row (`LessonRows`).
+        let items = card.id == "lessons" ? LessonRows.grouped(given) : given
         if items.isEmpty, let text = card.text {
             VStack(alignment: .leading, spacing: 4) {
                 Text(markdown(text)).tint(Palette.iris).font(compact ? Typo.meta : Typo.body).foregroundStyle(Palette.secondary)

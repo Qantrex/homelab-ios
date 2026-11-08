@@ -372,8 +372,8 @@ summary = "Cancelled lessons are struck through and grey, substitutions and room
 server_features = ["cards"]
 endpoints = ["GET /state"]
 api_fields = ["item.cancelled", "item tint for changes"]
-sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabKit/DayTimeline.swift"]
-tests = ["DayTimelineTests/cancelledAndDateDecode"]
+sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabKit/DayTimeline.swift", "Sources/HomelabKit/LessonRows.swift"]
+tests = ["DayTimelineTests/cancelledAndDateDecode", "LessonRowsTests"]
 device_tests = ["O12b"]
 docs = ["CHANGELOG.md#100-unreleased", "docs/GETTING-STARTED.md#the-weather-line-and-the-lessons", "docs/DESIGN.md#4-the-voice"]
 

@@ -53,6 +53,7 @@ public struct RootView: View {
         .onChange(of: model.shownTabs) { _, _ in model.validateTab() }
         .task { await model.drainOutbox() }
         .tint(Palette.accent)
+        .toggleStyle(HomelabToggleStyle())   // grey "on" track for every switch (review 2026-11-08 row 28)
         .labeledContentStyle(.adaptive)
         // Hyperdetail only (nil elsewhere): the views below add every field and a remark to what they draw.
         .environment(\.hyper, model.hyper)
