@@ -1,8 +1,8 @@
 # Homelab iOS
 
 A native iPhone app for a self-hosted homelab. It shows what is up, what needs attention and what waits for your
-approval. It can chat with your homelab agent and switch Home Assistant devices. Open source, MIT, no account, no
-cloud.
+approval. It can chat with your homelab agent and switch Home Assistant devices. Source available (free for
+noncommercial use), no account, no cloud.
 
 It is built with SwiftPM and [xtool](https://github.com/xtool-org/xtool), so you don't need a Mac or a paid Apple
 developer account. You install it with a free Apple ID: from a Linux PC or a Mac with xtool, or
@@ -191,4 +191,7 @@ Docs site: <https://qantrex.github.io/homelab-ios/>, the `docs/` folder as a web
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+[PolyForm Noncommercial 1.0.0](LICENSE): free to use, change and share for any noncommercial purpose (yourself, a
+hobby, school, a friend's homelab, a noncommercial organisation). Selling it, selling a modified or similar version
+built from this code, or any other commercial use needs a separate license from the author: ask on GitHub. Versions
+published before 2026-11-08 were MIT and stay MIT.

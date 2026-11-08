@@ -2,7 +2,8 @@
 
 A native iPhone app for a self-hosted homelab: what is up, what needs attention and what waits for your approval,
 plus a chat with your homelab agent and your Home Assistant devices. It is built with SwiftPM and xtool and installed
-with a free Apple ID, from Linux or a Mac, or with SideStore. Open source (MIT), no account, no cloud.
+with a free Apple ID, from Linux or a Mac, or with SideStore. Source available, free for noncommercial use
+(PolyForm Noncommercial), no account, no cloud.
 
 The [README on GitHub](../README.md) has the screenshots, the quick start and the limits.
 

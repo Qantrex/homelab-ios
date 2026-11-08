@@ -49,4 +49,4 @@ LABEL org.opencontainers.image.title="Homelab Bridge" \
       org.opencontainers.image.description="Companion API v1 server for the Homelab iOS app, with sources for other homelab services" \
       org.opencontainers.image.source="https://github.com/Qantrex/homelab-ios" \
       org.opencontainers.image.documentation="https://github.com/Qantrex/homelab-ios/blob/main/docs/SERVER-SETUP.md#docker" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="PolyForm-Noncommercial-1.0.0"

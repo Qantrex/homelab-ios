@@ -52,3 +52,10 @@ there shows up everywhere. Add a new fixture rather than changing one other test
 - [ ] `CHANGELOG.md` has a line for anything users notice
 - [ ] A new or changed feature has its entry in `features.toml` (files, tests, DeviceTest rows, docs), and
       `scripts/features render` was run ([docs/FEATURES.md](docs/FEATURES.md))
+
+## License of contributions
+
+The project is licensed under [PolyForm Noncommercial 1.0.0](LICENSE). By sending a pull request you agree that your
+contribution is licensed under the same terms, and that the author (Qantrex) may also use, relicense and distribute it
+under any other terms, including commercial ones. If you don't want that, say so in the pull request before it is
+merged.

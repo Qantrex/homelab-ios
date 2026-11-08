@@ -695,12 +695,12 @@ struct AboutView: View {
         List {
             Group {
                 Section {
-                    Text("Homelab is an open-source companion app for self-hosted homelabs. It talks only to the servers you add. No accounts, no analytics, no third-party services.")
+                    Text("Homelab is a companion app for self-hosted homelabs, source available and free for noncommercial use. It talks only to the servers you add. No accounts, no analytics, no third-party services.")
                         .font(.body)
                 }
                 Section("Source") {
                     Link("github.com/Qantrex/homelab-ios", destination: URL(string: "https://github.com/Qantrex/homelab-ios")!)
-                    LabeledContent("License", value: "MIT")
+                    LabeledContent("License", value: "PolyForm Noncommercial 1.0.0")
                     LabeledContent("Third-party code", value: String(localized: "none"))
                 }
                 Section("Built with") {

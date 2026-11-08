@@ -4,6 +4,9 @@
 
 First release.
 
+License: from 2026-11-08 the project is under PolyForm Noncommercial 1.0.0 (free for noncommercial use; commercial
+use needs a license from the author). Earlier versions were MIT and stay MIT.
+
 Highlights:
 
 - Today: the lab's state in two words, your day as a line with a countdown, actions to approve, Home Assistant tiles
