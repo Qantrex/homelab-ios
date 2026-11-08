@@ -1253,6 +1253,19 @@ depends_on = ["sidestore", "sidestore-anisette", "localdevvpn", "tailscale", "fr
 unsure = "Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release."
 
 [[feature]]
+id = "ship-to-phone"
+name = "Daily updates to your own phone"
+area = "Install"
+status = "shipped"
+since = "2026-11-08"
+summary = "`scripts/ship-to-phone` uploads the local IPA to your own server over ssh (SHA-256 checked there, `latest.json` written last, last 3 kept, an older or stale build refused); the server serves it on your tailnet and a Shortcuts automation installs it with SideStore. The server endpoints are optional and owner-only."
+sources = ["scripts/ship-to-phone", "server/test_ship_to_phone.py"]
+tests = ["server/test_ship_to_phone.py::ShipToPhone"]
+docs = ["docs/SETUP.md#daily-updates-to-your-own-phone", "docs/API.md#app-updates-optional-owner-only"]
+not_needed = { device_tests = "the phone side is a Shortcuts automation the owner builds; the script is tested against a fake host" }
+depends_on = ["install-sidestore", "python3"]
+
+[[feature]]
 id = "release-process"
 name = "Releases by hand (IPA, SHA-256, SideStore source)"
 area = "Install"

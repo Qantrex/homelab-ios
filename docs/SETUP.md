@@ -94,6 +94,7 @@ brew install xtool-org/tap/xtool
 |---|---|
 | `scripts/build-ipa` | `xtool dev build --ipa` (release configuration if your xtool supports it), then `scripts/verify-ipa`. Prints the IPA path and size. The IPA is in `xtool/` |
 | `scripts/install-dev` | `xtool dev`: build, sign and install on an iPhone over USB in one step |
+| `scripts/ship-to-phone` | Uploads the IPA to your own server for the daily phone update ([below](#daily-updates-to-your-own-phone)) |
 | `scripts/verify-ipa xtool/<name>.ipa` | Checks the widget is inside and both carry the App Group (`build-ipa` runs it for you) |
 
 `scripts/build-ipa` needs no Apple ID: the IPA is unsigned, and SideStore signs it when you install it (send it to the
@@ -175,6 +176,23 @@ from the profile, see `AppGroup.swift`). The app copies the server list, setting
 the group on its first start (`Storage.adoptFiles`), so nothing has to be set up again; the Keychain tokens stay where
 they are. Open the app once so it writes the widgets' snapshot. Widgets already on the Home Screen pick it up with
 their next reload; remove and add them again if one still shows the old text after a minute.
+
+## Daily updates to your own phone
+
+If you build the app yourself and run SideStore, your own server can hand the newest build to your phone, so a new
+build arrives without a cable or a file transfer. This is for you alone: the build stays on your server and is only
+reachable on your tailnet. Nothing goes to GitHub, and a server without this feature simply answers 404.
+
+1. On the computer that builds: `scripts/ship-to-phone` (add `--build` to build first, `--dry-run` to see what it
+   would do). It checks the IPA, uploads it over ssh to the host in `SHIP_HOST` (default `pi-two`, an ssh alias) into
+   a folder you own, checks the SHA-256 on the host, and writes `latest.json` last. The last 3 builds are kept. It
+   refuses a build number that is not higher than the one on the server (`--force` overrides) and an IPA that is older
+   than your latest source change. No sudo is needed on either side.
+2. Your server serves two endpoints, [App updates](API.md#app-updates-optional-owner-only): `GET /app/latest` (what is
+   there and whether your phone is behind) and `GET /app/ipa` (the file).
+3. On the iPhone, a Shortcuts automation turns Tailscale on, fetches `/app/latest`, and if `update` is true downloads
+   `/app/ipa`, turns LocalDevVPN on and runs SideStore's **Install IPA** action with the file; the usual refresh steps
+   follow ([SIDESTORE.md](SIDESTORE.md)).
 
 ## Tests
 

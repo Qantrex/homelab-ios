@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Usage: scripts/ship-to-phone [--build] [--force] [--dry-run] [-h|--help]
+# Puts the newest local build where your own phone can fetch it: uploads xtool/Homelab.ipa to your server over ssh,
+# so a Shortcuts automation on the phone can download it and SideStore's "Install IPA" action can install it
+# (docs/SETUP.md, "Daily updates to your own phone"). The IPA stays private; nothing goes to GitHub or CI.
+#
+#   --build     run scripts/build-ipa first (default: use the existing xtool/Homelab.ipa; it is refused when it is
+#               older than the newest commit that touched Sources/ or an *-Info.plist: build again)
+#   --force     ship even when the build number is the same as or lower than the one already on the server
+#   --dry-run   print what would happen; upload and change nothing on the server
+#
+# Steps: scripts/verify-ipa, read CFBundleShortVersionString and CFBundleVersion, sha256 locally, read the server's
+# latest.json (refuse a build <= its build unless --force), upload to a temporary name, check the sha256 on the
+# server, rename to Homelab-<version>-<build>.ipa, write latest.json last (temporary file + mv), keep the last 3 IPAs.
+# latest.json: {"version","build","file","sha256","size","built","commit"} (docs/API.md, "App updates").
+# Needs ssh access to the host; sha256sum, cat, mv, ls, rm there. No sudo, no secrets printed.
+# Env: SHIP_HOST (ssh host, default pi-two)   SHIP_DIR (folder on the host, default /srv/homelab-app)
+#      IPA (the file to ship, default xtool/Homelab.ipa)   SHIP_VERIFY (the checker, default scripts/verify-ipa; tests)
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+build=0 force=0 dry=0
+for a in "$@"; do
+  case $a in
+    -h|--help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;;
+    --build) build=1 ;;
+    --force) force=1 ;;
+    --dry-run) dry=1 ;;
+    *) echo "ship-to-phone: unknown option $a (see -h)" >&2; exit 2 ;;
+  esac
+done
+
+host=${SHIP_HOST:-pi-two}
+dir=${SHIP_DIR:-/srv/homelab-app}
+ipa=${IPA:-xtool/Homelab.ipa}
+die() { echo "ship-to-phone: $*" >&2; exit 1; }
+# Runs a command line on the host (ssh joins the words with spaces, so quote them for the remote shell).
+remote() { ssh "$host" "$@"; }
+q() { printf '%q' "$1"; }
+
+if [ "$build" = 1 ]; then
+  if [ "$dry" = 1 ]; then echo "dry run: would run scripts/build-ipa"; else scripts/build-ipa; fi
+fi
+[ -f "$ipa" ] || die "$ipa not found (run scripts/build-ipa or use --build)"
+
+# A stale IPA is the usual mistake: the source changed after it was built.
+src_time=$(git log -1 --format=%ct -- Sources ':(glob)**/*Info.plist' 2>/dev/null || true)
+ipa_time=$(stat -c %Y "$ipa" 2>/dev/null || stat -f %m "$ipa")
+if [ -n "$src_time" ] && [ "$ipa_time" -lt "$src_time" ]; then
+  die "$ipa is older than the newest commit that touched Sources/ or an Info.plist; build again (--build)"
+fi
+
+"${SHIP_VERIFY:-scripts/verify-ipa}" "$ipa" > /dev/null || die "scripts/verify-ipa failed for $ipa"
+
+# "version build" from the app's Info.plist inside the IPA
+read -r version bnum < <(python3 -I - "$ipa" <<'PY'
+import plistlib, sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z:
+    name = next(n for n in z.namelist() if n.count("/") == 2 and n.startswith("Payload/") and n.endswith(".app/Info.plist"))
+    p = plistlib.loads(z.read(name))
+print(p["CFBundleShortVersionString"], p["CFBundleVersion"])
+PY
+) || die "cannot read the version from $ipa"
+[[ $bnum =~ ^[0-9]+$ ]] || die "CFBundleVersion '$bnum' is not a whole number"
+
+sha=$(sha256sum "$ipa" | cut -d' ' -f1)
+size=$(wc -c < "$ipa" | tr -d ' ')
+file="Homelab-$version-$bnum.ipa"
+commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+built=$(date -d "@$ipa_time" +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date -r "$ipa_time" +%Y-%m-%dT%H:%M:%S%z)
+built="${built%??}:${built: -2}"   # +0100 -> +01:00
+json=$(python3 -I - "$version" "$bnum" "$file" "$sha" "$size" "$built" "$commit" <<'PY'
+import json, sys
+v, b, f, s, z, t, c = sys.argv[1:]
+print(json.dumps({"version": v, "build": int(b), "file": f, "sha256": s, "size": int(z), "built": t, "commit": c}))
+PY
+)
+
+echo "build:  $version ($bnum)  $size bytes  sha256 ${sha:0:12}...  commit $commit"
+echo "target: $host:$dir/$file"
+
+# What the server has now.
+current=$(remote "cat $(q "$dir")/latest.json 2>/dev/null || true") || die "cannot reach $host over ssh"
+have=""
+if [ -n "$current" ]; then
+  have=$(python3 -I -c 'import json,sys; print(int(json.load(sys.stdin)["build"]))' <<<"$current" 2>/dev/null) \
+    || die "latest.json on the server is not valid; fix or remove it first"
+  echo "server: build $have"
+else
+  echo "server: nothing shipped yet"
+fi
+if [ -n "$have" ] && [ "$bnum" -le "$have" ] && [ "$force" = 0 ]; then
+  die "build $bnum is not newer than build $have on the server (bump CFBundleVersion, or --force)"
+fi
+
+if [ "$dry" = 1 ]; then
+  echo "dry run: would upload $ipa as $file, verify its sha256 on the server, write latest.json, keep the last 3 IPAs"
+  echo "dry run: latest.json would be $json"
+  exit 0
+fi
+
+part=".upload-$$.part"
+cleanup() { remote "rm -f $(q "$dir/$part") $(q "$dir/latest.json.tmp")" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+
+remote "test -d $(q "$dir") && test -w $(q "$dir")" || die "$dir does not exist or is not writable on $host"
+scp -q "$ipa" "$host:$dir/$part" || die "upload failed"
+remote_sha=$(remote "sha256sum $(q "$dir/$part")" | cut -d' ' -f1)
+[ "$remote_sha" = "$sha" ] || die "sha256 differs after the upload (local ${sha:0:12}..., server ${remote_sha:0:12}...); latest.json is unchanged"
+remote "mv -f $(q "$dir/$part") $(q "$dir/$file")"
+printf '%s\n' "$json" | remote "cat > $(q "$dir/latest.json.tmp") && mv -f $(q "$dir/latest.json.tmp") $(q "$dir/latest.json")"
+# Keep the shipped file and the 2 newest others.
+remote "cd $(q "$dir") && ls -1t Homelab-*.ipa | grep -vxF $(q "$file") | tail -n +3 | while read -r f; do rm -f -- \"\$f\"; done; true"
+
+echo "shipped: $file ($version build $bnum) to $host; latest.json updated"

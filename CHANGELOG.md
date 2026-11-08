@@ -9,6 +9,9 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- `scripts/ship-to-phone` uploads your own build to your own server (checksum verified, last 3 kept, refuses an
+  older build) so a Shortcuts automation can install it on your phone each day; the server side is the optional
+  `GET /app/latest` and `GET /app/ipa` ([API.md](docs/API.md#app-updates-optional-owner-only), [SETUP.md](docs/SETUP.md#daily-updates-to-your-own-phone)).
 - Today: the lab's state in two words, your day as a line with a countdown, actions to approve, Home Assistant tiles
   and the server's cards.
 - Home Assistant on its own (no Homelab server): Today's headline says what is true, "Home." with "1 light on" or

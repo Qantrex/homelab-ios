@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 102 | 74 | 26 | 1 | 41 | 4 |
+| 103 | 75 | 26 | 1 | 41 | 4 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -162,12 +162,13 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Look: true black, monochrome, motion, haptics](#look) | shipped | – | 1 | T3, **I3** | 2 |
 | [Accessibility (Dynamic Type, VoiceOver, contrast)](#accessibility) | shipped | – | 2 | AX1, AX2, AX3 | 2 |
 
-### Install (3)
+### Install (4)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Build and install with xtool (Linux or Mac)](#install-xtool) | shipped | – | n/a | X1, X3 | 3 |
 | [Install and refresh with SideStore](#install-sidestore) | partial (?) | – | n/a | I1, **I2**, **I4**, D1, D2, D3, D4, D5 | 3 |
+| [Daily updates to your own phone](#ship-to-phone) | shipped | – | 1 | n/a | 2 |
 | [Releases by hand (IPA, SHA-256, SideStore source)](#release-process) | planned | – | **none** | **none** | 2 |
 
 ### Server (20)
@@ -1558,6 +1559,21 @@ Import the IPA (or, after the first release, add the source) in SideStore; it si
 | Depends on | [sidestore](#dep-sidestore), [sidestore-anisette](#dep-sidestore-anisette), [localdevvpn](#dep-localdevvpn), [tailscale](#dep-tailscale), [free-apple-id](#dep-free-apple-id), [ios-18](#dep-ios-18) |
 | Unsure | Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release. |
 
+### ship-to-phone
+
+**Daily updates to your own phone** · Install · shipped · since 2026-11-08
+
+`scripts/ship-to-phone` uploads the local IPA to your own server over ssh (SHA-256 checked there, `latest.json` written last, last 3 kept, an older or stale build refused); the server serves it on your tailnet and a Shortcuts automation installs it with SideStore. The server endpoints are optional and owner-only.
+
+| | |
+|---|---|
+| Sources | [ship-to-phone](../scripts/ship-to-phone), [test_ship_to_phone.py](../server/test_ship_to_phone.py) |
+| Tests | `server/test_ship_to_phone.py::ShipToPhone` |
+| Phone (DeviceTest.md) | n/a: the phone side is a Shortcuts automation the owner builds; the script is tested against a fake host |
+| Docs | [docs/SETUP.md#daily-updates-to-your-own-phone](SETUP.md#daily-updates-to-your-own-phone), [docs/API.md#app-updates-optional-owner-only](API.md#app-updates-optional-owner-only) |
+| Depends on | [install-sidestore](#install-sidestore), [python3](#dep-python3) |
+| Through those | [free-apple-id](#dep-free-apple-id), [ios-18](#dep-ios-18), [localdevvpn](#dep-localdevvpn), [sidestore](#dep-sidestore), [sidestore-anisette](#dep-sidestore-anisette), [tailscale](#dep-tailscale) |
+
 ### release-process
 
 **Releases by hand (IPA, SHA-256, SideStore source)** · Install · planned · since 2026-11-04
@@ -2003,16 +2019,16 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | Dependency | Kind | Version | Pinned in | Used by | All |
 |---|---|---|---|---|---|
 | <a id="dep-swift"></a>**Swift 6.4 toolchain** | toolchain | 6.4 (tools-version 6.0; CI image swift:6.4-noble pinned by digest) | [Package.swift](../Package.swift), [ci.yml](../.github/workflows/ci.yml), [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md) | [install-xtool](#install-xtool), [ci-checks](#ci-checks) | 3 |
-| <a id="dep-ios-18"></a>**iOS 18 or newer** | runtime | iOS 18 (deployment target); tested on 18.7.3 | [Package.swift](../Package.swift), [README.md](../README.md) | [install-xtool](#install-xtool), [install-sidestore](#install-sidestore) | 3 |
+| <a id="dep-ios-18"></a>**iOS 18 or newer** | runtime | iOS 18 (deployment target); tested on 18.7.3 | [Package.swift](../Package.swift), [README.md](../README.md) | [install-xtool](#install-xtool), [install-sidestore](#install-sidestore) | 4 |
 | <a id="dep-ios-sdk"></a>**iOS SDK from Xcode 27.1** | sdk | Xcode 27.1 (.xip on Linux, installed Xcode on macOS) | [SETUP.md](SETUP.md), [build-ipa](../scripts/build-ipa), [ci.yml](../.github/workflows/ci.yml) | [install-xtool](#install-xtool) | 2 |
 | <a id="dep-xtool"></a>**xtool** | toolchain | 1.24.0 (CI: release zip with SHA-256) | [ci.yml](../.github/workflows/ci.yml), [SETUP.md](SETUP.md), [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md), [install-dev](../scripts/install-dev), [xtool.yml](../xtool.yml) | [install-xtool](#install-xtool), [ci-checks](#ci-checks), [screenshots](#screenshots) | 4 |
 | <a id="dep-xtool-app-group-patch"></a>**xtool 1.24.0 App Group patch** | toolchain | commit 70e1568f + one line from xtool PR #284 | [SETUP.md](SETUP.md) | [app-group](#app-group), [install-xtool](#install-xtool) | 14 |
 | <a id="dep-usbmuxd"></a>**usbmuxd and libimobiledevice** | install | distro packages | [INSTALL-FROM-LINUX.md](INSTALL-FROM-LINUX.md) | [install-xtool](#install-xtool) | 2 |
-| <a id="dep-free-apple-id"></a>**Free Apple ID** | account | – | [README.md](../README.md), [SIDESTORE.md](SIDESTORE.md) | [expiry-warning](#expiry-warning), [install-xtool](#install-xtool), [install-sidestore](#install-sidestore) | 4 |
-| <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 1 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 30 |
+| <a id="dep-free-apple-id"></a>**Free Apple ID** | account | – | [README.md](../README.md), [SIDESTORE.md](SIDESTORE.md) | [expiry-warning](#expiry-warning), [install-xtool](#install-xtool), [install-sidestore](#install-sidestore) | 5 |
+| <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
+| <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
+| <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 31 |
 | <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 47 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 14 |
@@ -2031,7 +2047,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-widget-extension-target"></a>**Widget extension target** | runtime | HomelabWidget.appex | [xtool.yml](../xtool.yml), [Widget-Info.plist](../Widget-Info.plist), [Package.swift](../Package.swift) | [widget-data](#widget-data), [live-activity](#live-activity) | 8 |
 | <a id="dep-share-extension-target"></a>**Share extension target** | runtime | HomelabShare.appex | [xtool.yml](../xtool.yml), [Share-Info.plist](../Share-Info.plist), [Package.swift](../Package.swift) | [share-extension](#share-extension) | 1 |
 | <a id="dep-url-scheme"></a>**homelab:// URL scheme and the scan quick action** | runtime | – | [App-Info.plist](../App-Info.plist) | [deep-links](#deep-links) | 2 |
-| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | [release-process](#release-process), [reference-server](#reference-server), [server-sources](#server-sources), [live-api-check](#live-api-check), [ci-checks](#ci-checks), [feature-registry](#feature-registry) | 23 |
+| <a id="dep-python3"></a>**Python 3** | tooling | 3.9+ for the reference server, 3.11+ for scripts/features (tomllib); stdlib only | [reference_server.py](../server/reference_server.py), [features](../scripts/features) | 7 features | 24 |
 | <a id="dep-docker"></a>**Docker** | tooling | – | [test-linux](../scripts/test-linux), [SETUP.md](SETUP.md), [build-bridge-image](../scripts/build-bridge-image) | [bridge-docker](#bridge-docker), [ci-checks](#ci-checks) | 2 |
 | <a id="dep-bridge-base-image"></a>**Python 3.14 on Alpine (Homelab Bridge base image)** | server-side | python:3.14.10-alpine3.24, pinned by its multi-arch index digest (amd64, arm64) | [Dockerfile](../server/Dockerfile) | [bridge-docker](#bridge-docker) | 1 |
 | <a id="dep-pyyaml"></a>**PyYAML (Homelab Bridge image only)** | server-side | 6.0.3, musllinux wheels for CPython 3.14 (amd64, arm64) by SHA-256 | [requirements-image.txt](../server/requirements-image.txt) | [bridge-docker](#bridge-docker), [homepage-import](#homepage-import) | 2 |
@@ -2093,16 +2109,16 @@ Features per area that need each dependency, directly or through another feature
 | Dependency | Today | Cards | Actions | Scan and share | Find | Deals | Lab | Chat | Home | Widgets | Notifications | Links | Settings | Security | Look | Install | Server | Tooling |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Swift 6.4 toolchain |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  | 1 |
-| iOS 18 or newer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 3 |  |  |
+| iOS 18 or newer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 4 |  |  |
 | iOS SDK from Xcode 27.1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | xtool |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  | 2 |
 | xtool 1.24.0 App Group patch |  |  | 1 | 3 |  |  |  |  |  | 7 |  |  | 1 |  |  | 2 |  |  |
 | usbmuxd and libimobiledevice |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
-| Free Apple ID | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 3 |  |  |
-| SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 4 |  |  | 1 | 18 |  |
+| Free Apple ID | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 4 |  |  |
+| SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
+| SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
+| LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 7 |  |  | 4 |  |  | 2 | 18 |  |
 | Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 3 | 3 |  | 2 | 1 |  | 5 | 1 |  |  | 20 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 2 |  |  |  |  |  |  |  |  |
@@ -2121,7 +2137,7 @@ Features per area that need each dependency, directly or through another feature
 | Widget extension target |  |  |  |  |  |  |  |  |  | 8 |  |  |  |  |  |  |  |  |
 | Share extension target |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | homelab:// URL scheme and the scan quick action |  |  | 1 |  |  |  |  |  |  |  |  | 1 |  |  |  |  |  |  |
-| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  | 1 | 19 | 2 |
+| Python 3 |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |  | 2 | 19 | 2 |
 | Docker |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 | 1 |
 | Python 3.14 on Alpine (Homelab Bridge base image) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 1 |  |
 | PyYAML (Homelab Bridge image only) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |

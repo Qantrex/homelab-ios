@@ -193,6 +193,27 @@ one grammar per card: `title` what, `subtitle` the details, `value` when or how 
 | `backups` | Backup runs | what, size or snapshots, "today 04:52", `progress` for space used |
 | `queue`, `downloads` | Downloads (the bridge's `sonarr`, `radarr` and `qbittorrent` sources, as `<name>:queue` and `<name>:downloads`) | the episode, movie or torrent; its state and reason ("Import blocked: ..."); time left; `progress`. `orange` needs a look, `red` failed. The `sonarr` and `radarr` calendars are ordinary `countdown` cards on Today |
 
+## App updates (optional, owner-only)
+
+For people who build the app themselves and run their own server: the server hands the newest build to their phone
+(docs/SETUP.md, "Daily updates to your own phone"). Not part of `/info` features and not needed by the app; a server
+without it answers 404 for both paths. Same login rules as the other GETs, and never reachable from outside the
+tailnet.
+
+**`GET /app/latest`** answers the `latest.json` that `scripts/ship-to-phone` wrote, plus two fields:
+
+```json
+{"version": "1.0.0", "build": 6, "file": "Homelab-1.0.0-6.ipa", "sha256": "<hex>", "size": 12345678,
+ "built": "2026-11-08T12:00:00+01:00", "commit": "abc1234", "installed": 5, "update": true}
+```
+
+`installed` is the highest build number the app reported in its User-Agent in the last 7 days (`null` if unknown);
+`update` is true when `build` is higher than `installed`, or `installed` is unknown. 404 when nothing was shipped.
+
+**`GET /app/ipa`** answers the file named in `latest.json` as `application/octet-stream` with `Content-Length` and
+`Content-Disposition: attachment; filename="Homelab.ipa"`. The server checks the SHA-256 before it sends and answers
+500 if the file does not match.
+
 ## Auth
 
 | Way | Who adds it | App setting |
