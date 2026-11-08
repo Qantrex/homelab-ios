@@ -22,17 +22,34 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     /// the stress scene for screenshots and tests (an unhealthy and an exited container, a warning, U6 delays), its
     /// day line moved around the clock. `-HomelabDemoScene problem` picks it at launch. `haOnly` (`ha-only`): only the
     /// demo Home Assistant, no demo homelab, so Today looks like it does for someone without a Companion server
-    /// (M2.1); its homelab side, never shown, is the calm one.
+    /// (M2.1); its homelab side, never shown, is the calm one. `bridge`: a neutral homelab as a Homelab Bridge user
+    /// sees it (Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news) without the
+    /// owner's school, commute, deals or grades; made-up data only (`-HomelabDemoScene bridge`).
     public enum Scene: String, Sendable, CaseIterable {
-        case calm, problem
+        case calm, problem, bridge
         case haOnly = "ha-only"
 
-        public var stateFixture: String { self == .problem ? "state-problem.json" : "state-demo.json" }
-        public var messagesFixture: String { self == .problem ? "messages.json" : "messages-demo.json" }
+        public var stateFixture: String {
+            switch self {
+            case .problem: "state-problem.json"
+            case .bridge: "state-bridge.json"
+            case .calm, .haOnly: "state-demo.json"
+            }
+        }
+        public var messagesFixture: String {
+            switch self {
+            case .problem: "messages.json"
+            case .bridge: "messages-bridge.json"
+            case .calm, .haOnly: "messages-demo.json"
+            }
+        }
+        public var actionsFixture: String { self == .bridge ? "actions-bridge.json" : "actions.json" }
+        public var infoFixture: String { self == .bridge ? "info-bridge.json" : "info.json" }
         /// The scene adds the demo homelab (a Companion server), not only the demo Home Assistant.
         public var hasHomelab: Bool { self != .haOnly }
     }
 
+    private let scene: Scene
     private var current: HomelabState
     private var page: MessagePage
     private var entities: [HAEntity]
@@ -54,7 +71,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         // The 24 h history ends now, so its last point is the current value.
         state.hosts = state.hosts.map { var h = $0; h.checked = s(h.checked); h.history?.end = now; return h }
         state.pending = state.pending.map { var p = $0; p.created = s(p.created); return p }
-        if scene != .problem { state.cards = Self.withTodayCards(state.cards) }
+        if scene == .calm || scene == .haOnly { state.cards = Self.withTodayCards(state.cards) }
         let fixtureChecked = state.checked
         func card(_ c: Card) -> Card {
             var c = Self.clockDepartures(Self.shiftDue(c, by: shift, days: days))
@@ -76,6 +93,8 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             case .problem:
                 // Always today (the fixture card is dated), so it never counts as a stale or tomorrow card.
                 var day = Self.demoDay(c, now: now); day.date = nil; return day
+            case .bridge:
+                return card(c)
             }
         }
         switch scene {
@@ -85,9 +104,13 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             state.commute = state.commute.map { Self.schoolCommute($0, day: day, now: now) }
         case .problem:
             state.commute = state.commute.map { Self.shiftCommute($0, by: shift) }
+        case .bridge:
+            state.commute = nil   // no commute in a neutral homelab
         }
         // Lab shows the tailnet, ad blocking and backups cards of a server that has them.
-        let labCards = Fixtures.decode(HomelabState.self, "state-lab-cards.json")?.cards.filter { $0.place == .lab } ?? []
+        // (The bridge scene has its own.)
+        let labCards = scene == .bridge ? []
+            : Fixtures.decode(HomelabState.self, "state-lab-cards.json")?.cards.filter { $0.place == .lab } ?? []
         state.cards += labCards.filter { lab in !state.cards.contains { $0.id == lab.id } }.map { lab in
             var lab = lab
             lab.updated = ServerDate.string(now.addingTimeInterval(-120))
@@ -100,6 +123,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
         self.page = page
         entities = Fixtures.decode([Lossy<HAEntity>].self, "ha-states.json")?.compactMap(\.value) ?? []
         self.delay = delay
+        self.scene = scene
     }
 
     /// The calm demo's Today cards of a busy day (demo-today.json: ten deadlines with two urgent ones, eight downloads,
@@ -243,7 +267,7 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
 
     public func info() async throws -> ServerInfo {
         try await Task.sleep(for: delay)
-        return Fixtures.decode(ServerInfo.self, "info.json") ?? ServerInfo(name: "Demo homelab")
+        return Fixtures.decode(ServerInfo.self, scene.infoFixture) ?? ServerInfo(name: "Demo homelab")
     }
 
     public func state() async throws -> HomelabState {
@@ -312,12 +336,12 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
 
     public func actions() async throws -> [ActionSpec] {
         try await Task.sleep(for: delay)
-        return Fixtures.decode(ActionList.self, "actions.json")?.actions ?? []
+        return Fixtures.decode(ActionList.self, scene.actionsFixture)?.actions ?? []
     }
 
     public func run(_ action: String, arg: String, payload: [String: String]) async throws -> ActionResult {
         try await Task.sleep(for: delay * 3)
-        guard let spec = Fixtures.decode(ActionList.self, "actions.json")?.actions.first(where: { $0.name == action }) else {
+        guard let spec = Fixtures.decode(ActionList.self, scene.actionsFixture)?.actions.first(where: { $0.name == action }) else {
             throw APIError.notFound
         }
         // Hidden fields (a to-do's uid) never show in the chat line, like on the real server.

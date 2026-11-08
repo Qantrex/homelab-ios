@@ -1,0 +1,22 @@
+{
+ "api": 1,
+ "name": "Bridge homelab",
+ "server": "homelab-bridge",
+ "version": "1.0.0",
+ "features": [
+  "status",
+  "hosts",
+  "actions",
+  "run-actions",
+  "chat",
+  "cards",
+  "services"
+ ],
+ "auth": "identity",
+ "commands": [
+  "/pending",
+  "/last",
+  "/help"
+ ],
+ "standing_approvals": true
+}

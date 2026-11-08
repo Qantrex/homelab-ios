@@ -1,0 +1,74 @@
+{
+ "messages": [
+  {
+   "id": 1762288000000000000,
+   "ts": "2026-11-04T06:00:00",
+   "from": "agent",
+   "job": "digest",
+   "status": "OK",
+   "text": "**Morning.** Hosts fine. Backups ran at 02:00.\n\n- 9 updates on pve1\n- pve1 storage 88 % full"
+  },
+  {
+   "id": 1762288100000000000,
+   "ts": "2026-11-04T19:42:00",
+   "from": "agent",
+   "job": "watchdog",
+   "status": "ALERT",
+   "text": "docker1: nextcloud exited. Proposed: `restart docker1 nextcloud` (ef56).",
+   "pending": [
+    {
+     "id": "ef56",
+     "job": "watchdog",
+     "action": "restart",
+     "arg": "docker1 nextcloud",
+     "reason": "nextcloud exited 2 h ago; a restart usually fixes it.",
+     "created": "2026-11-04T19:40:00",
+     "buttons": {
+      "approve": "HOMELAB_APPROVE_ef56_5123456789abcdef",
+      "always": "HOMELAB_ALWAYS_ef56_6123456789abcdef",
+      "deny": "HOMELAB_DENY_ef56_7123456789abcdef"
+     }
+    }
+   ]
+  },
+  {
+   "id": 1762290000000000000,
+   "ts": "2026-11-04T21:00:00",
+   "from": "me",
+   "job": "",
+   "status": "",
+   "text": "how is pve1?"
+  },
+  {
+   "id": 1762290060000000000,
+   "ts": "2026-11-04T21:01:00",
+   "from": "agent",
+   "job": "chat",
+   "status": "OK",
+   "text": "Up, load 3.4 on 8 cores, memory at 82 %, local-zfs 88 % full.",
+   "cards": [
+    {
+     "id": "pve1-now",
+     "title": "pve1",
+     "icon": "server.rack",
+     "style": "metrics",
+     "items": [
+      {
+       "title": "Load",
+       "value": "3.4"
+      },
+      {
+       "title": "Memory",
+       "value": "82%"
+      },
+      {
+       "title": "local-zfs",
+       "value": "88%"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "busy": []
+}

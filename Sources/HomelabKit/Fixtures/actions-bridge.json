@@ -1,0 +1,96 @@
+{
+ "actions": [
+  {
+   "name": "dns-pause",
+   "label": "Pause ad blocking",
+   "icon": "shield.slash",
+   "hint": "Pi-hole blocking comes back on by itself.",
+   "fields": [],
+   "arg": [
+    {
+     "label": "Pause",
+     "parts": [
+      {
+       "kind": "choice",
+       "label": "For",
+       "options": [
+        {
+         "value": "5",
+         "label": "5 min"
+        },
+        {
+         "value": "15",
+         "label": "15 min"
+        },
+        {
+         "value": "30",
+         "label": "30 min"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "label": "Resume now",
+     "parts": [
+      {
+       "kind": "choice",
+       "label": "Do",
+       "options": [
+        {
+         "value": "on",
+         "label": "Resume"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "restart-container",
+   "label": "Restart a container",
+   "icon": "arrow.clockwise",
+   "destructive": true,
+   "hint": "Only containers on the host's restart list.",
+   "fields": [],
+   "arg": [
+    {
+     "label": "Container",
+     "parts": [
+      {
+       "kind": "choice",
+       "label": "Host",
+       "options": [
+        {
+         "value": "pve1",
+         "label": "pve1"
+        },
+        {
+         "value": "pve2",
+         "label": "pve2"
+        },
+        {
+         "value": "docker1",
+         "label": "docker1"
+        },
+        {
+         "value": "pi",
+         "label": "pi"
+        }
+       ]
+      },
+      {
+       "kind": "literal",
+       "text": ":"
+      },
+      {
+       "kind": "word",
+       "label": "Container"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
