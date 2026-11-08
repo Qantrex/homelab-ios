@@ -136,7 +136,7 @@ struct TodayView: View {
     private var startTip: some View {
         Button { model.openStartTip() } label: {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("Change what Today shows in Settings → Today")
+                Text(verbatim: FirstRun.startTipText)
                 Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).accessibilityHidden(true)
             }
             .font(Typo.meta)
