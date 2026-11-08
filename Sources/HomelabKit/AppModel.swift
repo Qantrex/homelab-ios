@@ -871,7 +871,9 @@ public final class AppModel {
 
     /// Like `takeOpenAction`, with the link's prefill for the form (nil: a plain link or launch argument). Hidden
     /// fields and choice values that aren't options never come from a link (`ActionLink.prefill`).
-    public func takeOpenActionForm() -> (spec: ActionSpec, prefill: ItemAction?)? {
+    /// `run` is true when the link carried `run=1` (the Actions widget) and the action is simple: no input, not
+    /// destructive (`ActionForm.needsNoInput`); then the app runs it at once instead of opening the form.
+    public func takeOpenActionForm() -> (spec: ActionSpec, prefill: ItemAction?, run: Bool)? {
         guard let name = openAction, tab == .actions, !formSheetOpen else { return nil }
         let s = selectedStatus
         // Only actions offered as Start tiles: a card-only one (tick off, parcel delivered) needs its card's prefill
@@ -880,7 +882,8 @@ public final class AppModel {
             let link = openActionLink?.name == name ? openActionLink : nil
             openAction = nil
             openActionLink = nil
-            return (spec, link?.prefill(for: spec))
+            let run = link?.run == true && !spec.destructive && ActionForm(spec).needsNoInput
+            return (spec, link?.prefill(for: spec), run)
         }
         if s.actionsFetched != nil || (s.knownInfo != nil && !s.features.contains(.runActions)) {
             openAction = nil

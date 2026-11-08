@@ -504,6 +504,18 @@ public struct ActionForm: Sendable, Equatable {
             && parts.allSatisfy { if case .literal = $0 { true } else { false } }
     }
 
+    /// The chosen options in words ("Bike"), for the line under the inputs: the labels of the `choice` parts, so the
+    /// raw argument ("2026-11-09:bike") is never shown. Nil when no part is a choice.
+    public var argLabel: String? {
+        var labels: [String] = []
+        for (i, part) in parts.enumerated() {
+            guard case .choice(_, let options) = part else { continue }
+            let v = value(part: i)
+            if let o = options.first(where: { $0.value == v }) { labels.append(o.label) }
+        }
+        return labels.isEmpty ? nil : labels.joined(separator: " · ")
+    }
+
     /// Label and value lines for the confirm step ("Day: 2026-11-07", "What: Lamps on"), option labels instead of values.
     public var summary: [(label: String, value: String)] {
         var out: [(String, String)] = []

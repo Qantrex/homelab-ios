@@ -217,7 +217,7 @@ Not verified (the registry says so in `unsure`):
 
 - [last-report](#last-report): No test checks the last_message section itself; FixtureDecoding only decodes it.
 - [widget-status](#widget-status): Widget views are not unit-tested (WidgetKit doesn't build on Linux); only the data rules are.
-- [widget-actions](#widget-actions): xtool 1.24.0 writes no App Intents metadata (Metadata.appintents), so on a device the Edit menu list and the run buttons are unverified. The views are not unit-tested.
+- [widget-actions](#widget-actions): The views are not unit-tested; the gallery preview and the tap-to-run flow are unverified on a device until DeviceTest W13-W15.
 - [background-refresh](#background-refresh): The BGTask itself only runs on a device; no test covers BackgroundRefresh.run (HomelabUI doesn't build on Linux).
 - [install-sidestore](#install-sidestore): Installing the IPA was tested on 2026-11-07; adding the source (I1, I2) waits for the first release.
 - [bridge-docker](#bridge-docker): That tailscaled in userspace mode would hand tailnet connections to 127.0.0.1 ports (why compose.yaml uses kernel networking) is from Tailscale's netstack behaviour, not tested here.
@@ -1171,7 +1171,7 @@ Your open to-dos (small, medium, lock screen circular and rectangular), from the
 
 **Widget: Actions** · Widgets · shipped · since 2026-11-08
 
-Configurable tiles for the server's Start actions (small 1-2, medium 4, large 8, lock screen circular 1), picked in the widget's Edit menu from the cached list. A tap runs an action without fields right from the widget (identity servers only, Face ID first with the app lock on, result on the tile); fields, destructive and token servers open the form in the app.
+Static widget (no App Intents, no Edit menu) with tiles for the first Start actions in the order from Settings > Advanced > Start tiles, hidden ones left out (small 1-2, medium 4, large 8, lock screen circular 1; sample tiles in the gallery). A tap opens homelab://actions/<name>; a simple action adds run=1 and the app runs it at once and shows Done or the error, the others open their form.
 
 | | |
 |---|---|
@@ -1183,7 +1183,7 @@ Configurable tiles for the server's Start actions (small 1-2, medium 4, large 8,
 | Widgets | `ActionsWidget` |
 | Depends on | [widget-data](#widget-data), [start-actions](#start-actions), [quick-actions](#quick-actions), [widgetkit](#dep-widgetkit) |
 | Through those | [agent-chat](#dep-agent-chat), [app-group-entitlement](#dep-app-group-entitlement), [companion-api-v1](#dep-companion-api-v1), [tailscale](#dep-tailscale), [widget-extension-target](#dep-widget-extension-target), [xtool-app-group-patch](#dep-xtool-app-group-patch) |
-| Unsure | xtool 1.24.0 writes no App Intents metadata (Metadata.appintents), so on a device the Edit menu list and the run buttons are unverified. The views are not unit-tested. |
+| Unsure | The views are not unit-tested; the gallery preview and the tap-to-run flow are unverified on a device until DeviceTest W13-W15. |
 
 ### widget-data
 
@@ -2110,7 +2110,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 - **Seerr (server side)** (`seerr`): Answers the owner's server's /search and posters, and runs the Request action. Unsure: Only the owner's server uses it; another server can answer /search from anything.
 - **willhaben (server side)** (`willhaben`): The used market the server watches for deals; a shared willhaben ad link starts a price check.
 - **ntfy push (server side)** (`ntfy`): The server's push for a strong deal opens `homelab://deals`; the app itself has no APNs (free Apple ID).
-- **WidgetKit** (`widgetkit`): The widgets (App Intents compile with xtool, but their metadata is not written yet; see widget-actions).
+- **WidgetKit** (`widgetkit`): The widgets (all static: xtool writes no App Intents metadata, so no configurable or interactive widgets; see widget-actions).
 - **ActivityKit** (`activitykit`): The "Leave by" Live Activity; needs NSSupportsLiveActivities, no entitlement and no extra App ID.
 - **VisionKit document camera** (`visionkit`): The Scan screen; importing it autolinks SwiftUICore, hence the noSwiftUICore flag in Package.swift.
 - **BackgroundTasks** (`backgroundtasks`): The background refresh (BGAppRefreshTask).
