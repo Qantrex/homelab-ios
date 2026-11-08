@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Usage: scripts/sim-smoke APP_PATH OUT_DIR
+#        scripts/sim-smoke --matrix APP_PATH OUT_DIR   the screenshot matrix instead (see below), about 90 shots
 #        scripts/sim-smoke --pick [main|small]     print a simulator UDID and exit (CI uses it for xcodebuild test)
 #   APP_PATH  simulator build of the app (e.g. from `xtool dev build --triple arm64-apple-ios-simulator`)
 #   OUT_DIR   where the PNG screenshots, app-log.txt, server-log.txt and summary.txt go
@@ -17,11 +18,24 @@
 #          dark and accessibility-XL text
 #   36-37  demo Today with show rules (Deals, Cards, Last report in the evenings) at 14:00 (hidden) and 19:00 (shown)
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
+#
+# --matrix (docs/CI.md "Screenshot matrix"): no fixture server, only demo scenes. Scenes demo, ha-only, bridge, problem
+# and first-run x every detail level (Density, read from Sources/HomelabKit/TodayLayout.swift) x the voices off, dry,
+# snarky, ultrakill. Every pair of (scene, detail, voice) is covered: each scene x detail pair is shot once and the voice
+# is picked by a Latin square, so each scene x voice and each detail x voice pair appears too. Names:
+#   <scene>-<density>-<personality>-<tab>[-ax][-light].png     (first-run: tab is welcome or found)
+#   Today and Lab for every combination; Actions, Chat, Settings (and Settings > Advanced, once the app has
+#   -HomelabSettingsPage) for two combinations per scene; Today, Lab and Settings at the largest accessibility text
+#   size (-ax) and Today and Lab in light mode (-light) for one combination per scene. Default look: dark, large text.
+# index.txt lists what each shot shows. Failed shots are listed in summary.txt; the exit code is 1 when any failed (a
+# crash is a finding), 0 otherwise. No push anywhere: CI uploads OUT_DIR as the artifact matrix-<runner>.
 # Env: WAIT (seconds after each launch, default 6), PORT (default 8791), KEEP_SIM=1 leaves the simulators booted.
 set -euo pipefail
 
-usage() { sed -n '2,20p' "$0"; exit 2; }
+usage() { awk '/^set -/ { exit } NR > 1' "$0"; exit 2; }
 [ "$(uname)" = Darwin ] || { echo "sim-smoke: macOS only"; exit 2; }
+MATRIX=0
+if [ "${1:-}" = --matrix ]; then MATRIX=1; shift; fi
 
 # pick_udid main|small [EXCLUDE_UDID]
 #   main:  the newest plain numbered iPhone ("iPhone 17 Pro"): preview images also ship odd form factors (foldables)
@@ -125,8 +139,10 @@ prepare() {
 start_time=$(date '+%Y-%m-%d %H:%M:%S')
 prepare "$udid"
 
-# Fixture server, starting in the "problem" state; /__control switches it later.
-if [ -f server/reference_server.py ]; then
+# Fixture server, starting in the "problem" state; /__control switches it later. (Not for the matrix: demo scenes only.)
+if [ "$MATRIX" = 1 ]; then
+  :
+elif [ -f server/reference_server.py ]; then
   # state-tomorrow.json is "tomorrow" only on one day: a copy of the fixtures with the card dates moved to tomorrow.
   FIXTURES="$OUT_DIR/fixtures"
   rm -rf "$FIXTURES"; cp -R Sources/HomelabKit/Fixtures "$FIXTURES"
@@ -194,6 +210,125 @@ scene() {
 }
 # control STATE_FILE: switch the fixture server's /state answer
 control() { curl -fsS -o /dev/null --max-time 3 "$SERVER_URL/__control?state=$1"; }
+
+# --matrix: everything below the helpers is replaced by the matrix run (matrix_run, defined here, ends the script).
+matrix_plan() {   # prints one TSV line per shot: name, tab, look (dark|ax|light), launch arguments, description
+  python3 - "$MATRIX_ADVANCED" <<'PY'
+import re, sys
+advanced = sys.argv[1] == "1"
+defaults = ["calm", "standard", "overkill"]
+try:
+    src = open("Sources/HomelabKit/TodayLayout.swift").read()
+    body = re.search(r"enum Density\b[^{]*\{(.*?)\n    public var id", src, re.S).group(1)
+    densities = []
+    for line in body.splitlines():
+        line = line.split("//")[0].strip()
+        if line.startswith("case "):
+            densities += [x.split("=")[0].strip() for x in line[5:].split(",") if x.strip()]
+except Exception:
+    densities = []
+if not densities:
+    print("WARN: Density cases not found in TodayLayout.swift, using " + ",".join(defaults), file=sys.stderr)
+    densities = defaults
+voices = ["off", "dry", "snarky", "ultrakill"]
+scenes = [("demo", "the calm demo day", ["-HomelabDemoScene", "calm"]),
+          ("ha-only", "only the demo Home Assistant", ["-HomelabDemoScene", "ha-only"]),
+          ("bridge", "the neutral Bridge homelab", ["-HomelabDemoScene", "bridge"]),
+          ("problem", "the demo problem scene", ["-HomelabDemoScene", "problem"]),
+          ("first-run", "the first run", None)]
+shots, names = [], set()
+def add(si, di, tab, look=""):
+    scene, what, extra = scenes[si]
+    d, v = densities[di % len(densities)], voices[(si + di) % len(voices)]
+    name = "-".join([scene, d, v, tab]) + {"": "", "ax": "-ax", "light": "-light"}[look]
+    assert name not in names, name
+    names.add(name)
+    if scene == "first-run":   # the welcome after a reset; Found with "Start with" over the demo servers
+        args = ["-HomelabResetState", "YES"] + (["-HomelabDemo", "YES", "-HomelabFirstRun", "YES"] if tab == "found" else [])
+    else:
+        args = ["-HomelabResetState", "YES", "-HomelabDemo", "YES"] + extra
+    args += ["-HomelabDensity", d, "-HomelabPersonality", v]
+    if scene != "first-run":
+        args += ["-HomelabTab", "settings" if tab.startswith("settings") else tab]
+    if tab == "settings-advanced":
+        args += ["-HomelabSettingsPage", "advanced"]
+    size = {"": "default text size", "ax": "largest accessibility text size", "light": "default text size"}[look]
+    title = {"today": "Today", "lab": "Lab", "actions": "Actions", "chat": "Chat", "settings": "Settings",
+             "settings-advanced": "Settings > Advanced", "welcome": "The welcome", "found": "Found, with Start with"}[tab]
+    desc = "%s, %s, detail %s, voice %s, %s, %s" % (title, what, d, v, "light" if look == "light" else "dark", size)
+    shots.append((name, tab, look or "dark", " ".join(args), desc))
+D = len(densities)
+for si, (scene, _, _) in enumerate(scenes):
+    tabs = ["welcome", "found"] if scene == "first-run" else ["today", "lab"]
+    for di in range(D):               # every scene x detail pair once; the voice follows the Latin square
+        for t in tabs: add(si, di, t)
+extra_tabs = ["actions", "chat", "settings"] + (["settings-advanced"] if advanced else [])
+for si in range(4):
+    for di in (si, si + 1):           # two combinations per scene for the other tabs
+        for t in extra_tabs: add(si, di, t)
+    for t in ("today", "lab", "settings"): add(si, si + 2, t, "ax")
+    for t in ("today", "lab"): add(si, si + 3, t, "light")
+add(4, 2, "welcome", "ax")
+add(4, 3, "welcome", "light"); add(4, 3, "found", "light")
+shots.sort(key=lambda s: {"dark": 0, "ax": 1, "light": 2}[s[2]])   # stable: fewer appearance switches
+for s in shots: print("\t".join(s))
+PY
+}
+
+matrix_run() {
+  MATRIX_ADVANCED=0
+  grep -q HomelabSettingsPage Sources/HomelabKit/AppModel.swift 2>/dev/null && MATRIX_ADVANCED=1
+  local plan="$OUT_DIR/.plan.tsv"
+  matrix_plan > "$plan"
+  [ -s "$plan" ] || { echo "sim-smoke: empty matrix plan"; exit 1; }
+  echo "matrix: $(wc -l < "$plan" | tr -d ' ') shots planned (Settings > Advanced: $([ "$MATRIX_ADVANCED" = 1 ] && echo yes || echo "no, the app has no -HomelabSettingsPage yet"))"
+  : > "$OUT_DIR/index.txt"
+  local look="" name tab want args desc
+  while IFS=$'\t' read -r name tab want args desc; do
+    if [ "$want" != "$look" ]; then
+      look=$want
+      case $look in
+        dark)  xcrun simctl ui "$dev" appearance dark || true;  xcrun simctl ui "$dev" content_size large || true ;;
+        ax)    xcrun simctl ui "$dev" appearance dark || true;  xcrun simctl ui "$dev" content_size accessibility-extra-extra-extra-large || true ;;
+        light) xcrun simctl ui "$dev" appearance light || true; xcrun simctl ui "$dev" content_size large || true ;;
+      esac
+    fi
+    # shellcheck disable=SC2086   # $args is words without spaces, made by matrix_plan
+    if launch $args; then
+      sleep "$WAIT"
+      if ! app_running; then
+        xcrun simctl io "$dev" screenshot "$OUT_DIR/$name-NOT-RUNNING.png" >/dev/null 2>&1 || true
+        fail "$name (app not running: crashed or closed)"
+      elif xcrun simctl io "$dev" screenshot "$OUT_DIR/$name.png" >/dev/null 2>&1; then
+        ok+=("$name"); echo "ok   $name"
+        printf '%s.png\t%s\n' "$name" "$desc" >> "$OUT_DIR/index.txt"
+      else
+        fail "$name"
+      fi
+    else
+      fail "$name (launch)"
+    fi
+  done < "$plan"
+  rm -f "$plan"
+  xcrun simctl ui "$dev" appearance light || true
+  xcrun simctl ui "$dev" content_size large || true
+  xcrun simctl spawn "$udid" log show --start "$start_time" --predicate "subsystem == \"$BUNDLE_ID\"" \
+    --style compact > "$OUT_DIR/app-log.txt" 2>&1 || true
+  mkdir -p "$OUT_DIR/crashes"
+  find "$HOME/Library/Logs/DiagnosticReports" -newer "$OUT_DIR/.started" -name 'Homelab*' -exec cp {} "$OUT_DIR/crashes/" \; 2>/dev/null || true
+  local crashes
+  crashes=$(find "$OUT_DIR/crashes" -type f | wc -l | tr -d ' ')
+  [ "$crashes" = 0 ] && rmdir "$OUT_DIR/crashes" 2>/dev/null
+  {
+    echo "sim-smoke --matrix: ${#ok[@]} screenshots ok, ${#failed[@]} failed, $crashes crash reports"
+    echo "simulator: $(sim_name "$udid")"
+    for s in "${failed[@]+"${failed[@]}"}"; do echo "  failed: $s"; done
+    echo "what each shot shows: index.txt"
+  } | tee "$OUT_DIR/summary.txt"
+  if [ -n "${ok[0]+x}" ] && [ "${#failed[@]}" = 0 ] && [ "$crashes" = 0 ]; then exit 0; fi
+  exit 1
+}
+if [ "$MATRIX" = 1 ]; then matrix_run; fi
 
 TABS=(today actions chat lab settings)
 DEMO=(-HomelabDemo YES)

@@ -10,6 +10,11 @@ on:
     branches-ignore: [ci-screenshots]
   pull_request:
   workflow_dispatch:
+    inputs:
+      matrix:
+        description: "Screenshot matrix (scripts/sim-smoke --matrix, about 90 shots) instead of the normal screenshots; no push to ci-screenshots"
+        type: boolean
+        default: false
 
 # Read-only by default. Only the `screenshots` job can write (to the ci-screenshots branch).
 permissions:
@@ -137,6 +142,7 @@ jobs:
           echo "APP=$app" >> "$GITHUB_ENV"; test -n "$app"
 
       - name: Simulator smoke test (screenshots)
+        if: github.event_name != 'workflow_dispatch' || !inputs.matrix
         run: scripts/sim-smoke "$APP" shots
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -144,6 +150,30 @@ jobs:
         with:
           name: screenshots-${{ matrix.runner }}
           path: shots/
+          retention-days: 14
+
+      # Manual runs with `matrix: true` only: every scene x detail level x voice (docs/CI.md "Screenshot matrix"), instead
+      # of the normal smoke test above. Same simulator build, no secrets, nothing is pushed; the PNGs and index.txt
+      # are the artifact matrix-<runner>. A failed or crashed shot fails the step (the artifact is uploaded anyway).
+      - name: Screenshot matrix
+        if: github.event_name == 'workflow_dispatch' && inputs.matrix
+        run: scripts/sim-smoke --matrix "$APP" matrix-shots
+
+      - name: Screenshot matrix summary
+        if: always() && hashFiles('matrix-shots/summary.txt') != ''
+        run: |
+          {
+            echo "### Screenshot matrix (${{ matrix.runner }})"
+            echo '```'
+            cat matrix-shots/summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && hashFiles('matrix-shots/*') != ''
+        with:
+          name: matrix-${{ matrix.runner }}
+          path: matrix-shots/
           retention-days: 14
 
       # Level 4: HomelabKit tests on an iOS simulator. The full package first (app targets build for the
@@ -211,7 +241,8 @@ jobs:
   # read-only token anyway).
   screenshots:
     needs: macos
-    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # Not for a matrix run: its shots stay in the artifact matrix-<runner>.
+    if: always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.matrix))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
