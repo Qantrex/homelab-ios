@@ -21,6 +21,8 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `GET /search?q=<text>` | – | `{query, cards}` | Feature `search`: the Find and request screen (movies and shows as a poster grid) |
 | `GET /poster/<size>/<file>` (or any path an item's `image` names) | – | the picture | Posters for `poster-grid` cards; see "Pictures" |
 | `GET /deals` | – | `{updated, deals: [...]}` | Feature `deals` (optional): the Deals screen, Today's "Deals to act on" and the new-deal notification; 404 hides it |
+| `GET /news/sources` | – | `{countries, sources, prefs, can_summarize}` | Feature-less and optional: the News settings; 404 hides them (see "News") |
+| `PUT /news/prefs` | a full prefs object | `{ok, prefs}` | Settings → Today → News stores the choices on the server |
 | `POST /share` | `{id, kind: "url", url, title}` | `{ok, id, route, text}` | Feature `share`: the share extension sends a web link; the server routes it (a willhaben ad, or a read-later list) |
 
 Status codes the app understands: 401/403 (identity missing or not allowed), 404 (feature not there), 400, 415, 429
@@ -126,6 +128,51 @@ A server without deals answers **404**: the app then shows nothing and says noth
 when the screen opens or is pulled). Links: `homelab://deals` (a push's click URL) opens the screen; servers
 without deals drop it. The notification (Settings → Notifications → "New deals to act on", off by default) is local,
 from the background refresh: see the notification diff in `AlertTracker`.
+
+## News (card `news`, `GET /news/sources`, `PUT /news/prefs`)
+
+News is optional and lives on the server: it fetches the feeds (the phone never does), picks the stories and, when it
+can, summarises them. The owner chooses country, sources and amount in the app; the server keeps those choices.
+
+**The card.** An ordinary Today card (no `place`) in `/state` `cards`, with the id `news`:
+
+```json
+{"id": "news", "title": "News", "style": "list", "icon": "newspaper",
+ "subtitle": "One digest sentence, at most 25 words; empty when the server can't summarise.",
+ "updated": "21:30",
+ "items": [{"title": "One English line of at most 15 words, or the original headline",
+            "subtitle": "ORF · 2 h",
+            "url": "https://example.org/article",
+            "tags": ["source:orf", "country:at", "topic:general"]}]}
+```
+
+Up to 8 items, the most relevant first (the app keeps the order). Send no card when news is off or every feed failed,
+never a stale one. Today shows it as the **News** tile (newspaper icon, the item count, one line: the top item's title,
+or the digest in Overkill); a tap opens a sheet with the digest and one row per item (title, `subtitle`), and a row
+opens `url` in the in-app browser, in reader mode when the page has one. Only `http(s)` links open. `tags` are for the
+server and other clients; the app ignores them. No warm tint, no push.
+
+**`GET /news/sources`** (same login as the other GETs). `404` means this server has no news: the app hides the News
+settings and says nothing.
+
+```json
+{"countries": [{"id": "at", "name": "Austria"}],
+ "sources": [{"id": "orf", "name": "ORF", "country": "at", "topic": "general"},
+             {"id": "heise", "name": "heise", "country": "de", "topic": "tech"}],
+ "prefs": {"enabled": true, "country": "at", "sources": ["orf", "heise"], "summary": true, "count": 5, "window_h": 24},
+ "can_summarize": true}
+```
+
+The settings offer, for the chosen country, its sources plus every source whose `topic` is not `general` (tech) or
+that has no country (international). `can_summarize: false` greys out the "Summaries" choice. Unknown fields are
+ignored.
+
+**`PUT /news/prefs`** (same login as other writes). The body is a full prefs object (as in `prefs` above); the answer is
+`200 {"ok": true, "prefs": {...as stored...}}`. The server drops unknown source ids, accepts `count` in 3, 5, 8 and
+`window_h` in 12, 24, 48, and forces `summary` to false when it can't summarise; a malformed body gets
+`400 {"error": "..."}`. The app shows the change at once, and if the call fails it goes back to what the server last
+kept and shows the error text. The server applies the choices on its next news run and should refresh the card within
+minutes. The app stores nothing about news (the server is the source of truth).
 
 ## Cards for Lab (`place`)
 

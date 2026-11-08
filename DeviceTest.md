@@ -168,6 +168,16 @@ Not the owner's install path since 2026-11-07 (docs/INSTALL-FROM-LINUX.md); run 
 | FR5 | `homelab://search?q=dune` | Opens Actions and the search with "dune" typed and results. On a server without `search` nothing opens | | |
 | FR6 | Large text | At an accessibility size the grid has 2 columns and nothing is cut; VoiceOver reads title, subtitle, value, then the Request button | | |
 
+## News
+
+Needs a server with the `news` card and `/api/v1/news/sources` (or Settings → Advanced → Demo servers: the demo has a news card and sources).
+
+| # | Test | Pass when | Result | Note |
+|---|---|---|---|---|
+| NW1 | Tile | Today shows a "News" tile (newspaper icon, the number of stories, the top headline; Overkill: the digest). With deals, downloads and grades there are four tiles, 2 by 2. A server without a news card: no tile | | |
+| NW2 | Sheet | Tap the tile: the digest, then one row per story with "Source · age". A row opens the article in the in-app browser, in reader mode when the page has one; Done returns to the sheet | | |
+| NW3 | Settings | Settings → Advanced → Today → News exists only on a server that answers `/news/sources`. Change the country, a source, Headlines/Summaries, the count and the window: each change shows at once; with the server unreachable it jumps back and says why | | |
+
 ## Deals
 
 Needs a server with `/api/v1/deals` (or Settings → Advanced → Demo servers: the demo has five deals).

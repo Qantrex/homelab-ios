@@ -176,7 +176,7 @@ Today is short by design. Settings → Today → **Detail** picks how much it sh
 - **Calm**: one screen, your day and the Home tiles.
 - **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")
   and every row that needs you come first: a deadline that is overdue or within 3 days (later deadlines are always behind "Show N more"), a delay, a
-  to-do past its time. Longer lists show 3 rows and a "Show N more" row. Deals, recent downloads and new grades
+  to-do past its time. Longer lists show 3 rows and a "Show N more" row. Deals, recent downloads, new grades and news
   are small tiles with a count and one line ("best −50 %", "Dune +7", "ITP 95 %"); tap one to open the full list in a
   sheet. Departures appear in the day card, at the top, only while your "Leave by" is within the hour.
 - **Overkill**: three screens at most, with more detail in every line (the deals tile says "best −70 % · GPU €140") and a few more rows before a fold.
@@ -213,6 +213,9 @@ Settings is short on purpose. **Settings → Advanced** (called Nerd section wit
   saying it is hidden.
 - **Chat**: **Text size** (Small, Default, Large; one step from the iPhone's size) and **Long replies** (Short folds
   after 6 lines, Default 12, Never fold).
+- **Today → News** (only when your server has news): On or Off, your country, which sources (yours plus tech and
+  international ones), summaries or headlines, 3, 5 or 8 stories and the last 12, 24 or 48 hours. The choices are saved
+  on your server, which fetches the feeds; the News tile on Today opens a sheet and each story opens in reader mode.
 - Quiet hours, Leave-by on the lock screen, Diagnostics and Demo servers.
 
 ## Limits

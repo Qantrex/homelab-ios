@@ -110,6 +110,24 @@ settings = ["Settings → Today → Detail"]
 depends_on = ["today-layout"]
 
 [[feature]]
+id = "news"
+name = "News (tile, sheet, Settings → News)"
+area = "Today"
+status = "shipped"
+since = "2026-11-08"
+summary = "The server fetches and summarises the owner's news; Today shows a News tile (count and the top headline, Overkill the digest) that opens a sheet with the digest and the stories, each opening in the in-app browser (reader mode when available). Settings → Advanced → Today → News (only when the server answers) picks country, sources, summaries or headlines, 3/5/8 stories and a 12/24/48 h window; changes are saved on the server."
+notes = "Endpoints GET /news/sources and PUT /news/prefs (docs/API.md): list them under endpoints once server/openapi.yaml has them (the server agent owns that file)."
+api_fields = ["cards[id=news]", "can_summarize", "prefs"]
+sources = ["Sources/HomelabKit/News.swift", "Sources/HomelabUI/NewsViews.swift"]
+fixtures = ["Sources/HomelabKit/Fixtures/news-sources.json"]
+tests = ["NewsTests"]
+device_tests = ["NW1", "NW2", "NW3"]
+screenshots = ["demo-today-light"]
+docs = ["docs/API.md#news-card-news-get-newssources-put-newsprefs", "docs/GETTING-STARTED.md#how-long-today-is"]
+settings = ["Settings → Advanced → Today → News"]
+depends_on = ["today-folding"]
+
+[[feature]]
 id = "overkill-machines"
 name = "Machines list (Overkill)"
 area = "Today"
