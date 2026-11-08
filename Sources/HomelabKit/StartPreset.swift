@@ -28,7 +28,7 @@ public enum StartPreset: String, CaseIterable, Sendable, Identifiable {
         switch self {
         case .home: "Home tiles and the day. Calm."
         case .watch: "The lab first: what waits for you, the day, cards."
-        case .everything: "Every section, every machine, exact times."
+        case .everything: "Every section, exact times."
         }
     }
 

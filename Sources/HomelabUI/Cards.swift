@@ -446,12 +446,14 @@ struct CardView: View {
         // Without a value of its own, a ring's row shows its percent there (it used to sit inside the bigger ring).
         let value = item.value ?? item.progress.map { "\(Format.ringPercent($0))%" }
         let row = HStack(alignment: .firstTextBaseline, spacing: 12) {
+            if card.id == "lessons" {
+                // Every lesson row reserves the dot's space, so the changed ones don't sit 18 pt further right; the
+                // dot does not depend on the row having an icon.
+                Circle().fill(changed ? Palette.gold : Color.clear).frame(width: 8, height: 8).accessibilityHidden(true)
+            }
             if let icon = item.icon {
                 Image(systemName: Symbols.safe(icon, fallback: "circle")).font(glyphFont)
                     .foregroundStyle(item.tint?.color ?? Palette.secondary)
-            } else if card.id == "lessons" {
-                // Every lesson row reserves the dot's space, so the changed ones don't sit 18 pt further right.
-                Circle().fill(changed ? Palette.gold : Color.clear).frame(width: 8, height: 8).accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title ?? "").font(nameFont).lineLimit(cap2)

@@ -93,6 +93,15 @@ public struct LeaveContent: Codable, Sendable, Equatable, Hashable {
     public var day: String
     public var firstLesson: Date
 
+    /// When the activity is out of date on its own: the first lesson begins (never before the train).
+    public var staleDate: Date { max(firstLesson, departure) }
+    /// Less than 5 minutes to go: the countdown turns gold (as an addition to the numbers).
+    public func isUrgent(now: Date) -> Bool { leaveBy.timeIntervalSince(now) < 300 }
+    /// The moments the lock-screen view has to redraw: now, when it turns urgent and when it is stale.
+    public func redrawDates(now: Date) -> [Date] {
+        ([now, leaveBy.addingTimeInterval(-300), leaveBy, staleDate]).filter { $0 >= now }.sorted()
+    }
+
     public init(leaveBy: Date, line: String, departure: Date, next: Date? = nil, nextTooLate: Bool = false,
                 disruption: String? = nil, moreDisruptions: Int = 0, bike: Bool = false, ride: Int? = nil,
                 day: String, firstLesson: Date) {

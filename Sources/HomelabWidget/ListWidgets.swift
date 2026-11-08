@@ -24,6 +24,7 @@ struct DeadlinesWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabDeadlines", provider: Provider(follows: .deadlines)) { entry in
             DeadlinesView(entry: entry)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // grows with the text size, but fits the widget
                 .containerBackground(Palette.background, for: .widget)
                 .widgetURL(todayURL)
         }
@@ -155,6 +156,7 @@ struct TodosWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabTodos", provider: Provider()) { entry in
             TodosView(entry: entry)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // grows with the text size, but fits the widget
                 .containerBackground(Palette.background, for: .widget)
                 .widgetURL(todayURL)
         }

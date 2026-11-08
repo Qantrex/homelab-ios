@@ -112,7 +112,7 @@ enum VoiceLines {
             ["Of course it broke now.", "It worked yesterday. Allegedly.", "Coffee first. Then this.",
              "Cheaper than the cloud, they said.", "Something died. Go find the body."]
         case .todayUnknown:
-            ["The lab is giving you the silent treatment.", "Tailscale off again?", "Did someone trip over a cable?",
+            ["The lab is giving you the silent treatment.", "VPN off again?", "Did someone trip over a cable?",
              "No signal. The railway calls this a delay."]
 
         case .labAllGood:
@@ -235,7 +235,7 @@ enum VoiceLines {
              "{count}. Absolutely fucked. Like your weekend.", "Burning. The climate summit arrives by jet."]
         case .labUnknown:
             ["Unknown. Even mass surveillance can't find it.", "No idea. Neither does the central bank.",
-             "Dark. Maybe dead. Go check, you coward prick.", "No signal. Tailscale or your cable management."]
+             "Dark. Maybe dead. Go check, you coward prick.", "No signal. The VPN or your cable management."]
 
         case .reasonDown:
             ["Gone, unlike every 'temporary' tax.", "Dead. Saving energy, as the ministry suggested.",

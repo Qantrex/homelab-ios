@@ -21,7 +21,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today headline (mood)](#today-hero) | shipped | `status`, `hosts` | 3 | **T1**, T8 | 3 |
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
-| [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 1 | **none** | 3 |
+| [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 2 | **none** | 3 |
 | [News (tile, sheet, Settings → News)](#news) | shipped | – | 1 | NW1, NW2, NW3 | 2 |
 | [Machines list (Overkill)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
@@ -373,7 +373,7 @@ Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines over
 |---|---|
 | Sources | [TodayFold.swift](../Sources/HomelabKit/TodayFold.swift), [TodayFoldViews.swift](../Sources/HomelabUI/TodayFoldViews.swift) |
 | Fixtures | [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json) |
-| Tests | `TodayFoldTests` |
+| Tests | `TodayFoldTests`, `Round1TodayFixTests` |
 | Phone (DeviceTest.md) | **none** |
 | CI screenshots | `demo-today-light`, `demo-today-dark`, `demo-today-overkill-snarky` |
 | Docs | [docs/DESIGN.md#8-today-short-by-design](DESIGN.md#8-today-short-by-design), [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is), [README.md#what-it-does](../README.md#what-it-does) |

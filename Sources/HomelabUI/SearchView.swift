@@ -93,8 +93,8 @@ struct SearchView: View {
 
     @ViewBuilder private var results: some View {
         if SearchQuery.clean(query) == nil {
-            Placeholder(title: "Find a movie or show", symbol: "magnifyingglass",
-                        message: "Type at least 2 letters. The server looks it up and you can request what is missing.")
+            Placeholder(title: "Search your server", symbol: "magnifyingglass",
+                        message: "Type at least 2 letters. The server looks it up and shows what it finds.")
                 .padding(.top, 40)
         } else if let found {
             if found.shown.isEmpty {

@@ -37,7 +37,8 @@ import Testing
         #expect(urgent(.init(title: "in 3 days", due: Self.day(3), dueIsDay: true)))
         #expect(!urgent(.init(title: "in 4 days", due: Self.day(4), dueIsDay: true)))
         #expect(urgent(.init(title: "in 71 h", due: Self.now.addingTimeInterval(71 * 3600))))
-        #expect(!urgent(.init(title: "in 73 h", due: Self.now.addingTimeInterval(73 * 3600))))
+        #expect(urgent(.init(title: "in 73 h", due: Self.now.addingTimeInterval(73 * 3600))))   // Wed 11:00: 3 calendar days
+        #expect(!urgent(.init(title: "in 97 h", due: Self.now.addingTimeInterval(97 * 3600))))
         #expect(!urgent(.init(title: "no due")))
     }
 

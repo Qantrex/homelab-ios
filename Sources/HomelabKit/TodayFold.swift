@@ -62,11 +62,10 @@ public enum TodayFold {
         let today = calendar.startOfDay(for: now)
         switch card.style {
         case .countdown:
-            if item.dueIsDay {
-                let days = calendar.dateComponents([.day], from: today, to: Format.dueDay(due, calendar: calendar)).day ?? 0
-                return days <= urgentDays   // overdue, today ... in 3 days
-            }
-            return due <= now.addingTimeInterval(Double(urgentDays) * 24 * 3600)
+            // Calendar days for both kinds: Wednesday 23:59 seen on Sunday morning is "in 3 days", like a day-only due.
+            let dueDay = item.dueIsDay ? Format.dueDay(due, calendar: calendar) : calendar.startOfDay(for: due)
+            let days = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+            return days <= urgentDays   // overdue, today ... in 3 days
         case .checklist:
             return item.dueIsDay ? Format.dueDay(due, calendar: calendar) < today : due < now
         default:
@@ -222,13 +221,21 @@ public enum TodayFold {
         public var departures: Card?
     }
 
+    /// A list, checklist or countdown without items and without text: nothing to draw under its header.
+    public static func isEmptyShell(_ card: Card) -> Bool {
+        guard [.list, .checklist, .countdown].contains(card.style), card.items.isEmpty else { return false }
+        return card.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+    }
+
     /// Splits the server's Today cards into cards, one-liners, tile cards and the departures card.
     public static func plan(_ cards: [Card], dayCardID: String?, density: Density = .standard) -> Plan {
         var blocks: [Block] = []
         var tileCards: [Card] = []
         var departures: Card?
         for card in cards where card.id != dayCardID && card.place != .lab && drawsOnToday(card, density: density) {
-            if isDeparturesCard(card) {
+            if isEmptyShell(card) && !density.isHyper {
+                continue   // a header over an empty panel says nothing
+            } else if isDeparturesCard(card) {
                 departures = departures ?? card
             } else if tileKind(card) != nil {
                 tileCards.append(card)
@@ -239,6 +246,15 @@ public enum TodayFold {
             }
         }
         tileCards.sort { (tileKind($0)?.order ?? 9) < (tileKind($1)?.order ?? 9) }
+        // Hyperdetail hides no board: when the day section doesn't draw it (no day card, or one without stops), the
+        // departures card is a normal block.
+        if density.isHyper, let board = departures, !DepartureBoard(card: board).isEmpty || DepartureBoard(card: board).isDisrupted {
+            let day = cards.first { $0.id == dayCardID }
+            if day.map({ DayTimeline(card: $0).stops.isEmpty }) ?? true {
+                blocks.append(.card(board))
+                departures = nil
+            }
+        }
         return Plan(blocks: blocks, tileCards: tileCards, departures: departures)
     }
 

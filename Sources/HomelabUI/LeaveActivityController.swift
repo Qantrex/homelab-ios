@@ -57,9 +57,10 @@ public enum LeaveActivityController {
         return result
     }
 
-    /// Stale once the train has left: the system greys the activity out even if no update arrives.
+    /// Stale at the first lesson (`LeaveContent.staleDate`): the view then says it is over, even if no update arrives
+    /// (the background refresh ends the activity, but it may not run).
     private static func content(_ c: LeaveContent) -> ActivityContent<LeaveContent> {
-        ActivityContent(state: c, staleDate: c.departure, relevanceScore: 100)
+        ActivityContent(state: c, staleDate: c.staleDate, relevanceScore: 100)
     }
 }
 

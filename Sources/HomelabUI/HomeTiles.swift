@@ -211,7 +211,12 @@ struct HomeTile: View {
     private var stateText: String {
         switch entity.control {
         case .toggle: entity.isAvailable ? (entity.isOn ? String(localized: "On") : String(localized: "Off")) : entity.displayState
-        case .run: entity.lastChanged.map { String(localized: "ran \(Format.age($0))") } ?? String(localized: "Tap to run")
+        case .run:
+            switch entity.runCaption {
+            case .text(let t): t
+            case .neverRan: String(localized: "Tap to run")
+            case .ran(let d): String(localized: "ran \(Format.age(d))")
+            }
         case .none: entity.displayState
         }
     }

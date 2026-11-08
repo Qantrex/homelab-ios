@@ -117,6 +117,9 @@ public struct ServerList: Codable, Sendable, Equatable {
 
     public static let fileName = "servers.json"
 
+    /// Servers, but none speaks the Companion API (Home Assistant only): the widgets have nothing to show, ever.
+    public var hasNoCompanionServer: Bool { !servers.isEmpty && selectedServer == nil }
+
     /// The Companion-API server the Overview/Actions/Chat tabs show.
     public var selectedServer: ServerConfig? {
         let companion = servers.filter(\.speaksCompanionAPI)

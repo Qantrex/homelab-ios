@@ -308,10 +308,10 @@ struct StartGrid: View {
             .accessibilityHint(Text(spec.hint ?? String(localized: "Opens its form.")))
         case .search:
             Button { search?() } label: {
-                StartTile(icon: "magnifyingglass", label: Text("Find a movie or show"))
+                StartTile(icon: "magnifyingglass", label: Text("Search your server"))
             }
             .buttonStyle(.press)
-            .accessibilityLabel(Text("Find a movie or show"))
+            .accessibilityLabel(Text("Search your server"))
             .accessibilityHint(Text("Searches the server and lets you request what is missing."))
         case .deals:
             Button { deals?() } label: {

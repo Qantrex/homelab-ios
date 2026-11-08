@@ -36,7 +36,7 @@ public enum ChatCommands {
         "/pause": ("Stops all automatic actions", false),
         "/resume": ("Allows automatic actions again", false),
         "/never": ("Takes a standing approval back", true),
-        "/sick": ("No wake-up and no U6 alert", false),
+        "/sick": ("No wake-up and no train alert", false),
         "/off": ("A free day the timetable doesn't know", true),
         "/back": ("Undoes /sick and /off", false),
     ]

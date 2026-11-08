@@ -309,6 +309,8 @@ struct TodayView: View {
     private func take(_ m: TodayMood) -> String? {
         let voice = model.settings.voice
         guard model.selected != nil, voice != .off else { return nil }
+        // Still "Checking…": nothing is known yet; a remark would say the lab doesn't answer.
+        if status.error == nil && state == nil { return nil }
         let count = Voice.takeCount(for: state, personality: voice)
         if count > 0, let t = Voice.take(for: state, personality: voice, variant: pokes % count) { return t.text }
         let all = Voice.lines(Voice.moment(m.level), voice)
@@ -640,7 +642,9 @@ struct DaySection: View {
         // Redrawn every minute, so the line and the countdown move while the screen is open.
         TimelineView(.everyMinute) { context in
             let line = DayTimeline(card: card, now: context.date)
-            if plainLines, line.stops.isEmpty, !line.isStale, line.notes.isEmpty, TodayFold.isPlainLine(line.text), let text = line.text {
+            if line.stops.isEmpty, line.text == nil, line.notes.isEmpty, !line.isStale, !line.isTomorrow {
+                EmptyView()   // nothing to draw: no empty panel
+            } else if plainLines, line.stops.isEmpty, !line.isStale, line.notes.isEmpty, TodayFold.isPlainLine(line.text), let text = line.text {
                 plainLine(line, text)
             } else {
             ZStack(alignment: .topLeading) {

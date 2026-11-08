@@ -78,6 +78,15 @@ public struct HAEntity: Codable, Sendable, Equatable, Identifiable, Hashable {
         return s != "unknown" || control == .run
     }
 
+    /// What a runnable tile (scene, script, button) says under its name. Unavailable: why (`displayState`); a state
+    /// of "unknown" means it never ran (its last-changed is Home Assistant's start, not a run): `neverRan`.
+    public enum RunCaption: Equatable, Sendable { case text(String), neverRan, ran(Date) }
+    public var runCaption: RunCaption {
+        if !isAvailable { return .text(displayState) }
+        if state.lowercased() == "unknown" { return .neverRan }
+        return lastChanged.map { .ran($0) } ?? .neverRan
+    }
+
     /// The state as people read it: "21.4°C", "45%", "On", "Open".
     public var displayState: String {
         if !isAvailable { return state.lowercased() == "unknown" ? "Unknown" : "Unavailable" }

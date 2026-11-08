@@ -11,7 +11,7 @@ import WidgetKit
 struct LeaveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LeaveAttributes.self) { context in
-            LeaveLockScreen(state: context.state)
+            LeaveLockScreen(state: context.state, stale: context.isStale)
                 .activityBackgroundTint(Color.black)
                 .activitySystemActionForegroundColor(Palette.text)
                 .widgetURL(URL(string: "homelab://today"))
@@ -41,6 +41,8 @@ struct LeaveActivityWidget: Widget {
 
 struct LeaveLockScreen: View {
     let state: LeaveContent
+    /// The activity went stale (the first lesson began): "Over" instead of a countdown.
+    var stale = false
 
     static func clock(_ date: Date) -> String { DepartureBoard.clock(date) }
 
@@ -63,9 +65,16 @@ struct LeaveLockScreen: View {
                 Spacer()
                 // Counts down on its own: no update needed every minute. Gold only as an addition to the words
                 // "Leave by" and the number: the time itself says how close it is.
-                Text(timerInterval: Date()...max(Date(), state.leaveBy), countsDown: true)
-                    .font(Typo.data(.title3, weight: .semibold)).multilineTextAlignment(.trailing)
-                    .foregroundStyle(state.leaveBy.timeIntervalSinceNow < 300 ? Palette.gold : Palette.text)
+                if stale || Date() >= state.staleDate {
+                    Text("Over").font(Typo.data(.title3, weight: .semibold)).foregroundStyle(Palette.secondary)
+                } else {
+                    // The timeline redraws at 5 minutes to go (gold) and at the end (the first lesson).
+                    TimelineView(.explicit(state.redrawDates(now: Date()))) { context in
+                        Text(timerInterval: context.date...max(context.date, state.leaveBy), countsDown: true)
+                            .font(Typo.data(.title3, weight: .semibold)).multilineTextAlignment(.trailing)
+                            .foregroundStyle(state.isUrgent(now: context.date) ? Palette.gold : Palette.text)
+                    }
+                }
             }
             .accessibilityElement(children: .combine)   // "Leave by 07:26, 12 minutes": one stop, not three
             HStack(spacing: 6) {

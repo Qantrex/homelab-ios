@@ -38,7 +38,13 @@ struct Entry: TimelineEntry {
     /// What a widget says without a snapshot. With no App Group it can't see anything the app saved (xtool up to 1.24.0
     /// drops the group for a free Apple ID, docs/SETUP.md), so "Open the app" wouldn't help: it says so instead.
     func noData(_ openTheApp: String) -> String {
-        AppGroup.current == nil ? String(localized: "No App Group: see Diagnostics") : openTheApp
+        if AppGroup.current == nil { return String(localized: "No App Group: see Diagnostics") }
+        // Only a Home Assistant server: opening the app never fills a widget, so say what it needs.
+        if Self.hasNoCompanionServer() { return String(localized: "Needs a Homelab server") }
+        return openTheApp
+    }
+    static func hasNoCompanionServer() -> Bool {
+        Storage.shared().read(ServerList.self, ServerList.fileName)?.hasNoCompanionServer ?? false
     }
     var pending: Int { state?.pending.count ?? 0 }
     var age: String { snapshot.map { Format.age($0.fetched, now: date) } ?? "" }
@@ -268,7 +274,7 @@ struct DayWidget: Widget {
                 .widgetURL(URL(string: "homelab://today"))
         }
         .configurationDisplayName("Homelab day")
-        .description("Your day as a line: wake-up, leave by, first lesson, with a countdown to the next.")
+        .description("Your day as a line, with a countdown to the next stop.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -382,6 +388,7 @@ struct DayView: View {
         if entry.redacted { return String(localized: "Open the app") }
         if entry.snapshot == nil { return entry.noData(String(localized: "Open Homelab to load your day.")) }
         if let text = card?.text { return text }
+        if card == nil { return String(localized: "No day on this server") }
         return String(localized: "Nothing planned today.")
     }
 }

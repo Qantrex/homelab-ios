@@ -29,7 +29,7 @@ final class ShareModel {
 
     func load(_ items: [NSExtensionItem]) async {
         guard server != nil else {
-            phase = .refused("Open Homelab and add a server first.")
+            phase = .refused("Add a Homelab server in the app first (the share sheet needs one).")
             return
         }
         switch await ShareLoader.load(SharedItems(items: items)) {

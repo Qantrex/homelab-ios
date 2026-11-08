@@ -10,6 +10,7 @@ struct DeparturesWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "HomelabU6", provider: Provider(follows: .departures)) { entry in
             DeparturesView(entry: entry)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // grows with the text size, but fits the widget
                 .containerBackground(Palette.background, for: .widget)
                 .widgetURL(URL(string: "homelab://today"))
         }
@@ -44,7 +45,9 @@ struct DeparturesView: View {
     }
 
     private var empty: String {
-        entry.snapshot == nil ? entry.noData(String(localized: "Open the app")) : String(localized: "No departures soon")
+        if entry.snapshot == nil { return entry.noData(String(localized: "Open the app")) }
+        return entry.state?.departuresCard == nil ? String(localized: "No departures from this server")
+                                                  : String(localized: "No departures soon")
     }
 
     // MARK: Lock screen
