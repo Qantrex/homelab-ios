@@ -22,6 +22,7 @@ into /state and /services (`merged()`). Rules it enforces, whatever the module r
     may offer actions (docker: restart, proxmox: start and stop, pihole and adguard: pause). They exist only for the
     items its config lists under `actions`; SourceActions serves them as the app's run-actions (GET /actions,
     POST /actions/<name>). An item's `action` stays only when its name and arg are on that list
+  - exception: the `rss` source's card `news` keeps its id (the app's News tile looks for exactly that); one rss source
   - the card ids `today` and `departures` are refused (the app gives those ids a meaning)
   - secrets: config names env variables (`key_env`, any `*_env`), never the key itself; their values (stripped; one
     with a control character stops the start) are replaced by "***" in everything the source returns and in every
@@ -363,6 +364,8 @@ def parse(raw, env):
         specs.append({"name": name, "type": item["type"], "every": cfg["every"], "timeout": cfg["timeout"],
                       "cfg": cfg, "module": module, "env": values, "actions": allowed,
                       "plain_http": bool(values) and _plain_http(url)})
+    if sum(1 for s in specs if s["type"] == "rss") > 1:
+        raise ValueError("sources: only one rss source (the News module; list all feeds in it)")
     return specs
 
 
@@ -817,6 +820,10 @@ class Runner:
             restartable = {(a["host"], a["item"]) for a in spec.get("actions", ()) if a["action"] == RESTART}
             listed = {(a["action"], a["arg"]) for a in spec.get("actions", ())}
             result = normalize(name, raw, self.secrets, now_iso(), self.log, restartable, listed)
+            if spec["type"] == "rss":   # the News module's card keeps the exact id the app looks for
+                for c in result["cards"]:
+                    if c["id"] == name + ":news":
+                        c["id"] = "news"
         except SourceError as exc:
             error = scrub(exc, self.secrets)
         except Exception as exc:  # noqa: BLE001 - a crash is one warning, not a dead server

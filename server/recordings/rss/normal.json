@@ -1,0 +1,23 @@
+{
+ "_about": "Made-up feeds in the shapes of ORF (RSS 1.0 / RDF with dc:date), Der Standard (RSS 2.0 with CDATA, media:thumbnail, +0100 dates) and heise (Atom with several links). Dated around 2026-11-08 12:00 UTC.",
+ "routes": {
+  "GET /orf.xml": {
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns=\"http://purl.org/rss/1.0/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n  <channel rdf:about=\"https://rss.orf.at/news.xml\"><title>news.ORF.at</title><link>https://news.orf.at</link>\n    <items><rdf:Seq><rdf:li rdf:resource=\"https://orf.at/stories/1/\"/></rdf:Seq></items></channel>\n  <item rdf:about=\"https://orf.at/stories/1/\"><title>Regierung beschliesst Budget fuer 2027</title><link>https://orf.at/stories/1/</link><dc:date>2026-11-08T10:30:00+01:00</dc:date><description>Not an article body we keep.</description></item>\n  <item rdf:about=\"https://orf.at/stories/2/\"><title>Schneefall im Westen erwartet</title><link>https://orf.at/stories/2/</link><dc:date>2026-11-08T09:10:00Z</dc:date></item>\n  <item rdf:about=\"https://orf.at/stories/3/\"><title>Fussball: Derby endet unentschieden</title><link>https://orf.at/stories/3/</link><dc:date>2026-11-08T07:45:00Z</dc:date></item>\n  <item rdf:about=\"https://orf.at/stories/4/\"><title>Aelterer Bericht von gestern frueh</title><link>https://orf.at/stories/4/</link><dc:date>2026-11-07T08:00:00Z</dc:date></item>\n</rdf:RDF>\n",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  },
+  "GET /standard.xml": {
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<rss version=\"2.0\" xmlns:media=\"http://search.yahoo.com/mrss/\"><channel><title>Standard</title><link>https://www.derstandard.at</link>\n<item><title><![CDATA[Regierung beschliesst Budget fuer 2027]]></title><link>https://www.orf.at/stories/1/?utm_source=rss&amp;utm_medium=feed</link><pubDate>Sun, 08 Nov 2026 10:40:00 +0100</pubDate><media:thumbnail url=\"https://img.example/x.jpg\"/></item>\n<item><title>Regierung beschliesst das Budget fuer 2027!</title><link>https://www.derstandard.at/story/9</link><pubDate>Sun, 08 Nov 2026 10:20:00 +0100</pubDate></item>\n<item><title>Wirtschaft: Inflation sinkt im Oktober</title><link>https://www.derstandard.at/story/10</link><pubDate>Sun, 08 Nov 2026 08:05:00 GMT</pubDate></item>\n<item><title>Kultur: Neue Oper in Wien</title><link>https://www.derstandard.at/story/11</link><pubDate>Sun, 08 Nov 2026 11:55:00 GMT</pubDate></item>\n</channel></rss>\n",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  },
+  "GET /heise.xml": {
+   "body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\"><title>heise online News</title>\n<entry><title type=\"html\">Linux 7.3 erschienen &amp;amp; verbessert Dateisysteme</title><link rel=\"self\" href=\"https://www.heise.de/feed/self\"/><link rel=\"alternate\" type=\"text/html\" href=\"https://www.heise.de/news/linux-7-3-1.html\"/><updated>2026-11-08T11:20:00Z</updated><summary>body we never use</summary><content type=\"html\">&lt;p&gt;body&lt;/p&gt;</content></entry>\n<entry><title>Neue Sicherheitsluecke in Router-Firmware</title><link href=\"https://www.heise.de/news/router-2.html\"/><published>2026-11-08T06:00:00+00:00</published></entry>\n</feed>\n",
+   "headers": {
+    "Content-Type": "application/xml"
+   }
+  }
+ }
+}
