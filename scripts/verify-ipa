@@ -6,6 +6,8 @@
 # Entitlements come from `codesign` (macOS), `ldid`, or else python3 reading the plist embedded in the signature.
 set -euo pipefail
 
+case "${1:-}" in -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+
 ipa=${1:?usage: scripts/verify-ipa PATH/TO/App.ipa}
 group=group.com.qantrex.homelab
 tmp=$(mktemp -d)

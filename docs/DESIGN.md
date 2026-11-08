@@ -89,7 +89,8 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
 - No mascot, no character art, no speech bubbles. The line is plain `.body`/`.title3` text in `Palette.secondary`,
   directly under what it comments on.
 - The fact is always shown plainly next to the joke, so the joke can be ignored.
-- Under the hero, plain text, never part of its button: the weather as one sentence with its symbol ("☁ Clear, 3 °C
+- Under the hero, plain text, never part of its button: the weather (the `weather` card's subtitle, in every detail
+  level, Calm too; the lessons card's gold change dot and struck-through cancelled lessons are drawn by the card) as one sentence with its symbol ("☁ Clear, 3 °C
   now", `Typo.secondary`), and where the data is from ("homelab · checked 4 min ago", meta) **only** while a pull to
   refresh runs, after a failed fetch, or when the data is older than 10 min (`FreshnessLine`; Overkill always).
   A line that is always there says nothing (owner, 2026-11-06).

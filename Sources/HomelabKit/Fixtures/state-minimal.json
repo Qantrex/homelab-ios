@@ -1,0 +1,21 @@
+{
+ "time": "2026-11-04T21:30:00",
+ "status": "ok",
+ "checked": "2026-11-04T21:28:00",
+ "problems": [],
+ "hosts": [
+  {
+   "id": "box",
+   "name": "box",
+   "kind": "server",
+   "reachable": true,
+   "checked": "2026-11-04T21:28:00",
+   "load": 0.4,
+   "cpu_count": 4,
+   "mem_pct": 38
+  }
+ ],
+ "pending": [],
+ "cards": [],
+ "busy": []
+}

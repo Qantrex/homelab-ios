@@ -65,7 +65,9 @@ def local_time(text):
     `due` wants it. None when it is not a time."""
     text = as_text(text)
     try:
-        t = datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
+        # Python before 3.11 reads only 3 or 6 fraction digits: cut longer ones to 6, pad shorter ones
+        text = re.sub(r"\.(\d+)", lambda m: "." + m.group(1)[:6].ljust(6, "0"), text.replace("Z", "+00:00"), count=1)
+        t = datetime.datetime.fromisoformat(text)
     except ValueError:
         return None
     if t.tzinfo is None:

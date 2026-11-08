@@ -104,6 +104,7 @@ summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (dea
 sources = ["Sources/HomelabKit/TodayFold.swift", "Sources/HomelabUI/TodayFoldViews.swift"]
 fixtures = ["Sources/HomelabKit/Fixtures/demo-today.json"]
 tests = ["TodayFoldTests", "Round1TodayFixTests"]
+device_tests = ["O12g"]
 screenshots = ["demo-today-light", "demo-today-dark", "demo-today-overkill-snarky"]
 docs = ["docs/DESIGN.md#8-today-short-by-design", "docs/GETTING-STARTED.md#how-long-today-is", "README.md#what-it-does"]
 settings = ["Settings → Today → Detail"]
@@ -235,15 +236,15 @@ name = "Weather line under the headline"
 area = "Today"
 status = "shipped"
 since = "2026-11-06"
-summary = "Standard and Overkill show the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts."
+summary = "Every detail level, Calm too, shows the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts."
 server_features = ["cards"]
 endpoints = ["GET /state"]
 api_fields = ["card id \"weather\""]
 sources = ["Sources/HomelabKit/HeroLines.swift"]
 tests = ["HeroLinesTests/weatherSentenceAddsTheTemperatureNowWhenMissing", "DayTimelineTests/dayCardIgnoresTheWeatherCard"]
 device_tests = ["O12c"]
-docs = ["CHANGELOG.md#100-unreleased"]
-notes = "Only in the changelog; README and API.md don't describe the weather card."
+docs = ["CHANGELOG.md#100-unreleased", "docs/DESIGN.md#4-the-voice", "docs/GETTING-STARTED.md#the-weather-line-and-the-lessons", "docs/API.md"]
+notes = "Shown in every detail level (owner sees it in Calm, 2026-11-08); the weather card itself is not drawn on Today."
 
 [[feature]]
 id = "expiry-warning"
@@ -267,13 +268,12 @@ since = "2026-11-06"
 summary = "A line of commentary under Today's headline, on empty screens, after actions and as a notification's subtitle. Changes once a day; the facts never change with it. Off by default."
 sources = ["Sources/HomelabKit/Voice.swift", "Sources/HomelabKit/Takes.swift", "Sources/HomelabKit/VoiceLines.swift", "Sources/HomelabKit/VoiceLinesText.swift", "Sources/HomelabKit/TakeLines.swift", "Sources/HomelabUI/UltrakillWarningModifier.swift", "Sources/HomelabUI/SettingsView.swift#PersonalityPreview"]
 tests = ["VoiceTests", "TakeTests", "VoiceSpotTests", "ChatLayoutTests/previewSampleFollowsThePersonality"]
-device_tests = ["DL10"]
+device_tests = ["DL10", "O12h"]
 screenshots = ["demo-today-overkill-snarky"]
 docs = ["README.md#what-it-does", "docs/DESIGN.md#4-the-voice", "docs/SETUP.md#launch-arguments"]
 launch_args = ["-HomelabPersonality"]
 settings = ["Settings → Today → Personality"]
 notes = "Four levels: Off, Dry, Snarky, Ultrakill (2026-11-06, rude on purpose)."
-known_gaps = ["no DeviceTest row for the personality itself (DL10 only touches it)"]
 
 [[feature]]
 id = "hyperdetail"
@@ -375,8 +375,7 @@ api_fields = ["item.cancelled", "item tint for changes"]
 sources = ["Sources/HomelabUI/Cards.swift#CardView", "Sources/HomelabKit/DayTimeline.swift"]
 tests = ["DayTimelineTests/cancelledAndDateDecode"]
 device_tests = ["O12b"]
-docs = ["CHANGELOG.md#100-unreleased"]
-notes = "Documented only in the changelog."
+docs = ["CHANGELOG.md#100-unreleased", "docs/GETTING-STARTED.md#the-weather-line-and-the-lessons", "docs/DESIGN.md#4-the-voice"]
 
 [[feature]]
 id = "lab-cards"
@@ -1072,10 +1071,10 @@ name = "Demo mode"
 area = "Settings"
 status = "shipped"
 since = "2026-11-04"
-summary = "A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene), the stress scene for screenshots, or a neutral Bridge homelab (`bridge`: Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news; no school, commute, deals or grades); chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch."
+summary = "A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene), the stress scene for screenshots, a bare server that sends only /info and /state (`minimal`, every other endpoint 404), or a neutral Bridge homelab (`bridge`: Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news; no school, commute, deals or grades); chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch."
 sources = ["Sources/HomelabKit/Demo.swift"]
-fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/demo-today.json", "Sources/HomelabKit/Fixtures/state-problem.json", "Sources/HomelabKit/Fixtures/state-bridge.json", "Sources/HomelabKit/Fixtures/messages-bridge.json", "Sources/HomelabKit/Fixtures/actions-bridge.json", "Sources/HomelabKit/Fixtures/info-bridge.json"]
-tests = ["DemoBackendTests", "CombinationTests/bridgeSceneLoadsAndIsNeutral", "CombinationTests/modelShowsTheBridgeSceneAndTheFirstRun", "DemoCardsTests", "HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow", "HeroLinesTests/calmDemoLooksLikeACurrentDay", "HeroLinesTests/cardAgesMoveWithTheClock", "HeroLinesTests/problemSceneStaysForScreenshots", "GlanceTests/demoMovesDeparturesAndCommuteToNow", "StorageTests/demoServers", "DealsModelTests/demoHasDeals"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-demo.json", "Sources/HomelabKit/Fixtures/demo-today.json", "Sources/HomelabKit/Fixtures/state-problem.json", "Sources/HomelabKit/Fixtures/state-bridge.json", "Sources/HomelabKit/Fixtures/messages-bridge.json", "Sources/HomelabKit/Fixtures/actions-bridge.json", "Sources/HomelabKit/Fixtures/info-bridge.json", "Sources/HomelabKit/Fixtures/state-minimal.json", "Sources/HomelabKit/Fixtures/info-minimal.json"]
+tests = ["DemoBackendTests", "MinimalSceneTests", "CombinationTests/bridgeSceneLoadsAndIsNeutral", "CombinationTests/modelShowsTheBridgeSceneAndTheFirstRun", "DemoCardsTests", "HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow", "HeroLinesTests/calmDemoLooksLikeACurrentDay", "HeroLinesTests/cardAgesMoveWithTheClock", "HeroLinesTests/problemSceneStaysForScreenshots", "GlanceTests/demoMovesDeparturesAndCommuteToNow", "StorageTests/demoServers", "DealsModelTests/demoHasDeals"]
 device_tests = ["FS2", "FS3", "FS4"]
 screenshots = ["demo-today-light", "demo-settings-light"]
 docs = ["README.md#who-it-is-for", "docs/ADAPTING.md#the-modules", "docs/SETUP.md#launch-arguments"]
@@ -1204,7 +1203,7 @@ status = "shipped"
 since = "2026-11-04"
 summary = "An ephemeral URLSession (no cookies, no cache), no redirects, answers stop at 8 MB (Home Assistant 32 MB); every field is optional, unknown values fall back, bad items are dropped, server numbers are clamped (Int only through Int(clamping:), a lint check)."
 sources = ["Sources/HomelabKit/Transport.swift", "Sources/HomelabKit/Lenient.swift", "Sources/HomelabKit/Numbers.swift", "Sources/HomelabKit/CompanionClient.swift"]
-fixtures = ["Sources/HomelabKit/Fixtures/state-empty.json", "Sources/HomelabKit/Fixtures/state-legacy.json", "Sources/HomelabKit/Fixtures/state-unknown-fields.json", "Sources/HomelabKit/Fixtures/state-huge.json"]
+fixtures = ["Sources/HomelabKit/Fixtures/state-empty.json", "Sources/HomelabKit/Fixtures/state-legacy.json", "Sources/HomelabKit/Fixtures/state-unknown-fields.json", "Sources/HomelabKit/Fixtures/state-huge.json", "Sources/HomelabKit/Fixtures/actions-huge.json"]
 tests = ["HardeningTests", "FixtureDecoding", "ExtraFixtureTests", "DateParsing", "ServerNumberTests", "CompanionClientTests", "IntegrationTests/infoAndState", "IntegrationTests/unknownPathIsNotFound"]
 docs = ["docs/API.md#tolerant-client-rules-the-app-follows", "docs/SECURITY.md#what-the-app-does", "CONTRIBUTING.md#code-rules"]
 not_needed = { device_tests = "Linux tests against fixtures and the fixture server cover it; nothing phone-specific" }

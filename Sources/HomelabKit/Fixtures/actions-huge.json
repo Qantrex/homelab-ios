@@ -1,0 +1,153 @@
+{
+ "actions": [
+  {
+   "name": "restart-container",
+   "label": "Restart a container",
+   "icon": "arrow.clockwise",
+   "destructive": true,
+   "hint": "Only containers on the host's restart list.",
+   "fields": [],
+   "arg": [
+    {
+     "label": "Container",
+     "parts": [
+      {
+       "kind": "choice",
+       "label": "Host",
+       "options": [
+        {
+         "value": "host-01",
+         "label": "host-01"
+        },
+        {
+         "value": "host-02",
+         "label": "host-02"
+        },
+        {
+         "value": "host-03",
+         "label": "host-03"
+        },
+        {
+         "value": "host-04",
+         "label": "host-04"
+        },
+        {
+         "value": "host-05",
+         "label": "host-05"
+        },
+        {
+         "value": "host-06",
+         "label": "host-06"
+        },
+        {
+         "value": "host-07",
+         "label": "host-07"
+        },
+        {
+         "value": "host-08",
+         "label": "host-08"
+        },
+        {
+         "value": "host-09",
+         "label": "host-09"
+        },
+        {
+         "value": "host-10",
+         "label": "host-10"
+        },
+        {
+         "value": "host-11",
+         "label": "host-11"
+        },
+        {
+         "value": "host-12",
+         "label": "host-12"
+        },
+        {
+         "value": "host-13",
+         "label": "host-13"
+        },
+        {
+         "value": "host-14",
+         "label": "host-14"
+        },
+        {
+         "value": "host-15",
+         "label": "host-15"
+        },
+        {
+         "value": "host-16",
+         "label": "host-16"
+        },
+        {
+         "value": "host-17",
+         "label": "host-17"
+        },
+        {
+         "value": "host-18",
+         "label": "host-18"
+        },
+        {
+         "value": "host-19",
+         "label": "host-19"
+        },
+        {
+         "value": "host-20",
+         "label": "host-20"
+        },
+        {
+         "value": "host-21",
+         "label": "host-21"
+        },
+        {
+         "value": "host-22",
+         "label": "host-22"
+        },
+        {
+         "value": "host-23",
+         "label": "host-23"
+        },
+        {
+         "value": "host-24",
+         "label": "host-24"
+        },
+        {
+         "value": "host-25",
+         "label": "host-25"
+        },
+        {
+         "value": "host-26",
+         "label": "host-26"
+        },
+        {
+         "value": "host-27",
+         "label": "host-27"
+        },
+        {
+         "value": "host-28",
+         "label": "host-28"
+        },
+        {
+         "value": "host-29",
+         "label": "host-29"
+        },
+        {
+         "value": "host-30",
+         "label": "host-30"
+        }
+       ]
+      },
+      {
+       "kind": "literal",
+       "text": ":"
+      },
+      {
+       "kind": "word",
+       "label": "Container"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

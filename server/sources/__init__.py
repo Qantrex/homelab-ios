@@ -389,12 +389,12 @@ def _plain_http(url):
 
 
 def link_ok(url):
-    """A link the app may show: no user or password in it, and no key in its query."""
+    """A link the app may show: http or https only, no user or password in it, and no key in its query."""
     if not isinstance(url, str) or not url:
         return False
     try:
         u = urllib.parse.urlsplit(url)
-        return not (u.username is not None or u.password is not None or "@" in u.netloc
+        return u.scheme.lower() in ("http", "https") and not (u.username is not None or u.password is not None or "@" in u.netloc
                     or SECRET_QUERY.search(u.query))
     except ValueError:
         return False
@@ -403,6 +403,16 @@ def link_ok(url):
 # What would be Markdown in the app's inline renderer: a backslash, `<` before a letter, `/`, `!` or `?` (autolink, HTML), `*`, a backtick, `~`, the `]`
 # of `](`, an entity (`&#58;`, `&amp;`) and an `_` that is not inside a word. A lone `[`, `]`, `>` or `&` is plain text.
 _MD_SPECIAL = re.compile(r"([\\*`~]|<(?=[A-Za-z/!?])|\](?=[(\[])|&(?=#?\w+;)|(?<![A-Za-z0-9])_|_(?![A-Za-z0-9]))")
+
+
+def image_ok(url):
+    """A picture the app may load: a path on the server ("/api/v1/poster/..."), or an http(s) link without a user, a
+    password or a key."""
+    if not isinstance(url, str) or not url:
+        return False
+    if url.startswith("/") and not url.startswith("//") and "\\" not in url:
+        return True
+    return link_ok(url)
 
 
 def plain_text(text, limit=MAX_TEXT):
@@ -657,6 +667,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
         h = dict(h)
         raw_id = h["id"]
         h.setdefault("name", raw_id)
+        _safe_fields(h, ("name",))
         h["id"] = prefix + raw_id
         hist = h.get("history")
         if isinstance(hist, dict):
@@ -666,6 +677,7 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
         if isinstance(h.get("container_list"), list):
             h["container_list"] = [c for c in h["container_list"] if isinstance(c, dict)][:MAX_CONTAINERS]
             for c in h["container_list"]:
+                _safe_fields(c, ("name", "status"))
                 c.pop("restartable", None)
                 if (raw_id, c.get("name")) in restartable:
                     c["restartable"] = True
@@ -712,6 +724,9 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
                     if "url" in i and not link_ok(i["url"]):
                         logf("source %s: dropped an item's link (a user, password or key in it)" % name)
                         del i["url"]
+                    if "image" in i and not image_ok(i["image"]):
+                        logf("source %s: dropped an item's image (not a path or an http(s) link)" % name)
+                        del i["image"]
             else:
                 del c["items"]
         if checked and "updated" not in c:
@@ -723,8 +738,8 @@ def normalize(name, result, secrets=(), checked=None, logf=lambda m: None, resta
                    lambda x: isinstance(x, dict) and isinstance(x.get("name"), str) and x["name"]
                    and isinstance(x.get("url"), str) and link_ok(x["url"]), "service", name, logf):
         s = {k: v for k, v in s.items() if k in ("name", "url", "group", "icon", "description")}
-        _safe_fields(s, ("description",))
         s.setdefault("group", name)
+        _safe_fields(s, ("name", "group", "description"))
         services.append(s)
     return {"problems": problems, "hosts": hosts, "cards": cards, "services": services}
 

@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 104 | 76 | 26 | 1 | 41 | 4 |
+| 104 | 76 | 26 | 1 | 41 | 0 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -21,7 +21,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Today headline (mood)](#today-hero) | shipped | `status`, `hosts` | 3 | **T1**, T8 | 3 |
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
 | [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
-| [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 2 | **none** | 3 |
+| [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 2 | O12g | 3 |
 | [News (tile, sheet, Settings → News)](#news) | shipped | – | 1 | NW1, NW2, NW3 | 2 |
 | [Machines list (Overkill)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
@@ -29,9 +29,9 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
 | [Last report on Today](#last-report) | shipped (?) | `status` | 1 | **T2** | 1 |
 | [Start presets (Home, Watch, Everything)](#start-presets) | partial | – | 1 | **FS5**, **FS6** | 1 |
-| [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
+| [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 4 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | X2 | 3 |
-| [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | shipped | – | 4 | DL10 | 3 |
+| [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | shipped | – | 4 | DL10, O12h | 3 |
 | [Hyperdetail (fourth detail level)](#hyperdetail) | shipped | – | 2 | ST9, ST10, ST11, ST12 | 3 |
 
 ### Cards (8)
@@ -42,7 +42,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [To-dos (checklist card)](#checklist-card) | shipped | `cards`, `run-actions` | 3 | O10, AX2 | 2 |
 | [Deadlines (countdown card)](#countdown-card) | shipped | `cards` | 7 | O12 | 1 |
 | [Parcels (Delivered button, tracking link)](#parcels) | shipped | `cards`, `run-actions` | 1 | O9b | 1 |
-| [Lessons (cancelled and changed)](#lessons-card) | shipped | `cards` | 1 | O12b | 1 |
+| [Lessons (cancelled and changed)](#lessons-card) | shipped | `cards` | 1 | O12b | 3 |
 | [Cards in Lab (place: lab)](#lab-cards) | shipped | `cards` | 5 | O12d, O12e | 1 |
 | [Game server card (status and wake)](#game-server-card) | shipped | `cards` | 2 | O12f | 1 |
 | [Card and item actions (header button, one-tap items)](#card-actions) | shipped | `run-actions` | 8 | O11 | 2 |
@@ -139,7 +139,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Settings → Advanced and layout customization](#advanced-settings) | shipped | – | 2 | ST6, ST7, ST8 | 3 |
 | [Welcome screen](#onboarding) | shipped | – | 1 | **FS1** | 2 |
 | [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
-| [Demo mode](#demo-mode) | shipped | – | 11 | **FS2**, **FS3**, **FS4** | 3 |
+| [Demo mode](#demo-mode) | shipped | – | 12 | **FS2**, **FS3**, **FS4** | 3 |
 | [Servers: add, edit, test, switch](#servers) | shipped | – | 6 | **R1**, **R2**, R3, R6, **R8**, **ST1**, **ST2** | 3 |
 | [Tabs follow the server's features](#tabs-by-features) | shipped | `status` | 5 | **FS2**, T8 | 2 |
 | [Refresh, cache and offline view](#refresh-and-cache) | shipped | – | 7 | **R4**, O14, O15 | 2 |
@@ -210,14 +210,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Gaps
 
-Shipped or partial features that miss tests, a phone row or docs (and don't say why in `not_needed`):
-
-| Feature | Missing |
-|---|---|
-| [today-folding](#today-folding) | no DeviceTest row |
-| [weather-line](#weather-line) | docs only in the changelog |
-| [personality](#personality) | no DeviceTest row for the personality itself (DL10 only touches it) |
-| [lessons-card](#lessons-card) | docs only in the changelog |
+None.
 
 Not verified (the registry says so in `unsure`):
 
@@ -374,7 +367,7 @@ Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines over
 | Sources | [TodayFold.swift](../Sources/HomelabKit/TodayFold.swift), [TodayFoldViews.swift](../Sources/HomelabUI/TodayFoldViews.swift) |
 | Fixtures | [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json) |
 | Tests | `TodayFoldTests`, `Round1TodayFixTests` |
-| Phone (DeviceTest.md) | **none** |
+| Phone (DeviceTest.md) | O12g |
 | CI screenshots | `demo-today-light`, `demo-today-dark`, `demo-today-overkill-snarky` |
 | Docs | [docs/DESIGN.md#8-today-short-by-design](DESIGN.md#8-today-short-by-design), [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is), [README.md#what-it-does](../README.md#what-it-does) |
 | Settings | Settings → Today → Detail |
@@ -506,7 +499,7 @@ For a first run only (no server saved yet, so never for the owner): what the fou
 
 **Weather line under the headline** · Today · shipped · since 2026-11-06
 
-Standard and Overkill show the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts.
+Every detail level, Calm too, shows the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts.
 
 | | |
 |---|---|
@@ -514,8 +507,8 @@ Standard and Overkill show the `weather` card's subtitle (plus the temperature n
 | Sources | [HeroLines.swift](../Sources/HomelabKit/HeroLines.swift) |
 | Tests | `HeroLinesTests/weatherSentenceAddsTheTemperatureNowWhenMissing`, `DayTimelineTests/dayCardIgnoresTheWeatherCard` |
 | Phone (DeviceTest.md) | O12c |
-| Docs | [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
-| Notes | Only in the changelog; README and API.md don't describe the weather card. |
+| Docs | [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/DESIGN.md#4-the-voice](DESIGN.md#4-the-voice), [docs/GETTING-STARTED.md#the-weather-line-and-the-lessons](GETTING-STARTED.md#the-weather-line-and-the-lessons), [docs/API.md](API.md) |
+| Notes | Shown in every detail level (owner sees it in Calm, 2026-11-08); the weather card itself is not drawn on Today. |
 
 ### expiry-warning
 
@@ -541,7 +534,7 @@ A line of commentary under Today's headline, on empty screens, after actions and
 |---|---|
 | Sources | [Voice.swift](../Sources/HomelabKit/Voice.swift), [Takes.swift](../Sources/HomelabKit/Takes.swift), [VoiceLines.swift](../Sources/HomelabKit/VoiceLines.swift), [VoiceLinesText.swift](../Sources/HomelabKit/VoiceLinesText.swift), [TakeLines.swift](../Sources/HomelabKit/TakeLines.swift), [UltrakillWarningModifier.swift](../Sources/HomelabUI/UltrakillWarningModifier.swift), [SettingsView.swift#PersonalityPreview](../Sources/HomelabUI/SettingsView.swift) |
 | Tests | `VoiceTests`, `TakeTests`, `VoiceSpotTests`, `ChatLayoutTests/previewSampleFollowsThePersonality` |
-| Phone (DeviceTest.md) | DL10 |
+| Phone (DeviceTest.md) | DL10, O12h |
 | CI screenshots | `demo-today-overkill-snarky` |
 | Docs | [README.md#what-it-does](../README.md#what-it-does), [docs/DESIGN.md#4-the-voice](DESIGN.md#4-the-voice), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
 | Launch arguments | `-HomelabPersonality` |
@@ -645,8 +638,7 @@ Cancelled lessons are struck through and grey, substitutions and room changes ge
 | Sources | [Cards.swift#CardView](../Sources/HomelabUI/Cards.swift), [DayTimeline.swift](../Sources/HomelabKit/DayTimeline.swift) |
 | Tests | `DayTimelineTests/cancelledAndDateDecode` |
 | Phone (DeviceTest.md) | O12b |
-| Docs | [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased) |
-| Notes | Documented only in the changelog. |
+| Docs | [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/GETTING-STARTED.md#the-weather-line-and-the-lessons](GETTING-STARTED.md#the-weather-line-and-the-lessons), [docs/DESIGN.md#4-the-voice](DESIGN.md#4-the-voice) |
 
 ### lab-cards
 
@@ -1354,13 +1346,13 @@ Only for someone with no server saved (never the owner): Add Home Assistant or A
 
 **Demo mode** · Settings · shipped · since 2026-11-04
 
-A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene), the stress scene for screenshots, or a neutral Bridge homelab (`bridge`: Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news; no school, commute, deals or grades); chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch.
+A demo homelab and a demo Home Assistant from built-in fixtures, no network, that look like a current day (calm scene), the stress scene for screenshots, a bare server that sends only /info and /state (`minimal`, every other endpoint 404), or a neutral Bridge homelab (`bridge`: Uptime Kuma problems, Proxmox hosts with history, Pi-hole, Docker, a game server, news; no school, commute, deals or grades); chat answers, tiles flip, approvals answer. Demo servers come and go with the Demo switch.
 
 | | |
 |---|---|
 | Sources | [Demo.swift](../Sources/HomelabKit/Demo.swift) |
-| Fixtures | [state-demo.json](../Sources/HomelabKit/Fixtures/state-demo.json), [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json), [state-problem.json](../Sources/HomelabKit/Fixtures/state-problem.json), [state-bridge.json](../Sources/HomelabKit/Fixtures/state-bridge.json), [messages-bridge.json](../Sources/HomelabKit/Fixtures/messages-bridge.json), [actions-bridge.json](../Sources/HomelabKit/Fixtures/actions-bridge.json), [info-bridge.json](../Sources/HomelabKit/Fixtures/info-bridge.json) |
-| Tests | `DemoBackendTests`, `CombinationTests/bridgeSceneLoadsAndIsNeutral`, `CombinationTests/modelShowsTheBridgeSceneAndTheFirstRun`, `DemoCardsTests`, `HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow`, `HeroLinesTests/calmDemoLooksLikeACurrentDay`, `HeroLinesTests/cardAgesMoveWithTheClock`, `HeroLinesTests/problemSceneStaysForScreenshots`, `GlanceTests/demoMovesDeparturesAndCommuteToNow`, `StorageTests/demoServers`, `DealsModelTests/demoHasDeals` |
+| Fixtures | [state-demo.json](../Sources/HomelabKit/Fixtures/state-demo.json), [demo-today.json](../Sources/HomelabKit/Fixtures/demo-today.json), [state-problem.json](../Sources/HomelabKit/Fixtures/state-problem.json), [state-bridge.json](../Sources/HomelabKit/Fixtures/state-bridge.json), [messages-bridge.json](../Sources/HomelabKit/Fixtures/messages-bridge.json), [actions-bridge.json](../Sources/HomelabKit/Fixtures/actions-bridge.json), [info-bridge.json](../Sources/HomelabKit/Fixtures/info-bridge.json), [state-minimal.json](../Sources/HomelabKit/Fixtures/state-minimal.json), [info-minimal.json](../Sources/HomelabKit/Fixtures/info-minimal.json) |
+| Tests | `DemoBackendTests`, `MinimalSceneTests`, `CombinationTests/bridgeSceneLoadsAndIsNeutral`, `CombinationTests/modelShowsTheBridgeSceneAndTheFirstRun`, `DemoCardsTests`, `HeroLinesTests/calmDayIsTodayBeforeSchoolElseTomorrow`, `HeroLinesTests/calmDemoLooksLikeACurrentDay`, `HeroLinesTests/cardAgesMoveWithTheClock`, `HeroLinesTests/problemSceneStaysForScreenshots`, `GlanceTests/demoMovesDeparturesAndCommuteToNow`, `StorageTests/demoServers`, `DealsModelTests/demoHasDeals` |
 | Phone (DeviceTest.md) | **FS2**, **FS3**, **FS4** |
 | CI screenshots | `demo-today-light`, `demo-settings-light` |
 | Docs | [README.md#who-it-is-for](../README.md#who-it-is-for), [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
@@ -1514,7 +1506,7 @@ An ephemeral URLSession (no cookies, no cache), no redirects, answers stop at 8 
 | | |
 |---|---|
 | Sources | [Transport.swift](../Sources/HomelabKit/Transport.swift), [Lenient.swift](../Sources/HomelabKit/Lenient.swift), [Numbers.swift](../Sources/HomelabKit/Numbers.swift), [CompanionClient.swift](../Sources/HomelabKit/CompanionClient.swift) |
-| Fixtures | [state-empty.json](../Sources/HomelabKit/Fixtures/state-empty.json), [state-legacy.json](../Sources/HomelabKit/Fixtures/state-legacy.json), [state-unknown-fields.json](../Sources/HomelabKit/Fixtures/state-unknown-fields.json), [state-huge.json](../Sources/HomelabKit/Fixtures/state-huge.json) |
+| Fixtures | [state-empty.json](../Sources/HomelabKit/Fixtures/state-empty.json), [state-legacy.json](../Sources/HomelabKit/Fixtures/state-legacy.json), [state-unknown-fields.json](../Sources/HomelabKit/Fixtures/state-unknown-fields.json), [state-huge.json](../Sources/HomelabKit/Fixtures/state-huge.json), [actions-huge.json](../Sources/HomelabKit/Fixtures/actions-huge.json) |
 | Tests | `HardeningTests`, `FixtureDecoding`, `ExtraFixtureTests`, `DateParsing`, `ServerNumberTests`, `CompanionClientTests`, `IntegrationTests/infoAndState`, `IntegrationTests/unknownPathIsNotFound` |
 | Phone (DeviceTest.md) | n/a: Linux tests against fixtures and the fixture server cover it; nothing phone-specific |
 | Docs | [docs/API.md#tolerant-client-rules-the-app-follows](API.md#tolerant-client-rules-the-app-follows), [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does), [CONTRIBUTING.md#code-rules](../CONTRIBUTING.md#code-rules) |

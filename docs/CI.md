@@ -17,6 +17,8 @@ nothing. Never use `-large` / `-xlarge` runner labels: those are billed.
 | `ci` / `bridge-image` | `ubuntu-latest` | same | The Homelab Bridge image builds from `server/Dockerfile` (base image pinned by digest, PyYAML by hash); the server tests pass inside it; the image in token mode on loopback passes `scripts/check-live-api`. `scripts/build-bridge-image --test`. **Never pushes**: no registry login, and the script refuses `--push` in CI |
 | `ci` / `screenshots` | `ubuntu-latest` | pushes and manual runs, after `macos` | Publishes the `macos-26` screenshots to the `ci-screenshots` branch (see below) |
 
+The Linux job has no PyYAML, so the Homepage-import tests (`server/test_homepage_import.py`) skip there; they run in the `bridge-image` job, where the image has PyYAML. Inside that image there is no bash and no `.git`, so `server/test_ship_to_phone.py` skips there (it runs in the Linux job).
+
 ### Steps of the macOS job
 
 | Step | What it does |
@@ -92,7 +94,7 @@ gh run download <run-id> -n matrix-macos-26 -D matrix-shots
 
 | | |
 |---|---|
-| Scenes | `demo` (calm day), `ha-only`, `bridge` (neutral Bridge homelab, `-HomelabDemoScene bridge`), `problem`, `first-run` (the welcome and Found) |
+| Scenes | `demo` (calm day), `ha-only`, `bridge` (neutral Bridge homelab, `-HomelabDemoScene bridge`), `problem`, `minimal` (a server that sends only /info and /state, every other endpoint 404; `-HomelabDemoScene minimal`), `first-run` (the welcome and Found) |
 | Detail | every `Density` case, read from `Sources/HomelabKit/TodayLayout.swift` (so a new level is in the next run by itself) |
 | Voice | Off, Dry, Snarky, Ultrakill |
 | Design | Pairwise: each scene x detail pair is shot once and the voice follows a Latin square, so every scene x voice and detail x voice pair is covered too (20 combinations with four levels). Today and Lab for each combination |

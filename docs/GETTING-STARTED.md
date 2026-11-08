@@ -184,6 +184,10 @@ Today is short by design. Settings → Today → **Detail** (a menu like Persona
 
 What you open folds again the next time you start the app. The machines are not on Today: open Lab for them.
 
+## The weather line and the lessons
+
+If your server sends a card with the id `weather`, its subtitle shows as one grey line under the headline's facts ("Clear, 7 °C now, 4–10 °C today"), in every detail level, Calm too; the card itself is not drawn on Today. A subtitle without a temperature gets the current one added. A lessons card (a school timetable) shows a cancelled lesson struck through and grey, and a substitution or room change with a gold dot and a gold time; VoiceOver says "cancelled" or "changed".
+
 ## Show rules
 
 Every section of Today can have a rule for when it shows. Settings → Advanced → **Sections**: each row says its rule in
@@ -200,7 +204,7 @@ Done saves, Cancel keeps the old rule. The switch on the row still hides a secti
 something that has content, Today ends with "Hidden now: Deals and Cards (evenings) · Show". Tap **Show** to let those
 sections through until you close the app; the rule stays.
 
-Related: Settings → Notifications → **Quiet hours** mutes the app's own notifications in a time window (from, to).
+Related: Settings → Advanced → **Quiet hours** mutes the app's own notifications in a time window (from, to).
 It doesn't hide anything on Today.
 
 ## Customize

@@ -19,7 +19,7 @@
 #   36-37  demo Today with show rules (Deals, Cards, Last report in the evenings) at 14:00 (hidden) and 19:00 (shown)
 # Exits 0 when the core shots (01-05, demo light) worked; every other failed shot is reported, not fatal.
 #
-# --matrix (docs/CI.md "Screenshot matrix"): no fixture server, only demo scenes. Scenes demo, ha-only, bridge, problem
+# --matrix (docs/CI.md "Screenshot matrix"): no fixture server, only demo scenes. Scenes demo, ha-only, bridge, problem, minimal
 # and first-run x every detail level (Density, read from Sources/HomelabKit/TodayLayout.swift) x the voices off, dry,
 # snarky, ultrakill. Every pair of (scene, detail, voice) is covered: each scene x detail pair is shot once and the voice
 # is picked by a Latin square, so each scene x voice and each detail x voice pair appears too. Names:
@@ -235,6 +235,7 @@ scenes = [("demo", "the calm demo day", ["-HomelabDemoScene", "calm"]),
           ("ha-only", "only the demo Home Assistant", ["-HomelabDemoScene", "ha-only"]),
           ("bridge", "the neutral Bridge homelab", ["-HomelabDemoScene", "bridge"]),
           ("problem", "the demo problem scene", ["-HomelabDemoScene", "problem"]),
+          ("minimal", "a server that sends only /info and /state", ["-HomelabDemoScene", "minimal"]),
           ("first-run", "the first run", None)]
 shots, names = [], set()
 def add(si, di, tab, look=""):
@@ -263,13 +264,14 @@ for si, (scene, _, _) in enumerate(scenes):
     for di in range(D):               # every scene x detail pair once; the voice follows the Latin square
         for t in tabs: add(si, di, t)
 extra_tabs = ["actions", "chat", "settings"] + (["settings-advanced"] if advanced else [])
-for si in range(4):
+for si in range(len(scenes) - 1):   # every scene but first-run
     for di in (si, si + 1):           # two combinations per scene for the other tabs
         for t in extra_tabs: add(si, di, t)
     for t in ("today", "lab", "settings"): add(si, si + 2, t, "ax")
     for t in ("today", "lab"): add(si, si + 3, t, "light")
-add(4, 2, "welcome", "ax")
-add(4, 3, "welcome", "light"); add(4, 3, "found", "light")
+FR = len(scenes) - 1
+add(FR, 2, "welcome", "ax")
+add(FR, 3, "welcome", "light"); add(FR, 3, "found", "light")
 shots.sort(key=lambda s: {"dark": 0, "ax": 1, "light": 2}[s[2]])   # stable: fewer appearance switches
 for s in shots: print("\t".join(s))
 PY

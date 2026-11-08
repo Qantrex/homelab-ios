@@ -35,7 +35,8 @@ dir=${SHIP_DIR:-/srv/homelab-app}
 ipa=${IPA:-xtool/Homelab.ipa}
 die() { echo "ship-to-phone: $*" >&2; exit 1; }
 # Runs a command line on the host (ssh joins the words with spaces, so quote them for the remote shell).
-remote() { ssh "$host" "$@"; }
+sshopts=(-o BatchMode=yes -o ConnectTimeout=10)   # never wait for a password or a dead host
+remote() { ssh "${sshopts[@]}" "$host" "$@"; }
 q() { printf '%q' "$1"; }
 
 if [ "$build" = 1 ]; then
@@ -46,6 +47,7 @@ fi
 # A stale IPA is the usual mistake: the source changed after it was built.
 src_time=$(git log -1 --format=%ct -- Sources ':(glob)**/*Info.plist' 2>/dev/null || true)
 ipa_time=$(stat -c %Y "$ipa" 2>/dev/null || stat -f %m "$ipa")
+[ -n "$src_time" ] || echo "ship-to-phone: warning: cannot read the commit time from git here, so the IPA is not checked for being stale" >&2
 if [ -n "$src_time" ] && [ "$ipa_time" -lt "$src_time" ]; then
   die "$ipa is older than the newest commit that touched Sources/ or an Info.plist; build again (--build)"
 fi
@@ -104,7 +106,7 @@ cleanup() { remote "rm -f $(q "$dir/$part") $(q "$dir/latest.json.tmp")" >/dev/n
 trap cleanup EXIT
 
 remote "test -d $(q "$dir") && test -w $(q "$dir")" || die "$dir does not exist or is not writable on $host"
-scp -q "$ipa" "$host:$dir/$part" || die "upload failed"
+scp -q "${sshopts[@]}" "$ipa" "$host:$dir/$part" || die "upload failed"
 remote_sha=$(remote "sha256sum $(q "$dir/$part")" | cut -d' ' -f1)
 [ "$remote_sha" = "$sha" ] || die "sha256 differs after the upload (local ${sha:0:12}..., server ${remote_sha:0:12}...); latest.json is unchanged"
 remote "mv -f $(q "$dir/$part") $(q "$dir/$file")"

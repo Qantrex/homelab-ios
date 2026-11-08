@@ -134,6 +134,9 @@ class SonarrSource(unittest.TestCase):
                          ["12 min", "1 min", "2 h 10 min", "3 h", "1 d 2 h", "2 d", "", "", ""])
         self.assertIsNone(_arr.local_time("soon"))
         self.assertEqual(_arr.local_time("2026-11-08T02:00:00"), local("2026-11-08T02:00:00Z"))
+        # .NET writes 7 fraction digits; Python before 3.11 only reads 3 or 6
+        self.assertEqual(_arr.local_time("2026-11-08T02:00:00.1234567Z"), local("2026-11-08T02:00:00Z"))
+        self.assertEqual(_arr.local_time("2026-11-08T02:00:00.5Z"), local("2026-11-08T02:00:00Z"))
         self.assertEqual([_arr.day(d) for d in ("2026-11-10T00:00:00Z", "2026-11-10", "20261110", "2026-13-01", 5)],
                          ["2026-11-10", "2026-11-10", None, None, None])
 
