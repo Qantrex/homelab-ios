@@ -73,7 +73,7 @@ public enum BackgroundRefresh {
             let deals: DealList? = settings.notifyDeals ? (try? await api.deals()) : nil
             let alerts = tracker.update(with: state, deals: deals, server: snap.serverName, serverID: server.id,
                                         options: .init(problems: settings.notifyProblems, pending: settings.notifyPending,
-                                                       deals: settings.notifyDeals))
+                                                       deals: settings.notifyDeals, dealCategories: settings.dealCategories))
             try? storage.write(tracker, AlertTracker.fileName)
             // None while notifications are off or quiet hours hold (the tracker has learned them all the same).
             let now = Date()

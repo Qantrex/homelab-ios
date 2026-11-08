@@ -328,7 +328,7 @@ extension AppModel {
         let status = selectedStatus   // empty when no server is selected
         let needs = TodaySection.needingMe(state: status.snapshot?.state,
                                            home: homeEntities.filter { pinned.contains($0.entityID) },
-                                           deals: status.deals, now: now)
+                                           deals: status.deals?.chosen(settings.dealCategories), now: now)
         return ShowContext(now: now, calendar: calendar, needsMe: needs, presence: presence, shownAnyway: shownAnyway)
     }
 }

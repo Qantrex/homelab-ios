@@ -173,6 +173,8 @@ struct TileButton: View {
 /// The full list of a tile, in a sheet: the title and Done; the content is the card's own rendering (or the deals).
 struct TileSheet<Content: View>: View {
     let title: String
+    /// An optional control at the top left (the News sheet's EN / DE switch).
+    var leading: AnyView? = nil
     @ViewBuilder let content: Content
     @Environment(\.dismiss) private var dismiss
 
@@ -190,6 +192,7 @@ struct TileSheet<Content: View>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                if let leading { ToolbarItem(placement: .cancellationAction) { leading } }
             }
         }
         .tint(Palette.accent)

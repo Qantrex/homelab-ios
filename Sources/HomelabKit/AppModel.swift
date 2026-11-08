@@ -70,6 +70,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var tabs: ItemOrder?
     public var chatText: ChatTextSize?
     public var chatFold: ChatFoldMode?
+    /// Settings → Advanced → Today → News: "de" starts the News sheet in German; nil = English (omitted from the file).
+    public var newsLanguage: String?
+    /// Settings → Advanced → Deals "Show on Today and notify for": the chosen deal category ids; nil = all (omitted
+    /// from the file). Only a server that sends categories uses it.
+    public var dealCategories: [String]?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -89,6 +94,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var notifyDeals: Bool {
         get { dealNotifications ?? false }
         set { dealNotifications = newValue ? true : nil }
+    }
+
+    /// The News sheet's starting language (default English).
+    public var newsLang: NewsLanguage {
+        get { newsLanguage.flatMap { NewsLanguage(rawValue: $0.lowercased()) } ?? .en }
+        set { newsLanguage = newValue == .en ? nil : newValue.rawValue }
     }
 
     public var voice: Personality {
@@ -125,7 +136,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
         case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned, hyperdetailWarned
-        case startTiles, labBlocks, tabs, chatText, chatFold
+        case startTiles, labBlocks, tabs, chatText, chatFold, newsLanguage, dealCategories
     }
 }
 
@@ -155,6 +166,8 @@ extension AppSettings {
         tabs = c.lenient(ItemOrder.self, .tabs).flatMap { $0.isStandard ? nil : $0 }
         chatText = c.lenient(ChatTextSize.self, .chatText)
         chatFold = c.lenient(ChatFoldMode.self, .chatFold)
+        newsLanguage = c.lenient(String.self, .newsLanguage)
+        dealCategories = c.lenient([String].self, .dealCategories)
     }
 }
 

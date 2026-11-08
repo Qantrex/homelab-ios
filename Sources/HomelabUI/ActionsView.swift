@@ -106,7 +106,7 @@ struct ActionsView: View {
                                       }, scan: { scanning = true },
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil,
                                       deals: canDeals ? { showingDeals = true } : nil,
-                                      dealsToAct: model.selectedStatus.deals?.freshAct().count ?? 0)
+                                      dealsToAct: model.selectedStatus.deals?.freshAct(categories: model.settings.dealCategories).count ?? 0)
                             if hyper != nil {
                                 ForEach(startTiles) { spec in
                                     VStack(alignment: .leading, spacing: 2) {
@@ -118,7 +118,7 @@ struct ActionsView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(tile.label).font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.secondary)
                                         HyperNote(lines: Hyper.startTile(tile, waiting: model.outboxCount,
-                                                                         toAct: model.selectedStatus.deals?.freshAct().count ?? 0),
+                                                                         toAct: model.selectedStatus.deals?.freshAct(categories: model.settings.dealCategories).count ?? 0),
                                                   fact: Hyper.fact(tile: tile))
                                     }
                                 }

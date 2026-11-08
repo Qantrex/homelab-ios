@@ -104,7 +104,8 @@ without `id` or `title`):
 
 ```json
 {"updated": "2026-11-07T09:50:51Z",
- "deals": [{"id": 1310779339, "watch": "any-gpu", "kind": "gpu", "title": "RAM kit 32 GB", "price": 100.0, "value": 200.0,
+ "categories": [{"id": "ram", "name": "Memory"}, {"id": "gpu", "name": "Graphics cards"}],
+ "deals": [{"id": 1310779339, "watch": "any-gpu", "kind": "gpu", "category": "gpu", "title": "RAM kit 32 GB", "price": 100.0, "value": 200.0,
             "discount": 0.5, "conf": "high", "specs": "ddr4 · dimm · 2x16 · 3200 MHz", "loc": "Krems an der Donau",
             "state": "Niederösterreich", "near": true, "private": true, "ships": true, "cond": "used",
             "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/...", "flags": ["urgent sale (Notverkauf)"],
@@ -122,6 +123,8 @@ without `id` or `title`):
 | `near`, `private`, `ships`, `loc`, `state`, `specs` | The meta line and the detail |
 | `url`, `comps[].url` | Only http(s) links; "Open the ad" and "Copy link"; comparables as iris links |
 | `seen` | How old; `act` deals seen in the last 24 h count as fresh, and in the last 6 h they may notify |
+| `categories` | Optional. What the owner is looking for, one per wanted item or search the deals job watches: `[{"id", "name"}]` (ids lower case, not `other`). Settings → Advanced → Deals then offers a toggle per category, "Show on Today and notify for" (stored in the app as `dealCategories`, nothing stored = all) |
+| `category` | Optional, per deal: one of the `categories` ids, or `other`. The Deals tile, Today's count and the new-deal notification use only the chosen categories; the Deals screen lists them first and the rest after, under "Other deals". A deal without it counts as `other`. A server without `categories`: everything shows, as before |
 
 A server without deals answers **404**: the app then shows nothing and says nothing. A server that does not list
 `deals` in `features` is still asked once every 10 minutes (a server that lists it: at most every 2 minutes, and
@@ -143,8 +146,19 @@ can, summarises them. The owner chooses country, sources and amount in the app; 
  "items": [{"title": "One English line of at most 15 words, or the original headline",
             "subtitle": "ORF · 2 h",
             "url": "https://example.org/article",
+            "title_de": "Eine deutsche Zeile, oder die Originalüberschrift",
+            "summary": "Two or three English sentences, at most 60 words.",
+            "summary_de": "Zwei oder drei deutsche Sätze.",
+            "published": "2026-11-08T19:30:00+01:00",
             "tags": ["source:orf", "country:at", "topic:general"]}]}
 ```
+
+`subtitle_de` (card) and `title_de`, `summary`, `summary_de`, `published` (items) are optional. `published` is ISO 8601
+with a zone; the server sends the items newest first and the app sorts by `published` too (items without one keep the
+server's order, after the dated ones). The sheet shows `summary` under each headline and has an EN / DE switch at the
+top left (the start language is Settings → Advanced → Today → News, stored in the app as `newsLanguage`, omitted for
+English); a missing German field falls back to English and the other way round. German sources may repeat the original
+headline as `title_de`. The Homelab Bridge rss source sends `published` and no summaries.
 
 Up to 8 items, the most relevant first (the app keeps the order). Send no card when news is off or every feed failed,
 never a stale one. Today shows it as the **News** tile (newspaper icon, the item count, one line: the top item's title,

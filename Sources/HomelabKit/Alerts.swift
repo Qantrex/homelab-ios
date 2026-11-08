@@ -66,8 +66,10 @@ public struct AlertTracker: Codable, Sendable, Equatable {
         public var problems: Bool
         public var pending: Bool
         public var deals: Bool
-        public init(problems: Bool = true, pending: Bool = true, deals: Bool = false) {
-            self.problems = problems; self.pending = pending; self.deals = deals
+        /// The deal categories the owner chose (`AppSettings.dealCategories`); nil = all.
+        public var dealCategories: [String]?
+        public init(problems: Bool = true, pending: Bool = true, deals: Bool = false, dealCategories: [String]? = nil) {
+            self.problems = problems; self.pending = pending; self.deals = deals; self.dealCategories = dealCategories
         }
     }
 
@@ -111,7 +113,7 @@ public struct AlertTracker: Codable, Sendable, Equatable {
             }
         }
         if options.deals, dealsKnown, let deals {
-            for d in DealList.notifiable(deals.ordered, now: now, maxAge: Self.maxDealAge) where !seenDeals.contains(String(d.id)) {
+            for d in DealList.notifiable(deals.chosen(options.dealCategories).ordered, now: now, maxAge: Self.maxDealAge) where !seenDeals.contains(String(d.id)) {
                 alerts.append(Alert(id: "deal-\(d.id)", kind: .deal, title: Self.dealTitle(d, server: server),
                                     body: Self.dealBody(d), moment: .notice(.deal)))
             }

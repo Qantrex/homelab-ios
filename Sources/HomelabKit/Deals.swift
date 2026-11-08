@@ -73,12 +73,15 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
     public var verdict: Verdict?
     public var note: String?
     public var comps: [Comp]
+    /// Which wanted item found it: one of the list's category ids, or "other". Nil = the server sends none.
+    public var category: String?
 
     public init(id: Int64, watch: String? = nil, kind: String? = nil, title: String, price: Double? = nil,
                 value: Double? = nil, discount: Double? = nil, confidence: Confidence? = nil, specs: String? = nil,
                 location: String? = nil, state: String? = nil, near: Bool = false, isPrivate: Bool? = nil,
                 ships: Bool? = nil, condition: String? = nil, url: URL? = nil, flags: [String] = [],
-                seen: Date? = nil, verdict: Verdict? = nil, note: String? = nil, comps: [Comp] = []) {
+                seen: Date? = nil, verdict: Verdict? = nil, note: String? = nil, comps: [Comp] = [], category: String? = nil) {
+        self.category = category
         self.id = id; self.watch = watch; self.kind = kind; self.title = title; self.price = price; self.value = value
         self.discount = discount; self.confidence = confidence; self.specs = specs; self.location = location
         self.state = state; self.near = near; self.isPrivate = isPrivate; self.ships = ships
@@ -87,7 +90,7 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, watch, kind, title, price, value, discount, specs, state, near, ships, url, flags, seen, verdict, note, comps
+        case id, watch, kind, title, price, value, discount, specs, state, near, ships, url, flags, seen, verdict, note, comps, category
         case confidence = "conf"
         case location = "loc"
         case isPrivate = "private"
@@ -113,7 +116,8 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
             url: c.text(.url).flatMap(Self.link), flags: Array(flags.prefix(Self.maxFlags)),
             seen: c.date(.seen), verdict: c.text(.verdict).flatMap { Verdict(rawValue: $0.lowercased()) },
             note: Self.cut(c.text(.note), 400),
-            comps: Array(c.array(Comp.self, .comps).prefix(Self.maxComps)))
+            comps: Array(c.array(Comp.self, .comps).prefix(Self.maxComps)),
+            category: Self.cut(c.text(.category)?.lowercased(), 64))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -139,6 +143,7 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
         try c.encodeIfPresent(verdict, forKey: .verdict)
         try c.encodeIfPresent(note, forKey: .note)
         try c.encode(comps.map { CompOut(title: $0.title, price: $0.price, url: $0.url?.absoluteString) }, forKey: .comps)
+        try c.encodeIfPresent(category, forKey: .category)
     }
 
     private struct CompOut: Encodable { var title: String?; var price: Double?; var url: String? }
@@ -228,16 +233,36 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
     }
 }
 
+/// What the owner is looking for: one per wanted item the server's deals job watches (`categories` of `GET /deals`).
+public struct DealCategory: Codable, Sendable, Equatable, Hashable, Identifiable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) { self.id = id; self.name = name }
+
+    enum CodingKeys: String, CodingKey { case id, name }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        guard let id = Deal.cut(c.text(.id)?.lowercased(), 64) else {
+            throw DecodingError.keyNotFound(CodingKeys.id, .init(codingPath: c.codingPath, debugDescription: "no id"))
+        }
+        self.init(id: id, name: Deal.cut(c.text(.name), 80) ?? id)
+    }
+}
+
 /// `GET /deals`: when the server built the list and the deals (newest first as sent).
 public struct DealList: Codable, Sendable, Equatable {
     public var updated: Date?
     public var deals: [Deal]
+    /// The wanted items, in the server's order; empty = the server sends none (everything counts, as before).
+    public var categories: [DealCategory]
 
-    public init(updated: Date? = nil, deals: [Deal] = []) {
-        self.updated = updated; self.deals = deals
+    public init(updated: Date? = nil, deals: [Deal] = [], categories: [DealCategory] = []) {
+        self.updated = updated; self.deals = deals; self.categories = categories
     }
 
-    enum CodingKeys: String, CodingKey { case updated, deals }
+    enum CodingKeys: String, CodingKey { case updated, deals, categories }
 
     public init(from decoder: any Decoder) throws {
         // {"updated", "deals": [...]} and a bare array.
@@ -246,13 +271,20 @@ public struct DealList: Codable, Sendable, Equatable {
             return
         }
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(updated: c.date(.updated), deals: Self.clean(c.array(Deal.self, .deals)))
+        self.init(updated: c.date(.updated), deals: Self.clean(c.array(Deal.self, .deals)),
+                  categories: Self.cleanCategories(c.array(DealCategory.self, .categories)))
     }
 
     public func encode(to encoder: any Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(updated.map(ServerDate.string), forKey: .updated)
         try c.encode(deals, forKey: .deals)
+        if !categories.isEmpty { try c.encode(categories, forKey: .categories) }
+    }
+
+    static func cleanCategories(_ list: [DealCategory]) -> [DealCategory] {
+        var ids = Set<String>()
+        return Array(list.filter { $0.id != "other" && ids.insert($0.id).inserted }.prefix(32))
     }
 
     /// Duplicate ids keep the first; at most `Deal.maxDeals`.
@@ -312,13 +344,41 @@ public struct DealList: Codable, Sendable, Equatable {
         }
     }
 
+    // MARK: Chosen categories (Settings → Advanced → Deals)
+
+    /// Whether the owner's choice means anything for this list: only when the server sends categories and the owner
+    /// picked some (`nil` = all).
+    func filters(_ chosen: [String]?) -> Bool { chosen != nil && !categories.isEmpty }
+
+    /// Whether `deal` is in a chosen category. Everything is, for a server without categories or with no choice made;
+    /// a deal with no (or the "other") category is not, once a choice exists.
+    public func isChosen(_ deal: Deal, _ chosen: [String]?) -> Bool {
+        guard filters(chosen), let chosen else { return true }
+        return chosen.contains((deal.category ?? "other").lowercased())
+    }
+
+    /// The same list with only the chosen categories' deals (what Today's tile and count, and deal notifications use).
+    public func chosen(_ chosen: [String]?) -> DealList {
+        guard filters(chosen) else { return self }
+        var copy = self
+        copy.deals = deals.filter { isChosen($0, chosen) }
+        return copy
+    }
+
+    /// The deals outside the chosen categories, in order ("Other deals" on the Deals screen); empty without a choice.
+    public func others(_ chosen: [String]?) -> [Deal] {
+        guard filters(chosen) else { return [] }
+        return ordered.filter { !isChosen($0, chosen) }
+    }
+
     /// How long a deal still counts as new for Today's card and for a notification.
     public static let freshFor: TimeInterval = 24 * 3600
 
     /// "Act now" deals seen in the last day (when the list says nothing about a deal's time, the list's own time
     /// stands in), best order. Today's card shows these, and only these.
-    public func freshAct(now: Date = Date()) -> [Deal] {
+    public func freshAct(now: Date = Date(), categories: [String]? = nil) -> [Deal] {
         ordered.filter { d in
+            guard isChosen(d, categories) else { return false }
             guard d.verdict == .act, let at = d.seen ?? updated else { return false }
             return DealList.isRecent(at, now: now, within: Self.freshFor)
         }
@@ -344,6 +404,18 @@ public enum DealsFetch {
         // A clock that went back must not stop the asking for ever.
         let age = now.timeIntervalSince(fetched)
         return age >= wait || age < 0
+    }
+}
+
+/// The category choice in Settings: nil is "all"; turning every one back on returns to nil, so the file stays as it was.
+public enum DealCategoryChoice {
+    public static func isOn(_ id: String, chosen: [String]?) -> Bool { chosen?.contains(id) ?? true }
+
+    public static func setting(_ id: String, on: Bool, chosen: [String]?, all: [String]) -> [String]? {
+        var set = Set(chosen ?? all)
+        if on { set.insert(id) } else { set.remove(id) }
+        if Set(all).isSubset(of: set) { return nil }
+        return all.filter(set.contains)
     }
 }
 

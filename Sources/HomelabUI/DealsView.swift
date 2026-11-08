@@ -53,24 +53,19 @@ struct DealsView: View {
 
     @ViewBuilder private var content: some View {
         if let list {
+            let categories = model.settings.dealCategories
+            let mine = list.chosen(categories)
+            let others = list.others(categories)
             if list.deals.isEmpty {
                 Placeholder(title: "No deals right now", symbol: "tag", message: LocalizedStringKey(emptyText))
                     .padding(.top, 40)
             } else {
-                Text(summary(list)).font(Typo.secondary).foregroundStyle(Palette.secondary)
-                ForEach(list.groups, id: \.group) { group in
-                    VStack(alignment: .leading, spacing: Space.titleToPanel) {
-                        SectionTitle(text: LocalizedStringKey(group.group.title), trailing: "\(group.deals.count)")
-                        VStack(spacing: 0) {
-                            ForEach(Array(group.deals.enumerated()), id: \.element.id) { i, deal in
-                                if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
-                                NavigationLink(value: deal) { DealRow(deal: deal) }
-                                    .buttonStyle(.press)
-                            }
-                        }
-                        .rowsPanel()
-                    }
+                Text(summary(mine)).font(Typo.secondary).foregroundStyle(Palette.secondary)
+                ForEach(mine.groups, id: \.group) { group in
+                    dealSection(LocalizedStringKey(group.group.title), group.deals)
                 }
+                // The deals outside the categories chosen in Settings → Advanced → Deals come last.
+                if !others.isEmpty { dealSection("Other deals", others) }
             }
         } else if failure == nil {
             // The server stopped having deals while the screen was open (or the first answer is on its way).
@@ -80,6 +75,20 @@ struct DealsView: View {
                 Placeholder(title: "No deals here", symbol: "tag", message: "This server doesn't offer deals.")
                     .padding(.top, 40)
             }
+        }
+    }
+
+    private func dealSection(_ title: LocalizedStringKey, _ deals: [Deal]) -> some View {
+        VStack(alignment: .leading, spacing: Space.titleToPanel) {
+            SectionTitle(text: title, trailing: "\(deals.count)")
+            VStack(spacing: 0) {
+                ForEach(Array(deals.enumerated()), id: \.element.id) { i, deal in
+                    if i > 0 { Divider().overlay(Palette.line).padding(.leading, 16) }
+                    NavigationLink(value: deal) { DealRow(deal: deal) }
+                        .buttonStyle(.press)
+                }
+            }
+            .rowsPanel()
         }
     }
 
@@ -416,6 +425,33 @@ struct CompRow: View {
                 .accessibilityHint(Text("Opens the ad on \(url.host ?? "the web")."))
         } else {
             row.accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// Settings → Advanced → Deals: "Show on Today and notify for", a toggle per category the server sends. Nothing
+/// stored means all of them. Only for a server that sends categories.
+struct DealCategoriesSection: View {
+    @Bindable var model: AppModel
+
+    private var categories: [DealCategory] { model.selectedStatus.deals?.categories ?? [] }
+
+    var body: some View {
+        if !categories.isEmpty {
+            Section {
+                ForEach(categories) { category in
+                    Toggle(category.name, isOn: Binding(
+                        get: { DealCategoryChoice.isOn(category.id, chosen: model.settings.dealCategories) },
+                        set: { on in
+                            model.settings.dealCategories = DealCategoryChoice.setting(
+                                category.id, on: on, chosen: model.settings.dealCategories, all: categories.map(\.id))
+                        }))
+                }
+            } header: {
+                Text("Deals")
+            } footer: {
+                SettingsFooter("Show on Today and notify for these. The Deals screen shows the others last, as Other deals.")
+            }
         }
     }
 }

@@ -35,16 +35,48 @@ struct Article: Identifiable {
     var id: String { url.absoluteString }
 }
 
-/// The News tile's sheet: the digest, then one row per headline (title, "Source · age"); a row opens the article.
+/// The News tile's sheet with the EN / DE switch at the top left. The switch is for this session; the start language
+/// is Settings → Advanced → Today → News.
+struct NewsSheet: View {
+    let card: Card
+    @State private var language: NewsLanguage
+
+    init(card: Card, defaultLanguage: NewsLanguage) {
+        self.card = card
+        _language = State(initialValue: defaultLanguage)
+    }
+
+    var body: some View {
+        TileSheet(title: "News", leading: AnyView(NewsLanguageSwitch(language: $language))) {
+            NewsSheetContent(card: card, language: language)
+        }
+    }
+}
+
+/// A two-segment EN / DE control small enough for a toolbar.
+struct NewsLanguageSwitch: View {
+    @Binding var language: NewsLanguage
+
+    var body: some View {
+        Picker("Language", selection: $language) {
+            ForEach(NewsLanguage.allCases) { Text(verbatim: $0.label).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .frame(width: 96)
+        .accessibilityLabel(Text("News language"))
+    }
+}
+
+/// The News tile's sheet: the digest, then one row per headline (title, summary, "Source · age"), newest first; a row
+/// opens the article.
 struct NewsSheetContent: View {
     let card: Card
+    var language: NewsLanguage = .en
     @State private var article: Article?
     @Environment(\.hyper) private var hyper
 
     var body: some View {
-        let list = NewsList(card: card)
-        // The items the rows were made from (`NewsList` skips untitled ones), for Hyperdetail's notes.
-        let items = card.items.filter { !($0.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty }
+        let list = NewsList(card: card, language: language)
         VStack(alignment: .leading, spacing: 12) {
             if let digest = list.digest {
                 Text(verbatim: digest).font(Typo.body).foregroundStyle(Palette.text)
@@ -60,9 +92,9 @@ struct NewsSheetContent: View {
                 } else {
                     rowLabel(row)
                 }
-                if let hyper, row.id < items.count {
-                    HyperNote(lines: Hyper.item(items[row.id], now: hyper.now, calendar: hyper.calendar),
-                              fact: Hyper.fact(item: items[row.id], in: card, now: hyper.now, calendar: hyper.calendar))
+                if let hyper {
+                    HyperNote(lines: Hyper.item(row.item, now: hyper.now, calendar: hyper.calendar),
+                              fact: Hyper.fact(item: row.item, in: card, now: hyper.now, calendar: hyper.calendar))
                 }
             }
         }
@@ -74,6 +106,11 @@ struct NewsSheetContent: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: row.title).font(Typo.headline).foregroundStyle(Palette.text)
                 .multilineTextAlignment(.leading)
+            if let summary = row.summary {
+                Text(verbatim: summary).font(Typo.body).foregroundStyle(Palette.text)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if !row.meta.isEmpty {
                 Text(verbatim: row.meta).font(Typo.secondary).foregroundStyle(Palette.secondary)
             }
@@ -89,6 +126,7 @@ struct NewsSheetContent: View {
 /// (`TodayFold.tileKind(card) == .news`).
 struct NewsHyperBlock: View {
     let card: Card
+    var language: NewsLanguage = .en
     @Environment(\.hyper) private var hyper
 
     var body: some View {
@@ -97,7 +135,7 @@ struct NewsHyperBlock: View {
             if let hyper {
                 HyperNote(lines: Hyper.card(card, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(card: card))
             }
-            NewsSheetContent(card: card).panel()
+            NewsSheetContent(card: card, language: language).panel()
         }
     }
 }
@@ -212,6 +250,14 @@ struct NewsSettingsView: View {
                             ? "Summaries give one sentence for the day and one line per story, in English."
                             : "Your server can't summarise, so the original headlines show.")
                     }
+                }
+
+                Section {
+                    Picker("Language", selection: Binding(get: { model.settings.newsLang }, set: { model.settings.newsLang = $0 })) {
+                        ForEach(NewsLanguage.allCases) { Text(verbatim: $0.label).tag($0) }
+                    }
+                } footer: {
+                    SettingsFooter("The language the News sheet starts in. The switch at its top left changes it for that visit.")
                 }
 
                 if let error {
