@@ -8,6 +8,14 @@
         "day",
         "home"
       ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
       "overkill" : [
         "day",
         "waiting",
@@ -633,6 +641,14 @@
         "day",
         "home"
       ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
       "overkill" : [
         "day",
         "waiting",
@@ -793,6 +809,14 @@
         "day",
         "home"
       ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
       "overkill" : [
         "day",
         "waiting",
@@ -877,6 +901,14 @@
       "calm" : [
         "day",
         "home"
+      ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
       ],
       "overkill" : [
         "day",
@@ -3123,6 +3155,14 @@
         "day",
         "home"
       ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
       "overkill" : [
         "day",
         "waiting",
@@ -3399,6 +3439,14 @@
         "day",
         "home"
       ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
       "overkill" : [
         "day",
         "waiting",
@@ -3530,6 +3578,14 @@
       "calm" : [
         "day",
         "home"
+      ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
       ],
       "overkill" : [
         "day",
@@ -3673,6 +3729,14 @@
       "calm" : [
         "day",
         "home"
+      ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
       ],
       "overkill" : [
         "day",
@@ -3837,6 +3901,14 @@
       "calm" : [
         "day",
         "home"
+      ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
       ],
       "overkill" : [
         "day",
@@ -4404,6 +4476,14 @@
         "day",
         "home"
       ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
+      ],
       "overkill" : [
         "day",
         "waiting",
@@ -4630,6 +4710,14 @@
       "calm" : [
         "day",
         "home"
+      ],
+      "hyperdetail" : [
+        "day",
+        "waiting",
+        "deals",
+        "home",
+        "cards",
+        "report"
       ],
       "overkill" : [
         "day",
