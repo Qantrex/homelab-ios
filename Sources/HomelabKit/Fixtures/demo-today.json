@@ -179,6 +179,66 @@
      "value": "2 h"
     }
    ]
+  },
+  {
+   "id": "news",
+   "title": "News",
+   "style": "list",
+   "icon": "newspaper",
+   "subtitle": "Parliament debates the budget while a new open-source kernel release lands.",
+   "updated": "21:30",
+   "items": [
+    {
+     "title": "Parliament starts the budget debate",
+     "subtitle": "ORF · 2 h",
+     "url": "https://orf.at/stories/demo-budget",
+     "tags": [
+      "source:orf",
+      "country:at",
+      "topic:general"
+     ]
+    },
+    {
+     "title": "Linux 7.3 brings faster storage drivers",
+     "subtitle": "heise · 3 h",
+     "url": "https://www.heise.de/news/demo-linux",
+     "tags": [
+      "source:heise",
+      "country:de",
+      "topic:tech"
+     ]
+    },
+    {
+     "title": "Rail strike ends after overnight talks",
+     "subtitle": "ORF · 5 h",
+     "url": "https://orf.at/stories/demo-rail",
+     "tags": [
+      "source:orf",
+      "country:at",
+      "topic:general"
+     ]
+    },
+    {
+     "title": "New open laptop ships with replaceable parts",
+     "subtitle": "heise · 7 h",
+     "url": "https://www.heise.de/news/demo-laptop",
+     "tags": [
+      "source:heise",
+      "country:de",
+      "topic:tech"
+     ]
+    },
+    {
+     "title": "Snow expected in the Alps from Thursday",
+     "subtitle": "ORF · 9 h",
+     "url": "https://orf.at/stories/demo-snow",
+     "tags": [
+      "source:orf",
+      "country:at",
+      "topic:general"
+     ]
+    }
+   ]
   }
  ]
 }

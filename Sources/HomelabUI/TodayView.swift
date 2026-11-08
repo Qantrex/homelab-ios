@@ -509,7 +509,11 @@ struct TodayView: View {
             if kind == .deals {
                 dealRows(freshDeals)
             } else if let card = state?.cards.first(where: { TodayFold.tileKind($0) == kind }) {
-                CardView(card: card, model: model, bare: true)
+                if kind == .news {
+                    NewsSheetContent(card: card)
+                } else {
+                    CardView(card: card, model: model, bare: true)
+                }
             }
         }
     }

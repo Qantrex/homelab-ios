@@ -23,6 +23,10 @@ public protocol CompanionAPI: Sendable {
     func search(q: String) async throws -> SearchResult
     /// Used-market deals (`GET /deals`, feature `deals`). A server without them answers 404 (`APIError.notFound`).
     func deals() async throws -> DealList
+    /// News sources, countries and the stored prefs (`GET /news/sources`). 404 = this server has no news.
+    func newsSources() async throws -> NewsCatalog
+    /// Stores the prefs (`PUT /news/prefs`) and returns them as the server stored them.
+    func setNewsPrefs(_ prefs: NewsPrefs) async throws -> NewsPrefs
     /// A picture of this server (`Card.Item.image`): at most 1 MB, a JPEG, PNG or WebP. Nothing from another host.
     func image(path: String) async throws -> Data
 }
@@ -118,6 +122,16 @@ public struct CompanionClient: CompanionAPI {
     public func deals() async throws -> DealList {
         // The server reads its watcher's database; 10 s is plenty. 404 is the normal "not here" answer.
         try await get("deals", timeout: 10)
+    }
+
+    public func newsSources() async throws -> NewsCatalog {
+        try await get("news/sources", timeout: 10)
+    }
+
+    public func setNewsPrefs(_ prefs: NewsPrefs) async throws -> NewsPrefs {
+        let reply: NewsPrefsReply = try await perform(
+            request("news/prefs", method: "PUT", body: prefs.body(), timeout: 15), errors: APIError.fromAction)
+        return reply.prefs ?? prefs
     }
 
     public func image(path: String) async throws -> Data {

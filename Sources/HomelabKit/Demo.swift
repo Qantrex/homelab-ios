@@ -39,6 +39,8 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     private let delay: Duration
     /// Titles requested in this session ("movie:9102"), so a new search shows them as requested.
     private var requested: Set<String> = []
+    /// The demo's news choices (Settings → Today → News); they change the demo's news card like a real server would.
+    private var newsPrefs: NewsPrefs?
 
     public init(scene: Scene = .calm, delay: Duration = .milliseconds(250), now: Date = Date()) {
         var state = Fixtures.decode(HomelabState.self, scene.stateFixture) ?? HomelabState()
@@ -247,7 +249,19 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
     public func state() async throws -> HomelabState {
         try await Task.sleep(for: delay)
         current.time = Date()
-        return current
+        guard let prefs = newsPrefs else { return current }
+        var shown = current
+        shown.cards = shown.cards.compactMap { card in
+            guard card.id == "news" else { return card }
+            guard prefs.enabled, !prefs.sources.isEmpty else { return nil }
+            var c = card
+            c.items = Array(c.items.filter { item in
+                item.url == nil || prefs.sources.contains { s in item.url?.host?.contains(s) ?? false }
+            }.prefix(prefs.count))
+            if !prefs.summary { c.subtitle = nil }
+            return c.items.isEmpty ? nil : c
+        }
+        return shown
     }
 
     public func messages(after: Int64) async throws -> MessagePage {
@@ -370,6 +384,23 @@ public actor DemoBackend: CompanionAPI, HomeAssistantAPI {
             return card
         }
         return SearchResult(query: clean, cards: all.shown)
+    }
+
+    public func newsSources() async throws -> NewsCatalog {
+        try await Task.sleep(for: delay)
+        guard var catalog = Fixtures.decode(NewsCatalog.self, "news-sources.json") else { throw APIError.notFound }
+        if let prefs = newsPrefs { catalog.prefs = prefs }
+        return catalog
+    }
+
+    public func setNewsPrefs(_ prefs: NewsPrefs) async throws -> NewsPrefs {
+        try await Task.sleep(for: delay)
+        guard let catalog = Fixtures.decode(NewsCatalog.self, "news-sources.json") else { throw APIError.notFound }
+        let known = Set(catalog.sources.map(\.id))
+        var stored = prefs.validated(canSummarize: catalog.canSummarize)
+        stored.sources = stored.sources.filter(known.contains)
+        newsPrefs = stored
+        return stored
     }
 
     public func image(path: String) async throws -> Data {

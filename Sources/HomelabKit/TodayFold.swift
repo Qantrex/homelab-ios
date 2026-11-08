@@ -1,7 +1,7 @@
 import Foundation
 
 /// How much of a card Today shows (docs/DESIGN.md "Today folds"): long lists fold behind one "Show N more" row, but a
-/// row that needs me is never folded; deals, downloads and grades become small tiles that open the full list in a
+/// row that needs me is never folded; deals, downloads, grades and news become small tiles that open the full list in a
 /// sheet; departures are not a card on Today but sit in the day section while a "Leave by" is near; a card the hero
 /// already says (the weather) is not drawn twice. Pure, so it is tested on Linux. All
 /// numbers are for the default text size; larger sizes simply scroll further.
@@ -137,11 +137,11 @@ public enum TodayFold {
         return name.isEmpty ? parts.joined(separator: ", ") : name + ": " + parts.joined(separator: ", ")
     }
 
-    // MARK: Tiles (deals, downloads, grades)
+    // MARK: Tiles (deals, downloads, grades, news)
 
     /// What the tiles on Today stand for, in this order. A tap opens the full list in a sheet.
     public enum TileKind: String, CaseIterable, Sendable, Identifiable {
-        case deals, downloads, grades
+        case deals, downloads, grades, news
 
         public var id: String { rawValue }
 
@@ -150,6 +150,7 @@ public enum TodayFold {
             case .deals: "Deals"
             case .downloads: "Downloads"
             case .grades: "Grades"
+            case .news: "News"
             }
         }
 
@@ -158,19 +159,21 @@ public enum TodayFold {
             case .deals: "tag"
             case .downloads: "arrow.down.circle"
             case .grades: "graduationcap"
+            case .news: "newspaper"
             }
         }
 
         var order: Int { Self.allCases.firstIndex(of: self) ?? 9 }
     }
 
-    /// The tile kind of a Today card: the downloads card ("downloads", "recent"), "grades". Deals come from the deals
+    /// The tile kind of a Today card: the downloads card ("downloads", "recent"), "grades", "news". Deals come from the deals
     /// list, not a card.
     public static func tileKind(_ card: Card) -> TileKind? {
         guard card.place == .today, card.style == .list else { return nil }
         switch card.id {
         case "downloads", "recent": return .downloads
         case "grades": return .grades
+        case "news": return .news
         default: return nil
         }
     }
@@ -245,7 +248,12 @@ public enum TodayFold {
         if !deals.isEmpty { tiles.append(Tile(kind: .deals, count: deals.count, line: line(deals: deals, density: density), urgent: false)) }
         for card in cards.sorted(by: { (tileKind($0)?.order ?? 9) < (tileKind($1)?.order ?? 9) }) {
             guard let kind = tileKind(card), !card.items.isEmpty, !tiles.contains(where: { $0.kind == kind }) else { continue }
-            let text = kind == .downloads ? line(downloads: card, density: density) : line(grades: card, density: density)
+            let text: String
+            switch kind {
+            case .downloads: text = line(downloads: card, density: density)
+            case .news: text = line(news: card, density: density)
+            default: text = line(grades: card, density: density)
+            }
             tiles.append(Tile(kind: kind, count: card.items.count, line: text,
                               urgent: card.items.contains { LabRows.warns($0, in: card) }))
         }
@@ -296,6 +304,14 @@ public enum TodayFold {
         let named = min(density == .overkill ? 2 : 1, titles.count)
         let more = card.items.count - named
         return titles.prefix(named).joined(separator: ", ") + (more > 0 ? " +\(more)" : "")
+    }
+
+    /// Standard: the top headline; Overkill: the digest when the server wrote one.
+    static func line(news card: Card, density: Density) -> String {
+        let top = card.items.compactMap { $0.title?.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty } ?? ""
+        let digest = card.subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if density == .overkill, !digest.isEmpty { return short(digest, 120) }
+        return short(top, 60)
     }
 
     /// "ITP 95 %" (the latest); Overkill names two: "ITP 95 %, SEW 88 %".

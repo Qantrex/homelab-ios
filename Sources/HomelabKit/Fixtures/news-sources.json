@@ -1,0 +1,72 @@
+{
+ "countries": [
+  {
+   "id": "at",
+   "name": "Austria"
+  },
+  {
+   "id": "de",
+   "name": "Germany"
+  },
+  {
+   "id": "ch",
+   "name": "Switzerland"
+  }
+ ],
+ "sources": [
+  {
+   "id": "orf",
+   "name": "ORF",
+   "country": "at",
+   "topic": "general"
+  },
+  {
+   "id": "derstandard",
+   "name": "Der Standard",
+   "country": "at",
+   "topic": "general"
+  },
+  {
+   "id": "tagesschau",
+   "name": "Tagesschau",
+   "country": "de",
+   "topic": "general"
+  },
+  {
+   "id": "srf",
+   "name": "SRF",
+   "country": "ch",
+   "topic": "general"
+  },
+  {
+   "id": "heise",
+   "name": "heise",
+   "country": "de",
+   "topic": "tech"
+  },
+  {
+   "id": "arstechnica",
+   "name": "Ars Technica",
+   "country": "",
+   "topic": "tech"
+  },
+  {
+   "id": "bbc",
+   "name": "BBC World",
+   "country": "",
+   "topic": "international"
+  }
+ ],
+ "prefs": {
+  "enabled": true,
+  "country": "at",
+  "sources": [
+   "orf",
+   "heise"
+  ],
+  "summary": true,
+  "count": 5,
+  "window_h": 24
+ },
+ "can_summarize": true
+}
