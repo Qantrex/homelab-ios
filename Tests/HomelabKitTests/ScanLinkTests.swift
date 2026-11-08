@@ -43,7 +43,8 @@ import Testing
         try m.outbox.add(.url(URL(string: "https://example.org")!, title: nil), id: UUID().uuidString.lowercased(), server: id)
         m.outboxChanged()
         #expect(m.outboxCount == 1)
-        await m.drainOutbox()                                          // the fake server has no /share: 404 keeps it
-        #expect(m.outboxCount == 1)
+        await m.drainOutbox()                                          // the fake server has no /share: a 404 is for good
+        #expect(m.outboxCount == 0)
+        #expect(m.outboxDropped.count == 1)
     }
 }

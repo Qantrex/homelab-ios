@@ -20,8 +20,8 @@ import Testing
     @Test func fourLevelsInOrderWithTheirWords() {
         #expect(Density.allCases == [.calm, .standard, .overkill, .hyperdetail])
         #expect(Density.hyperdetail.title == "Hyperdetail")
-        #expect(Density.hyperdetail.summary == "Everything, unfolded, with commentary. Not recommended.")
-        #expect(Density.explanation.hasSuffix("Hyperdetail: Everything, unfolded, with commentary. Not recommended."))
+        #expect(Density.hyperdetail.summary == "Everything, unfolded; commentary when a personality is on. Not recommended.")
+        #expect(Density.explanation.hasSuffix("Hyperdetail: Everything, unfolded; commentary when a personality is on. Not recommended."))
         // Overkill's words are as they were.
         #expect(Density.overkill.summary == "The same, with more detail in every line.")
         #expect(Density.hyperdetail.isHyper && !Density.overkill.isHyper && Density.overkill.atLeastOverkill)

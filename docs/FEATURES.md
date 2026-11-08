@@ -32,7 +32,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | X2 | 3 |
 | [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | shipped | – | 4 | DL10 | 3 |
-| [Hyperdetail (fourth detail level)](#hyperdetail) | shipped | – | 1 | ST9, ST10, ST11, ST12 | 3 |
+| [Hyperdetail (fourth detail level)](#hyperdetail) | shipped | – | 2 | ST9, ST10, ST11, ST12 | 3 |
 
 ### Cards (8)
 
@@ -557,7 +557,7 @@ Everything unfolded in the whole app: no folding, every field the server sends, 
 | | |
 |---|---|
 | Sources | [Hyperdetail.swift](../Sources/HomelabKit/Hyperdetail.swift), [HyperLines.swift](../Sources/HomelabKit/HyperLines.swift), [HyperdetailViews.swift](../Sources/HomelabUI/HyperdetailViews.swift), [TodayLayout.swift#Density](../Sources/HomelabKit/TodayLayout.swift) |
-| Tests | `HyperdetailTests` |
+| Tests | `HyperdetailTests`, `HyperdetailSecretsTests` |
 | Phone (DeviceTest.md) | ST9, ST10, ST11, ST12 |
 | Docs | [docs/DESIGN.md#hyperdetail-the-fourth-detail-level](DESIGN.md#hyperdetail-the-fourth-detail-level), [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
 | Launch arguments | `-HomelabSettingsPage` |

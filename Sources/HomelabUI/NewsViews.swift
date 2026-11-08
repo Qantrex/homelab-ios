@@ -6,7 +6,8 @@ import SwiftUI
 /// News on Today (docs/DESIGN.md "Tiles", docs/API.md "News"): the sheet behind the News tile and the Settings page.
 /// The phone never fetches feeds; the server does.
 
-/// An article in SFSafariViewController, in reader mode when the page has one. No blue: the controls are white.
+/// An article in SFSafariViewController, in reader mode when the page has one. No blue: the controls are white on
+/// black in the dark scheme and black on white in the light one (the bar follows the colour scheme, never forced black).
 struct SafariView: UIViewControllerRepresentable {
     let url: URL
 
@@ -14,12 +15,18 @@ struct SafariView: UIViewControllerRepresentable {
         let config = SFSafariViewController.Configuration()
         config.entersReaderIfAvailable = true
         let controller = SFSafariViewController(url: url, configuration: config)
-        controller.preferredControlTintColor = .white
-        controller.preferredBarTintColor = .black
+        style(controller, dark: context.environment.colorScheme == .dark)
         return controller
     }
 
-    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {
+        style(controller, dark: context.environment.colorScheme == .dark)
+    }
+
+    private func style(_ controller: SFSafariViewController, dark: Bool) {
+        controller.preferredControlTintColor = dark ? .white : .black
+        controller.preferredBarTintColor = dark ? .black : .white
+    }
 }
 
 /// An article to open (a sheet needs an identifiable value).
@@ -32,9 +39,12 @@ struct Article: Identifiable {
 struct NewsSheetContent: View {
     let card: Card
     @State private var article: Article?
+    @Environment(\.hyper) private var hyper
 
     var body: some View {
         let list = NewsList(card: card)
+        // The items the rows were made from (`NewsList` skips untitled ones), for Hyperdetail's notes.
+        let items = card.items.filter { !($0.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty }
         VStack(alignment: .leading, spacing: 12) {
             if let digest = list.digest {
                 Text(verbatim: digest).font(Typo.body).foregroundStyle(Palette.text)
@@ -49,6 +59,10 @@ struct NewsSheetContent: View {
                         .accessibilityHint(Text("Opens the article"))
                 } else {
                     rowLabel(row)
+                }
+                if let hyper, row.id < items.count {
+                    HyperNote(lines: Hyper.item(items[row.id], now: hyper.now, calendar: hyper.calendar),
+                              fact: Hyper.fact(item: items[row.id], in: card, now: hyper.now, calendar: hyper.calendar))
                 }
             }
         }
@@ -70,6 +84,32 @@ struct NewsSheetContent: View {
     }
 }
 
+/// News in Hyperdetail, where no tile opens a sheet: the card as a titled panel with the same rows as the sheet, so a
+/// story opens in the in-app reader and not in Safari. Today draws it instead of the generic `CardView` for a news card
+/// (`TodayFold.tileKind(card) == .news`).
+struct NewsHyperBlock: View {
+    let card: Card
+    @Environment(\.hyper) private var hyper
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.titleToPanel) {
+            SectionTitle(text: card.title.map { LocalizedStringKey($0) } ?? "News")
+            if let hyper {
+                HyperNote(lines: Hyper.card(card, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(card: card))
+            }
+            NewsSheetContent(card: card).panel()
+        }
+    }
+}
+
+/// What a tile sheet shows when its kind is no longer in the state (the server dropped the card while the sheet was
+/// open): a word instead of an empty sheet.
+struct TileGonePlaceholder: View {
+    var body: some View {
+        Placeholder(title: "Nothing here any more", symbol: "tray", message: "The server stopped sending this.")
+    }
+}
+
 /// The "News" row of Settings → Today. It exists only when the selected server answers `GET /news/sources`
 /// (a 404 or any error hides it, without a word).
 struct NewsSettingsRow: View {
@@ -83,7 +123,7 @@ struct NewsSettingsRow: View {
                     NewsSettingsView(model: model, catalog: catalog)
                 } label: {
                     LabeledContent("News") {
-                        Text(verbatim: catalog.prefs.enabled ? catalog.prefs.sources.count.formatted() : String(localized: "Off"))
+                        Text(verbatim: catalog.prefs.enabled ? String(localized: "\(catalog.prefs.sources.count) sources") : String(localized: "Off"))
                             .font(Typo.secondary).foregroundStyle(Palette.secondary)
                     }
                 }

@@ -117,7 +117,7 @@ public struct Outbox: Sendable {
     /// anyway: the server answers a repeated id with the first result.
     private static let gate = DrainGate()
 
-    /// Sends what waits, oldest first. An item leaves the outbox on a 2xx, on an answer that never changes (400, 413,
+    /// Sends what waits, oldest first. An item leaves the outbox on a 2xx, on an answer that never changes (400, 404, 413,
     /// 415, 422), when its server is gone, its file is gone, or it is older than seven days. Any other error keeps
     /// it, and stops that server's items for this run (it is probably not reachable).
     /// `maxPDFBytes`: leave bigger PDFs for later (the background refresh has ~30 s; the app in the foreground sends
@@ -150,6 +150,10 @@ public struct Outbox: Sendable {
                 remove(entry.id); report.sent += 1
             } catch let e as APIError where e.isPermanentRejection {
                 drop(entry, why: e.message, now: now); report.dropped += 1
+            } catch APIError.notFound {
+                // The destination does not exist on this server (no /share or /upload): asking again for seven days
+                // would only block the queue behind it. Dropped with a log line the app shows once.
+                drop(entry, why: "the server has no place for it (404)", now: now); report.dropped += 1
             } catch {
                 bumpAttempts(entry)
                 stopped.insert(server.id)

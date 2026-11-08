@@ -13,7 +13,33 @@ public struct HyperLine: Equatable, Sendable, Identifiable {
     public var label: String
     public var value: String
     public var id: String { label + "\u{1F}" + value }
-    public init(_ label: String, _ value: String) { self.label = label; self.value = value }
+    /// Values are scrubbed on the way in (`HyperSecret.scrub`): whatever a field holds, a bearer token, a signed button
+    /// or a key in a URL never reaches the screen or a notification body.
+    public init(_ label: String, _ value: String) { self.label = HyperSecret.scrub(label); self.value = HyperSecret.scrub(value) }
+}
+
+/// Hyperdetail shows every field, but never a secret: signed button strings (`HOMELAB_APPROVE_...`), bearer or basic
+/// credentials, keys in a URL's query and the user:password part of a URL.
+public enum HyperSecret {
+    private static let rules: [(NSRegularExpression, String)] = {
+        let table: [(String, String)] = [
+            ("HOMELAB_[A-Za-z0-9_.:=+/-]*", "<secret>"),
+            ("\\b(bearer|basic|token)\\s+[A-Za-z0-9._~+/=-]{8,}", "$1 <secret>"),
+            ("([?&;](?:token|access_token|id_token|key|api_key|apikey|auth|authorization|password|passwd|pwd|secret|sig|signature|code)=)[^&;\\s#]*", "$1<secret>"),
+            ("(://)[^/@\\s]+@", "$1<credentials>@"),
+        ]
+        return table.compactMap { pattern, template in
+            (try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])).map { ($0, template) }
+        }
+    }()
+
+    public static func scrub(_ text: String) -> String {
+        var out = text
+        for (re, template) in rules {
+            out = re.stringByReplacingMatches(in: out, range: NSRange(out.startIndex..., in: out), withTemplate: template)
+        }
+        return out
+    }
 }
 
 public enum Hyper {
@@ -88,7 +114,7 @@ public enum Hyper {
             var cutValues: [String: String] = [:]
             for (key, value) in values where kind.placeholders.contains(key) {
                 let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !v.isEmpty { cutValues[key] = Voice.cut(v, Hyper.caps[key] ?? 24) }
+                if !v.isEmpty { cutValues[key] = Voice.cut(HyperSecret.scrub(v), Hyper.caps[key] ?? 24) }
             }
             self.values = cutValues
             self.seed = seed.isEmpty ? (cutValues["title"] ?? cutValues["host"] ?? cutValues["name"] ?? "") : seed
@@ -235,7 +261,8 @@ public enum Hyper {
         if let a = p.arg { out.append(HyperLine("arg", a)) }
         if let r = p.reason { out.append(HyperLine("reason", r)) }
         out.append(HyperLine("created", stamp(p.created, now: now, calendar: calendar)))
-        for verb in PendingAction.Verb.allCases { if let label = p.buttons[verb] { out.append(HyperLine("button \(verb.rawValue)", label)) } }
+        // Which buttons are offered, never their values: they are signed bearer strings (ProposalNotice.swift).
+        for verb in PendingAction.Verb.allCases where p.buttons[verb] != nil { out.append(HyperLine("button \(verb.rawValue)", "offered")) }
         return out
     }
 
@@ -402,6 +429,29 @@ public enum Hyper {
     public static func fact(action a: ActionSpec) -> Fact {
         let n = a.fields.filter { !$0.hidden }.count
         return Fact(.action, ["title": a.label, "fields": n > 0 ? Voice.count(n, "field") : ""], seed: a.name)
+    }
+
+    /// The built-in Start tiles that are no server action: Scan (feature `documents`), Find (`search`), Deals (`deals`).
+    public enum BuiltInTile: String, CaseIterable, Sendable {
+        case scan, find, deals
+        public var label: String { switch self { case .scan: "Scan"; case .find: "Find"; case .deals: "Deals" } }
+        public var feature: String { switch self { case .scan: "documents"; case .find: "search"; case .deals: "deals" } }
+    }
+
+    /// Fields of a built-in Start tile: its name, the server feature behind it and what it holds (waiting items, deals to
+    /// act on).
+    public static func startTile(_ t: BuiltInTile, waiting: Int = 0, toAct: Int = 0) -> [HyperLine] {
+        var out = [HyperLine("tile", t.rawValue), HyperLine("label", t.label), HyperLine("feature", t.feature)]
+        if t == .scan { out.append(HyperLine("outbox waiting", String(waiting))) }
+        if t == .deals { out.append(HyperLine("deals to act on", String(toAct))) }
+        return out
+    }
+
+    public static func fact(tile t: BuiltInTile) -> Fact { Fact(.action, ["title": t.label], seed: t.rawValue) }
+
+    /// What the outbox gave up on: the item, the reason and the exact time.
+    public static func notSent(_ d: Outbox.Dropped, now: Date = Date(), calendar: Calendar = .current) -> [HyperLine] {
+        [HyperLine("what", d.what), HyperLine("why", d.why), HyperLine("when", stamp(d.when, now: now, calendar: calendar))]
     }
 
     public static func report(_ r: ActionReport, now: Date = Date(), calendar: Calendar = .current) -> [HyperLine] {

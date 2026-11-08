@@ -109,6 +109,16 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
 
     public var id: String { rawValue }
 
+    /// Case-insensitive like `Personality`: a hand-edited "Overkill" reads as overkill. A word this version does not
+    /// know throws, so the caller's lenient decode drops it (the rest of the file survives).
+    public init(from decoder: any Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        guard let value = Density(rawValue: raw.trimmingCharacters(in: .whitespaces).lowercased()) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "unknown detail level \(raw)"))
+        }
+        self = value
+    }
+
     public var title: String {
         switch self {
         case .calm: "Calm"
@@ -124,7 +134,7 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
         case .calm: "The day and your Home tiles. One screen."
         case .standard: "Folds long lists; urgent things stay open. About two screens."
         case .overkill: "The same, with more detail in every line."
-        case .hyperdetail: "Everything, unfolded, with commentary. Not recommended."
+        case .hyperdetail: "Everything, unfolded; commentary when a personality is on. Not recommended."
         }
     }
 
