@@ -21,6 +21,9 @@ Highlights:
   link (the headline and the machines line open Lab); Lab shows hosts as rows with Load, RAM and Disk in every
   density, never tiles; the weather card is left to the hero line; the Machines section moved to Lab only. Overkill adds detail per line instead of
   opening everything. What you open folds again on each launch. The demo shows a busy day to match.
+- Settings → Today → Detail is a menu like Personality, with one line under it for each choice: Calm "The day and your
+  Home tiles. One screen.", Standard "Folds long lists; urgent things stay open. About two screens.", Overkill "The
+  same, with more detail in every line." The saved setting is unchanged.
 - Settings is short, with an **Advanced** page for the rest (named by the personality: "Nerd section" for Snarky).
   There you can hide and reorder the Start tiles on Actions, the blocks in Lab and the tabs (never Settings), make the
   chat text one step smaller or larger, and fold long chat replies after 6 lines, 12 or never. Defaults are not

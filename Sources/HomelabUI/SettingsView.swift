@@ -51,7 +51,7 @@ struct SettingsView: View {
                                                             set: { model.settings.todayDensity = $0 })) {
                             ForEach(Density.allCases) { Text($0.title).tag($0) }
                         }
-                        .pickerStyle(.segmented)
+                        .accessibilityHint(Text(verbatim: model.settings.todayDensity.summary))
                         Picker("Personality", selection: Binding(get: { model.settings.voice },
                                                                  set: { model.settings.voice = $0 })) {
                             ForEach(Personality.allCases) { Text($0.title).tag($0) }
@@ -171,15 +171,11 @@ struct SettingsView: View {
         }
     }
 
-    /// What the chosen detail shows, in one line; the personality speaks for itself in the preview above.
+    /// What each detail shows, one line each (`Density.summary`); the personality speaks for itself in the preview above.
     private var todayFooter: String {
-        let density = switch model.settings.todayDensity {
-        case .calm: String(localized: "Calm: the headline, your day and Home.")
-        case .standard: String(localized: "Standard: the sections you choose.")
-        case .overkill: String(localized: "Overkill: everything, every machine's numbers and exact times.")
-        }
+        let density = Density.explanation
         guard model.settings.voice == .ultrakill else { return density }
-        return density + " " + String(localized: "Ultrakill is rude on purpose.")
+        return density + "\n" + String(localized: "Ultrakill is rude on purpose.")
     }
 
     private func notifyBinding(_ key: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {

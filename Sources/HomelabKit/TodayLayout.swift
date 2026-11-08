@@ -115,6 +115,20 @@ public enum Density: String, Codable, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /// One short line of what this detail shows (Settings → Today lists all three under the picker).
+    public var summary: String {
+        switch self {
+        case .calm: "The day and your Home tiles. One screen."
+        case .standard: "Folds long lists; urgent things stay open. About two screens."
+        case .overkill: "The same, with more detail in every line."
+        }
+    }
+
+    /// "Calm: The day and …", one line per detail, for the footer under the picker.
+    public static var explanation: String {
+        allCases.map { "\($0.title): \($0.summary)" }.joined(separator: "\n")
+    }
+
     /// The sections Today shows, from my layout (order and hidden ones) and this density.
     public func sections(_ layout: TodayLayout) -> [TodaySection] {
         switch self {

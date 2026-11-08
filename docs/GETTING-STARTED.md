@@ -171,7 +171,7 @@ change the app itself: [ADAPTING.md](ADAPTING.md).
 
 ## How long Today is
 
-Today is short by design. Settings → Today → **Detail** picks how much it shows, for the default text size:
+Today is short by design. Settings → Today → **Detail** (a menu like Personality; the three lines under it say what each shows) picks how much it shows, for the default text size:
 
 - **Calm**: one screen, your day and the Home tiles.
 - **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")

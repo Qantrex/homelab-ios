@@ -219,7 +219,7 @@ the default text size with typical data on an iPhone 12 mini:
 Settings is short: what most people touch, then one row for the rest (owner, 2026-11-09: "too detailed settings should
 live in an advanced section").
 
-- **Top level:** Data (which server), Servers, Today (Detail, Personality), Notifications (the three toggles),
+- **Top level:** Data (which server), Servers, Today (Detail, a menu like Personality with one line per choice under it, `Density.summary`; Personality), Notifications (the three toggles),
   Privacy (Face ID, Reset everything), the **Advanced** row, About (About Homelab, Version).
 - **Advanced:** Today's Sections (order, hide, show rules) and Where you are; Layout (Start tiles, Lab, Tab bar);
   Chat (Text size, Long replies); Quiet hours; Leave-by on the lock screen; Diagnostics; Demo servers; a reset for the
