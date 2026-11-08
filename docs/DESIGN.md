@@ -242,8 +242,10 @@ in HomelabKit (`Hyperdetail.swift`, `HyperLines.swift`, tested), the views only 
 - **The warning.** Choosing Hyperdetail asks once: "Hyperdetail. Everything. Every number, every timestamp, everywhere,
   unfolded. Your screen will scroll forever. Why would you want that?" with "Do it" / "Back" (Back keeps the previous
   level). Like Ultrakill's, it is remembered (`hyperdetailWarned`, omitted from the file until then).
-- The detail menu describes it as "Everything, unfolded, with commentary. Not recommended." Widgets and the share
+- The detail menu describes it as "Everything, unfolded; commentary when a personality is on. Not recommended." Widgets and the share
   extension are unchanged.
+- Never a secret: every field is scrubbed (`HyperSecret`): signed approval buttons show only as "offered", bearer tokens,
+  `HOMELAB_...` strings, keys in a URL query and the user:password part of a URL are replaced, on screen and in notification bodies.
 - Test it with `-HomelabDensity hyperdetail` (no warning) and `-HomelabPersonality off|dry|snarky|ultrakill`.
 
 ## 9. Settings and Advanced

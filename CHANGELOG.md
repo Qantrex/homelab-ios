@@ -13,7 +13,7 @@ Highlights:
   every field the server sends is shown (a host with all its history numbers, ids, exact times, the server's name,
   version and fetch time), and with a personality on, each fact gets a remark in that voice. With the personality Off
   only the extra details show. Overkill is unchanged. New launch arguments for screenshots: `-HomelabDensity hyperdetail`
-  and `-HomelabSettingsPage advanced`. Voice lines no longer assume a city or a school.
+  and `-HomelabSettingsPage advanced`. Voice lines no longer assume a city or a school. Hyperdetail never prints a secret (approval buttons show as "offered").
 - `scripts/ship-to-phone` uploads your own build to your own server (checksum verified, last 3 kept, refuses an
   older build) so a Shortcuts automation can install it on your phone each day; the server side is the optional
   `GET /app/latest` and `GET /app/ipa` ([API.md](docs/API.md#app-updates-optional-owner-only), [SETUP.md](docs/SETUP.md#daily-updates-to-your-own-phone)).

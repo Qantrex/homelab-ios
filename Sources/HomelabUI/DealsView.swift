@@ -85,7 +85,7 @@ struct DealsView: View {
 
     private var emptyText: String {
         (Voice.line(for: .empty(.deals), personality: model.settings.voice).map { $0 + " " } ?? "")
-            + String(localized: "The server looks every hour. Strong ones are pushed to you.")
+            + String(localized: "Deals the server finds show up here.")
     }
 
     /// "5 deals · 2 to act on · updated 4 min ago": the facts, the voice has no say here.
@@ -140,6 +140,7 @@ struct DealRow: View {
     var body: some View {
         let stacked = typeSize.isAccessibilitySize
         VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(deal.title).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(hyper == nil ? 2 : nil)
@@ -158,6 +159,12 @@ struct DealRow: View {
                     .multilineTextAlignment(.leading)
             }
             if !deal.flags.isEmpty { DealFlags(flags: deal.flags, limit: hyper == nil ? 2 : deal.flags.count) }
+            }
+            // The row is one spoken element; Hyperdetail's notes stay outside it, so VoiceOver reads them too.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(deal.spoken)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(Text("Shows the comparable ads and opens the ad."))
             if let hyper {
                 HyperNote(lines: Hyper.deal(deal, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(deal: deal))
             }
@@ -166,10 +173,6 @@ struct DealRow: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(deal.spoken)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint(Text("Shows the comparable ads and opens the ad."))
     }
 }
 
@@ -236,6 +239,7 @@ struct DealDetailView: View {
     let model: AppModel
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.hyper) private var hyper
     @State private var copied = false
 
     var body: some View {
@@ -245,6 +249,9 @@ struct DealDetailView: View {
                 if !deal.flags.isEmpty { warnings }
                 facts
                 if !deal.comps.isEmpty { comps }
+                if let hyper {
+                    HyperSection(title: "Fields", lines: Hyper.deal(deal, now: hyper.now, calendar: hyper.calendar), fact: Hyper.fact(deal: deal))
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)

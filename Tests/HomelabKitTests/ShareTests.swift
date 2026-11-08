@@ -255,6 +255,21 @@ import Testing
         }
     }
 
+    @Test func drainDropsOnA404WithoutBlockingTheQueue() async throws {
+        let b = box()
+        try b.add(pdf(), id: uuid(), server: server.id, now: Date(timeIntervalSince1970: 1))
+        try b.add(.url(URL(string: "https://example.org/a")!, title: "A"), id: uuid(), server: server.id, now: Date(timeIntervalSince1970: 2))
+        // /upload does not exist, /share does.
+        let t = FakeTransport { r in
+            r.url?.path.hasSuffix("/share") == true ? .init(status: 200, body: Data(#"{"ok": true, "text": "ok"}"#.utf8)) : .init(status: 404)
+        }
+        let report = await b.drain(servers: list, now: Date(timeIntervalSince1970: 100)) {
+            CompanionClient(config: $0, tokens: MemoryTokenStore(), transport: t)
+        }
+        #expect(report == Outbox.Report(sent: 1, dropped: 1, waiting: 0))
+        #expect(b.count == 0 && b.dropped().count == 1)
+    }
+
     @Test func drainDropsWhatNeverWorks() async throws {
         let b = box()
         let stale = uuid(), gone = uuid(), bad = uuid()

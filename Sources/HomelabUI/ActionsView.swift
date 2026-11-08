@@ -39,6 +39,36 @@ struct ActionsView: View {
     private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
     /// The Start section: tiles to start actions, or the Scan tile.
     private var hasStart: Bool { !startTiles.isEmpty || canScan || canSearch || canDeals }
+    /// The built-in Start tiles that are showing (Hyperdetail notes them like the server's).
+    private var builtInTiles: [Hyper.BuiltInTile] {
+        (canSearch ? [.find] : []) + (canDeals ? [.deals] : []) + (canScan ? [.scan] : [])
+    }
+
+    /// "N waiting" and what was given up on, whenever there is something: not tied to the Start section, which
+    /// disappears with its last tile while the outbox still holds scans and links (the Scan tile, which carries the
+    /// count otherwise, only exists where the server takes documents).
+    @ViewBuilder
+    private var outboxSection: some View {
+        if model.outboxCount > 0 && !canScan {
+            Label(model.outboxCount == 1 ? "1 waiting to be sent" : "\(model.outboxCount) waiting to be sent",
+                  systemImage: "tray.and.arrow.up")
+                .font(Typo.secondary).foregroundStyle(Palette.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+        }
+        if !model.outboxDropped.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
+                    .transition(.opacity)
+                if let hyper {
+                    ForEach(Array(model.outboxDropped.suffix(5).enumerated()), id: \.offset) { _, d in
+                        HyperNote(lines: Hyper.notSent(d, now: hyper.now, calendar: hyper.calendar))
+                    }
+                }
+            }
+        }
+    }
+
     private var nothingToApprove: LocalizedStringKey {
         Voice.line(.nothingToApprove, model.settings.voice)
             .map { LocalizedStringKey($0 + " " + String(localized: "When your homelab proposes an action, it shows up here.")) }
@@ -84,14 +114,18 @@ struct ActionsView: View {
                                         HyperNote(lines: Hyper.action(spec), fact: Hyper.fact(action: spec))
                                     }
                                 }
-                            }
-                            if !model.outboxDropped.isEmpty {
-                                NotSentRow(items: model.outboxDropped) { model.clearOutboxDropped() }
-                                    .padding(.top, Space.row - Space.titleToPanel)
-                                    .transition(.opacity)
+                                ForEach(builtInTiles, id: \.rawValue) { tile in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(tile.label).font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.secondary)
+                                        HyperNote(lines: Hyper.startTile(tile, waiting: model.outboxCount,
+                                                                         toAct: model.selectedStatus.deals?.freshAct().count ?? 0),
+                                                  fact: Hyper.fact(tile: tile))
+                                    }
+                                }
                             }
                         }
                     }
+                    outboxSection
                 }
                 .rowMotion(model.outboxDropped.count)
                 .padding(.horizontal, 16)
@@ -102,7 +136,7 @@ struct ActionsView: View {
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startTiles.isEmpty && !canScan && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
+                } else if pending.isEmpty && startTiles.isEmpty && !canScan && model.outboxCount == 0 && model.outboxDropped.isEmpty && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }
