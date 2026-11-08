@@ -3,7 +3,7 @@ import HomelabKit
 import SwiftUI
 import WidgetKit
 
-/// U6 departures (step 6c): the next trains of the direction the server lists first. Lock-screen widgets draw in one
+/// Departures (step 6c): the next trains of the direction the server lists first. Lock-screen widgets draw in one
 /// colour, so a delay or a disruption is always a symbol plus words (docs/DESIGN.md §3); gold only on the home
 /// screen, as an addition. The times are public data, so the app lock does not hide them.
 struct DeparturesWidget: Widget {
@@ -13,8 +13,8 @@ struct DeparturesWidget: Widget {
                 .containerBackground(Palette.background, for: .widget)
                 .widgetURL(URL(string: "homelab://today"))
         }
-        .configurationDisplayName("U6 departures")
-        .description("The next U6 trains from your stop, with delays and disruptions.")
+        .configurationDisplayName(DepartureBoard.galleryName)
+        .description(DepartureBoard.galleryDescription)
         .supportedFamilies([.accessoryRectangular, .accessoryInline, .accessoryCircular, .systemSmall])
     }
 }
@@ -27,7 +27,7 @@ struct DeparturesView: View {
         entry.state?.departuresCard.map { DepartureBoard(card: $0).upcoming(now: entry.date) }
     }
     private var group: DepartureBoard.Group? { board?.groups.first }
-    private var line: String { board?.line ?? "U6" }
+    private var line: String { board?.line ?? CommutePlan.defaultLine }
     private var disrupted: Bool { board?.isDisrupted == true }
     /// The biggest delay among the shown trains.
     private var delay: Int? { group?.departures.prefix(3).compactMap(\.delay).max() }

@@ -59,6 +59,7 @@ struct ActionsView: View {
                         VStack(alignment: .leading, spacing: Space.titleToPanel) {
                             SectionTitle(text: "Start")
                             StartGrid(actions: startTiles, scanWaiting: canScan ? model.outboxCount : nil,
+                                      features: model.selectedStatus.knownInfo?.features,
                                       showIds: model.settings.todayDensity == .overkill,
                                       open: { spec in
                                           formPrefill = nil

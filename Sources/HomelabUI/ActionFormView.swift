@@ -250,6 +250,8 @@ struct StartGrid: View {
     let actions: [ActionSpec]
     /// Waiting scans and shares in the outbox; nil = no Scan tile.
     var scanWaiting: Int?
+    /// The server's features: they decide whether the Scan tile names Paperless (`ScanTarget`).
+    var features: Set<ServerInfo.Feature>?
     /// Overkill density: the action's id as tertiary meta under its label.
     var showIds = false
     let open: (ActionSpec) -> Void
@@ -329,7 +331,7 @@ struct StartGrid: View {
             .buttonStyle(.press)
             .accessibilityLabel(Text("Scan a document"))
             .accessibilityValue(waiting > 0 ? Text("\(waiting) waiting to be sent") : Text(""))
-            .accessibilityHint(Text("Opens the camera and sends the PDF to Paperless."))
+            .accessibilityHint(Text(verbatim: ScanTarget.hint(features: features)))
         }
     }
 }

@@ -42,8 +42,35 @@ public enum ShareDestination: Sendable, Equatable {
         }
     }
 
+    /// What the share sheet announces for a server whose offered features are `features` (nil = not known yet). The
+    /// willhaben and Paperless names appear only where the server offers the action behind them (`share`,
+    /// `documents`); otherwise the words are neutral.
+    public func label(features: Set<ServerInfo.Feature>?) -> String {
+        guard features?.contains(feature) == true else {
+            return self == .paperless ? "Send to your homelab" : self == .readLater ? label : "Send link to your homelab"
+        }
+        return label
+    }
+
     public var feature: ServerInfo.Feature {
         self == .paperless ? .documents : .share
+    }
+}
+
+/// How the Scan screen names where a PDF goes: Paperless where the server offers `documents` (the API's document
+/// inbox), neutral words otherwise.
+public enum ScanTarget {
+    public static func name(features: Set<ServerInfo.Feature>?) -> String {
+        features?.contains(.documents) == true ? "Paperless" : "your homelab"
+    }
+
+    /// "To Home, into Paperless." / "To Home, into your homelab."
+    public static func footnote(server: String, features: Set<ServerInfo.Feature>?) -> String {
+        "To \(server), into \(name(features: features))."
+    }
+
+    public static func hint(features: Set<ServerInfo.Feature>?) -> String {
+        "Opens the camera and sends the PDF to \(name(features: features))."
     }
 }
 

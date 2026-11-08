@@ -2,7 +2,7 @@ import HomelabDesign
 import HomelabKit
 import SwiftUI
 
-/// Scan a document with the camera, check it, and send it to the server's Paperless inbox (`POST /documents`).
+/// Scan a document with the camera, check it, and send it to the server's document inbox (Paperless) (`POST /documents`).
 /// Where the server can't be reached the PDF waits in the outbox and the app sends it later.
 struct ScanView: View {
     let model: AppModel
@@ -127,7 +127,7 @@ struct ScanView: View {
                 TextField("Title", text: $title)
                     .padding(12)
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                Text("To \(server.name), into Paperless.").font(.footnote).foregroundStyle(Palette.tertiary)
+                Text(verbatim: ScanTarget.footnote(server: server.name, features: model.selectedStatus.knownInfo?.features)).font(.footnote).foregroundStyle(Palette.tertiary)
             }
             Button {
                 guard !isSending else { return }
