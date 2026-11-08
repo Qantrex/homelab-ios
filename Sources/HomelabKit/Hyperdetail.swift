@@ -142,7 +142,7 @@ public enum Hyper {
     /// A number as the server sent it: 3 not 3.0, 0.52 not 0.520000.
     public static func raw(_ value: Double) -> String {
         guard value.isFinite else { return "\(value)" }
-        if value == value.rounded(), abs(value) < 1e15 { return String(Int(value)) }
+        if value == value.rounded(), abs(value) < 1e15 { return String(Int(clamping: value)) }
         return "\(value)"
     }
 
@@ -357,7 +357,7 @@ public enum Hyper {
     }
 
     public static func fact(deal d: Deal) -> Fact {
-        let off = d.share.flatMap { $0 > 0 ? "\(Int(($0 * 100).rounded()))%" : nil }
+        let off = d.share.flatMap { $0 > 0 ? "\(Int(clamping: ($0 * 100).rounded()))%" : nil }
         return Fact(.deal, ["title": d.title, "price": d.price.map { DealFormat.price($0).replacingOccurrences(of: "\u{00A0}", with: " ") } ?? "",
                             "off": off ?? ""], seed: String(d.id))
     }

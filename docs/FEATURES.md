@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 103 | 75 | 26 | 1 | 41 | 4 |
+| 104 | 76 | 26 | 1 | 41 | 4 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -14,7 +14,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 ## Overview
 
-### Today (14)
+### Today (15)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -32,6 +32,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Weather line under the headline](#weather-line) | shipped | `cards` | 2 | O12c | 1 |
 | [Install expiry warning](#expiry-warning) | shipped | – | 1 | X2 | 3 |
 | [Personality (Off, Dry, Snarky, Ultrakill)](#personality) | shipped | – | 4 | DL10 | 3 |
+| [Hyperdetail (fourth detail level)](#hyperdetail) | shipped | – | 1 | ST9, ST10, ST11, ST12 | 3 |
 
 ### Cards (8)
 
@@ -265,6 +266,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Launch arguments (`LaunchArguments`) | `-HomelabResetState` | [launch-arguments](#launch-arguments), [reset-everything](#reset-everything) |
 | Launch arguments (`LaunchArguments`) | `-HomelabRules` | [show-rule-editor](#show-rule-editor) |
 | Launch arguments (`LaunchArguments`) | `-HomelabServer` | [launch-arguments](#launch-arguments) |
+| Launch arguments (`LaunchArguments`) | `-HomelabSettingsPage` | [hyperdetail](#hyperdetail) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTab` | [launch-arguments](#launch-arguments) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTileIcons` | [tile-icons](#tile-icons) |
 | Launch arguments (`LaunchArguments`) | `-HomelabTileNames` | [tile-names](#tile-names) |
@@ -545,6 +547,23 @@ A line of commentary under Today's headline, on empty screens, after actions and
 | Launch arguments | `-HomelabPersonality` |
 | Settings | Settings → Today → Personality |
 | Notes | Four levels: Off, Dry, Snarky, Ultrakill (2026-11-06, rude on purpose). |
+
+### hyperdetail
+
+**Hyperdetail (fourth detail level)** · Today · shipped · since 2026-11-08
+
+Everything unfolded in the whole app: no folding, every field the server sends, a remark on every fact when a personality is on (details only when Off). Asks once before it switches on.
+
+| | |
+|---|---|
+| Sources | [Hyperdetail.swift](../Sources/HomelabKit/Hyperdetail.swift), [HyperLines.swift](../Sources/HomelabKit/HyperLines.swift), [HyperdetailViews.swift](../Sources/HomelabUI/HyperdetailViews.swift), [TodayLayout.swift#Density](../Sources/HomelabKit/TodayLayout.swift) |
+| Tests | `HyperdetailTests` |
+| Phone (DeviceTest.md) | ST9, ST10, ST11, ST12 |
+| Docs | [docs/DESIGN.md#hyperdetail-the-fourth-detail-level](DESIGN.md#hyperdetail-the-fourth-detail-level), [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is), [docs/SETUP.md#launch-arguments](SETUP.md#launch-arguments) |
+| Launch arguments | `-HomelabSettingsPage` |
+| Settings | Settings → Today → Detail → Hyperdetail |
+| Depends on | [personality](#personality), [today-layout](#today-layout) |
+| Notes | Owner decision 2026-11-08. Overkill is unchanged. Widgets are not changed. Latency is not measured. |
 
 ### cards
 

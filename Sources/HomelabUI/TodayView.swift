@@ -541,7 +541,7 @@ struct TodayView: View {
             if tiles.contains(where: { $0.kind == .deals }) {
                 VStack(alignment: .leading, spacing: Space.titleToPanel) {
                     SectionTitle(text: "Deals", trailing: "\(freshDeals.count)")
-                    HyperNote(lines: [], fact: Hyper.Fact(.list, ["count": Voice.count(freshDeals.count, "deal"), "title": "Deals"], seed: "deals"))
+                    HyperNote(lines: [], fact: Hyper.Fact(.list, ["count": "\(freshDeals.count) deal" + (freshDeals.count == 1 ? "" : "s"), "title": "Deals"], seed: "deals"))
                     dealRows(freshDeals).panel()
                 }
             }

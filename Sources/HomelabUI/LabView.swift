@@ -18,6 +18,13 @@ struct LabView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Space.section) {
                     header
+                    // Hyperdetail: which server answered, and when.
+                    if let hyper, model.selected != nil {
+                        HyperSection(title: "Server", lines: Hyper.server(
+                            name: model.selected?.name ?? "none", snapshot: status.snapshot, info: status.knownInfo,
+                            failures: status.failures, busy: state?.busy ?? [], now: hyper.now, calendar: hyper.calendar),
+                                     fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: status.snapshot, now: hyper.now) })
+                    }
                     if let error = status.error {
                         ErrorBanner(error: error, snapshotAge: status.snapshot?.fetched, retry: { refresh() },
                                     edit: model.selected.map { s in { model.requestEdit(s.id) } })
@@ -106,13 +113,6 @@ struct LabView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        // Hyperdetail: which server answered, and when.
-        if let hyper, model.selected != nil {
-            HyperSection(title: "Server", lines: Hyper.server(
-                name: model.selected?.name ?? "none", snapshot: status.snapshot, info: status.knownInfo,
-                failures: status.failures, busy: state?.busy ?? [], now: hyper.now, calendar: hyper.calendar),
-                         fact: model.selected.map { Hyper.fact(server: $0.name, snapshot: status.snapshot, now: hyper.now) })
-        }
     }
 
     /// "1 problem · 1 warning"; counted like Today's mood.

@@ -171,7 +171,7 @@ change the app itself: [ADAPTING.md](ADAPTING.md).
 
 ## How long Today is
 
-Today is short by design. Settings → Today → **Detail** (a menu like Personality; the three lines under it say what each shows) picks how much it shows, for the default text size:
+Today is short by design. Settings → Today → **Detail** (a menu like Personality; the lines under it say what each shows) picks how much it shows, for the default text size:
 
 - **Calm**: one screen, your day and the Home tiles.
 - **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")
@@ -180,6 +180,7 @@ Today is short by design. Settings → Today → **Detail** (a menu like Persona
   are small tiles with a count and one line ("best −50 %", "Dune +7", "ITP 95 %"); tap one to open the full list in a
   sheet. Departures appear in the day card, at the top, only while your "Leave by" is within the hour.
 - **Overkill**: three screens at most, with more detail in every line (the deals tile says "best −70 % · GPU €140") and a few more rows before a fold.
+- **Hyperdetail**: everything, unfolded, in the whole app: no list is folded, every field the server sent is shown (ids, exact times, units, a host's whole history), and with a personality on, a remark on every fact. It asks once before it switches on, and it is not recommended.
 
 What you open folds again the next time you start the app. The machines are not on Today: open Lab for them.
 
