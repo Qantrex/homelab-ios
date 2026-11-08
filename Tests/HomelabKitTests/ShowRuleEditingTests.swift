@@ -38,7 +38,7 @@ private func at(_ text: String) -> Date { ServerDate.parse(text)! }
     @Test func noRuleIsAlwaysExceptForMachines() {
         #expect(RuleOption.current(nil, for: .deals) == .always)
         #expect(RuleOption.current(nil, for: .machines) == .overkillOnly)
-        #expect(TodayLayout.standard.ruleWords(for: .machines) == "Only in Overkill")
+        #expect(TodayLayout.standard.ruleWords(for: .machines) == "Only in Detailed")
         #expect(TodayLayout.standard.ruleWords(for: .deals) == "Always")
         var l = TodayLayout.standard
         l.setRule(.always, for: .machines)

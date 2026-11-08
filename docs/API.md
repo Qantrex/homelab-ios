@@ -148,7 +148,7 @@ can, summarises them. The owner chooses country, sources and amount in the app; 
 
 Up to 8 items, the most relevant first (the app keeps the order). Send no card when news is off or every feed failed,
 never a stale one. Today shows it as the **News** tile (newspaper icon, the item count, one line: the top item's title,
-or the digest in Overkill); a tap opens a sheet with the digest and one row per item (title, `subtitle`), and a row
+or the digest in Detailed); a tap opens a sheet with the digest and one row per item (title, `subtitle`), and a row
 opens `url` in the in-app browser, in reader mode when the page has one. Only `http(s)` links open. `tags` are for the
 server and other clients; the app ignores them. No warm tint, no push.
 
@@ -396,7 +396,7 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 
 | Field | Meaning | The app shows |
 |---|---|---|
-| `history` | The last 24 h, one point every `step` seconds, oldest first; the last point is at `end` (local time, or with a zone; missing → the host's `checked`). Every series is optional and ends at `end`; `null` = no data for that slot (host unreachable). At most 288 points per series. `disk_pct` is the fullest disk | A load sparkline on each host tile and, in Overkill, under each machine on Today. Host details: load, memory, temperature and fullest disk for 24 h with min, max and now. Gaps break the line; the line turns gold or love only when the newest value is over a limit (load ≥ cores / ≥ 2 × cores, memory 90 / 95 %, temperature 80 / 90 °C, disk 75 / 90 %) |
+| `history` | The last 24 h, one point every `step` seconds, oldest first; the last point is at `end` (local time, or with a zone; missing → the host's `checked`). Every series is optional and ends at `end`; `null` = no data for that slot (host unreachable). At most 288 points per series. `disk_pct` is the fullest disk | A load sparkline on each host tile and, in Detailed, under each machine on Today. Host details: load, memory, temperature and fullest disk for 24 h with min, max and now. Gaps break the line; the line turns gold or love only when the newest value is over a limit (load ≥ cores / ≥ 2 × cores, memory 90 / 95 %, temperature 80 / 90 °C, disk 75 / 90 %) |
 | `container_list` | Every container of the host: `name`; `state` (Docker's: `running`, `exited`, `restarting`, `paused`, `created`, `removing`, `dead`; "Up 3 hours" also counts as running); `health` (`healthy`, `unhealthy`, `starting` or null); `restarts` (Docker's RestartCount); `restartable` (the host's restart list has it: `restart-container` with `<host>:<name>` would be accepted). `containers: {up, total}` stays | Host details: the list with problems first (exited, dead and unhealthy in love, restarting in gold), state, health and restarts in mono. A **Restart** button on each `restartable` one, when the server also offers `run-actions` with a `restart-container` action whose form can build `<host-id>:<name>`. It asks with a red button, runs the action like the Actions tab would and shows the answer |
 
 ## How the app shows cards
@@ -407,7 +407,7 @@ Two optional fields on each host in `GET /state`. Without them Lab looks as befo
 | `date` on a card (`"2026-11-07"`) | The day the card is about. On the `today` card: when it is the day after the phone's today, the card is **tomorrow's**: the header says "Tomorrow" (the card's `title`), no stop is past, nothing is filled, and the first stop counts down ("in 10 h 20 min"). Same for the Day widget. Missing, not a plain day, today or an old day: the normal day line |
 | `cancelled: true` on an item | Struck through and grey (title, subtitle, value). A lesson that falls out |
 | A `list` card with `id: "lessons"` | A row with a `tint` (`orange`) and not cancelled gets a gold dot in front: a substitution or room change (put the change in the subtitle). The time range goes in `value` |
-| A card with `id: "weather"` | Drawn like any card (use `metrics`). Its `subtitle` is also the weather sentence under the headline in every density, Calm too: one secondary line with the card's `icon` ("Clear, 7 °C now, 4–10 °C today"). A subtitle without a temperature gets the `Now` item's value added ("Clear" → "Clear, 3°C now"). No location in it |
+| A card with `id: "weather"` | Drawn like any card (use `metrics`). Its `subtitle` is also the weather sentence under the headline in every density, Minimal too: one secondary line with the card's `icon` ("Clear, 7 °C now, 4–10 °C today"). A subtitle without a temperature gets the `Now` item's value added ("Clear" → "Clear, 3°C now"). No location in it |
 | Cards `briefing` (`text`), `grades` (`list`), `deadlines` | Conventions of the reference server, drawn by their style. A `text` card is Markdown |
 | `progress` (0–1) on a `list` item | A ring with the percent in front of the row (a check mark at 1) |
 | `tint` on an item | Warm tints (`orange`, `yellow`) are gold, `red` is love, `purple`/`pink` iris, the rest grey. Use it for status, not decoration |

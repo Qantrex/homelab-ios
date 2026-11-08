@@ -54,7 +54,7 @@ The Linux job has no PyYAML, so the Homepage-import tests (`server/test_homepage
 | 23–24 | The smallest iPhone simulator available (narrowest screen; SE, an "e" model or mini; never a two-screen model like "iPhone Duo"): demo today and actions |
 | 25–26 | Forms of actions the app starts (`-HomelabAction`): Wake-up in dark, Add an event with accessibility extra-large text |
 | 27 | A host's details (`-HomelabHost media`, the demo's problem scene `-HomelabDemoScene problem`), dark: 24 h sparklines, containers with problems first and Restart buttons |
-| 28 | Demo Today (problem scene) in Overkill with the Snarky personality |
+| 28 | Demo Today (problem scene) in Detailed with the Snarky personality |
 | 29 | `demo-ha-only`: Today with only the demo Home Assistant (`-HomelabDemoScene ha-only`), no Companion server: "Home.", "1 light on" and gold "Bedroom fan unavailable" |
 | 30–35 | The first run (from a reset): the welcome, and Found with "Start with" over the demo servers (`-HomelabFirstRun YES`), each in light, dark and accessibility extra-large text |
 | 36–37 | `demo-rule-hidden` and `demo-rule-shown`: demo Today with show rules (`-HomelabRules "deals=evenings,cards=evenings,report=evenings"`) at a fixed time (`-HomelabTime`). At 14:00 Deals, Cards and Last report are hidden and Today ends with "Hidden now: Deals, Cards and Last report (evenings) · Show"; at 19:00 they are back and the line is gone |

@@ -262,7 +262,7 @@ extension TodaySection {
 // MARK: - The layout and the densities
 
 extension TodayLayout {
-    /// The section's stored rule; nil = none (Always; Machines then shows in Overkill only).
+    /// The section's stored rule; nil = none (Always; Machines then shows in Detailed only).
     public func rule(for section: TodaySection) -> ShowRule? { rules?[section.rawValue] }
 
     /// Sets or clears a rule. Always is the same as no rule and is not stored, except for Machines, where it means
@@ -285,12 +285,12 @@ extension TodayLayout {
 
 extension Density {
     /// The sections Today shows now: `sections(_:)` with the rules applied. Without rules it is exactly
-    /// `sections(_:)`. Overkill ignores rules. The retired Machines section never shows. Calm shows the day
+    /// `sections(_:)`. Detailed and Hyperdetail ignore rules, not the switches. The retired Machines section never shows. Minimal shows the day
     /// and Home by their rules, plus every visible section set to "When it needs me" while it needs me.
     public func sections(_ layout: TodayLayout, _ context: ShowContext) -> [TodaySection] {
         switch self {
         case .overkill, .hyperdetail:
-            return layout.listed
+            return layout.visible.filter(\.isOnToday)
         case .standard:
             return layout.visible.filter { $0.isOnToday && layout.shows($0, context) }
         case .calm:

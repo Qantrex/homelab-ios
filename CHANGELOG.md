@@ -9,16 +9,23 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Detail levels renamed: Minimal, Standard, Detailed, Hyperdetail (were Calm, Standard, Overkill, Hyperdetail), so the
+  scale no longer sounds like the Ultrakill personality. Only the shown names changed; settings files and launch
+  arguments keep working (`-HomelabDensity` takes either word). A section you switch off in Settings → Advanced →
+  Sections now stays off at every level (Detailed and Hyperdetail used to show it anyway). Minimal makes Lab compact
+  too: the problems, one line per host, and the cards and services folded to a title and a count. Standard is the
+  default for everyone, also after the first run's presets. Hyperdetail remarks rotate inside a list (no line twice
+  in a row), there are many more of them, and a scene says when it ran ("ran 3 h ago").
 - Actions widget (configurable): tiles for your Start actions, like the Hue widgets. Small (1 or 2), medium (4), large (8)
   and a lock-screen circle (1); pick the actions in the widget's Edit menu (none picked = your first visible Start
   tiles). A tap runs an action without fields right from the widget on a Tailscale server (result on the tile, Face ID
   first when the app lock is on); actions with fields, destructive ones, and everything on a token server open the form
   in the app. The widget never reads the Keychain. Needs App Intents metadata that xtool does not write yet (DeviceTest W13).
 - Server and tooling fixes: the fixture server serves the info and actions that belong to `state-bridge.json` and `state-huge.json`; the Homelab Bridge cuts and scrubs host, container and service names, lets only http(s) links and images through, and reads .NET times with 7 fraction digits on Python before 3.11; `scripts/ship-to-phone` never waits for a password or a dead host; demo scene `minimal` (only /info and /state). Settings paths in the docs follow Settings → Advanced.
-- Hyperdetail, a fourth detail level after Overkill (Settings → Today → Detail; asks once first): nothing folds anywhere,
+- Hyperdetail, a fourth detail level after Detailed (Settings → Today → Detail; asks once first): nothing folds anywhere,
   every field the server sends is shown (a host with all its history numbers, ids, exact times, the server's name,
   version and fetch time), and with a personality on, each fact gets a remark in that voice. With the personality Off
-  only the extra details show. Overkill is unchanged. New launch arguments for screenshots: `-HomelabDensity hyperdetail`
+  only the extra details show. Detailed is unchanged. New launch arguments for screenshots: `-HomelabDensity hyperdetail`
   and `-HomelabSettingsPage advanced`. Voice lines no longer assume a city or a school. Hyperdetail never prints a secret (approval buttons show as "offered").
 - `scripts/ship-to-phone` uploads your own build to your own server (checksum verified, last 3 kept, refuses an
   older build) so a Shortcuts automation can install it on your phone each day; the server side is the optional
@@ -34,23 +41,23 @@ Highlights:
 - Personality: the lines were rewritten to sound like a quick remark about the fact instead of a template. Today's old
   Ultrakill lines moved to Snarky; Ultrakill is now a much harsher, profane, over-the-top tier of its own, and asks
   once before it is switched on (Enable / Back).
-- Today is short by design: Standard fits two screens, Overkill three, Calm one. Urgent rows (a deadline within 3
+- Today is short by design: Standard fits two screens, Detailed three, Minimal one. Urgent rows (a deadline within 3
   days, later ones always folded, a to-do past its time, proposals) never fold; longer lists fold behind "Show N more"; deals, recent
   downloads and grades are small tiles (a count and one line: "best −50 %", "Dune +7", "ITP 95 %"; 2 by 2, one row of
   3, 2 or 1 by count, one per row at large text) that open the full list in a sheet; departures show only inside the
   day card, at the top, while a "Leave by" is within the hour (a disruption alone shows nothing); Today has no "Lab ›"
   link (the headline and the machines line open Lab); Lab shows hosts as rows with Load, RAM and Disk in every
-  density, never tiles; the weather card is left to the hero line; the Machines section moved to Lab only. Overkill adds detail per line instead of
+  density, never tiles; the weather card is left to the hero line; the Machines section moved to Lab only. Detailed adds detail per line instead of
   opening everything. What you open folds again on each launch. The demo shows a busy day to match.
-- Settings → Today → Detail is a menu like Personality, with one line under it for each choice: Calm "The day and your
-  Home tiles. One screen.", Standard "Folds long lists; urgent things stay open. About two screens.", Overkill "The
+- Settings → Today → Detail is a menu like Personality, with one line under it for each choice: Minimal "The day and your
+  Home tiles. One screen.", Standard "Folds long lists; urgent things stay open. About two screens.", Detailed "The
   same, with more detail in every line." The saved setting is unchanged.
 - Settings is short, with an **Advanced** page for the rest (named by the personality: "Nerd section" for Snarky).
   There you can hide and reorder the Start tiles on Actions, the blocks in Lab and the tabs (never Settings), make the
   chat text one step smaller or larger, and fold long chat replies after 6 lines, 12 or never. Defaults are not
   stored, so old settings files are untouched.
 - News: your server fetches and summarises the news (the phone never does). Today gets a **News** tile (a count and the
-  top headline; Overkill the day's digest) that opens a sheet; each story opens in the in-app browser, in reader mode
+  top headline; Detailed the day's digest) that opens a sheet; each story opens in the in-app browser, in reader mode
   when the page has one. Settings → Advanced → Today → **News** (shown only when the server has news) picks country,
   sources, summaries or headlines, 3, 5 or 8 stories and a 12, 24 or 48 hour window, saved on the server. The demo has
   it.
@@ -178,11 +185,11 @@ App:
   (never hidden fields; you always confirm). See docs/SHORTCUTS.md.
 - Your whole day: in the evening the "today" card can be tomorrow's (`date`): header "Tomorrow", countdown to the
   first stop, also in the Day widget. Cancelled lessons (`cancelled`) are struck through, substitutions get a gold dot,
-  the weather card's line sits under the headline's facts (in every detail level, Calm too).
+  the weather card's line sits under the headline's facts (in every detail level, Minimal too).
 - Today: a mood headline on top (calm when all is fine, gold or love with a glow and a haptic when not), the server's
   "today" card as a day line (clock times in order, filled up to now, countdown to the next stop), actions waiting,
-  pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Calm,
-  Standard or Overkill density (Overkill adds every machine's numbers, exact times and busy jobs). Until the first
+  pinned Home Assistant tiles, the other cards and the last report. Sections can be reordered and hidden; Minimal,
+  Standard or Detailed density (Detailed adds every machine's numbers, exact times and busy jobs). Until the first
   answer the headline says "Checking…" in grey; "No signal." only once a fetch failed.
 - Progress in cards (downloads, now playing) as rings with the percent inside.
 - Checklist cards (to-dos): a circle per item, done ones struck through, the due day gold today and love when
@@ -206,7 +213,7 @@ App:
   `restart-container` action, its answer and a haptic ("started" when it still runs on the server); until the
   host's next check the row says "restarted HH:mm, waiting for the next check" instead of offering Restart again.
   Sparklines run on a 24 h time axis (a history that stopped ends left of the edge; old values are dimmed with
-  "until HH:mm" and never colour the line). Overkill on Today shows each machine's load sparkline.
+  "until HH:mm" and never colour the line). Detailed on Today shows each machine's load sparkline.
   `homelab://lab/<host-id>` and `-HomelabHost` open a host's details.
 - Look: true black (white in light mode), monochrome, thin borders, mono numbers; colour only for problems (Rosé
   Pine love) and warnings (gold). No blue.
@@ -239,7 +246,7 @@ App:
   headline is the heading, "Next comment" on the voice line), Today's day panel has a heading, section titles are one
   heading with their count, Retry and Close are their own buttons, the error banner, search results and the share
   result are announced, Home tiles are toggles with a hint. Lab rows stack from xxLarge, Today's waiting rows, the
-  Overkill machine list and the 24 h charts at accessibility sizes. Links in server text are iris and underlined.
+  Detailed machine list and the 24 h charts at accessibility sizes. Links in server text are iris and underlined.
   Reduce Motion also stops the rolling numbers, the glow and meter animations. Widgets no longer dim old data (the
   age with a clock says it), speak the host's state and the departure's delay, and tint their status glyphs.
 - Tabs show only what the server offers (`features` in `/api/v1/info`).

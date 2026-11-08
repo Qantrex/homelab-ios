@@ -69,14 +69,14 @@ import Testing
         #expect(m.firstRunFeatures.isEmpty && m.firstRunSuggested == .home && m.firstRunPreset == .home)
         m.startFirstRun(with: m.firstRunPreset, canPickTiles: true)   // "Start"
         #expect(m.firstRun?.step == .tiles)
-        #expect(m.settings.todayDensity == .calm)
+        #expect(m.settings.todayDensity == .standard)
         #expect(m.settings.todayLayout == StartPreset.home.layout(features: [], hasHA: true).today)
-        #expect(storage.read(AppSettings.self, AppSettings.fileName)?.todayDensity == .calm)
+        #expect(storage.read(AppSettings.self, AppSettings.fileName)?.todayDensity ?? .standard == .standard)
         m.setPinned(["light.living_room"], for: server.id)            // a tile, then "Done"
         m.finishFirstRun()
         #expect(m.firstRun == nil && !m.showsFirstRun && m.showsStartTip && m.tab == .today)
         #expect(m.homeAssistant?.pinnedEntities == ["light.living_room"])
-        #expect(Density.calm.sections(m.settings.todayLayout) == [.home, .day])
+        #expect(Density.standard.sections(m.settings.todayLayout) == [.home, .day, .waiting, .cards])
         m.openStartTip()
         #expect(!m.showsStartTip && m.tab == .settings)
     }
@@ -121,7 +121,7 @@ import Testing
         // A preset over both: the tile picker is skipped (Cancel) and the run ends.
         m.startFirstRun(with: .home, canPickTiles: true)
         m.finishFirstRun()
-        #expect(m.firstRun == nil && m.settings.todayDensity == .calm)
+        #expect(m.firstRun == nil && m.settings.todayDensity == .standard)
     }
 
     @Test func cancelOnTheWelcomeEndsTheRun() {

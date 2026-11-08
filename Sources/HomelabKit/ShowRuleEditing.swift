@@ -5,7 +5,7 @@ import Foundation
 
 /// One choice in a section's rule sheet.
 public enum RuleOption: Hashable, Sendable, Identifiable {
-    /// Machines without a rule: it shows in Overkill only (as before rules).
+    /// Machines without a rule: it shows in Detailed only (as before rules).
     case overkillOnly
     case always
     case needsMe
@@ -77,7 +77,7 @@ public enum RuleOption: Hashable, Sendable, Identifiable {
 
     public var title: String {
         switch self {
-        case .overkillOnly: "Only in Overkill"
+        case .overkillOnly: "Only in Detailed"
         case .always: "Always"
         case .needsMe: "When it needs me"
         case .named(let i): TimeWindow.named[i].name
@@ -90,7 +90,7 @@ public enum RuleOption: Hashable, Sendable, Identifiable {
     /// The meta line under the title in the sheet; nil = none.
     public func detail(for section: TodaySection) -> String? {
         switch self {
-        case .overkillOnly: "Standard and Calm leave it out"
+        case .overkillOnly: "Standard and Minimal leave it out"
         case .always: nil
         case .needsMe: section.needsMeWords
         case .named(let i): ["5–11", "11–18", "18–24", "Monday to Friday", "Saturday and Sunday"][i]
@@ -222,10 +222,10 @@ extension ShowRule {
 }
 
 extension TodayLayout {
-    /// The rule of a section in words, for the sections editor: "Always", "Evenings", "Only in Overkill" (Machines
+    /// The rule of a section in words, for the sections editor: "Always", "Evenings", "Only in Detailed" (Machines
     /// without a rule).
     public func ruleWords(for section: TodaySection, calendar: Calendar = .current) -> String {
-        guard let rule = rule(for: section) else { return section == .machines ? "Only in Overkill" : "Always" }
+        guard let rule = rule(for: section) else { return section == .machines ? "Only in Detailed" : "Always" }
         return rule.words(calendar: calendar)
     }
 }

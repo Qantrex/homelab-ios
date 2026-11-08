@@ -20,22 +20,23 @@ import Testing
     @Test func fourLevelsInOrderWithTheirWords() {
         #expect(Density.allCases == [.calm, .standard, .overkill, .hyperdetail])
         #expect(Density.hyperdetail.title == "Hyperdetail")
-        #expect(Density.hyperdetail.summary == "Everything, unfolded; commentary when a personality is on. Not recommended.")
-        #expect(Density.explanation.hasSuffix("Hyperdetail: Everything, unfolded; commentary when a personality is on. Not recommended."))
+        #expect(Density.hyperdetail.summary == "Everything on, unfolded; commentary with a personality. Not recommended.")
+        #expect(Density.explanation.hasSuffix("Hyperdetail: Everything on, unfolded; commentary with a personality. Not recommended."))
         // Overkill's words are as they were.
-        #expect(Density.overkill.summary == "The same, with more detail in every line.")
+        #expect(Density.overkill.summary == "The same sections, with more detail in every line.")
         #expect(Density.hyperdetail.isHyper && !Density.overkill.isHyper && Density.overkill.atLeastOverkill)
         #expect(Density.hyperdetail.exactTimes && Density.overkill.exactTimes && !Density.standard.exactTimes)
     }
 
-    @Test func showsEverySectionLikeOverkill() {
+    @Test func showsEverySectionThatIsOnLikeOverkill() {
         var layout = TodayLayout.standard
+        #expect(Density.hyperdetail.sections(layout).count == TodaySection.allCases.filter(\.isOnToday).count)
         layout.setVisible(.deals, false)
         #expect(Density.hyperdetail.sections(layout) == Density.overkill.sections(layout))
-        #expect(Density.hyperdetail.sections(layout).count == TodaySection.allCases.filter(\.isOnToday).count)
+        #expect(!Density.hyperdetail.sections(layout).contains(.deals))   // switched off stays off (review row 38)
         layout.setRule(.needsMe, for: .report)
         let context = ShowContext(now: Self.now, calendar: Self.utc, needsMe: [])
-        #expect(Density.hyperdetail.sections(layout, context) == layout.listed)   // rules do not hide anything
+        #expect(Density.hyperdetail.sections(layout, context) == layout.visible.filter(\.isOnToday))   // rules do not hide anything
         #expect(Density.hyperdetail.hiddenNow(layout, context).isEmpty)
     }
 
@@ -156,7 +157,7 @@ import Testing
     }
 
     @Test func everyKindHasEnoughWellFormedLines() {
-        #expect(Hyper.Kind.allCases.count == 19)
+        #expect(Hyper.Kind.allCases.count == 20)
         for p in Self.voiced {
             for kind in Hyper.Kind.allCases {
                 let all = Hyper.lines(kind, p)
@@ -435,7 +436,7 @@ import Testing
         let off = Hyper.noticeExtra(alert, state: state, deals: nil, personality: .off, now: Self.now, calendar: Self.utc)
         #expect(off?.contains("id: 7") == true && off?.contains("job: nightly") == true && off?.contains("\n") == false)
         let on = Hyper.noticeExtra(alert, state: state, deals: nil, personality: .snarky, now: Self.now, calendar: Self.utc)
-        #expect(on?.hasPrefix(off ?? "?") == true && on?.contains("\n") == true && on?.contains("restart sonarr") == true)
+        #expect(on?.hasPrefix(off ?? "?") == true && on?.contains("\n") == true && on?.lowercased().contains("restart sonarr") == true)
         let summary = AlertTracker.Alert(id: "summary-1", kind: .summary, title: "lab", body: "2 more")
         #expect(Hyper.noticeExtra(summary, state: state, deals: nil, personality: .snarky) == nil)
         // The notification content: the extra is added to the body, never to a locked one.

@@ -173,20 +173,20 @@ change the app itself: [ADAPTING.md](ADAPTING.md).
 
 Today is short by design. Settings → Today → **Detail** (a menu like Personality; the lines under it say what each shows) picks how much it shows, for the default text size:
 
-- **Calm**: one screen, your day and the Home tiles.
+- **Minimal**: one screen, your day and the Home tiles; Lab is compact too (the problems, one line per host, cards and services folded to a title and a count).
 - **Standard** (the default): two screens at most. The hero, tomorrow, the actions to approve (2, then "and N more")
   and every row that needs you come first: a deadline that is overdue or within 3 days (later deadlines are always behind "Show N more"), a delay, a
   to-do past its time. Longer lists show 3 rows and a "Show N more" row. Deals, recent downloads, new grades and news
   are small tiles with a count and one line ("best −50 %", "Dune +7", "ITP 95 %"); tap one to open the full list in a
   sheet. Departures appear in the day card, at the top, only while your "Leave by" is within the hour.
-- **Overkill**: three screens at most, with more detail in every line (the deals tile says "best −70 % · GPU €140") and a few more rows before a fold.
+- **Detailed**: the same sections as Standard, three screens at most, with more detail in every line (the deals tile says "best −70 % · GPU €140") and a few more rows before a fold.
 - **Hyperdetail**: everything, unfolded, in the whole app: no list is folded, every field the server sent is shown (ids, exact times, units, a host's whole history), and with a personality on, a remark on every fact. It asks once before it switches on, and it is not recommended.
 
 What you open folds again the next time you start the app. The machines are not on Today: open Lab for them.
 
 ## The weather line and the lessons
 
-If your server sends a card with the id `weather`, its subtitle shows as one grey line under the headline's facts ("Clear, 7 °C now, 4–10 °C today"), in every detail level, Calm too; the card itself is not drawn on Today. A subtitle without a temperature gets the current one added. A lessons card (a school timetable) shows a cancelled lesson struck through and grey, and a substitution or room change with a gold dot and a gold time; VoiceOver says "cancelled" or "changed".
+If your server sends a card with the id `weather`, its subtitle shows as one grey line under the headline's facts ("Clear, 7 °C now, 4–10 °C today"), in every detail level, Minimal too; the card itself is not drawn on Today. A subtitle without a temperature gets the current one added. A lessons card (a school timetable) shows a cancelled lesson struck through and grey, and a substitution or room change with a gold dot and a gold time; VoiceOver says "cancelled" or "changed".
 
 ## Show rules
 

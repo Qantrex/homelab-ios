@@ -88,7 +88,7 @@ struct ShowRuleSheet: View {
                     } header: {
                         Text("Show")
                     } footer: {
-                        SettingsFooter("Overkill shows every section. In Calm, a section set to \"When it needs me\" joins the day and Home while it needs you.")
+                        SettingsFooter("Detailed shows every section that is on. In Minimal, a section set to \"When it needs me\" joins the day and Home while it needs you.")
                     }
                     if let w = choice.custom {
                         Section {

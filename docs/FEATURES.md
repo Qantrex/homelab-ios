@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 105 | 77 | 26 | 1 | 41 | 0 |
+| 106 | 78 | 26 | 1 | 41 | 0 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -20,10 +20,10 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 |---|---|---|---|---|---|
 | [Today headline (mood)](#today-hero) | shipped | `status`, `hosts` | 3 | **T1**, T8 | 3 |
 | [Day line with countdown](#today-day-line) | shipped | `cards` | 1 | **T2**, W7b | 2 |
-| [Today sections and detail (Calm, Standard, Overkill)](#today-layout) | shipped | – | 3 | **T2** | 3 |
+| [Today sections and detail (Minimal, Standard, Detailed)](#today-layout) | shipped | – | 3 | **T2** | 3 |
 | [Today is short by design (folds, tiles)](#today-folding) | shipped | – | 2 | O12g | 3 |
 | [News (tile, sheet, Settings → News)](#news) | shipped | – | 1 | NW1, NW2, NW3 | 2 |
-| [Machines list (Overkill)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
+| [Machines list (Detailed)](#overkill-machines) | removed | `hosts` | 2 | O8 | 1 |
 | [Show rules (kit)](#show-rules) | partial | – | 9 | n/a | 1 |
 | [Where you are (presence from Home Assistant)](#presence) | partial | – | 4 | H8, H9 | 3 |
 | [Show rules: editor and "Hidden now"](#show-rule-editor) | partial | – | 6 | T9, T10 | 4 |
@@ -77,11 +77,12 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Deals (used-market ads below value)](#deals) | shipped | `deals` | 6 | **DL1**, **DL2**, DL3, **DL4**, DL5, **DL6**, DL7, DL9, DL10 | 2 |
 | [New-deal notification](#deal-notifications) | shipped | `deals` | 1 | DL8 | 2 |
 
-### Lab (4)
+### Lab (5)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Lab: problems and host rows](#lab-hosts) | shipped | `hosts`, `status` | 5 | **O1**, O2, **O3**, O14 | 2 |
+| [Lab in Minimal (one screen)](#lab-compact) | shipped | – | 1 | O18 | 1 |
 | [Host details and 24 h history](#host-detail) | shipped | `hosts` | 1 | **O4**, O5 | 1 |
 | [Containers with Restart](#container-restart) | shipped | `hosts`, `run-actions` | 7 | O6, O7 | 2 |
 | [Service launcher (web UIs)](#service-launcher) | shipped | `services` | 3 | O13 | 2 |
@@ -345,9 +346,9 @@ The server's `today` card as a line through the day: clock times in order, fille
 
 ### today-layout
 
-**Today sections and detail (Calm, Standard, Overkill)** · Today · shipped · since 2026-11-06
+**Today sections and detail (Minimal, Standard, Detailed)** · Today · shipped · since 2026-11-06
 
-Today's sections can be reordered and hidden; Calm, Standard or Overkill picks how much shows (Overkill adds every machine's numbers, exact times and busy jobs). Refreshes every 30 s while open.
+Today's sections can be reordered and hidden; Minimal, Standard or Detailed picks how much shows (Detailed adds every machine's numbers, exact times and busy jobs). Refreshes every 30 s while open.
 
 | | |
 |---|---|
@@ -363,7 +364,7 @@ Today's sections can be reordered and hidden; Calm, Standard or Overkill picks h
 
 **Today is short by design (folds, tiles)** · Today · shipped · since 2026-11-08
 
-Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session.
+Standard fits two screens, Detailed three, Minimal one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and "Show N more"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a "Leave by" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Detailed adds detail per line. Expanding lasts for the session.
 
 | | |
 |---|---|
@@ -380,7 +381,7 @@ Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines over
 
 **News (tile, sheet, Settings → News)** · Today · shipped · since 2026-11-08
 
-The server fetches and summarises the owner's news; Today shows a News tile (count and the top headline, Overkill the digest) that opens a sheet with the digest and the stories, each opening in the in-app browser (reader mode when available). Settings → Advanced → Today → News (only when the server answers) picks country, sources, summaries or headlines, 3/5/8 stories and a 12/24/48 h window; changes are saved on the server.
+The server fetches and summarises the owner's news; Today shows a News tile (count and the top headline, Detailed the digest) that opens a sheet with the digest and the stories, each opening in the in-app browser (reader mode when available). Settings → Advanced → Today → News (only when the server answers) picks country, sources, summaries or headlines, 3/5/8 stories and a 12/24/48 h window; changes are saved on the server.
 
 | | |
 |---|---|
@@ -397,7 +398,7 @@ The server fetches and summarises the owner's news; Today shows a News tile (cou
 
 ### overkill-machines
 
-**Machines list (Overkill)** · Today · removed · since 2026-11-06
+**Machines list (Detailed)** · Today · removed · since 2026-11-06
 
 Removed 2026-11-08: Today no longer lists the machines in any detail level (Lab has them; the hero line still says "3 of 3 machines up"). It was a dense list of every host with a 24 h load sparkline under each.
 
@@ -410,7 +411,7 @@ Removed 2026-11-08: Today no longer lists the machines in any detail level (Lab 
 | CI screenshots | `demo-today-overkill-snarky` |
 | Docs | [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules) |
 | Today section | `machines` |
-| Settings | Settings → Today → Detail → Overkill |
+| Settings | Settings → Today → Detail → Detailed |
 | Depends on | [today-layout](#today-layout) |
 | Notes | The saved layout keeps the machines case for compatibility. |
 
@@ -418,7 +419,7 @@ Removed 2026-11-08: Today no longer lists the machines in any detail level (Lab 
 
 **Show rules (kit)** · Today · partial · since 2026-11-07
 
-One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" are the feature show-rule-editor.
+One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Detailed ignores rules, Minimal adds sections set to "When it needs me" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and "Hidden now" are the feature show-rule-editor.
 
 | | |
 |---|---|
@@ -450,7 +451,7 @@ Settings → Advanced → "Where you are" (only with a Home Assistant server, of
 
 **Show rules: editor and "Hidden now"** · Today · partial · since 2026-11-07
 
-Settings → Advanced → Sections shows each section's rule in words under its name ("Always", "Evenings", Machines "Only in Overkill"; "Not on your servers" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line "Hidden now: Deals (evenings) · Show"; Show brings them back until the app closes. Without rules Today is exactly as before.
+Settings → Advanced → Sections shows each section's rule in words under its name ("Always", "Evenings", Machines "Only in Detailed"; "Not on your servers" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line "Hidden now: Deals (evenings) · Show"; Show brings them back until the app closes. Without rules Today is exactly as before.
 
 | | |
 |---|---|
@@ -486,7 +487,7 @@ The agent's last chat report (morning, watchdog, …) at the end of Today; tap o
 
 **Start presets (Home, Watch, Everything)** · Today · partial · since 2026-11-07
 
-For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. The first run's "Start with" offers them (first-run).
+For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Home tiles first), Watch (the lab first) or Everything (every section), and the preset becomes Today's layout. Every preset writes the Standard detail level, the default (owner review 2026-11-08, row 42). The first run's "Start with" offers them (first-run).
 
 | | |
 |---|---|
@@ -502,7 +503,7 @@ For a first run only (no server saved yet, so never for the owner): what the fou
 
 **Weather line under the headline** · Today · shipped · since 2026-11-06
 
-Every detail level, Calm too, shows the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts.
+Every detail level, Minimal too, shows the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts.
 
 | | |
 |---|---|
@@ -511,7 +512,7 @@ Every detail level, Calm too, shows the `weather` card's subtitle (plus the temp
 | Tests | `HeroLinesTests/weatherSentenceAddsTheTemperatureNowWhenMissing`, `DayTimelineTests/dayCardIgnoresTheWeatherCard` |
 | Phone (DeviceTest.md) | O12c |
 | Docs | [CHANGELOG.md#100-unreleased](../CHANGELOG.md#100-unreleased), [docs/DESIGN.md#4-the-voice](DESIGN.md#4-the-voice), [docs/GETTING-STARTED.md#the-weather-line-and-the-lessons](GETTING-STARTED.md#the-weather-line-and-the-lessons), [docs/API.md](API.md) |
-| Notes | Shown in every detail level (owner sees it in Calm, 2026-11-08); the weather card itself is not drawn on Today. |
+| Notes | Shown in every detail level (owner sees it in Minimal, 2026-11-08); the weather card itself is not drawn on Today. |
 
 ### expiry-warning
 
@@ -559,7 +560,7 @@ Everything unfolded in the whole app: no folding, every field the server sends, 
 | Launch arguments | `-HomelabSettingsPage` |
 | Settings | Settings → Today → Detail → Hyperdetail |
 | Depends on | [personality](#personality), [today-layout](#today-layout) |
-| Notes | Owner decision 2026-11-08. Overkill is unchanged. Widgets are not changed. Latency is not measured. |
+| Notes | Owner decision 2026-11-08. Detailed is unchanged. Widgets are not changed. Latency is not measured. |
 
 ### cards
 
@@ -884,6 +885,22 @@ Overall status, problems first, one row per host in every density and text size 
 | Docs | [README.md#what-it-does](../README.md#what-it-does), [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules) |
 | Links | `homelab://lab`, `homelab://overview` |
 | Depends on | [companion-api](#companion-api) |
+| Through those | [companion-api-v1](#dep-companion-api-v1) |
+
+### lab-compact
+
+**Lab in Minimal (one screen)** · Lab · shipped · since 2026-11-08
+
+Minimal (stored as `calm`) keeps Lab to about one screen like Today: the header, every problem, one short line per host (the reason or "up"), and each server card and the services folded to a title with a count that opens on a tap. Standard, Detailed and Hyperdetail keep the full Lab.
+
+| | |
+|---|---|
+| Sources | [LabCompact.swift](../Sources/HomelabKit/LabCompact.swift) |
+| Tests | `Round2ReviewTests` |
+| Phone (DeviceTest.md) | O18 |
+| Docs | [docs/GETTING-STARTED.md#how-long-today-is](GETTING-STARTED.md#how-long-today-is) |
+| Settings | Settings → Today → Detail → Minimal |
+| Depends on | [lab-hosts](#lab-hosts), [today-layout](#today-layout) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
 
 ### host-detail
@@ -1976,7 +1993,7 @@ CI (free runners only): Linux job with lint, HomelabKit tests against the fixtur
 
 **Screenshots (simulator in CI, phone over USB)** · Tooling · shipped · since 2026-11-04
 
-`scripts/sim-smoke` takes 37 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `sim-smoke --matrix` (manual CI run with `matrix: true`) takes about 90 named shots of every scene x detail level x voice, with an index; `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes.
+`scripts/sim-smoke` takes 37 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Detailed); `sim-smoke --matrix` (manual CI run with `matrix: true`) takes about 90 named shots of every scene x detail level x voice, with an index; `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes.
 
 | | |
 |---|---|
@@ -2061,7 +2078,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 32 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 48 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 49 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 15 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -2151,7 +2168,7 @@ Features per area that need each dependency, directly or through another feature
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 8 |  |  | 4 |  |  | 2 | 18 |  |
-| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 3 | 3 |  | 3 | 1 |  | 5 | 1 |  |  | 20 |  |
+| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 4 | 3 |  | 3 | 1 |  | 5 | 1 |  |  | 20 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 3 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

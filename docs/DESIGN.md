@@ -90,9 +90,9 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
   directly under what it comments on.
 - The fact is always shown plainly next to the joke, so the joke can be ignored.
 - Under the hero, plain text, never part of its button: the weather (the `weather` card's subtitle, in every detail
-  level, Calm too; the lessons card's gold change dot and struck-through cancelled lessons are drawn by the card) as one sentence with its symbol ("☁ Clear, 3 °C
+  level, Minimal too; the lessons card's gold change dot and struck-through cancelled lessons are drawn by the card) as one sentence with its symbol ("☁ Clear, 3 °C
   now", `Typo.secondary`), and where the data is from ("homelab · checked 4 min ago", meta) **only** while a pull to
-  refresh runs, after a failed fetch, or when the data is older than 10 min (`FreshnessLine`; Overkill always).
+  refresh runs, after a failed fetch, or when the data is older than 10 min (`FreshnessLine`; Detailed always).
   A line that is always there says nothing (owner, 2026-11-06).
 - Off by default; Dry, Snarky, Ultrakill in Settings.
 - Lines read like one quick human remark about the actual fact: short, varied rhythm, no setup without a punchline,
@@ -182,9 +182,9 @@ the default text size with typical data on an iPhone 12 mini:
 
 | Detail | Length |
 |---|---|
-| Calm | One screen: the day card and the Home tiles. Unchanged |
+| Minimal | One screen: the day card and the Home tiles. Lab is compact too: header, problems, one line per host, cards and services folded to a title and a count |
 | Standard | Two screens at most. The first screen has the hero, Tomorrow, the approvals and every urgent row |
-| Overkill | Three screens at most |
+| Detailed | Three screens at most |
 | Hyperdetail | As long as the data is. No limit: see "Hyperdetail" below |
 
 - **Urgent rows never fold.** A row that needs you always shows, with a warm or red tint: a deadline that is overdue
@@ -201,7 +201,7 @@ the default text size with typical data on an iPhone 12 mini:
   - A small list card (a game server: "Mira is playing") is one line. An unknown card folds after 3 rows or 3 lines.
 - **Tiles hold what is nice to know: deals, recent downloads, grades and news.** No panel title. Each tile has the icon and
   a short name ("Deals", "Downloads", "Grades", "News"), the count as a big number and one short line ("best −50 %",
-  "Dune +7", "ITP 95 %", the top headline; the news tile in Overkill says the day's digest). A tap opens the full list in a sheet (title and Done; the card as Lab and chat draw it; the
+  "Dune +7", "ITP 95 %", the top headline; the news tile in Detailed says the day's digest). A tap opens the full list in a sheet (title and Done; the card as Lab and chat draw it; the
   deals sheet ends with "Open Deals"; the News sheet is the digest and then one row per story, a row opens the
   article in the in-app browser, reader mode when the page has one). Today never grows when a tile is tapped. News is
   the fourth tile: with deals, downloads and grades present they sit 2 by 2.
@@ -214,7 +214,7 @@ the default text size with typical data on an iPhone 12 mini:
   within 60 minutes (`TodayFold.departuresMatter`), and then at the top, inside the day card under the school stops
   and Leave by. A disruption counts only with such a Leave by: on a day without one (no school, tomorrow's card,
   Leave by already passed) departures stay hidden even with a disruption.
-- **Overkill is the same design with more detail per line, not everything open.** The deals tile says "best −70 % ·
+- **Detailed is the same design with more detail per line, not everything open.** The deals tile says "best −70 % ·
   GPU €140", downloads name two ("Dune, Arrival +6"), grades two ("ITP 95 %, SEW 88 %"), a few more rows before a
   fold (5 deadlines), about 6 briefing lines.
 - **Machines are in Lab only**, in every detail level. The hero line ("3 of 3 machines up") stays. The saved layout
@@ -231,13 +231,13 @@ the default text size with typical data on an iPhone 12 mini:
 
 ### Hyperdetail (the fourth detail level)
 
-Owner decision 2026-11-08: Calm / Standard / Overkill / **Hyperdetail**. Overkill stays exactly as it is. Hyperdetail is
+Owner decision 2026-11-08: Minimal / Standard / Detailed / **Hyperdetail** (stored as `calm`, `standard`, `overkill`, `hyperdetail`; the launch argument takes either word). A section switched off in Settings stays off at every level (review row 38). Standard is the default for a new user and for every first-run preset (row 42). Detailed stays exactly as it is. Hyperdetail is
 everything, in the whole app, and the user experience is allowed to suffer; it is a joke that works. The decisions are
 in HomelabKit (`Hyperdetail.swift`, `HyperLines.swift`, tested), the views only draw them (`HyperdetailViews.swift`).
 
 - **No folding anywhere.** Every list is open (Today's cards, the approvals, the Lab cards, a chat bubble's cards, long
   chat replies, the departures with or without a "Leave by", the weather card, one-line cards drawn as cards). The
-  tiles (deals, downloads, grades, news) do not open a sheet: their full lists sit open on Today. Every section shows
+  tiles (deals, downloads, grades, news) do not open a sheet: their full lists sit open on Today. Every section that is on shows
   and no show rule hides one. Text wraps and is never cut.
 - **Every field.** Under each fact a block of quiet monospaced rows with what the server sent: ids, units, states,
   `updated`, tint, icon, due as an exact time and an age, thresholds, sources, counts. A host shows load with its
@@ -249,12 +249,12 @@ in HomelabKit (`Hyperdetail.swift`, `HyperLines.swift`, tested), the views only 
 - **A remark on every fact**, when a personality is on, in the chosen voice: a host, a problem, an approval, a deadline, a
   to-do, a departure, a deal, a download, a grade, a news item, a Home tile, a chat reply, a list, the server, an action,
   any other row. Each is picked from lines bound to the true value of that fact (`Hyper.Fact`: kind, values, seed);
-  fixed for the day; a tap on it says the next one. Same limits as every other line (HyperdetailTests).
+  fixed for the day; facts of one kind take the kind's lines in turn (`Hyper.Ledger`), so neighbours never repeat and a list no longer than the kind's lines repeats none; a scene says when it ran ("ran 3 h ago"), never its raw state; a tap on it says the next one. Same limits as every other line (HyperdetailTests).
 - **Personality Off: details only.** No remark appears; the extra fields still do.
 - **The warning.** Choosing Hyperdetail asks once: "Hyperdetail. Everything. Every number, every timestamp, everywhere,
   unfolded. Your screen will scroll forever. Why would you want that?" with "Do it" / "Back" (Back keeps the previous
   level). Like Ultrakill's, it is remembered (`hyperdetailWarned`, omitted from the file until then).
-- The detail menu describes it as "Everything, unfolded; commentary when a personality is on. Not recommended." Widgets and the share
+- The detail menu describes it as "Everything on, unfolded; commentary with a personality. Not recommended." Widgets and the share
   extension are unchanged.
 - Never a secret: every field is scrubbed (`HyperSecret`): signed approval buttons show only as "offered", bearer tokens,
   `HOMELAB_...` strings, keys in a URL query and the user:password part of a URL are replaced, on screen and in notification bodies.

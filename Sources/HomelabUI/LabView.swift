@@ -147,6 +147,56 @@ struct LabView: View {
 
     // MARK: Content
 
+    /// Minimal: Lab fits about one screen too (`LabCompact`, review row 41).
+    private var compact: Bool { LabCompact.applies(model.settings.todayDensity) }
+
+    /// Minimal: one short line per host (dot, name, why it is not fine or "up"); a tap opens the details as before.
+    @ViewBuilder
+    private func compactHostsBlock(_ state: HomelabState) -> some View {
+        if !state.hosts.isEmpty {
+            VStack(alignment: .leading, spacing: Space.titleToPanel) {
+                SectionTitle(text: "Hosts", trailing: String(localized: "\(state.hosts.filter { $0.reachable == true }.count) of \(state.hosts.count) up"))
+                VStack(spacing: 0) {
+                    ForEach(Array(state.hosts.enumerated()), id: \.element.id) { index, host in
+                        if index > 0 { Divider().padding(.leading, 16) }
+                        let health = state.health(of: host)
+                        NavigationLink(value: host) {
+                            HStack(spacing: 10) {
+                                Circle().fill(health.color).frame(width: 8, height: 8).accessibilityHidden(true)
+                                Text(host.name).font(Typo.headline).foregroundStyle(Palette.text).lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(LabCompact.hostNote(host)).font(Typo.secondary).foregroundStyle(Palette.secondary).lineLimit(1)
+                            }
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .accessibilityElement(children: .combine)
+                            .accessibilityHint(Text("Shows details"))
+                        }
+                        .buttonStyle(PressStyle(scale: 1))
+                    }
+                }
+                .rowsPanel()
+            }
+        }
+    }
+
+    /// Minimal: a card (or the services) folded to its title and a count; a tap opens it.
+    private func foldedRow<Content: View>(_ fold: (title: String, count: String?), @ViewBuilder content: () -> Content) -> some View {
+        DisclosureGroup {
+            content().padding(.top, 8)
+        } label: {
+            HStack {
+                Text(fold.title).font(Typo.headline).foregroundStyle(Palette.text)
+                Spacer(minLength: 8)
+                if let count = fold.count { Text(count).font(Typo.data(.subheadline)).foregroundStyle(Palette.secondary) }
+            }
+        }
+        .tint(Palette.secondary)
+        .padding(16)
+        .rowsPanel()
+    }
+
     @ViewBuilder
     private func hostsBlock(_ state: HomelabState) -> some View {
         if !state.hosts.isEmpty {
@@ -206,11 +256,23 @@ struct LabView: View {
         let cards = state.cards.filter { $0.place == .lab }
         ForEach(LabBlocks.visibleIDs(cards: cards, model.settings.labBlocks), id: \.self) { id in
             switch id {
-            case LabBlocks.hosts: hostsBlock(state)
+            case LabBlocks.hosts: if compact { compactHostsBlock(state) } else { hostsBlock(state) }
             case LabBlocks.services:
-                if !status.services.isEmpty { ServicesSection(services: status.services) }
+                if !status.services.isEmpty {
+                    if compact {
+                        foldedRow(LabCompact.servicesFold(status.services.count)) { ServicesSection(services: status.services) }
+                    } else {
+                        ServicesSection(services: status.services)
+                    }
+                }
             default:
-                if let card = cards.first(where: { $0.id == id }) { CardView(card: card, lab: true, model: model) }
+                if let card = cards.first(where: { $0.id == id }) {
+                    if compact {
+                        foldedRow(LabCompact.cardFold(card)) { CardView(card: card, lab: true, model: model) }
+                    } else {
+                        CardView(card: card, lab: true, model: model)
+                    }
+                }
             }
         }
 

@@ -41,25 +41,25 @@ import Testing
         #expect(StartPreset.suggested(features: odd.features, hasHA: true) == .watch)
     }
 
-    @Test func demoSuggestsEverythingAndWritesOnlyTheDensity() async throws {
+    @Test func demoSuggestsEverythingAndWritesNothingBecauseItIsTheDefault() async throws {
         let info = try await DemoBackend(delay: .zero).info()
         #expect(ServerConfig.demoHomeAssistant().showsHomeTab)   // the demo comes with a Home Assistant
         #expect(StartPreset.suggested(features: info.features, hasHA: true) == .everything)
         let l = StartPreset.everything.layout(features: info.features, hasHA: true)
-        #expect(l == StartLayout(today: .standard, density: .overkill))
+        #expect(l == StartLayout(today: .standard, density: .standard))
         var s = AppSettings()
         l.apply(to: &s)
-        #expect(s.today == nil && s.density == .overkill)
+        #expect(s.today == nil && s.density == nil)
     }
 
     // MARK: Home
 
     @Test func homeForHomeAssistantOnly() {
         let l = StartPreset.home.layout(features: [], hasHA: true)
-        #expect(l.density == .calm)
+        #expect(l.density == .standard)
         #expect(sections(l) == ["home", "day", "waiting", "cards", "deals", "report", "machines"])
         #expect(l.today.hidden == ["deals", "report", "machines"])
-        #expect(Density.calm.sections(l.today) == [.home, .day])
+        #expect(Density.calm.sections(l.today) == [.home, .day])   // Minimal is still one pick away
         #expect(Density.standard.sections(l.today) == [.home, .day, .waiting, .cards])
     }
 
@@ -111,7 +111,7 @@ import Testing
     @Test func everythingShowsEverySection() {
         for (features, hasHA) in [(Set<F>(), true), (Self.bareBridge, false), (Self.fullBridge, true), (Self.all, true)] {
             let l = StartPreset.everything.layout(features: features, hasHA: hasHA)
-            #expect(l.density == .overkill)
+            #expect(l.density == .standard)
             #expect(l.today.hidden.isEmpty)
             #expect(Set(l.today.sections) == Set(TodaySection.allCases))
             #expect(Density.overkill.sections(l.today).count == TodaySection.allCases.filter(\.isOnToday).count)
@@ -175,11 +175,11 @@ import Testing
         var expected = before
         expected.today = TodayLayout(order: ["home", "day", "waiting", "cards", "deals", "report", "machines"],
                                      hidden: ["deals", "report", "machines"])
-        expected.density = .calm
+        expected.density = nil   // Standard is the default and stored as nothing
         #expect(s == expected)
         // Picking another preset afterwards replaces both; one matching the defaults stores nothing for them.
         StartPreset.everything.layout(features: Self.all, hasHA: true).apply(to: &s)
-        #expect(s.today == nil && s.density == .overkill)
+        #expect(s.today == nil && s.density == nil)
         StartLayout(today: .standard, density: .standard).apply(to: &s)
         #expect(s == before)
         let json = try JSONSerialization.jsonObject(with: Storage.encoder.encode(s)) as? [String: Any] ?? [:]

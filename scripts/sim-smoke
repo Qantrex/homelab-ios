@@ -12,7 +12,7 @@
 #   23-24  the smallest iPhone available (SE / "e" model / smallest screen): demo today + actions
 #   25-26  action forms (demo, reset first): Wake-up in dark, Add an event with accessibility-XL text (-HomelabAction)
 #   27     demo host detail (reset first, problem scene) in dark: 24 h sparklines and containers with Restart (-HomelabHost media)
-#   28     demo Today (reset first, problem scene) in Overkill with the Snarky personality
+#   28     demo Today (reset first, problem scene) in Detailed with the Snarky personality
 #   29     demo Today with only the demo Home Assistant (reset first, -HomelabDemoScene ha-only): no Companion server
 #   30-35  first run (reset first): the welcome, and Found with "Start with" over the demo (-HomelabFirstRun), in light,
 #          dark and accessibility-XL text

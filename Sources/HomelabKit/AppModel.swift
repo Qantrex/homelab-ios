@@ -47,7 +47,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var lastBackgroundResult: String?
     /// Today's section order and hidden sections; nil = the standard layout (also for settings from older versions).
     public var today: TodayLayout?
-    /// Calm, Standard, Overkill or Hyperdetail; nil = Standard.
+    /// Minimal, Standard, Detailed or Hyperdetail (stored as calm, standard, overkill, hyperdetail); nil = Standard.
     public var density: Density?
     /// Off, Dry, Snarky or Ultrakill; nil = Off.
     public var personality: Personality?
@@ -1193,7 +1193,7 @@ struct LaunchArguments {
         reset = yes("HomelabResetState")
         if let s = value("HomelabServer"), case .success(let url) = URLPolicy.serverURL(s) { server = url }
         tab = value("HomelabTab").flatMap { AppTab(name: $0) }
-        density = value("HomelabDensity").flatMap { Density(rawValue: $0.lowercased()) }
+        density = value("HomelabDensity").flatMap { Density.parse($0) }
         settingsPage = value("HomelabSettingsPage").flatMap { $0.lowercased() == "advanced" ? "advanced" : nil }
         personality = value("HomelabPersonality").flatMap { Personality(rawValue: $0.lowercased()) }
         action = value("HomelabAction").flatMap { ActionSpec.isValidName($0) ? $0 : nil }

@@ -81,11 +81,11 @@ depends_on = ["companion-api"]
 
 [[feature]]
 id = "today-layout"
-name = "Today sections and detail (Calm, Standard, Overkill)"
+name = "Today sections and detail (Minimal, Standard, Detailed)"
 area = "Today"
 status = "shipped"
 since = "2026-11-06"
-summary = "Today's sections can be reordered and hidden; Calm, Standard or Overkill picks how much shows (Overkill adds every machine's numbers, exact times and busy jobs). Refreshes every 30 s while open."
+summary = "Today's sections can be reordered and hidden; Minimal, Standard or Detailed picks how much shows (Detailed adds every machine's numbers, exact times and busy jobs). Refreshes every 30 s while open."
 sources = ["Sources/HomelabKit/TodayLayout.swift", "Sources/HomelabUI/SettingsView.swift#TodayLayoutEditor", "Sources/HomelabUI/TodayView.swift#TodayView"]
 tests = ["TodayLayoutTests", "DensityTests", "DensityArgumentTests"]
 device_tests = ["T2"]
@@ -100,7 +100,7 @@ name = "Today is short by design (folds, tiles)"
 area = "Today"
 status = "shipped"
 since = "2026-11-08"
-summary = "Standard fits two screens, Overkill three, Calm one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a \"Leave by\" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Overkill adds detail per line. Expanding lasts for the session."
+summary = "Standard fits two screens, Detailed three, Minimal one. Urgent rows (deadlines overdue or within 3 days, later ones always folded, to-dos past their time, proposals) never fold; longer lists show 3 rows and \"Show N more\"; deals, recent downloads and grades are small tiles (count plus one line, 2 by 2 / 3 in a row / full width by count) that open the full list in a sheet; departures show only inside the day card, at the top, while a \"Leave by\" is within 60 min; the weather card is left to the hero line; Machines are in Lab only. Detailed adds detail per line. Expanding lasts for the session."
 sources = ["Sources/HomelabKit/TodayFold.swift", "Sources/HomelabUI/TodayFoldViews.swift"]
 fixtures = ["Sources/HomelabKit/Fixtures/demo-today.json"]
 tests = ["TodayFoldTests", "Round1TodayFixTests"]
@@ -116,7 +116,7 @@ name = "News (tile, sheet, Settings → News)"
 area = "Today"
 status = "shipped"
 since = "2026-11-08"
-summary = "The server fetches and summarises the owner's news; Today shows a News tile (count and the top headline, Overkill the digest) that opens a sheet with the digest and the stories, each opening in the in-app browser (reader mode when available). Settings → Advanced → Today → News (only when the server answers) picks country, sources, summaries or headlines, 3/5/8 stories and a 12/24/48 h window; changes are saved on the server."
+summary = "The server fetches and summarises the owner's news; Today shows a News tile (count and the top headline, Detailed the digest) that opens a sheet with the digest and the stories, each opening in the in-app browser (reader mode when available). Settings → Advanced → Today → News (only when the server answers) picks country, sources, summaries or headlines, 3/5/8 stories and a 12/24/48 h window; changes are saved on the server."
 notes = "The Homelab Bridge serves news through the rss source (headlines only); the owner's agent also summarises."
 endpoints = ["GET /news/sources", "PUT /news/prefs"]
 api_fields = ["cards[id=news]", "can_summarize", "prefs"]
@@ -131,7 +131,7 @@ depends_on = ["today-folding"]
 
 [[feature]]
 id = "overkill-machines"
-name = "Machines list (Overkill)"
+name = "Machines list (Detailed)"
 area = "Today"
 status = "removed"
 since = "2026-11-06"
@@ -146,7 +146,7 @@ device_tests = ["O8"]
 screenshots = ["demo-today-overkill-snarky"]
 docs = ["docs/ADAPTING.md#the-modules"]
 today_sections = ["machines"]
-settings = ["Settings → Today → Detail → Overkill"]
+settings = ["Settings → Today → Detail → Detailed"]
 depends_on = ["today-layout"]
 
 [[feature]]
@@ -155,7 +155,7 @@ name = "Show rules (kit)"
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Overkill ignores rules, Calm adds sections set to \"When it needs me\" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and \"Hidden now\" are the feature show-rule-editor."
+summary = "One optional rule per Today section says when it shows: Always (the default, and what no rule means), When it needs me, At set times (named windows like Evenings or Weekdays, midnight wrap), and At home or Away once presence comes from Home Assistant (unknown or older than 30 min passes). Detailed ignores rules, Minimal adds sections set to \"When it needs me\" while they need you, Standard shows Machines only with a rule. Old settings save back unchanged. Kit only: the editor and \"Hidden now\" are the feature show-rule-editor."
 sources = ["Sources/HomelabKit/ShowRule.swift"]
 tests = ["TimeWindowTests", "ShowRuleTests", "ShowRuleLayoutTests", "ShowRuleCodingTests", "NeedsMeTests", "ShowRuleOwnerTests", "ModularReviewFixTests/homeNeedsMeShowsOnceAPinnedTileIsUnavailable", "ModularReviewFixTests/todayWithoutRulesReadsNoStates", "ModularReviewFixTests/badTodayRulesKeepOtherSettings"]
 docs = ["docs/plans/MODULAR.md#m3-today-control-in-scope-decision-4-presence-and-quiet-hours-included"]
@@ -184,7 +184,7 @@ name = "Show rules: editor and \"Hidden now\""
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "Settings → Advanced → Sections shows each section's rule in words under its name (\"Always\", \"Evenings\", Machines \"Only in Overkill\"; \"Not on your servers\" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line \"Hidden now: Deals (evenings) · Show\"; Show brings them back until the app closes. Without rules Today is exactly as before."
+summary = "Settings → Advanced → Sections shows each section's rule in words under its name (\"Always\", \"Evenings\", Machines \"Only in Detailed\"; \"Not on your servers\" when no server can fill it), and a tap opens a sheet: Always, When it needs me (with what that means for the section), Mornings, Daytime, Evenings, Weekdays, Weekends, or Custom with two time pickers and day chips. At home and Away only once presence is set up. While a rule hides a section that has something to show, Today ends with one line \"Hidden now: Deals (evenings) · Show\"; Show brings them back until the app closes. Without rules Today is exactly as before."
 sources = ["Sources/HomelabKit/ShowRuleEditing.swift", "Sources/HomelabUI/ShowRuleEditor.swift", "Sources/HomelabUI/SettingsView.swift#SectionRuleRow", "Sources/HomelabUI/TodayView.swift#HiddenNowLine", "Sources/HomelabKit/AppModel.swift#shownAnyway"]
 tests = ["RuleOptionTests", "TimeWindowEditingTests", "HiddenNowTests", "ShowRuleModelTests", "ShowRuleOwnerTests", "OwnerInvarianceTests"]
 device_tests = ["T9", "T10"]
@@ -219,7 +219,7 @@ name = "Start presets (Home, Watch, Everything)"
 area = "Today"
 status = "partial"
 since = "2026-11-07"
-summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Calm, Home tiles first), Watch (Standard, the lab first) or Everything (Overkill), and the preset becomes Today's layout and density. The first run's \"Start with\" offers them (first-run)."
+summary = "For a first run only (no server saved yet, so never for the owner): what the found servers offer (the Companion server's features, a Home Assistant) suggests Home (Home tiles first), Watch (the lab first) or Everything (every section), and the preset becomes Today's layout. Every preset writes the Standard detail level, the default (owner review 2026-11-08, row 42). The first run's \"Start with\" offers them (first-run)."
 server_features = []
 endpoints = ["GET /info"]
 api_fields = ["info.features"]
@@ -236,7 +236,7 @@ name = "Weather line under the headline"
 area = "Today"
 status = "shipped"
 since = "2026-11-06"
-summary = "Every detail level, Calm too, shows the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts."
+summary = "Every detail level, Minimal too, shows the `weather` card's subtitle (plus the temperature now) as one grey line under the headline's facts."
 server_features = ["cards"]
 endpoints = ["GET /state"]
 api_fields = ["card id \"weather\""]
@@ -244,7 +244,7 @@ sources = ["Sources/HomelabKit/HeroLines.swift"]
 tests = ["HeroLinesTests/weatherSentenceAddsTheTemperatureNowWhenMissing", "DayTimelineTests/dayCardIgnoresTheWeatherCard"]
 device_tests = ["O12c"]
 docs = ["CHANGELOG.md#100-unreleased", "docs/DESIGN.md#4-the-voice", "docs/GETTING-STARTED.md#the-weather-line-and-the-lessons", "docs/API.md"]
-notes = "Shown in every detail level (owner sees it in Calm, 2026-11-08); the weather card itself is not drawn on Today."
+notes = "Shown in every detail level (owner sees it in Minimal, 2026-11-08); the weather card itself is not drawn on Today."
 
 [[feature]]
 id = "expiry-warning"
@@ -289,7 +289,7 @@ docs = ["docs/DESIGN.md#hyperdetail-the-fourth-detail-level", "docs/GETTING-STAR
 launch_args = ["-HomelabSettingsPage"]
 settings = ["Settings → Today → Detail → Hyperdetail"]
 depends_on = ["personality", "today-layout"]
-notes = "Owner decision 2026-11-08. Overkill is unchanged. Widgets are not changed. Latency is not measured."
+notes = "Owner decision 2026-11-08. Detailed is unchanged. Widgets are not changed. Latency is not measured."
 
 # ==================================================================================================== Cards
 
@@ -620,6 +620,20 @@ screenshots = ["demo-lab-light", "demo-lab-dark", "demo-lab-xxl", "live-lab-huge
 docs = ["README.md#what-it-does", "docs/ADAPTING.md#the-modules"]
 links = ["homelab://lab", "homelab://overview"]
 depends_on = ["companion-api"]
+
+[[feature]]
+id = "lab-compact"
+name = "Lab in Minimal (one screen)"
+area = "Lab"
+status = "shipped"
+since = "2026-11-08"
+summary = "Minimal (stored as `calm`) keeps Lab to about one screen like Today: the header, every problem, one short line per host (the reason or \"up\"), and each server card and the services folded to a title with a count that opens on a tap. Standard, Detailed and Hyperdetail keep the full Lab."
+sources = ["Sources/HomelabKit/LabCompact.swift"]
+tests = ["Round2ReviewTests"]
+device_tests = ["O18"]
+docs = ["docs/GETTING-STARTED.md#how-long-today-is"]
+settings = ["Settings → Today → Detail → Minimal"]
+depends_on = ["lab-hosts", "today-layout"]
 
 [[feature]]
 id = "host-detail"
@@ -1719,7 +1733,7 @@ name = "Screenshots (simulator in CI, phone over USB)"
 area = "Tooling"
 status = "shipped"
 since = "2026-11-04"
-summary = "`scripts/sim-smoke` takes 37 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Overkill); `sim-smoke --matrix` (manual CI run with `matrix: true`) takes about 90 named shots of every scene x detail level x voice, with an index; `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes."
+summary = "`scripts/sim-smoke` takes 37 numbered simulator shots (demo every tab in light, dark and XXL, live against the fixture server, offline, smallest iPhone, forms, host detail, Detailed); `sim-smoke --matrix` (manual CI run with `matrix: true`) takes about 90 named shots of every scene x detail level x voice, with an index; `scripts/phone-shots` takes them on a real iPhone over USB in about 2 minutes."
 sources = ["scripts/sim-smoke", "scripts/phone-shots"]
 tests = ["CombinationTests/everyLevelEveryVoiceEveryScene", "CombinationTests/launchArgumentsCoverEveryLevelAndVoice"]
 docs = ["docs/CI.md#screenshots", "docs/CI.md#screenshot-matrix"]

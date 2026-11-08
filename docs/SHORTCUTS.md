@@ -16,7 +16,7 @@ app always shows the filled form and asks once before anything runs: a link only
 | `homelab://actions/<name>` | That action's form, as its Start tile opens it |
 | `homelab://actions/<name>?arg=…&<field>=…` | That form, **filled in** |
 
-`<name>` is the action's name from `GET /actions` (`todo-add`, `wake-set`, …; with Settings → Today → Overkill each
+`<name>` is the action's name from `GET /actions` (`todo-add`, `wake-set`, …; with Settings → Today → Detailed each
 Start tile shows it). A form waits until the server's list is there; picking another tab by hand drops it,
 and a newer link replaces it.
 
