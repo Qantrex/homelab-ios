@@ -583,7 +583,7 @@ class RealModeTest(unittest.TestCase):
 
         def reply():
             page = self.get("/api/v1/messages?after=%d" % mid)[2]
-            return page if page["messages"] else None
+            return page if page["messages"] and not page["messages"][0].get("partial") else None
         page = wait_for(reply)
         msg = page["messages"][0]
         self.assertEqual((msg["from"], msg["text"], msg["job"], msg["status"]), ("agent", "hello homelab ✓", "chat", "OK"))
@@ -606,6 +606,59 @@ class RealModeTest(unittest.TestCase):
         again = rs.Chat(["/bin/cat"], state_dir)
         self.assertEqual([m["text"] for m in again.page(0)["messages"]], ["one", "(no output)"])
         self.assertEqual(os.stat(os.path.join(state_dir, "messages.jsonl")).st_mode & 0o077, 0)
+
+    def test_chat_streams_a_partial_reply_then_the_final_one(self):
+        chat = rs.Chat(["sh", "-c", "cat >/dev/null; printf 'one '; sleep 1.2; printf 'two'; sleep 1.2; printf ' three'"],
+                       os.path.join(self.tmp, "chat4"))
+        chat.partial_interval = 0.1
+        mid = chat.post("go")[1]["id"]
+        seen = []
+
+        def done():
+            page = chat.page(mid)
+            for m in page["messages"]:
+                seen.append((m["id"], m["text"], m.get("partial", False)))
+            return not chat.busy
+        wait_for(done, timeout=10)
+        seen.append(("end",) + tuple((m["id"], m["text"], m.get("partial", False)) for m in chat.page(mid)["messages"]))
+        partials = [x for x in seen if x[0] != "end" and x[2]]
+        self.assertTrue(partials)
+        self.assertEqual(len({x[0] for x in seen if x[0] != "end"}), 1)    # one id throughout
+        texts = [x[1] for x in partials]
+        self.assertIn("one", texts)                                         # grows
+        self.assertTrue(any(t.startswith("one") and "two" in t for t in texts))
+        final = chat.page(mid)["messages"]
+        self.assertEqual(len(final), 1)
+        self.assertEqual((final[0]["text"], final[0]["status"]), ("one two three", "OK"))
+        self.assertNotIn("partial", final[0])
+        self.assertEqual(final[0]["id"], partials[0][0])
+        # only the final reply is stored
+        again = rs.Chat(["/bin/cat"], os.path.join(self.tmp, "chat4"))
+        self.assertEqual([m["text"] for m in again.page(0)["messages"]], ["go", "one two three"])
+
+    def test_chat_partial_placeholder_while_the_command_is_silent(self):
+        chat = rs.Chat(["sh", "-c", "cat >/dev/null; sleep 1; echo done"], os.path.join(self.tmp, "chat5"))
+        mid = chat.post("go")[1]["id"]
+        wait_for(lambda: chat.page(mid)["messages"])
+        first = chat.page(mid)["messages"][0]
+        self.assertEqual((first["text"], first["partial"]), ("…", True))
+        wait_for(lambda: not chat.busy, timeout=10)
+        last = chat.page(mid)["messages"][0]
+        self.assertEqual((last["id"], last["text"]), (first["id"], "done"))
+        self.assertNotIn("partial", last)
+
+    def test_chat_timeout_and_failure_end_the_partial(self):
+        chat = rs.Chat(["sh", "-c", "cat >/dev/null; printf half; sleep 5"], os.path.join(self.tmp, "chat6"), timeout=1)
+        mid = chat.post("go")[1]["id"]
+        wait_for(lambda: not chat.busy, timeout=10)
+        m = chat.page(mid)["messages"][0]
+        self.assertEqual(m["status"], "ERROR")
+        self.assertNotIn("partial", m)
+        bad = rs.Chat(["sh", "-c", "cat >/dev/null; echo oops; exit 3"], os.path.join(self.tmp, "chat7"))
+        mid = bad.post("go")[1]["id"]
+        wait_for(lambda: not bad.busy, timeout=10)
+        m = bad.page(mid)["messages"][0]
+        self.assertEqual((m["status"], m["text"]), ("ERROR", "oops\n(exit 3)"))
 
     def test_chat_busy_is_reset_when_storing_the_reply_fails(self):
         chat = rs.Chat(["/bin/cat"], os.path.join(self.tmp, "chat3"))

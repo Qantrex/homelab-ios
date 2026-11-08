@@ -159,3 +159,60 @@ import Testing
                 == Voice.line(.unknown, .snarky, on: now, calendar: Self.vienna))
     }
 }
+
+/// Streaming replies: the same id arrives again with more text and `partial` until the final one.
+@Suite struct ChatStreamingTests {
+    func page(_ text: String, partial: Bool, busy: Bool = true) -> MessagePage {
+        MessagePage(messages: [ChatMessage(id: 20, from: .agent, text: text, partial: partial)], busy: busy ? ["chat"] : [])
+    }
+
+    @Test func decodesPartialAndOldServers() throws {
+        let json = #"{"messages":[{"id":5,"from":"agent","text":"He","partial":true},{"id":6,"from":"agent","text":"done"},{"id":7,"from":"agent","text":"x","partial":false}],"busy":["chat"]}"#
+        let p = try JSONDecoder().decode(MessagePage.self, from: Data(json.utf8))
+        #expect(p.messages.map(\.partial) == [true, false, false])
+        let back = try JSONDecoder().decode(ChatMessage.self, from: JSONEncoder().encode(p.messages[0]))
+        #expect(back.partial)
+    }
+
+    @Test func replacesInPlaceByID() {
+        var t = ChatTimeline()
+        let t0 = Date(timeIntervalSince1970: 1000)
+        t.merge(MessagePage(messages: [ChatMessage(id: 10, from: .me, text: "q")]), now: t0)
+        t.merge(page("Hel", partial: true), now: t0)
+        t.merge(page("Hello wor", partial: true), now: t0 + 1)
+        #expect(t.messages.map(\.id) == [10, 20])
+        #expect(t.messages.last?.text == "Hello wor" && t.messages.last?.partial == true)
+        t.merge(page("Hello world.", partial: false, busy: false), now: t0 + 2)
+        #expect(t.messages.map(\.id) == [10, 20])
+        #expect(t.messages.last?.text == "Hello world." && t.messages.last?.partial == false)
+    }
+
+    @Test func cursorStaysBelowAPartialReplyAndFinalCursorDoesNot() {
+        var t = ChatTimeline()
+        t.merge(MessagePage(messages: [ChatMessage(id: 10, from: .me, text: "q")]))
+        #expect(t.cursor == 10 && t.finalCursor == 10)
+        t.merge(page("Hel", partial: true))
+        #expect(t.cursor == 19 && t.finalCursor == 10)   // the server lists id 20 again for after=19
+        t.merge(page("Hello", partial: false, busy: false))
+        #expect(t.cursor == 20 && t.finalCursor == 20)
+    }
+
+    @Test func streamingWhilePartialOrBusyThenBackToNormal() {
+        var t = ChatTimeline()
+        let t0 = Date(timeIntervalSince1970: 1000)
+        #expect(!t.isStreaming(now: t0))
+        t.merge(page("Hel", partial: true), now: t0)
+        #expect(t.isStreaming(now: t0 + 5))
+        // a partial that stopped changing for a minute (dead server, busy gone) no longer polls fast
+        t.merge(page("Hel", partial: true, busy: false), now: t0 + 30)
+        #expect(t.isStreaming(now: t0 + 59))
+        #expect(!t.isStreaming(now: t0 + 61))
+        t.merge(page("Hel", partial: false, busy: false), now: t0 + 62)
+        #expect(!t.isStreaming(now: t0 + 62))
+        t.merge(MessagePage(messages: [], busy: ["chat"]), now: t0 + 63)
+        #expect(t.isStreaming(now: t0 + 63))
+        #expect(PollPolicy.chatInterval(working: t.isWorking, visible: true, streaming: t.isStreaming) == .seconds(1))
+        t.merge(MessagePage(messages: [], busy: []), now: t0 + 64)
+        #expect(PollPolicy.chatInterval(working: t.isWorking, visible: true, streaming: t.isStreaming) == .seconds(15))
+    }
+}

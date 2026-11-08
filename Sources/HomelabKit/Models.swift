@@ -602,16 +602,19 @@ public struct ChatMessage: Codable, Sendable, Equatable, Identifiable, Hashable 
     public var pending: [PendingAction]
     /// Cards shown inside the bubble, under the text.
     public var cards: [Card]
+    /// The reply is still being written: `text` is what exists so far. The server sends the same `id` again with
+    /// `partial` false (or absent) when it is done. Old servers never set it.
+    public var partial: Bool
 
     public enum Sender: String, Codable, Sendable { case me, agent }
 
     public init(id: Int64, ts: Date? = nil, from: Sender, job: String? = nil, status: String? = nil, text: String,
-                pending: [PendingAction] = [], cards: [Card] = []) {
+                pending: [PendingAction] = [], cards: [Card] = [], partial: Bool = false) {
         self.id = id; self.ts = ts; self.from = from; self.job = job; self.status = status; self.text = text
-        self.pending = pending; self.cards = cards
+        self.pending = pending; self.cards = cards; self.partial = partial
     }
 
-    enum CodingKeys: String, CodingKey { case id, ts, from, job, status, text, pending, cards }
+    enum CodingKeys: String, CodingKey { case id, ts, from, job, status, text, pending, cards, partial }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -623,11 +626,13 @@ public struct ChatMessage: Codable, Sendable, Equatable, Identifiable, Hashable 
         self.init(id: id, ts: c.date(.ts), from: c.string(.from)?.lowercased() == "me" ? .me : .agent,
                   job: c.text(.job), status: c.text(.status)?.uppercased(), text: c.string(.text) ?? "",
                   pending: c.array(PendingAction.self, .pending).filter { pendingIDs.insert($0.id).inserted },
-                  cards: c.array(Card.self, .cards).filter { cardIDs.insert($0.id).inserted })
+                  cards: c.array(Card.self, .cards).filter { cardIDs.insert($0.id).inserted },
+                  partial: c.bool(.partial) ?? false)
     }
 
     public func encode(to encoder: any Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
+        if partial { try c.encode(true, forKey: .partial) }
         try c.encode(id, forKey: .id)
         try c.encodeIfPresent(ts.map(ServerDate.string), forKey: .ts)
         try c.encode(from, forKey: .from)

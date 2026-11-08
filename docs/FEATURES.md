@@ -90,7 +90,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
-| [Chat with the homelab agent](#chat) | shipped | `chat` | 9 | **C1**, **C2**, C3, C4, C6, **C7**, **C8** | 3 |
+| [Chat with the homelab agent](#chat) | shipped | `chat` | 10 | **C1**, **C2**, C3, C4, C6, **C7**, **C8** | 3 |
 | [Slash commands and Clear](#chat-commands) | shipped | `chat` | 2 | C5, C5b | 1 |
 | [Proposals and cards in chat bubbles](#chat-proposals-cards) | shipped | `chat`, `actions` | 4 | C9, C10 | 1 |
 
@@ -941,14 +941,14 @@ Your web UIs, grouped, at the end of Lab; a tap opens Safari.
 
 **Chat with the homelab agent** · Chat · shipped · since 2026-11-04
 
-Chat with the agent: messages show at once, "Working…" while it runs, report tags (morning, watchdog, …), inline Markdown, copy, a 4000-character limit with a counter, failed messages can be edited and sent again, a day line above each day's first message.
+Chat with the agent: messages show at once, "Working…" while it runs, report tags (morning, watchdog, …), inline Markdown, copy, a 4000-character limit with a counter, failed messages can be edited and sent again, a day line above each day's first message. A reply that is still being written shows at once with a quiet "writing…" mark and grows in place (1 s polling; VoiceOver hears only the final reply).
 
 | | |
 |---|---|
 | Server | `chat`, `GET /messages`, `POST /messages`, `messages[]`, `busy[]` |
 | Sources | [ChatTimeline.swift](../Sources/HomelabKit/ChatTimeline.swift), [ChatView.swift](../Sources/HomelabUI/ChatView.swift) |
 | Fixtures | [messages.json](../Sources/HomelabKit/Fixtures/messages.json), [messages-demo.json](../Sources/HomelabKit/Fixtures/messages-demo.json) |
-| Tests | `ChatTimelineTests`, `ChatLayoutTests`, `ChatConfirmTests`, `ChatWorkingTimeoutTests`, `IntegrationTests/chatRoundTrip`, `CompanionClientTests/messagesUseTheCursor`, `CompanionClientTests/sendPostsJSON`, `CompanionClientTests/sendValidatesLocally`, `FixtureDecoding/messagesSortAndSkipBadOnes` |
+| Tests | `ChatTimelineTests`, `ChatLayoutTests`, `ChatConfirmTests`, `ChatWorkingTimeoutTests`, `ChatStreamingTests`, `IntegrationTests/chatRoundTrip`, `CompanionClientTests/messagesUseTheCursor`, `CompanionClientTests/sendPostsJSON`, `CompanionClientTests/sendValidatesLocally`, `FixtureDecoding/messagesSortAndSkipBadOnes` |
 | Phone (DeviceTest.md) | **C1**, **C2**, C3, C4, C6, **C7**, **C8** |
 | CI screenshots | `demo-chat-light`, `demo-chat-dark`, `live-chat` |
 | Docs | [README.md#what-it-does](../README.md#what-it-does), [docs/ADAPTING.md#the-modules](ADAPTING.md#the-modules), [docs/REFERENCE_SERVER.md#chat-opt-in](REFERENCE_SERVER.md#chat-opt-in) |

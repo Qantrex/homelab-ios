@@ -195,6 +195,10 @@ Set `chat_command` to an argv list. Each message runs it once with the text on s
 answer. Non-zero exit marks the answer `ERROR`. Only one runs at a time; a second message gets 429. Without
 `chat_command`, `/messages` answers 404 and the app hides the chat tab.
 
+While the command runs, `/messages` lists the reply as it grows (`"partial": true`, same `id`, text so far, updated
+about once a second) and replaces it with the final one when the command ends. A command that prints nothing until the
+end shows a single "…" placeholder. Only the final reply is stored in the history.
+
 The command gets the message text from someone you let in. Treat it as untrusted input.
 
 ## Security notes

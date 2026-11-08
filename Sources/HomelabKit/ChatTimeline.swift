@@ -22,6 +22,8 @@ public struct ChatTimeline: Sendable, Equatable {
     /// When (phone time) each message last came in a page: a state fetched after that is newer than what the
     /// message says. The server's `ts` has no time zone and another clock, so it can't be compared with `fetched`.
     public private(set) var received: [Int64: Date] = [:]
+    /// When a partial message's text last changed (phone time).
+    private var changed: [Int64: Date] = [:]
 
     public static let keep = 500
 
@@ -32,7 +34,27 @@ public struct ChatTimeline: Sendable, Equatable {
     public init() {}
 
     /// The id to poll after: the newest message, or the newest cleared one when nothing came since.
-    public var cursor: Int64 { max(messages.last?.id ?? 0, clearedThrough) }
+    /// While a reply is partial the cursor stays just below it: the server lists a message again only for an `after`
+    /// below its id, and the growing reply keeps its id.
+    public var cursor: Int64 {
+        if let p = messages.first(where: \.partial) { return max(p.id - 1, clearedThrough) }
+        return max(messages.last?.id ?? 0, clearedThrough)
+    }
+
+    /// The newest message that is complete (what VoiceOver announces as "arrived").
+    public var finalCursor: Int64 { messages.last(where: { !$0.partial })?.id ?? 0 }
+
+    /// A partial reply that did not change for this long counts as abandoned (the server died): no fast polling.
+    public static let partialTimeout: TimeInterval = 60
+
+    /// Fast polling is due: the server reports busy, or a partial reply is still growing.
+    public var isStreaming: Bool { isStreaming(now: Date()) }
+
+    public func isStreaming(now: Date) -> Bool {
+        !busy.isEmpty || messages.contains {
+            $0.partial && now.timeIntervalSince(changed[$0.id] ?? now) < Self.partialTimeout
+        }
+    }
 
     /// Something is on screen that Clear would hide.
     public var canClear: Bool { !messages.isEmpty || outgoing.contains(where: \.failed) }
@@ -76,12 +98,14 @@ public struct ChatTimeline: Sendable, Equatable {
     public mutating func merge(_ page: MessagePage, now: Date = Date()) {
         var byID = Dictionary(messages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         for m in page.messages where m.id > clearedThrough {
-            byID[m.id] = m
+            if m.partial, byID[m.id]?.text != m.text || changed[m.id] == nil { changed[m.id] = now }
+            byID[m.id] = m   // a partial message is replaced in place by its id, in the end by the final one
             received[m.id] = now
         }
         messages = byID.values.sorted { $0.id < $1.id }.suffix(Self.keep).map { $0 }
         let kept = Set(messages.map(\.id))
         received = received.filter { kept.contains($0.key) }
+        changed = changed.filter { kept.contains($0.key) && byID[$0.key]?.partial == true }
         busy = page.busy
         // A sent message is confirmed once the server lists its id, or a later "me" message with the same text.
         outgoing.removeAll { o in
@@ -124,6 +148,7 @@ public struct ChatTimeline: Sendable, Equatable {
         outgoing = []
         busy = []
         received = [:]
+        changed = [:]
         clearedThrough = 0
     }
 
@@ -211,8 +236,10 @@ public struct ChatClears: Codable, Sendable, Equatable {
 
 /// How often to poll. The chat polls fast only while something is running and the screen is visible.
 public enum PollPolicy {
-    public static func chatInterval(working: Bool, visible: Bool) -> Duration? {
+    /// `streaming`: a reply is growing or the server is busy (1 s); `working` alone: waiting for the reply (2 s).
+    public static func chatInterval(working: Bool, visible: Bool, streaming: Bool = false) -> Duration? {
         guard visible else { return nil }
+        if streaming { return .seconds(1) }
         return working ? .seconds(2) : .seconds(15)
     }
 

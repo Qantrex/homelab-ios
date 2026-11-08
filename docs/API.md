@@ -488,6 +488,24 @@ A message from `GET /messages` (and `state.last_message`) may carry two more lis
               "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}}]}
 ```
 
+### Partial replies (streaming)
+
+While the agent is still answering, `GET /messages` may list the reply as it grows: the same `id` every time,
+`"partial": true`, and `text` = the text so far (update it about once a second). When the answer is done, the same
+`id` comes with `"partial": false` (or no `partial` field) and the final text, `status`, `pending` and `cards`. Servers
+that do not stream never send the field and the chat behaves as before.
+
+The app shows a partial message at once with a small "writing…" mark, replaces it in place by `id`, and polls every
+1 s while a message is partial or `busy` is not empty (back to its normal rhythm afterwards). Because a message is
+only listed for an `after` below its id, the app asks `after=<id of the partial message - 1>` until it is final.
+A partial message with `pending` shows no buttons until it is final. A partial reply that does not change for 60 s is
+treated as abandoned.
+
+```json
+{"messages": [{"id": 1762290600000000002, "from": "agent", "job": "chat", "status": "OK",
+               "text": "The backup ran at 03:00 and", "partial": true}], "busy": ["chat"]}
+```
+
 ## Checking a live server
 
 `scripts/check-live-api [--token T] [-v] [BASE_URL]` (bash and python3, nothing to install) checks a server against

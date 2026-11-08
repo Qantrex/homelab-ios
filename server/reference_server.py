@@ -24,6 +24,7 @@ import json
 import os
 import re
 import secrets
+import select
 import shutil
 import signal
 import socket
@@ -909,6 +910,8 @@ class Chat:
         self.timeout = timeout
         self.lock = threading.Lock()
         self.busy = False
+        self.partial = None            # the reply being written (`partial: true`), not stored until it is done
+        self.partial_interval = 1.0    # seconds between updates of it
         self.messages = []
         self.last_id = 0
         os.makedirs(state_dir, mode=0o700, exist_ok=True)
@@ -968,13 +971,17 @@ class Chat:
     def _run(self, text):
         try:
             status = "OK"
+            with self.lock:
+                # The reply's id is fixed now: the growing reply and the final one share it (`partial`).
+                msg = self._new("agent", "…", job="chat", status="OK")
+                msg["partial"] = True
+                self.partial = msg
             try:
-                res = subprocess.run(self.command, input=text.encode("utf-8"), stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE, timeout=self.timeout, env=child_env())
-                reply = res.stdout.decode("utf-8", "replace").strip() or "(no output)"
-                if res.returncode != 0:
+                reply, code = self._read_reply(text, msg)
+                reply = reply.strip() or "(no output)"
+                if code != 0:
                     status = "ERROR"
-                    reply = "%s\n(exit %d)" % (reply, res.returncode)
+                    reply = "%s\n(exit %d)" % (reply, code)
             except subprocess.TimeoutExpired:
                 status, reply = "ERROR", "No answer within %d s." % self.timeout
             except OSError as exc:
@@ -982,17 +989,74 @@ class Chat:
             if len(reply) > 20000:
                 reply = reply[:20000] + "…"
             with self.lock:
-                self._append(self._new("agent", reply, job="chat", status=status))
+                final = dict(msg, text=reply, status=status)
+                del final["partial"]
+                self.partial = None
+                self._append(final)
         except Exception as exc:  # never leave busy stuck: every later POST would be 429
             log("chat: could not run or store the reply (%s)" % short_error(exc))
         finally:
             with self.lock:
+                self.partial = None
                 self.busy = False
+
+    def _read_reply(self, text, msg):
+        """Runs the command; while it runs, `self.partial` carries what it printed so far (read as it comes,
+        shown about once a second). Returns (stdout, exit code)."""
+        proc = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, env=child_env())
+        chunks = []
+        last_update = [0.0]
+
+        def feed():
+            try:
+                proc.stdin.write(text.encode("utf-8"))
+                proc.stdin.close()
+            except OSError:
+                pass
+
+        def publish(force=False):
+            now = time.monotonic()
+            if not force and now - last_update[0] < self.partial_interval:
+                return
+            last_update[0] = now
+            shown = b"".join(chunks).decode("utf-8", "replace").strip()
+            if shown:
+                with self.lock:
+                    if self.partial is msg:
+                        msg["text"] = shown[:20000]
+
+        threading.Thread(target=feed, daemon=True).start()
+        deadline = time.monotonic() + self.timeout
+        fd = proc.stdout.fileno()
+        try:
+            while True:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise subprocess.TimeoutExpired(self.command, self.timeout)
+                ready, _, _ = select.select([fd], [], [], min(left, self.partial_interval))
+                if ready:
+                    data = os.read(fd, 65536)
+                    if not data:
+                        break
+                    chunks.append(data)
+                publish()
+            publish(force=True)
+            proc.wait(timeout=max(deadline - time.monotonic(), 0.1))
+        except BaseException:
+            proc.kill()
+            proc.wait()
+            raise
+        finally:
+            proc.stdout.close()
+        return b"".join(chunks).decode("utf-8", "replace"), proc.returncode
 
     def page(self, after):
         with self.lock:
-            msgs = [m for m in self.messages if m["id"] > after][-PAGE_MESSAGES:]
-            return {"messages": msgs, "busy": ["chat"] if self.busy else []}
+            msgs = [m for m in self.messages if m["id"] > after]
+            if self.partial and self.partial["id"] > after:
+                msgs.append(dict(self.partial))
+            return {"messages": msgs[-PAGE_MESSAGES:], "busy": ["chat"] if self.busy else []}
 
     def last(self):
         with self.lock:

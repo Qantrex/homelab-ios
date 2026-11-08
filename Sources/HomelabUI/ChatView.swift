@@ -88,7 +88,7 @@ final class ChatModel {
 
     var nextPoll: Duration {
         failures > 0 ? PollPolicy.backoff(failures: failures)
-            : PollPolicy.chatInterval(working: timeline.isWorking, visible: true) ?? .seconds(15)
+            : PollPolicy.chatInterval(working: timeline.isWorking, visible: true, streaming: timeline.isStreaming) ?? .seconds(15)
     }
 }
 
@@ -264,7 +264,7 @@ struct ChatView: View {
                         .padding(.top, gap(.me, after: i > 0 ? .me : all.last?.from))
                         .id("o\(o.id.uuidString)")
                     }
-                    if chat.timeline.isWorking {
+                    if chat.timeline.isWorking, !(all.last?.partial ?? false) {   // a partial reply has its own mark
                         TypingIndicator()
                             .padding(.top, 16)
                             .id("working")
@@ -281,8 +281,8 @@ struct ChatView: View {
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
             }
             // VoiceOver hears what arrives: a new reply (shortened) and that the agent started working.
-            .onChange(of: chat.timeline.cursor) { old, _ in
-                guard old > 0, let reply = chat.timeline.messages.last(where: { $0.from == .agent && $0.id > old })
+            .onChange(of: chat.timeline.finalCursor) { old, _ in
+                guard old > 0, let reply = chat.timeline.messages.last(where: { $0.from == .agent && !$0.partial && $0.id > old })
                 else { return }
                 AccessibilityNotification.Announcement(String(localized: "Agent: \(Self.short(spoken(reply.text)))")).post()
             }
@@ -486,7 +486,7 @@ struct AgentMessage: View {
     @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = 22
 
     /// Only text: one VoiceOver element. With buttons or cards inside, each part is its own.
-    private var plain: Bool { pending.isEmpty && message.cards.isEmpty }
+    private var plain: Bool { (pending.isEmpty || message.partial) && message.cards.isEmpty }
     private var folds: Bool { ChatFold.folds(height: Double(fullHeight), lineHeight: Double(lineHeight), mode: foldMode) }
     private var folded: Bool { folds && !expanded }
 
@@ -495,7 +495,8 @@ struct AgentMessage: View {
             tag
             VStack(alignment: .leading, spacing: 12) {
                 text
-                ForEach(pending) { proposal($0).transition(.opacity) }
+                if message.partial { WritingMark() }
+                ForEach(message.partial ? [] : pending) { proposal($0).transition(.opacity) }
                 ForEach(message.cards) { CardView(card: $0, compact: true, model: model, allowsItemActions: false) }
             }
             .rowMotion(pending.map(\.id))
@@ -644,6 +645,16 @@ struct OutgoingBubble: View {
     private var failed: Bool {
         if case .failed = outgoing.state { return true }
         return false
+    }
+}
+
+/// The small mark under a reply that is still being written. VoiceOver skips it: it hears the final reply only.
+struct WritingMark: View {
+    var body: some View {
+        Text("writing…")
+            .font(Typo.meta)
+            .foregroundStyle(Palette.tertiary)
+            .accessibilityHidden(true)
     }
 }
 

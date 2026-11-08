@@ -15,6 +15,10 @@ Highlights:
   first when the app lock is on); actions with fields, destructive ones, and everything on a token server open the form
   in the app. The widget never reads the Keychain. Needs App Intents metadata that xtool does not write yet (DeviceTest W13).
 - Server and tooling fixes: the fixture server serves the info and actions that belong to `state-bridge.json` and `state-huge.json`; the Homelab Bridge cuts and scrubs host, container and service names, lets only http(s) links and images through, and reads .NET times with 7 fraction digits on Python before 3.11; `scripts/ship-to-phone` never waits for a password or a dead host; demo scene `minimal` (only /info and /state). Settings paths in the docs follow Settings → Advanced.
+- Chat streams the reply: while the agent writes, the message shows at once with a small "writing…" mark and grows in
+  place (the chat polls every second meanwhile; VoiceOver announces only the final reply). `GET /messages` marks a
+  growing reply with `"partial": true` under the same `id` (docs/API.md); the reference server does it for its
+  `chat_command`. Servers without it behave as before.
 - Hyperdetail, a fourth detail level after Overkill (Settings → Today → Detail; asks once first): nothing folds anywhere,
   every field the server sends is shown (a host with all its history numbers, ids, exact times, the server's name,
   version and fetch time), and with a personality on, each fact gets a remark in that voice. With the personality Off
