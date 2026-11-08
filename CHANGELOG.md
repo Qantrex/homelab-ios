@@ -9,11 +9,13 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
-- Actions widget (configurable): tiles for your Start actions, like the Hue widgets. Small (1 or 2), medium (4), large (8)
-  and a lock-screen circle (1); pick the actions in the widget's Edit menu (none picked = your first visible Start
-  tiles). A tap runs an action without fields right from the widget on a Tailscale server (result on the tile, Face ID
-  first when the app lock is on); actions with fields, destructive ones, and everything on a token server open the form
-  in the app. The widget never reads the Keychain. Needs App Intents metadata that xtool does not write yet (DeviceTest W13).
+- Actions widget: tiles for your first Start actions in your order (Settings → Advanced → Start tiles, hidden ones left
+  out), like the Hue widgets. Small (1 or 2), medium (4), large (8) and a lock-screen circle (1), with sample tiles in
+  the gallery. It is a plain widget (no Edit menu: xtool cannot build App Intents). A tap opens the app: an action
+  without fields runs at once and shows "Done" (or the error); one with fields or a destructive one opens its form.
+  The widget never reads the Keychain.
+- Action forms: Run in a filled form runs at once; only a destructive action asks again. The confirm buttons are white,
+  not blue, and the Duke or U6 form shows "Bike" under the switch instead of the raw value.
 - Server and tooling fixes: the fixture server serves the info and actions that belong to `state-bridge.json` and `state-huge.json`; the Homelab Bridge cuts and scrubs host, container and service names, lets only http(s) links and images through, and reads .NET times with 7 fraction digits on Python before 3.11; `scripts/ship-to-phone` never waits for a password or a dead host; demo scene `minimal` (only /info and /state). Settings paths in the docs follow Settings → Advanced.
 - Hyperdetail, a fourth detail level after Overkill (Settings → Today → Detail; asks once first): nothing folds anywhere,
   every field the server sends is shown (a host with all its history numbers, ids, exact times, the server's name,

@@ -142,6 +142,7 @@ struct ActionsView: View {
                 }
             }
             .onChange(of: quickRun?.name) { _, name in if name == nil { openRequested() } }
+            .tint(Palette.text)   // the dialog's buttons: white, never the system blue
             .confirmationDialog(quickRun?.label ?? "", isPresented: Binding(get: { quickRun != nil }, set: { if !$0 { quickRun = nil } }),
                                 titleVisibility: .visible, presenting: quickRun) { spec in
                 Button(spec.destructive ? String(localized: "Run it") : String(localized: "Run now"),
@@ -255,6 +256,11 @@ struct ActionsView: View {
             return
         }
         guard model.tab == .actions, formFor == nil, let request = model.takeOpenActionForm() else { return }
+        if request.run {   // the Actions widget's tap on a simple action: runs at once, the result shows as an alert
+            guard !model.actionsRunning.contains(request.spec.name) else { return }
+            Task { await runQuick(request.spec) }
+            return
+        }
         formPrefill = request.prefill
         formFor = request.spec
     }

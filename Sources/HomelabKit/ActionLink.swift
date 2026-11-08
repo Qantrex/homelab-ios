@@ -7,12 +7,17 @@ import Foundation
 /// - Every other query item names a payload field. Only fields the action has and that are not `hidden` are taken:
 ///   a hidden field (a to-do's `uid`) comes only from the server's own cards, never from a link.
 /// - A `choice` field takes only one of its option values; anything else leaves the field as the form starts it.
+/// - `run=1` (only the Actions widget sets it) asks the app to run the action at once, without its form: the app
+///   honours it only for a simple action (no input, not destructive, listed as a Start tile; `AppModel.takeOpenActionForm`).
+///   Never for fields, an argument to choose or a destructive action: those open their form.
 /// - Values are trimmed; the first of duplicate names counts; empty values are ignored.
 public struct ActionLink: Sendable, Equatable {
     public var name: String
     public var arg: String
     /// Payload values by field name, as the link has them (not yet checked against the action).
     public var values: [String: String]
+    /// `run=1`: run at once when the action is simple (see above).
+    public var run: Bool
 
     /// At most this many query items are read; a value longer than `maxValue` code points is dropped (the longest
     /// field the app knows takes 20000).
@@ -21,8 +26,8 @@ public struct ActionLink: Sendable, Equatable {
 
     static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 
-    public init(name: String, arg: String = "", values: [String: String] = [:]) {
-        self.name = name; self.arg = arg; self.values = values
+    public init(name: String, arg: String = "", values: [String: String] = [:], run: Bool = false) {
+        self.name = name; self.arg = arg; self.values = values; self.run = run
     }
 
     /// The link's action and values, or nil when it isn't `homelab://actions/<valid name>`.
@@ -33,6 +38,7 @@ public struct ActionLink: Sendable, Equatable {
         name = path[0]
         arg = ""
         values = [:]
+        run = false
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         var seen = Set<String>()
         for item in items.prefix(Self.maxItems) {
@@ -40,7 +46,7 @@ public struct ActionLink: Sendable, Equatable {
             guard !key.isEmpty, seen.insert(key).inserted else { continue }
             let value = (item.value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !value.isEmpty, value.unicodeScalars.count <= Self.maxValue else { continue }
-            if key == "arg" { arg = value } else { values[key] = value }
+            if key == "arg" { arg = value } else if key == "run" { run = value == "1" } else { values[key] = value }
         }
     }
 
@@ -66,6 +72,7 @@ public struct ActionLink: Sendable, Equatable {
     public var url: URL? {
         var pairs: [(String, String)] = arg.isEmpty ? [] : [("arg", arg)]
         pairs += values.keys.sorted().map { ($0, values[$0] ?? "") }
+        if run { pairs.append(("run", "1")) }
         // Everything but the unreserved characters is encoded, `&`, `=` and `+` too, so a value always reads back as is.
         func enc(_ s: String) -> String { s.addingPercentEncoding(withAllowedCharacters: Self.unreserved) ?? "" }
         let query = pairs.map { "\(enc($0.0))=\(enc($0.1))" }.joined(separator: "&")

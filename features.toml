@@ -898,7 +898,7 @@ name = "Widget: Actions"
 area = "Widgets"
 status = "shipped"
 since = "2026-11-08"
-summary = "Configurable tiles for the server's Start actions (small 1-2, medium 4, large 8, lock screen circular 1), picked in the widget's Edit menu from the cached list. A tap runs an action without fields right from the widget (identity servers only, Face ID first with the app lock on, result on the tile); fields, destructive and token servers open the form in the app."
+summary = "Static widget (no App Intents, no Edit menu) with tiles for the first Start actions in the order from Settings > Advanced > Start tiles, hidden ones left out (small 1-2, medium 4, large 8, lock screen circular 1; sample tiles in the gallery). A tap opens homelab://actions/<name>; a simple action adds run=1 and the app runs it at once and shows Done or the error, the others open their form."
 server_features = ["run-actions"]
 sources = ["Sources/HomelabKit/WidgetActions.swift", "Sources/HomelabWidget/ActionsWidget.swift#ActionsWidget", "Sources/HomelabKit/ActionUsage.swift"]
 tests = ["WidgetActionsTests"]
@@ -906,7 +906,7 @@ device_tests = ["W13", "W14", "W15"]
 docs = ["README.md#what-it-does", "docs/DESIGN.md#lock-screen-and-live-activity"]
 widgets = ["ActionsWidget"]
 depends_on = ["widget-data", "start-actions", "quick-actions", "widgetkit"]
-unsure = "xtool 1.24.0 writes no App Intents metadata (Metadata.appintents), so on a device the Edit menu list and the run buttons are unverified. The views are not unit-tested."
+unsure = "The views are not unit-tested; the gallery preview and the tap-to-run flow are unverified on a device until DeviceTest W13-W15."
 
 [[feature]]
 id = "widget-data"
@@ -1951,7 +1951,7 @@ id = "widgetkit"
 name = "WidgetKit"
 kind = "ios-framework"
 version = "iOS 18 SDK"
-why = "The widgets (App Intents compile with xtool, but their metadata is not written yet; see widget-actions)."
+why = "The widgets (all static: xtool writes no App Intents metadata, so no configurable or interactive widgets; see widget-actions)."
 pins = ["Sources/HomelabWidget/HomelabWidget.swift: import WidgetKit"]
 
 [[dependency]]

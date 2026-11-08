@@ -36,7 +36,7 @@ Tabs appear only when they make sense: Actions and Chat only if the server offer
 when you add a Home Assistant server. A setup error (token, address, certificate) has an "Edit server" button next
 to Retry.
 
-**Widgets** (all read-only, except Actions):
+**Widgets** (all read-only; a tap opens the app):
 
 | Widget | Sizes | Shows |
 |---|---|---|
@@ -46,7 +46,7 @@ to Retry.
 | Departures | small, lock screen (circular, rectangular, inline) | The next trains from your stop, with delays and disruptions (from the server's `departures` card) |
 | Deadlines | small, medium, lock screen (circular, rectangular, inline) | What is due next, counting down |
 | To-dos | small, medium, lock screen (circular, rectangular) | Your open to-dos |
-| Actions | small (1 or 2), medium (4), large (8), lock screen (circular, 1) | Tiles for your Start actions, picked in the widget's Edit menu. A tap runs an action that needs no input right from the widget (Tailscale servers only); the rest open their form in the app |
+| Actions | small (1 or 2), medium (4), large (8), lock screen (circular, 1) | Tiles for your first Start actions, in the order from Settings → Advanced → Start tiles (hidden ones left out). No Edit menu. A tap opens the app: an action that needs no input runs at once and says "Done"; one with fields, or a destructive one, opens its form |
 | "Leave by" (Live Activity) | lock screen, banner, StandBy | When to leave and the next train, counting down by itself (from the server's `commute`) |
 
 The Departures widget shows the line your server sends in the `departures` card's title (the screenshots show U6, a
@@ -145,7 +145,7 @@ Honest list. Most come from the free Apple ID and from building without Xcode.
 
 | Limit | Why |
 |---|---|
-| No Siri or Shortcuts actions of its own, no Control Center; the Actions widget's buttons may not work | xtool compiles App Intents but does not write the metadata iOS reads to find them (Xcode does); see [DESIGN.md](docs/DESIGN.md#lock-screen-and-live-activity). Siri and Control Center need that too. Shortcuts can still open `homelab://` links that fill in a form ([docs/SHORTCUTS.md](docs/SHORTCUTS.md)) |
+| No Siri or Shortcuts actions of its own, no Control Center, no configurable widgets | xtool compiles App Intents but does not write the metadata iOS reads to find them (Xcode does), so the Actions widget is a plain one and Siri and Control Center are out; see [DESIGN.md](docs/DESIGN.md#lock-screen-and-live-activity). Shortcuts can still open `homelab://` links that fill in a form ([docs/SHORTCUTS.md](docs/SHORTCUTS.md)) |
 | No Apple push notifications | APNs needs a paid developer account. The app can check in the background and send a local notification, but iOS decides when that runs (often every 15–60 minutes, sometimes much less) |
 | Reinstall every 7 days | Apps signed with a free Apple ID stop opening after 7 days. Today warns 2 days before, and Settings → Advanced → Diagnostics shows the date. Reinstall over USB (`scripts/install-dev`); your data stays. SideStore refreshes it (a Shortcut swaps its VPN and Tailscale) |
 | 3 active apps | A free Apple ID allows 3 sideloaded apps (with SideStore, SideStore is one). The widget and the share extension don't count, so Homelab uses one slot (but 3 of the 10 new App IDs a week) |
