@@ -18,7 +18,8 @@ Config (at most one rss source; it is the News module of the app, docs/BRIDGE.md
     max_bytes         largest feed answer read, default 2 MB (never above 8 MB)
 
 What it gives: one list card `news` on Today (its id is not prefixed with the source name, the app looks for
-exactly this id), items "<headline>" / "<Source> · <age>" with the article link and the tags source:, country:,
+exactly this id), items "<headline>" / "<Source> · <age>" with the article link, `published` (the feed's date as UTC
+ISO 8601, "2026-11-08T11:20:00Z"; the app sorts by it; no summary, no title_de) and the tags source:, country:,
 topic:. Only the feeds the user picked in the app (GET/PUT /api/v1/news/..., prefs in the state dir) are read. Items
 older than the window, without a date, or without an http(s) link are skipped; the same article (same address after
 removing tracking parameters, or a near-identical headline) is shown once; one feed does not fill the whole card.
@@ -273,7 +274,7 @@ def collect(cfg, fetch):
     for c in chosen:
         f = c["feed"]
         card_items.append({"title": c["title"], "subtitle": plain_text("%s · %s" % (f["name"], age(c["age"])), 80),
-                           "url": c["url"],
+                           "url": c["url"], "published": c["time"].strftime("%Y-%m-%dT%H:%M:%SZ"),
                            "tags": ["source:" + f["id"], "country:" + f["country"], "topic:" + f["topic"].replace(" ", "-")]})
     local = t_now.astimezone()
     card = {"id": "news", "title": plain_text(cfg.get("name") or "News", 40), "style": "list", "icon": "newspaper",
