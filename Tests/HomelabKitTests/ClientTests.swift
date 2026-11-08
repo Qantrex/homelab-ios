@@ -277,6 +277,12 @@ import Testing
 }
 
 @Suite struct HardeningTests {
+    /// The owner's server reads the installed build from this (daily phone updates, GET /app/latest).
+    @Test func userAgentCarriesVersionAndBuild() {
+        #expect(AppVersion.agent(short: "1.0.0", build: "6") == "HomelabiOS/1.0.0 (6)")
+        #expect(AppVersion.userAgent.hasPrefix("HomelabiOS/"))
+    }
+
     @Test func redirectsAreErrorsNotFollowed() async {
         let t = FakeTransport { _ in .init(status: 302, body: Data(), headers: ["Location": "https://evil.example/"]) }
         await #expect(throws: APIError.redirected(status: 302)) {

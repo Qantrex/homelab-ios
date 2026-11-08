@@ -60,7 +60,8 @@ public struct URLSessionTransport: HTTPTransport {
         #if canImport(Darwin)
         c.waitsForConnectivity = false   // fail fast: the UI shows "is Tailscale on?"
         #endif
-        c.httpAdditionalHeaders = ["User-Agent": "HomelabiOS/\(AppVersion.short)"]
+        // "HomelabiOS/1.0.0 (6)": the build lets the owner's server tell whether a newer build waits (GET /app/latest).
+        c.httpAdditionalHeaders = ["User-Agent": AppVersion.userAgent]
         return URLSession(configuration: c, delegate: NoRedirects(), delegateQueue: nil)
     }
 
@@ -113,6 +114,9 @@ public enum AppVersion {
     public static var build: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
     }
+    /// The User-Agent every request sends: "HomelabiOS/<version> (<build>)".
+    public static var userAgent: String { agent(short: short, build: build) }
+    static func agent(short: String, build: String) -> String { "HomelabiOS/\(short) (\(build))" }
 }
 
 /// Every failure the UI has to explain. `message` is what the user reads; it never contains a token.
