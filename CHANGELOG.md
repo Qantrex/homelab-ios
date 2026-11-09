@@ -9,6 +9,7 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Pushes come from the ntfy app: a tap opens the right tab, and the push of a proposal opens `homelab://actions/pending/<id>` (Actions tab, "To approve"); approving stays in the app, no push carries a token.
 - Actions widget: tiles for your first Start actions in your order (Settings → Advanced → Start tiles, hidden ones left
   out), like the Hue widgets. Small (1 or 2), medium (4), large (8) and a lock-screen circle (1), with sample tiles in
   the gallery. It is a plain widget (no Edit menu: xtool cannot build App Intents). A tap opens the app: an action

@@ -472,13 +472,13 @@ name = "Links that fill in a form (Shortcuts)"
 area = "Actions"
 status = "shipped"
 since = "2026-11-06"
-summary = "`homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form filled in, for Shortcuts \"Open URL\", NFC tags or pushes. Never a hidden field, never a card-only action, nothing runs without the confirm."
+summary = "`homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form filled in, for Shortcuts \"Open URL\", NFC tags or pushes. Never a hidden field, never a card-only action, nothing runs without the confirm. `homelab://actions/pending/<id>` (the ntfy push of a proposal) opens the Actions tab on \"To approve\"; approving happens in the app."
 server_features = ["run-actions"]
 sources = ["Sources/HomelabKit/ActionLink.swift"]
-tests = ["ActionLinkTests", "ActionLinkModelTests/linkPrefillReachesTheRequestedForm"]
+tests = ["ActionLinkTests", "ActionLinkModelTests/linkPrefillReachesTheRequestedForm", "ProposalLinkTests"]
 device_tests = ["A12", "A15", "A16", "A17"]
 docs = ["docs/SHORTCUTS.md#filling-in-a-form", "docs/SHORTCUTS.md#shortcuts-recipes", "docs/SECURITY.md#what-the-app-does"]
-links = ["homelab://actions/<name>?arg=…&<field>=…"]
+links = ["homelab://actions/<name>?arg=…&<field>=…", "homelab://actions/pending/<id>"]
 depends_on = ["start-actions", "deep-links"]
 
 [[feature]]

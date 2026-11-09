@@ -53,7 +53,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 |---|---|---|---|---|---|
 | [Approve, Always, Deny (proposed actions)](#approvals) | shipped | `actions` | 7 | **A1**, **A2**, A3, **A4**, **A6**, A7, O16 | 3 |
 | [Start actions (forms)](#start-actions) | shipped | `run-actions` | 5 | **A8**, A9, **A10**, A11, A13, A14, A18 | 3 |
-| [Links that fill in a form (Shortcuts)](#action-links) | shipped | `run-actions` | 2 | A12, A15, A16, A17 | 3 |
+| [Links that fill in a form (Shortcuts)](#action-links) | shipped | `run-actions` | 3 | A12, A15, A16, A17 | 3 |
 | [Home-screen quick actions](#quick-actions) | shipped | `run-actions` | 2 | SC4, SC4b | 1 |
 
 ### Scan and share (3)
@@ -240,7 +240,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `search` | [find](#find) |
 | Server features (`ServerInfo.Feature`) | `deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
-| `homelab://` links (`AppModel.open`) | `actions` | [approvals](#approvals), [action-links](#action-links) |
+| `homelab://` links (`AppModel.open`) | `actions` | [approvals](#approvals), [action-links](#action-links), [action-links](#action-links) |
 | `homelab://` links (`AppModel.open`) | `chat` | [chat](#chat) |
 | `homelab://` links (`AppModel.open`) | `deals` | [deals](#deals) |
 | `homelab://` links (`AppModel.open`) | `home` | [home-tiles](#home-tiles) |
@@ -736,16 +736,16 @@ Tiles under "Start" for the actions the server lets the app start; each opens a 
 
 **Links that fill in a form (Shortcuts)** · Actions · shipped · since 2026-11-06
 
-`homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form filled in, for Shortcuts "Open URL", NFC tags or pushes. Never a hidden field, never a card-only action, nothing runs without the confirm.
+`homelab://actions/<name>?arg=…&<field>=…` opens a Start action's form filled in, for Shortcuts "Open URL", NFC tags or pushes. Never a hidden field, never a card-only action, nothing runs without the confirm. `homelab://actions/pending/<id>` (the ntfy push of a proposal) opens the Actions tab on "To approve"; approving happens in the app.
 
 | | |
 |---|---|
 | Server | `run-actions` |
 | Sources | [ActionLink.swift](../Sources/HomelabKit/ActionLink.swift) |
-| Tests | `ActionLinkTests`, `ActionLinkModelTests/linkPrefillReachesTheRequestedForm` |
+| Tests | `ActionLinkTests`, `ActionLinkModelTests/linkPrefillReachesTheRequestedForm`, `ProposalLinkTests` |
 | Phone (DeviceTest.md) | A12, A15, A16, A17 |
 | Docs | [docs/SHORTCUTS.md#filling-in-a-form](SHORTCUTS.md#filling-in-a-form), [docs/SHORTCUTS.md#shortcuts-recipes](SHORTCUTS.md#shortcuts-recipes), [docs/SECURITY.md#what-the-app-does](SECURITY.md#what-the-app-does) |
-| Links | `homelab://actions/<name>?arg=…&<field>=…` |
+| Links | `homelab://actions/<name>?arg=…&<field>=…`, `homelab://actions/pending/<id>` |
 | Depends on | [start-actions](#start-actions), [deep-links](#deep-links) |
 | Through those | [agent-chat](#dep-agent-chat), [companion-api-v1](#dep-companion-api-v1), [url-scheme](#dep-url-scheme) |
 
