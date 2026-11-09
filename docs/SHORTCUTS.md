@@ -14,6 +14,7 @@ app always shows the filled form and asks once before anything runs: a link only
 | `homelab://scan` | Actions with the document camera (server feature `documents`) |
 | `homelab://lab/<host-id>` | A host's details |
 | `homelab://actions/<name>` | That action's form, as its Start tile opens it |
+| `homelab://actions/pending/<id>` | The Actions tab on "To approve" (the ntfy push of a proposal; approving happens in the app) |
 | `homelab://actions/<name>?arg=…&<field>=…` | That form, **filled in** |
 
 `<name>` is the action's name from `GET /actions` (`todo-add`, `wake-set`, …; with Settings → Today → Detailed each

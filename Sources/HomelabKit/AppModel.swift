@@ -250,6 +250,9 @@ public final class AppModel {
     /// The Deals screen was asked for (`homelab://deals`, the ntfy push, the Today card). The Actions tab opens it once
     /// the server is known to answer `/deals`, and clears it.
     public private(set) var openDeals = false
+    /// The proposal a link named (`homelab://actions/pending/<id>`, the ntfy push of a proposal and its Open button).
+    /// The Actions tab shows "To approve" first; this holds the id until the tab shows and the server's list has it.
+    public private(set) var openProposal: String?
     /// Launch argument only: the Deals screen opens the first deal's detail (screenshots).
     public var openDealDetail = false
     /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
@@ -432,6 +435,28 @@ public final class AppModel {
         return false
     }
 
+    /// The Actions tab asks which proposal a link named (`openProposal`): once, when the tab shows and the server's
+    /// list has it. A list that doesn't have it (already answered, expired) drops the request, so it doesn't linger.
+    /// Nothing is approved by a link: the owner taps Approve in the app.
+    public func takeOpenProposal() -> PendingAction? {
+        guard let id = openProposal, tab == .actions else { return nil }
+        guard let snapshot = selectedStatus.snapshot else {
+            if selected == nil { openProposal = nil }
+            return nil
+        }
+        openProposal = nil
+        return snapshot.state.pending.first { $0.id == id }
+    }
+
+    /// The id of `homelab://actions/pending/<id>` (four lowercase letters or digits: the server makes hex, fixtures use others), else nil.
+    nonisolated static func proposalID(_ url: URL) -> String? {
+        guard url.scheme?.lowercased() == "homelab", url.host?.lowercased() == "actions" else { return nil }
+        let path = url.pathComponents.filter { $0 != "/" }
+        guard path.count == 2, path[0] == "pending", path[1].count == 4,
+              path[1].allSatisfy({ "0123456789abcdefghijklmnopqrstuvwxyz".contains($0) }) else { return nil }
+        return path[1]
+    }
+
     /// Where unsent shares and scans wait (App Group, so the share extension fills it too).
     public var outbox: Outbox { Outbox(directory: storage.url("outbox")) }
 
@@ -477,6 +502,7 @@ public final class AppModel {
         openScan = false
         openSearch = nil
         openDeals = false
+        openProposal = nil
     }
 
     /// The app locks (Face ID, in the background): the system closes every sheet, so no form counts as open.
@@ -1146,6 +1172,8 @@ public final class AppModel {
             openAction = path[0]
             openActionLink = ActionLink(url)
         }
+        // homelab://actions/pending/<id>: the Actions tab, with that proposal asked for (the ntfy push of a proposal).
+        if t == .actions, tab == .actions || requestedTab == .actions, let id = Self.proposalID(url) { openProposal = id }
         // homelab://lab/<host-id>: that host's details (they wait like the tab).
         if t == .lab, tab == .lab || requestedTab == .lab, url.host?.lowercased() == "lab", path.count == 1,
            LaunchArguments.isHostID(path[0]) { openHost = path[0] }

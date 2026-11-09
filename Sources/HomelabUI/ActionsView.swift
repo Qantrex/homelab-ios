@@ -234,7 +234,7 @@ struct ActionsView: View {
     /// What decides whether a requested form (deep link, launch argument) can open: the request and the list.
     private var openable: String {
         let s = model.selectedStatus
-        return [model.openAction ?? "", "\(model.openScan)", model.openSearch?.id.uuidString ?? "", "\(model.openDeals)", "\(model.selectedStatus.hasDeals)", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
+        return [model.openAction ?? "", model.openProposal ?? "", "\(model.openScan)", model.openSearch?.id.uuidString ?? "", "\(model.openDeals)", "\(model.selectedStatus.hasDeals)", model.tab.rawValue, startable.map(\.name).joined(separator: ","),
                 "\(s.actionsFetched?.timeIntervalSince1970 ?? 0)", "\(s.knownInfo != nil)", "\(model.formSheetOpen)"]
             .joined(separator: "|")
     }
@@ -243,6 +243,9 @@ struct ActionsView: View {
     /// is open (here or a card's) the request waits (`AppModel.takeOpenAction`).
     private func openRequested() {
         guard quickRun == nil else { return }   // a Run? confirm is up: the link waits until it's answered
+        // homelab://actions/pending/<id>: "To approve" is the first section of this tab, so landing here shows the
+        // proposal; the request only has to be cleared. Nothing is approved by a link.
+        _ = model.takeOpenProposal()
         if model.tab == .actions, formFor == nil, !scanning, searching == nil, !showingDeals, model.takeOpenDeals() {   // homelab://deals
             showingDeals = true
             return
