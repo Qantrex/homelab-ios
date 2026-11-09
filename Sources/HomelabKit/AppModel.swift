@@ -253,6 +253,9 @@ public final class AppModel {
     /// The proposal a link named (`homelab://actions/pending/<id>`, the ntfy push of a proposal and its Open button).
     /// The Actions tab shows "To approve" first; this holds the id until the tab shows and the server's list has it.
     public private(set) var openProposal: String?
+    /// A scanned public-route link waiting for the owner's yes (`homelab://public-route#v1.…`). Memory only: never
+    /// stored, logged or kept in a pending-link store; `lock()` and the sheet's end clear it.
+    public internal(set) var routeLinkRequest: PublicRouteLinkRequest?
     /// Launch argument only: the Deals screen opens the first deal's detail (screenshots).
     public var openDealDetail = false
     /// Items waiting in the outbox (shared or scanned while the server couldn't be reached).
@@ -508,6 +511,7 @@ public final class AppModel {
     /// The app locks (Face ID, in the background): the system closes every sheet, so no form counts as open.
     public func lock() {
         locked = true
+        routeLinkRequest = nil
         openForms = []
     }
 
@@ -1155,6 +1159,12 @@ public final class AppModel {
     }
 
     public func open(_ url: URL) {
+        // homelab://public-route#v1.…: carries secrets. Handled first and alone: it never reaches the code below
+        // (no tab request, no stored link, no log line), only `routeLinkRequest` in memory.
+        if PublicRouteLink.isRouteLink(url) {
+            openRouteLink(url)
+            return
+        }
         // homelab://scan: the Actions tab with the Scan screen on top (it waits for the server's features).
         if url.scheme == "homelab", url.host?.lowercased() == "scan" {
             dropRequests()

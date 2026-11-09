@@ -15,6 +15,7 @@ app always shows the filled form and asks once before anything runs: a link only
 | `homelab://lab/<host-id>` | A host's details |
 | `homelab://actions/<name>` | That action's form, as its Start tile opens it |
 | `homelab://actions/pending/<id>` | The Actions tab on "To approve" (the ntfy push of a proposal; approving happens in the app) |
+| `homelab://public-route#v1.<base64url JSON>` | The setup QR of a public route: asks "Add public route to <server>?" before anything is saved. The JSON is `{"server"?,"url","id","secret","token"}`; the keys sit in the fragment. Not for Shortcuts: it is held in memory only, never stored or logged |
 | `homelab://actions/<name>?arg=…&<field>=…` | That form, **filled in** |
 
 `<name>` is the action's name from `GET /actions` (`todo-add`, `wake-set`, …; with Settings → Today → Detailed each

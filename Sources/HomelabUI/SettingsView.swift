@@ -440,6 +440,15 @@ struct ServerEditor: View {
         return ServerConfig.tokenTransportProblem(kind: kind, auth: kind == .homeAssistant ? .token : auth, url: url)
     }
     private var canSave: Bool { (try? urlResult.get()) != nil && tokenProblem == nil && publicOK }
+    /// Why Test connection and Save are off, in words.
+    private var cannotSaveReason: String? {
+        if case .failure(let p) = urlResult {
+            return address.trimmingCharacters(in: .whitespaces).isEmpty
+                ? (kind == .homeAssistant ? String(localized: "Enter your Home Assistant address first.") : String(localized: "Enter the server's address first."))
+                : URLPolicy.message(p)
+        }
+        return tokenProblem ?? publicProblem
+    }
     private var needsToken: Bool { kind == .homeAssistant || auth == .token }
     private var isDemo: Bool { original?.kind == .demo }
 
@@ -521,7 +530,7 @@ struct ServerEditor: View {
                                     publicKeyField("App token", $appToken, .appToken)
                                 }
                             } footer: {
-                                SettingsFooter("Optional. Reaches the server without Tailscale: the app tries this address first and uses the one above when it is not reachable. The three keys are stored in the iOS Keychain on this phone only.")
+                                SettingsFooter("Scan the setup QR from apply-daily-fixes.sh with the iPhone camera to fill this in at once.\n\nOptional. Reaches the server without Tailscale: the app tries this address first and uses the one above when it is not reachable. The three keys are stored in the iOS Keychain on this phone only.")
                             }
                         }
 
@@ -536,6 +545,9 @@ struct ServerEditor: View {
                                 }
                             }
                             .disabled(testing || !canSave)
+                            if !canSave, let why = cannotSaveReason {
+                                Text(why).font(.footnote).foregroundStyle(Palette.secondary)
+                            }
                             if let testResult {
                                 switch testResult {
                                 case .success(let text): Label(text, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.text)
@@ -593,10 +605,21 @@ struct ServerEditor: View {
 
     @ViewBuilder
     private func publicKeyField(_ label: LocalizedStringKey, _ text: Binding<String>, _ kind: PublicSecret) -> some View {
-        SecureField(publicSaved.contains(kind) && publicURL != nil ? "Saved (type to replace)" : label, text: text)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .textContentType(.password)
+        // A visible label on the left (a SecureField's own title does not show in this dark form), the state in the
+        // placeholder: "Saved" is in the label's second line so a saved key is clear at a glance.
+        let saved = publicSaved.contains(kind) && publicURL != nil
+        LabeledContent {
+            SecureField("", text: text, prompt: Text(saved ? "type to replace" : "required").foregroundStyle(Palette.secondary))
+                .multilineTextAlignment(.trailing)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textContentType(.password)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                if saved { Label("Saved", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(Palette.text) }
+            }
+        }
     }
 
     private func config() -> ServerConfig? {
