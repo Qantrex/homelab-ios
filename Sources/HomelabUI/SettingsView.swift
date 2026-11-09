@@ -382,6 +382,13 @@ struct ServerEditor: View {
     @State private var auth: ServerConfig.Auth
     @State private var token = ""
     @State private var tokenStored: Bool
+    /// The optional public route (Cloudflare Access + app token). The three keys are write-only: a saved one shows
+    /// as "saved" and only a typed value replaces it.
+    @State private var publicAddress: String
+    @State private var accessID = ""
+    @State private var accessSecret = ""
+    @State private var appToken = ""
+    @State private var publicSaved: Set<PublicSecret>
     @State private var testing = false
     @State private var testResult: Result<String, APIError>?
     @State private var saveError: String?
@@ -403,6 +410,26 @@ struct ServerEditor: View {
         _address = State(initialValue: server.map { $0.kind == .demo ? "" : $0.baseURL.absoluteString } ?? "")
         _auth = State(initialValue: server?.auth ?? (startKind == .homeAssistant ? .token : .identity))
         _tokenStored = State(initialValue: server.map { model.tokens.token(for: $0.id) != nil } ?? false)
+        _publicAddress = State(initialValue: server?.publicURL?.absoluteString ?? "")
+        _publicSaved = State(initialValue: Set(PublicSecret.allCases.filter { k in
+            server.map { model.tokens.publicSecret(k, for: $0.id) != nil } ?? false }))
+    }
+
+    private var publicResult: Result<URL, URLPolicy.Problem>? {
+        publicAddress.trimmingCharacters(in: .whitespaces).isEmpty ? nil : URLPolicy.serverURL(publicAddress)
+    }
+    private var publicProblem: String? {
+        switch publicResult {
+        case nil: return nil
+        case .failure(let p): return URLPolicy.message(p)
+        case .success(let u): return u.scheme == "https" ? nil : String(localized: "The public address must start with https://.")
+        }
+    }
+    /// Save stays off for a public address that cannot be used.
+    private var publicOK: Bool { kind != .companion || publicProblem == nil }
+    private var publicURL: URL? {
+        guard kind == .companion, case .success(let u)? = publicResult, u.scheme == "https" else { return nil }
+        return u
     }
 
     private var urlResult: Result<URL, URLPolicy.Problem> { URLPolicy.serverURL(address) }
@@ -412,7 +439,7 @@ struct ServerEditor: View {
         guard case .success(let url) = urlResult else { return nil }
         return ServerConfig.tokenTransportProblem(kind: kind, auth: kind == .homeAssistant ? .token : auth, url: url)
     }
-    private var canSave: Bool { (try? urlResult.get()) != nil && tokenProblem == nil }
+    private var canSave: Bool { (try? urlResult.get()) != nil && tokenProblem == nil && publicOK }
     private var needsToken: Bool { kind == .homeAssistant || auth == .token }
     private var isDemo: Bool { original?.kind == .demo }
 
@@ -475,6 +502,26 @@ struct ServerEditor: View {
                                 SettingsFooter("For servers behind tailscale serve: Tailscale on this phone proves who you are. No token needed.")
                             } else {
                                 SettingsFooter("Stored in the iOS Keychain on this phone only.")
+                            }
+                        }
+
+                        if kind == .companion {
+                            Section {
+                                DisclosureGroup("Public route") {
+                                    TextField("Public address", text: $publicAddress, prompt: Text("https://api.example.org"))
+                                        .keyboardType(.URL)
+                                        .textContentType(.URL)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                    if let publicProblem {
+                                        Label(publicProblem, systemImage: "xmark.circle.fill").font(.footnote).foregroundStyle(Palette.love)
+                                    }
+                                    publicKeyField("Access client id", $accessID, .accessID)
+                                    publicKeyField("Access client secret", $accessSecret, .accessSecret)
+                                    publicKeyField("App token", $appToken, .appToken)
+                                }
+                            } footer: {
+                                SettingsFooter("Optional. Reaches the server without Tailscale: the app tries this address first and uses the one above when it is not reachable. The three keys are stored in the iOS Keychain on this phone only.")
                             }
                         }
 
@@ -544,12 +591,30 @@ struct ServerEditor: View {
         }
     }
 
+    @ViewBuilder
+    private func publicKeyField(_ label: LocalizedStringKey, _ text: Binding<String>, _ kind: PublicSecret) -> some View {
+        SecureField(publicSaved.contains(kind) && publicURL != nil ? "Saved (type to replace)" : label, text: text)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .textContentType(.password)
+    }
+
     private func config() -> ServerConfig? {
         guard case .success(let url) = urlResult else { return nil }
         let fallbackName = kind == .homeAssistant ? "Home Assistant" : ServerConfig.defaultName(for: url)
         // Over the original: editing the token or the name keeps the pins and the tiles' names and icons.
         return ServerConfig.edited(original, name: name.trimmingCharacters(in: .whitespaces).nonEmptyOr(fallbackName),
                                    kind: kind, baseURL: url, auth: kind == .homeAssistant ? .token : auth)
+            .withPublicURL(publicURL)
+    }
+
+    /// The typed keys, else the stored ones, but only while the public address is the one they were made for.
+    private func publicKey(_ typed: String, _ k: PublicSecret, _ c: ServerConfig) -> String? {
+        let t = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !t.isEmpty { return t }
+        guard let o = original, let old = o.publicURL, let new = c.publicURL,
+              ServerConfig.origin(old) == ServerConfig.origin(new) else { return nil }
+        return model.tokens.publicSecret(k, for: o.id)
     }
 
     /// Uses the typed token (or the stored one) without saving anything yet.
@@ -571,7 +636,14 @@ struct ServerEditor: View {
                 _ = try await HomeAssistantClient(baseURL: c.baseURL, token: t, transport: model.transport).check()
                 testResult = .success(String(localized: "Home Assistant answers."))
             } else {
-                let info = try await CompanionClient(baseURL: c.baseURL, token: c.auth == .token ? t : nil, transport: model.transport).info()
+                let route = PublicRoute(baseURL: c.publicURL, accessID: publicKey(accessID, .accessID, c),
+                                        accessSecret: publicKey(accessSecret, .accessSecret, c), appToken: publicKey(appToken, .appToken, c))
+                if c.publicURL != nil && route == nil {
+                    saveError = String(localized: "Fill in all three keys for the public route, or clear its address.")
+                    return
+                }
+                let info = try await CompanionClient(baseURL: c.baseURL, token: c.auth == .token ? t : nil, transport: model.transport,
+                                                     route: route, health: PublicRouteHealth()).info()
                 if name.isEmpty, let n = info.name { name = n }
                 testResult = .success(String(localized: "Connected to \(info.name ?? c.host): \(Self.describe(info.features))."))
             }
@@ -598,7 +670,17 @@ struct ServerEditor: View {
             return
         }
         do {
+            if c.publicURL != nil,
+               PublicRoute(baseURL: c.publicURL, accessID: publicKey(accessID, .accessID, c),
+                           accessSecret: publicKey(accessSecret, .accessSecret, c), appToken: publicKey(appToken, .appToken, c)) == nil {
+                saveError = String(localized: "Fill in all three keys for the public route, or clear its address.")
+                return
+            }
+            let typedKeys = (accessID, accessSecret, appToken)
             try model.save(c, token: typed.isEmpty ? nil : typed)
+            if c.publicURL != nil {
+                try model.savePublicSecrets(accessID: typedKeys.0, accessSecret: typedKeys.1, appToken: typedKeys.2, for: c.id)
+            }
             if c.speaksCompanionAPI { Task { await model.refresh(c) } }
             onSaved?(c)
             dismiss()

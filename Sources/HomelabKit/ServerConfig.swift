@@ -25,13 +25,17 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     public var tileNames: [String: String]
     /// HA only: icons for the pinned tiles, by entity id, from `TileIcon.choices`. No entry = the icon by domain.
     public var tileIcons: [String: String]
+    /// Companion only: the optional public https address (Cloudflare Access + app token, see `PublicRoute`). The
+    /// secrets are in the `TokenStore`, not here. nil = tailnet only; then nothing about it is saved or sent.
+    public var publicURL: URL?
 
     public init(id: UUID = UUID(), name: String, kind: Kind, baseURL: URL, auth: Auth, pinnedEntities: [String] = [],
-                tileNames: [String: String] = [:], tileIcons: [String: String] = [:]) {
+                tileNames: [String: String] = [:], tileIcons: [String: String] = [:], publicURL: URL? = nil) {
         self.id = id; self.name = name; self.kind = kind; self.baseURL = baseURL; self.auth = auth
         self.pinnedEntities = pinnedEntities
         self.tileNames = tileNames
         self.tileIcons = tileIcons
+        self.publicURL = publicURL
     }
 
     /// Settings saved before custom tile names or icons existed have no `tileNames`/`tileIcons`: they still decode.
@@ -49,6 +53,7 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
         pinnedEntities = try c.decodeIfPresent([String].self, forKey: .pinnedEntities) ?? []
         tileNames = TileName.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileNames) ?? [:], pinned: pinnedEntities)
         tileIcons = TileIcon.cleaned(try c.decodeIfPresent([String: String].self, forKey: .tileIcons) ?? [:], pinned: pinnedEntities)
+        publicURL = try c.decodeIfPresent(URL.self, forKey: .publicURL)
     }
 
     /// The server as the editor saves it: the edited fields over `original`, so everything else (pins, the tiles'
@@ -56,6 +61,13 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     public static func edited(_ original: ServerConfig?, name: String, kind: Kind, baseURL: URL, auth: Auth) -> ServerConfig {
         var c = original ?? ServerConfig(name: name, kind: kind, baseURL: baseURL, auth: auth)
         c.name = name; c.kind = kind; c.baseURL = baseURL; c.auth = auth
+        return c
+    }
+
+    /// The same with a public route address (nil removes it). Only a Companion server has one.
+    public func withPublicURL(_ url: URL?) -> ServerConfig {
+        var c = self
+        c.publicURL = kind == .companion ? url : nil
         return c
     }
 
@@ -102,7 +114,7 @@ public struct ServerConfig: Codable, Sendable, Equatable, Identifiable, Hashable
     /// differs between two entries that happen to share an address.
     public var target: String { id.uuidString + "|" + kind.rawValue + "|" + Self.origin(baseURL) }
 
-    static func origin(_ url: URL) -> String {
+    public static func origin(_ url: URL) -> String {
         let scheme = url.scheme?.lowercased() ?? ""
         let port = url.port ?? (scheme == "https" ? 443 : 80)
         var path = url.path

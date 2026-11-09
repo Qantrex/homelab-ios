@@ -314,6 +314,9 @@ The Hosts widget shows "Disk 93%" in gold (from 75 %) or love (from 90 %).
 | ST11 | Hyperdetail Lab, Actions, Chat | Lab: each host row has all its numbers and every history value, problems show id/severity/since, services their fields. Actions: every tile and every proposal has fields and a remark. Chat: every message has a header with its fields, an agent reply a remark, long replies never fold. Settings: the settings.json keys and the saved servers (no token) | | |
 | ST12 | Hyperdetail notifications and results | A new proposal notification (Hyperdetail on) has id/job/action/created in its body, and a remark with a personality. The alert after an action lists ok/title/size/time after the text | | |
 | ST8 | Chat text and folding | Advanced → Chat → Text size Large: chat text is one step bigger than the iPhone's size, Small one step smaller. Long replies Short: a reply folds after 6 lines; Never fold: a long report shows whole with no "Show more" | | |
+| PR1 | Public route set up | Edit server → Public route: address `https://…`, Access client id and secret, app token, Save. The three fields then say "Saved (type to replace)". Test connection says "Connected". With Tailscale OFF (LocalDevVPN on) Today still loads in a second or two | | |
+| PR2 | Wrong key is shown, not hidden | Type a wrong app token (or Access secret), Test connection: the red text says the public route refused the keys; it does not fall back to the tailnet. Fix it, Test again: connected | | |
+| PR3 | Fallback to the tailnet | Cloudflare tunnel stopped or the address misspelled (cannot connect) and Tailscale on: the app still loads over the tailnet, at most a few seconds slower for the first request. Clearing the public address removes the three keys (type the address again: the fields are empty) | | |
 
 ## Accessibility
 

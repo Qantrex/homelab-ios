@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 106 | 78 | 26 | 1 | 41 | 0 |
+| 107 | 79 | 26 | 1 | 41 | 0 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -134,7 +134,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [homelab:// links to tabs and hosts](#deep-links) | shipped | – | 7 | B3b | 2 |
 | [Launch arguments (tests, screenshots, first run over USB)](#launch-arguments) | shipped | – | 3 | n/a | 1 |
 
-### Settings (11)
+### Settings (12)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
@@ -143,6 +143,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
 | [Demo mode](#demo-mode) | shipped | – | 12 | **FS2**, **FS3**, **FS4** | 3 |
 | [Servers: add, edit, test, switch](#servers) | shipped | – | 6 | **R1**, **R2**, R3, R6, **R8**, **ST1**, **ST2** | 3 |
+| [Public route (no VPN needed)](#public-route) | shipped | – | 1 | PR1, PR2, PR3 | 1 |
 | [Tabs follow the server's features](#tabs-by-features) | shipped | `status` | 5 | **FS2**, T8 | 2 |
 | [Refresh, cache and offline view](#refresh-and-cache) | shipped | – | 7 | **R4**, O14, O15 | 2 |
 | [Diagnostics and copyable report](#diagnostics) | shipped | – | 1 | **ST4**, O17 | 2 |
@@ -291,7 +292,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
 | Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
-| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [first-run](#first-run), [servers](#servers), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [source-status](#source-status), [bridge-docker](#bridge-docker) |
+| Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [first-run](#first-run), [servers](#servers), [public-route](#public-route), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [source-status](#source-status), [bridge-docker](#bridge-docker) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
 | Endpoints (`server/openapi.yaml`) | `GET /news/sources` | [news](#news), [source-rss](#source-rss) |
 | Endpoints (`server/openapi.yaml`) | `GET /poster/{size}/{file}` | [find](#find) |
@@ -1415,6 +1416,24 @@ Several servers (Homelab API or Home Assistant), Tailscale identity or token log
 | Depends on | [companion-api](#companion-api), [tailscale](#dep-tailscale) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
 
+### public-route
+
+**Public route (no VPN needed)** · Settings · shipped · since 2026-11-09
+
+A server can have an optional public https address behind Cloudflare Access with an app token. The app tries it first and falls back to the tailnet address when the network fails; a 401/403 or redirect is an error, never a silent fallback. The Access client id and secret and the app token are kept in the Keychain.
+
+| | |
+|---|---|
+| Server | `GET /info` |
+| Sources | [PublicRoute.swift](../Sources/HomelabKit/PublicRoute.swift), [CompanionClient.swift#routed](../Sources/HomelabKit/CompanionClient.swift), [SettingsView.swift#publicKeyField](../Sources/HomelabUI/SettingsView.swift) |
+| Tests | `PublicRouteTests` |
+| Phone (DeviceTest.md) | PR1, PR2, PR3 |
+| Docs | [docs/TAILSCALE.md#public-route-optional-when-the-phone-cannot-keep-tailscale-on](TAILSCALE.md#public-route-optional-when-the-phone-cannot-keep-tailscale-on) |
+| Settings | Settings → Servers → server → Public route |
+| Depends on | [servers](#servers), [tailscale](#dep-tailscale) |
+| Through those | [companion-api-v1](#dep-companion-api-v1) |
+| Notes | Keys sit in the TokenStore under three ids derived from the server id (PublicSecret), so removeAll and Delete server cover them. A write is only repeated on the tailnet when it surely never arrived. |
+
 ### tabs-by-features
 
 **Tabs follow the server's features** · Settings · shipped · since 2026-11-04
@@ -2077,8 +2096,8 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore"></a>**SideStore** | install | 0.7.0 (nightly), tested 2026-11-07 | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
-| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | [widget-data](#widget-data), [servers](#servers), [refresh-and-cache](#refresh-and-cache), [install-sidestore](#install-sidestore), [reference-server](#reference-server), [bridge-docker](#bridge-docker) | 32 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 49 |
+| <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | 7 features | 33 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 50 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 15 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -2167,8 +2186,8 @@ Features per area that need each dependency, directly or through another feature
 | SideStore |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
-| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 8 |  |  | 4 |  |  | 2 | 18 |  |
-| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 4 | 3 |  | 3 | 1 |  | 5 | 1 |  |  | 20 |  |
+| Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 8 |  |  | 5 |  |  | 2 | 18 |  |
+| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 4 | 3 |  | 3 | 1 |  | 6 | 1 |  |  | 20 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 3 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
