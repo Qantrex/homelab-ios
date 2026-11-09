@@ -516,6 +516,11 @@ public final class AppModel {
     /// A new address or type drops it, so a token is never sent to a server it wasn't made for.
     public func save(_ server: ServerConfig, token: String?) throws {
         let old = servers.servers.first { $0.id == server.id }
+        // Another public address never gets the old keys: they are dropped unless `savePublicSecrets` sets new ones.
+        if let old, old.publicURL.map(ServerConfig.origin) != server.publicURL.map(ServerConfig.origin) {
+            tokens.clearPublicSecrets(for: server.id)
+        }
+        if server.publicURL == nil { tokens.clearPublicSecrets(for: server.id) }
         let sameTarget = old.map { $0.isSameTarget(as: server) } ?? false
         if server.auth == .token || server.kind == .homeAssistant {
             if let token {
@@ -540,8 +545,19 @@ public final class AppModel {
         validateTab()
     }
 
+    /// Stores the typed keys of the public route (nil/empty = keep what is stored).
+    public func savePublicSecrets(accessID: String?, accessSecret: String?, appToken: String?, for id: UUID) throws {
+        for (kind, value) in [(PublicSecret.accessID, accessID), (.accessSecret, accessSecret), (.appToken, appToken)] {
+            if let v = value?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
+                try tokens.setPublicSecret(v, kind, for: id)
+            }
+        }
+        loaders[id] = nil
+    }
+
     public func remove(_ id: UUID) {
         try? tokens.setToken(nil, for: id)
+        tokens.clearPublicSecrets(for: id)
         storage.remove(Snapshot.fileName(id))
         servers.remove(id)
         status[id] = nil
@@ -609,7 +625,7 @@ public final class AppModel {
 
     static func wipe(storage: Storage, tokens: any TokenStore) {
         if let list = storage.read(ServerList.self, ServerList.fileName) {
-            for s in list.servers { try? tokens.setToken(nil, for: s.id) }
+            for s in list.servers { try? tokens.setToken(nil, for: s.id); tokens.clearPublicSecrets(for: s.id) }
         }
         tokens.removeAll()
         storage.removeAll()

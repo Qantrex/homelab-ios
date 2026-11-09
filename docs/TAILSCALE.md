@@ -82,3 +82,15 @@ The app only needs an `https://` address with a certificate your iPhone trusts. 
 - **Another VPN** (WireGuard and the like) works as long as the address is `https://` with a certificate the phone
   trusts. A server that uses no token can also use a plain `http://` address on a private network. The exact rules are
   in [SETUP.md](SETUP.md#launch-arguments) ("URL rules").
+
+## Public route (optional, when the phone cannot keep Tailscale on)
+
+iOS runs one VPN at a time. If another VPN (for example SideStore's LocalDevVPN) pushes Tailscale out, the app waits for
+Tailscale to come back. A server can offer a second, public https address that needs no VPN. It must check two things
+itself: a Cloudflare Access service token and an app token of its own. The app never reads the Tailscale identity
+header over this address. Setup on the server side is in the agent's README (for the reference server: not offered).
+
+In the app: Settings → Servers → the server → Public route. Enter the address, the Access client id and secret and the
+app token. The app tries the public address first (reads give up after 6 seconds) and uses the normal address when the
+network fails. A refusal (wrong key, expired token) is shown as an error and never retried on the tailnet. The keys
+live in the iOS Keychain; changing the public address removes them.

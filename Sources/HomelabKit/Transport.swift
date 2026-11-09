@@ -146,6 +146,9 @@ public enum APIError: Error, Equatable, Sendable {
     case unsupportedVersion(Int)
     case redirected(status: Int)
     case tooLarge
+    /// The public route (Cloudflare Access or the agent's app token) answered 401/403 or a redirect. Never retried
+    /// on the tailnet: the keys under Edit server → Public route are wrong, expired or revoked.
+    case publicRouteRefused(status: Int)
     case other(String)
 
     public var message: String {
@@ -170,6 +173,7 @@ public enum APIError: Error, Equatable, Sendable {
         case .unsupportedVersion(let v): "This server speaks Homelab API version \(v). This app knows version 1. Update the app."
         case .redirected(let status): "The server answered with a redirect (HTTP \(status)). Enter the final address: often https:// or another port."
         case .tooLarge: "The server's answer is too large."
+        case .publicRouteRefused: "The public route refused the keys. Check the Access client id and secret and the app token under Edit server → Public route."
         case .other(let text): text
         }
     }
@@ -188,7 +192,7 @@ public enum APIError: Error, Equatable, Sendable {
     public var mayHaveRun: Bool {
         switch self {
         case .notOnTailnet, .cannotFindHost, .tls, .unauthorized, .homeAssistantToken, .forbidden, .refused, .notFound, .tooManyRequests,
-             .badRequest, .unsupportedVersion, .redirected, .serverSaid:
+             .badRequest, .unsupportedVersion, .redirected, .serverSaid, .publicRouteRefused:
             false
         case .offline, .timeout, .cancelled, .server, .invalidResponse, .decoding, .tooLarge, .other:
             true

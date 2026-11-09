@@ -35,6 +35,9 @@ public struct CompanionClient: CompanionAPI {
     public let baseURL: URL
     let token: String?
     let transport: any HTTPTransport
+    /// Tried first when set; the tailnet `baseURL` is the fallback (see `PublicRoute`).
+    let route: PublicRoute?
+    let health: PublicRouteHealth
 
     public static let maxMessageLength = 4000
     /// The largest API answer read (`/state` is about 11 KB, a chat page a few hundred). Reading stops there.
@@ -42,7 +45,10 @@ public struct CompanionClient: CompanionAPI {
     /// A poster is a few dozen KB; anything past this is not a poster.
     public static let maxImageBytes = 1024 * 1024
 
-    public init(baseURL: URL, token: String?, transport: any HTTPTransport = URLSessionTransport()) {
+    public init(baseURL: URL, token: String?, transport: any HTTPTransport = URLSessionTransport(),
+                route: PublicRoute? = nil, health: PublicRouteHealth = .shared) {
+        self.route = route
+        self.health = health
         self.baseURL = baseURL
         self.token = token?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
         self.transport = transport
@@ -50,7 +56,7 @@ public struct CompanionClient: CompanionAPI {
 
     public init(config: ServerConfig, tokens: any TokenStore, transport: any HTTPTransport = URLSessionTransport()) {
         self.init(baseURL: config.baseURL, token: config.auth == .token ? tokens.token(for: config.id) : nil,
-                  transport: transport)
+                  transport: transport, route: tokens.publicRoute(for: config))
     }
 
     public func info() async throws -> ServerInfo {
@@ -147,7 +153,7 @@ public struct CompanionClient: CompanionAPI {
         let data: Data
         let response: HTTPURLResponse
         do {
-            (data, response) = try await transport.send(r, maxBytes: Self.maxImageBytes)
+            (data, response) = try await routed(r, maxBytes: Self.maxImageBytes)
         } catch {
             throw APIError.from(error, host: baseURL.host ?? "the server")
         }
@@ -224,6 +230,36 @@ public struct CompanionClient: CompanionAPI {
         return try await perform(request(path, method: "POST", body: data, timeout: timeout))
     }
 
+    /// Sends over the public route first when there is one, else (or when that failed at the network level) over the
+    /// tailnet address. A 401/403/redirect from the public route is NOT retried on the tailnet: it throws
+    /// `APIError.publicRouteRefused`, so a wrong key is seen, not hidden. The tailnet request never carries the
+    /// public secrets, and the public one never the tailnet token.
+    func routed(_ request: URLRequest, maxBytes: Int) async throws -> (Data, HTTPURLResponse) {
+        guard let route, let host = route.baseURL.host, !health.isDown(host),
+              let pub = route.rebased(request, from: baseURL) else {
+            return try await transport.send(request, maxBytes: maxBytes)
+        }
+        let method = request.httpMethod ?? "GET"
+        do {
+            let (data, response) = try await transport.send(pub, maxBytes: maxBytes)
+            if PublicRoute.shouldFallBack(status: response.statusCode, method: method) {
+                health.markDown(host)
+                return try await transport.send(request, maxBytes: maxBytes)
+            }
+            health.markUp(host)
+            if [401, 403].contains(response.statusCode) || (300..<400).contains(response.statusCode) {
+                throw APIError.publicRouteRefused(status: response.statusCode)
+            }
+            return (data, response)
+        } catch let e as APIError {
+            throw e
+        } catch {
+            guard PublicRoute.shouldFallBack(error: error, method: method) else { throw error }
+            health.markDown(host)
+            return try await transport.send(request, maxBytes: maxBytes)
+        }
+    }
+
     /// `errors` turns an HTTP status and body into an error (most endpoints: the generic texts).
     func perform<T: Decodable>(_ request: URLRequest,
                                errors: (Int, Data) -> APIError? = APIError.from(status:body:)) async throws -> T {
@@ -232,7 +268,7 @@ public struct CompanionClient: CompanionAPI {
         let data: Data
         let response: HTTPURLResponse
         do {
-            (data, response) = try await transport.send(request, maxBytes: Self.maxResponseBytes)
+            (data, response) = try await routed(request, maxBytes: Self.maxResponseBytes)
         } catch {
             throw APIError.from(error, host: host)
         }

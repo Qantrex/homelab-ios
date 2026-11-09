@@ -9,6 +9,7 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Public route: a server can have a second, public https address (Cloudflare Access service token plus an app token) under Edit server → Public route. The app tries it first, so it loads without Tailscale, and uses the normal address when the network fails. Wrong keys show an error instead of falling back.
 - Actions widget: tiles for your first Start actions in your order (Settings → Advanced → Start tiles, hidden ones left
   out), like the Hue widgets. Small (1 or 2), medium (4), large (8) and a lock-screen circle (1), with sample tiles in
   the gallery. It is a plain widget (no Edit menu: xtool cannot build App Intents). A tap opens the app: an action
