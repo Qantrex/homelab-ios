@@ -1136,13 +1136,13 @@ since = "2026-11-09"
 summary = "A server can have an optional public https address behind Cloudflare Access with an app token. The app tries it first and falls back to the tailnet address when the network fails; a 401/403 or redirect is an error, never a silent fallback. The Access client id and secret and the app token are kept in the Keychain."
 server_features = []
 endpoints = ["GET /info"]
-sources = ["Sources/HomelabKit/PublicRoute.swift", "Sources/HomelabKit/CompanionClient.swift#routed", "Sources/HomelabUI/SettingsView.swift#publicKeyField"]
-tests = ["PublicRouteTests"]
+sources = ["Sources/HomelabKit/PublicRoute.swift", "Sources/HomelabKit/CompanionClient.swift#routed", "Sources/HomelabUI/SettingsView.swift#publicKeyField", "Sources/HomelabKit/PublicRouteLink.swift", "Sources/HomelabKit/PublicRouteLinkRequest.swift", "Sources/HomelabUI/RouteLinkSheet.swift"]
+tests = ["PublicRouteTests", "PublicRouteLinkTests"]
 device_tests = ["PR1", "PR2", "PR3"]
 docs = ["docs/TAILSCALE.md#public-route-optional-when-the-phone-cannot-keep-tailscale-on"]
 settings = ["Settings → Servers → server → Public route"]
 depends_on = ["servers", "tailscale"]
-notes = "Keys sit in the TokenStore under three ids derived from the server id (PublicSecret), so removeAll and Delete server cover them. A write is only repeated on the tailnet when it surely never arrived."
+notes = "One scan fills it in: the setup QR (`homelab://public-route#v1.<base64url JSON>`, docs/SHORTCUTS.md) opens a confirmation sheet; the link is held in memory only and never stored or logged. Keys sit in the TokenStore under three ids derived from the server id (PublicSecret), so removeAll and Delete server cover them. A write is only repeated on the tailnet when it surely never arrived."
 
 [[feature]]
 id = "tabs-by-features"

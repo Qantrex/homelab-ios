@@ -35,6 +35,10 @@ public struct RootView: View {
                 PrivacyCover()
             }
         }
+        // The setup link of a public route (docs/SHORTCUTS.md): a confirmation before anything is saved. Not while locked.
+        .sheet(item: Binding(get: { model.locked ? nil : model.routeLinkRequest }, set: { if $0 == nil { model.closeRouteLink() } })) {
+            RouteLinkSheet(model: model, request: $0)
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:

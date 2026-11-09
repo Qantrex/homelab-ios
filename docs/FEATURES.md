@@ -143,7 +143,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [First run: found, start with, tiles](#first-run) | partial | – | 1 | **FS5**, **FS6**, FS7, FS8, **FS9**, FS10 | 3 |
 | [Demo mode](#demo-mode) | shipped | – | 12 | **FS2**, **FS3**, **FS4** | 3 |
 | [Servers: add, edit, test, switch](#servers) | shipped | – | 6 | **R1**, **R2**, R3, R6, **R8**, **ST1**, **ST2** | 3 |
-| [Public route (no VPN needed)](#public-route) | shipped | – | 1 | PR1, PR2, PR3 | 1 |
+| [Public route (no VPN needed)](#public-route) | shipped | – | 2 | PR1, PR2, PR3 | 1 |
 | [Tabs follow the server's features](#tabs-by-features) | shipped | `status` | 5 | **FS2**, T8 | 2 |
 | [Refresh, cache and offline view](#refresh-and-cache) | shipped | – | 7 | **R4**, O14, O15 | 2 |
 | [Diagnostics and copyable report](#diagnostics) | shipped | – | 1 | **ST4**, O17 | 2 |
@@ -1425,14 +1425,14 @@ A server can have an optional public https address behind Cloudflare Access with
 | | |
 |---|---|
 | Server | `GET /info` |
-| Sources | [PublicRoute.swift](../Sources/HomelabKit/PublicRoute.swift), [CompanionClient.swift#routed](../Sources/HomelabKit/CompanionClient.swift), [SettingsView.swift#publicKeyField](../Sources/HomelabUI/SettingsView.swift) |
-| Tests | `PublicRouteTests` |
+| Sources | [PublicRoute.swift](../Sources/HomelabKit/PublicRoute.swift), [CompanionClient.swift#routed](../Sources/HomelabKit/CompanionClient.swift), [SettingsView.swift#publicKeyField](../Sources/HomelabUI/SettingsView.swift), [PublicRouteLink.swift](../Sources/HomelabKit/PublicRouteLink.swift), [PublicRouteLinkRequest.swift](../Sources/HomelabKit/PublicRouteLinkRequest.swift), [RouteLinkSheet.swift](../Sources/HomelabUI/RouteLinkSheet.swift) |
+| Tests | `PublicRouteTests`, `PublicRouteLinkTests` |
 | Phone (DeviceTest.md) | PR1, PR2, PR3 |
 | Docs | [docs/TAILSCALE.md#public-route-optional-when-the-phone-cannot-keep-tailscale-on](TAILSCALE.md#public-route-optional-when-the-phone-cannot-keep-tailscale-on) |
 | Settings | Settings → Servers → server → Public route |
 | Depends on | [servers](#servers), [tailscale](#dep-tailscale) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
-| Notes | Keys sit in the TokenStore under three ids derived from the server id (PublicSecret), so removeAll and Delete server cover them. A write is only repeated on the tailnet when it surely never arrived. |
+| Notes | One scan fills it in: the setup QR (`homelab://public-route#v1.<base64url JSON>`, docs/SHORTCUTS.md) opens a confirmation sheet; the link is held in memory only and never stored or logged. Keys sit in the TokenStore under three ids derived from the server id (PublicSecret), so removeAll and Delete server cover them. A write is only repeated on the tailnet when it surely never arrived. |
 
 ### tabs-by-features
 
