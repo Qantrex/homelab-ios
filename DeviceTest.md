@@ -213,6 +213,11 @@ Needs a server with `/api/v1/deals` (or Settings → Advanced → Demo servers: 
 | C9 | Proposal in a bubble | A watchdog message with a proposal shows it under the text with Approve / Always / Deny → the same dialogs as Actions → result alert and haptic; the buttons go away once it is answered (here, in Actions or by /approve) | | |
 | C10 | Card in a bubble | A reply with a card shows it small under the text (at most 6 rows, "and N more") | | |
 | C8 | No duplicates | Leave the app for a minute, come back: no message shows twice | | |
+| C11 | Live: start | Chat, empty field: the send circle is a waveform. Tap → the iPhone asks for the microphone and speech recognition once → "Listening", the circle moves with your voice, your words appear as you speak | | |
+| C12 | Live: a turn | Say a question and stop: after about 2 s "Thinking…", then the reply is spoken (it starts before the whole reply is written) and shown; afterwards "Listening" again without a tap. The chat holds both messages | | |
+| C13 | Live: interrupt and mute | A tap on the circle while it speaks stops the voice and listens; the microphone button pauses ("Paused · Tap to talk") and nothing is sent while paused; X ends it; leaving the app ends it | | |
+| C14 | Live: server voice | A server with `speech`: the reply is in its voice, pieces follow each other without a gap longer than a breath; with the server's voice off the iPhone's voice takes over within one piece | | |
+| C15 | Live: headphones | With Bluetooth headphones the voice plays in them in full quality (music quality, not a phone call's) and the iPhone's microphone listens | | |
 
 ## Home (Home Assistant)
 

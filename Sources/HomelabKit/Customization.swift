@@ -255,12 +255,18 @@ public extension AppSettings {
         set { chatFold = newValue == .standard ? nil : newValue }
     }
 
+    /// The language a live conversation is heard and (by the iPhone's own voice) spoken in.
+    var liveLang: LiveLanguage {
+        get { liveLanguage ?? .system }
+        set { liveLanguage = newValue == .system ? nil : newValue }
+    }
+
     /// How long chat replies fold on screen: never in Hyperdetail, else the owner's choice (`chatFolding`).
     var shownChatFolding: ChatFoldMode { todayDensity.isHyper ? .never : chatFolding }
 
     /// Whether anything customized here differs from the default (Settings → Advanced says "Customized").
     var customizedElsewhere: Bool {
-        startTiles != nil || labBlocks != nil || tabs != nil || chatText != nil || chatFold != nil
+        startTiles != nil || labBlocks != nil || tabs != nil || chatText != nil || chatFold != nil || liveLanguage != nil
     }
 }
 

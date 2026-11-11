@@ -72,23 +72,32 @@ final class ChatModel {
         loadedOnce = true
     }
 
-    func send(_ text: String, api: any CompanionAPI, host: String) async {
+    /// `voice`: said in a live conversation (the server may answer the way it wants to be heard). False when the
+    /// message didn't go out (it stays in the chat as "Not sent").
+    @discardableResult
+    func send(_ text: String, voice: Bool = false, api: any CompanionAPI, host: String) async -> Bool {
         let sid = serverID
         let local = timeline.begin(text)
         do {
-            let id = try await api.send(text)
-            guard sid == serverID else { return }
+            let id = try await (voice ? api.send(text, voice: true) : api.send(text))
+            guard sid == serverID else { return false }
             timeline.confirm(local, serverID: id)
             kick += 1   // restarts the poll loop: it loads at once and then polls fast while the agent works
+            return true
         } catch {
-            guard sid == serverID else { return }
+            guard sid == serverID else { return false }
             timeline.fail(local, message: APIError.from(error, host: host).message)
+            return false
         }
     }
 
+    /// A live conversation is open: the reply is polled faster, because its first sentence is waited for aloud.
+    var live = false
+
     var nextPoll: Duration {
-        failures > 0 ? PollPolicy.backoff(failures: failures)
-            : PollPolicy.chatInterval(working: timeline.isWorking, visible: true, streaming: timeline.isStreaming) ?? .seconds(15)
+        if failures > 0 { return PollPolicy.backoff(failures: failures) }
+        if live, timeline.isWorking || timeline.isStreaming { return PollPolicy.liveInterval }
+        return PollPolicy.chatInterval(working: timeline.isWorking, visible: true, streaming: timeline.isStreaming) ?? .seconds(15)
     }
 }
 
@@ -96,6 +105,7 @@ final class ChatModel {
 /// on the right. A time line only after a gap (`ChatTimeline.stamps`), long reports fold after 12 lines (`ChatFold`).
 /// The server's commands are behind the "/" button next to the field (and come up as suggestions when the field
 /// starts with "/"); Clear in the toolbar hides the chat on this phone only (`ChatTimeline.clear`).
+/// While the field is empty the send circle is a waveform: it opens the live conversation (`LiveTalkView`).
 struct ChatView: View {
     let model: AppModel
     @State private var chat = ChatModel()
@@ -116,6 +126,8 @@ struct ChatView: View {
     @State private var result: ResultMessage?
     @State private var outcome: ActionOutcome?
     @State private var confirmClear = false
+    /// The live conversation is open (the waveform button, shown while the field is empty).
+    @State private var live = false
 
     private var emptyMessage: LocalizedStringKey {
         let hint = commands.isEmpty ? String(localized: "Ask your homelab anything.")
@@ -175,6 +187,10 @@ struct ChatView: View {
                 result = message
             }
             .actionFeedback(result: $result, outcome: outcome)
+            // Over the chat, which keeps polling underneath: what is said and answered lands in it as usual.
+            .fullScreenCover(isPresented: $live) {
+                LiveTalkView(model: model, chat: chat)
+            }
             // Restarts on server change and when the app comes back; stops while it's in the background.
             .task(id: PollKey(server: model.selected?.target, active: scenePhase == .active, kick: chat.kick)) {
                 chat.reset(for: model.selected, storage: model.storage)
@@ -338,22 +354,42 @@ struct ChatView: View {
                     }
                     .submitLabel(.send)
                     .onSubmit { submit(draft) }
-                Button {
-                    submit(draft)
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(canSend ? Palette.onAccent : Palette.tertiary)
-                        .frame(width: sendSize, height: sendSize)
-                        .background(canSend ? Palette.text : Palette.raised, in: Circle())
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
+                if trimmed.isEmpty {
+                    // Nothing typed: the same circle starts a live conversation instead.
+                    Button {
+                        focused = false
+                        live = true
+                    } label: {
+                        Image(systemName: "waveform")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Palette.onAccent)
+                            .frame(width: sendSize, height: sendSize)
+                            .background(Palette.text, in: Circle())
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.selected == nil)
+                    .accessibilityLabel(Text("Talk"))
+                    .accessibilityHint(Text("Starts a live conversation: you talk, the agent answers aloud"))
+                } else {
+                    Button {
+                        submit(draft)
+                    } label: {
+                        Image(systemName: "arrow.up")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(canSend ? Palette.onAccent : Palette.tertiary)
+                            .frame(width: sendSize, height: sendSize)
+                            .background(canSend ? Palette.text : Palette.raised, in: Circle())
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSend)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .animation(.easeOut(duration: 0.15), value: canSend)
+                    .accessibilityLabel(Text("Send"))
                 }
-                .buttonStyle(.plain)
-                .disabled(!canSend)
-                .keyboardShortcut(.return, modifiers: .command)
-                .animation(.easeOut(duration: 0.15), value: canSend)
-                .accessibilityLabel(Text("Send"))
             }
             .padding(.leading, commands.isEmpty ? 16 : 6)
             .padding(.trailing, 10)

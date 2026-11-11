@@ -116,6 +116,7 @@ public struct FirstRun: Equatable, Sendable {
             (.share, "square.and.arrow.up", "Sharing links", nil),
             (.search, "magnifyingglass", "Search", nil),
             (.deals, "tag", "Deals", nil),
+            (.speech, "waveform", "A voice of its own", "For live conversations in the chat"),
         ]
         return all.filter { features.contains($0.0) }
             .map { Offer(id: $0.0.rawValue, symbol: $0.1, title: $0.2, detail: $0.3) }

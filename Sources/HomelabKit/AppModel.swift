@@ -75,6 +75,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Settings → Advanced → Deals "Show on Today and notify for": the chosen deal category ids; nil = all (omitted
     /// from the file). Only a server that sends categories uses it.
     public var dealCategories: [String]?
+    /// Settings → Advanced → Chat → "Live conversation language"; nil = the iPhone's language (omitted from the file).
+    public var liveLanguage: LiveLanguage?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -136,7 +138,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
         case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned, hyperdetailWarned
-        case startTiles, labBlocks, tabs, chatText, chatFold, newsLanguage, dealCategories
+        case startTiles, labBlocks, tabs, chatText, chatFold, newsLanguage, dealCategories, liveLanguage
     }
 }
 
@@ -168,6 +170,7 @@ extension AppSettings {
         chatFold = c.lenient(ChatFoldMode.self, .chatFold)
         newsLanguage = c.lenient(String.self, .newsLanguage)
         dealCategories = c.lenient([String].self, .dealCategories)
+        liveLanguage = c.lenient(LiveLanguage.self, .liveLanguage).flatMap { $0 == .system ? nil : $0 }
     }
 }
 

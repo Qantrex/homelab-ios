@@ -243,6 +243,9 @@ public enum PollPolicy {
         return working ? .seconds(2) : .seconds(15)
     }
 
+    /// In a live conversation, while the reply is on its way: its first sentence is spoken as soon as it is there.
+    public static let liveInterval: Duration = .milliseconds(700)
+
     public static func stateInterval(visible: Bool) -> Duration? {
         visible ? .seconds(30) : nil
     }

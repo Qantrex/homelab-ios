@@ -62,6 +62,9 @@ struct AdvancedSettingsView: View {
                     Picker("Long replies", selection: Binding(get: { model.settings.chatFolding }, set: { model.settings.chatFolding = $0 })) {
                         ForEach(ChatFoldMode.allCases) { Text(LocalizedStringKey($0.title)).tag($0) }
                     }
+                    Picker("Live conversation", selection: Binding(get: { model.settings.liveLang }, set: { model.settings.liveLang = $0 })) {
+                        ForEach(LiveLanguage.allCases) { Text(LocalizedStringKey($0.title)).tag($0) }
+                    }
                 } header: {
                     Text("Chat")
                 } footer: {
@@ -118,6 +121,7 @@ struct AdvancedSettingsView: View {
         model.settings.tabOrder = .standard
         model.settings.chatSize = .standard
         model.settings.chatFolding = .standard
+        model.settings.liveLang = .system
     }
 
     private var startSummary: String {

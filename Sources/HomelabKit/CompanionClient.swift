@@ -9,6 +9,11 @@ public protocol CompanionAPI: Sendable {
     func state() async throws -> HomelabState
     func messages(after: Int64) async throws -> MessagePage
     func send(_ text: String) async throws -> Int64?
+    /// The same, said in a live conversation (`voice` true): the server may answer the way it wants to be heard
+    /// (short, no lists, in its voice). A server that doesn't know the field ignores it.
+    func send(_ text: String, voice: Bool) async throws -> Int64?
+    /// `text` as speech in the server's voice (`POST /speech`, feature `speech`). 404 = this server has no voice.
+    func speech(_ text: String) async throws -> SpeechClip
     func press(_ button: String) async throws -> String
     func services() async throws -> [Service]
     /// Actions the app may start (feature `run-actions`).
@@ -29,6 +34,12 @@ public protocol CompanionAPI: Sendable {
     func setNewsPrefs(_ prefs: NewsPrefs) async throws -> NewsPrefs
     /// A picture of this server (`Card.Item.image`): at most 1 MB, a JPEG, PNG or WebP. Nothing from another host.
     func image(path: String) async throws -> Data
+}
+
+public extension CompanionAPI {
+    /// Servers and fakes without a voice: a spoken message is a message, and there is no speech.
+    func send(_ text: String, voice: Bool) async throws -> Int64? { try await send(text) }
+    func speech(_ text: String) async throws -> SpeechClip { throw APIError.notFound }
 }
 
 public struct CompanionClient: CompanionAPI {
@@ -74,13 +85,44 @@ public struct CompanionClient: CompanionAPI {
     }
 
     public func send(_ text: String) async throws -> Int64? {
+        try await send(text, voice: false)
+    }
+
+    public func send(_ text: String, voice: Bool) async throws -> Int64? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw APIError.badRequest("The message is empty.") }
         guard trimmed.count <= Self.maxMessageLength else {
             throw APIError.badRequest("Messages can be at most \(Self.maxMessageLength) characters.")
         }
-        let reply: SendReply = try await post("messages", body: ["text": trimmed], timeout: 20)
+        // A typed message is `{"text": …}` exactly as before; only a spoken one carries the extra field.
+        var body: [String: Any] = ["text": trimmed]
+        if voice { body["voice"] = true }
+        let data = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+        let reply: SendReply = try await perform(request("messages", method: "POST", body: data, timeout: 20))
         return reply.id
+    }
+
+    public func speech(_ text: String) async throws -> SpeechClip {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= SpeechFeed.maxPiece else {
+            throw APIError.badRequest("Speech is 1 to \(SpeechFeed.maxPiece) characters at a time.")
+        }
+        try checkTokenTransport()
+        let body = try JSONSerialization.data(withJSONObject: ["text": trimmed])
+        // A small server makes a sentence about as fast as it is said; a long piece can take a while.
+        var r = request("speech", method: "POST", body: body, timeout: 60)
+        r.setValue("audio/*", forHTTPHeaderField: "Accept")
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await routed(r, maxBytes: SpeechClip.maxBytes)
+        } catch {
+            throw APIError.from(error, host: baseURL.host ?? "the server")
+        }
+        if let error = APIError.from(status: response.statusCode, body: Data()) { throw error }
+        if data.count > SpeechClip.maxBytes { throw APIError.tooLarge }
+        guard let clip = SpeechClip(sniffing: data) else { throw APIError.invalidResponse }
+        return clip
     }
 
     public func press(_ button: String) async throws -> String {

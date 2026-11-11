@@ -7,7 +7,8 @@ import Testing
         let i = try fixture(ServerInfo.self, "info.json")
         #expect(i.api == 1)
         #expect(i.name == "Demo homelab")
-        #expect(i.features == Set(ServerInfo.Feature.allCases))
+        // Everything but a voice of its own: the demo's live conversation is read by the iPhone.
+        #expect(i.features == Set(ServerInfo.Feature.allCases).subtracting([.speech]))
     }
 
     @Test func infoWithoutFeaturesAssumesBasics() throws {

@@ -12,7 +12,8 @@ All paths are under `/api/v1/`. JSON in and out, UTF-8.
 | `GET /info` | – | `{api, name, server, version, features, auth, commands, standing_approvals, sources}` | "Test connection", which tabs to show. `sources` only from a [Homelab Bridge](#source-status-sources-in-info) |
 | `GET /state` | – | `{time, status, checked, problems, hosts, pending, cards, busy, last_message}` | Today, Lab, Actions, widgets, background refresh |
 | `GET /messages?after=<id>` | – | `{messages: [...], busy: [...]}` | Chat (polls; `after` is the last id it has). A message may carry `pending` and `cards` |
-| `POST /messages` | `{text}` (1–4000 chars) | `{ok, id}` | Sending a chat message or slash command |
+| `POST /messages` | `{text}` (1–4000 chars); `voice: true` when it was said in a [live conversation](#live-conversation-voice-speech) | `{ok, id}` | Sending a chat message or slash command |
+| `POST /speech` | `{text}` (1–500 chars, plain text) | an audio file (WAV, MP3, M4A/AAC or FLAC) | Feature `speech`: the reply of a live conversation in the server's own voice |
 | `POST /button` | `{action: "<signed string>"}` | `{text}` | Approve / Always / Deny on a pending action |
 | `GET /services` | – | `{services: [{name, url, group, icon, description}]}` | The service launcher |
 | `GET /actions` | – | `{actions: [{name, label, icon, hint, destructive, arg, fields}]}` | Feature `run-actions`: the "Start" list on the Actions tab and its forms |
@@ -325,7 +326,7 @@ non-list values are ignored (the field stays visible). The server still refuses 
 
 | Field | Effect |
 |---|---|
-| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `deals` → the Deals tile on the Actions tab (it shows for deals alone), Today's "Deals to act on" and the link; `search` → the "Find a movie or show" tile on the Actions tab (the tab shows for it alone) and the search link; `share` → the share extension sends links. Missing list = `status` + `hosts` only |
+| `features` | Which tabs and sections show. No `actions` and no `run-actions` → no Actions tab; `run-actions` → the "Start" list on it; no `chat` → no Chat tab; no `services` → no launcher; `documents` → the Scan tile on the Actions tab (the tab shows for it alone); `deals` → the Deals tile on the Actions tab (it shows for deals alone), Today's "Deals to act on" and the link; `speech` → a live conversation in the chat is spoken in the server's voice (`POST /speech`), not the iPhone's; `search` → the "Find a movie or show" tile on the Actions tab (the tab shows for it alone) and the search link; `share` → the share extension sends links. Missing list = `status` + `hosts` only |
 | `commands` | The chat's "/" menu (and the suggestions when the field starts with "/"). Each entry is `"/word"` or `{"command": "/word", "description": "one line"}`; without a description the app uses its own line for the agent's commands (`/pending`, `/last`, `/memory`, `/usage`, `/autonomy`, `/help`, …) or none. Only `/word` entries, at most 24 chars, no spaces, the first 8; descriptions are cut to 80 chars. Empty = no menu. Clearing the chat is the app's own (it hides the messages on the phone); no command is sent for it |
 | `standing_approvals` | `true`: the "Always" confirm says the action will run by itself from now on. `false`/missing: it says that is up to the server |
 | `auth` | Informational (`identity`, `token`, `none`); the app sends what its server setting says |
@@ -501,6 +502,34 @@ A message from `GET /messages` (and `state.last_message`) may carry two more lis
  "pending": [{"id": "ab12", "action": "restart", "arg": "media sonarr",
               "buttons": {"approve": "HOMELAB_APPROVE_ab12_0123456789abcdef", "deny": "HOMELAB_DENY_ab12_2123456789abcdef"}}]}
 ```
+
+## Live conversation (`voice`, `speech`)
+
+The waveform button in the chat (shown while the field is empty) opens a live conversation: the iPhone listens, and
+when the speaker pauses for 1.6 s it sends what it understood as a normal chat message. The speech is turned into text
+on the iPhone when the language supports it (else by Apple's speech recognition); the server only ever gets text.
+
+- **`voice: true` in `POST /messages`.** The message was spoken and the reply will be read aloud. A server may answer
+  such a message the way it wants to be heard: short, whole sentences, no lists, tables, code or addresses, and in a
+  voice or character of its own. The field is absent for typed messages; a server that does not know it ignores it and
+  the chat works as before.
+- **The reply is the chat reply.** The app reads every agent message after the one it sent that is not a scheduled
+  report (`job` missing, `"chat"` or `"action"`), until none is `partial` and `busy` is empty. With
+  [partial replies](#partial-replies-streaming) it starts speaking after the first whole sentence (it polls every
+  0.7 s while it waits). Markdown marks, code blocks and emoji are not read; a link is its words, a bare address its
+  site name. A reply with `pending` shows "Needs your approval · Open the chat": the buttons stay in the chat.
+- **`POST /speech` (feature `speech`).** Body `{"text": "…"}`: one piece of the reply as plain text, 1 to 500
+  characters (the first sentence alone, later pieces of about 220 characters). The answer is the audio itself with
+  status 200: WAV, MP3, M4A, AAC (ADTS) or FLAC, at most 6 MB, recognised by its first bytes (the `Content-Type` is
+  not trusted). The app asks for one piece at a time, each as soon as its text is known, so the next one is usually
+  ready when the current one ends; it waits up to 60 s. Anything else (404, an error, no audio) and that piece is read
+  by the iPhone's own voice; after two failures in a row the rest of the conversation is too.
+- Without `speech` the iPhone's best installed voice for the chosen language reads the reply (Settings → Advanced →
+  Chat → Live conversation picks the language; better voices are under the iPhone's Settings → Accessibility → Spoken
+  Content → Voices).
+
+The microphone is closed while the agent thinks and speaks (a tap on the circle interrupts it), the conversation ends
+when the app leaves the foreground, and nothing is recorded or stored: the words are in the chat like typed ones.
 
 ### Partial replies (streaming)
 
