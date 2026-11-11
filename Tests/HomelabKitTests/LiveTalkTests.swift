@@ -215,6 +215,33 @@ import FoundationNetworking
     }
 }
 
+@Suite struct HeardTextTests {
+    @Test func growingTextAndCorrectionsReplaceEachOther() {
+        var heard = HeardText()
+        #expect(heard.take("is every") == "is every")
+        #expect(heard.take("is everything okay") == "is everything okay")
+        #expect(heard.take("Is everything OK?") == "Is everything OK?")   // a correction, about as long
+    }
+
+    @Test func aNewStartAfterASilenceKeepsWhatWasSaid() {
+        var heard = HeardText()
+        _ = heard.take("Turn the lamps off in the living room")
+        #expect(heard.take("and") == "Turn the lamps off in the living room and")
+        #expect(heard.take("and wake me at seven") == "Turn the lamps off in the living room and wake me at seven")
+    }
+
+    @Test func aRestartedRecognizerContinues() {
+        var heard = HeardText()
+        _ = heard.take("what time")
+        heard.newSegment()
+        #expect(heard.whole == "what time")
+        #expect(heard.take("is school tomorrow") == "what time is school tomorrow")
+        heard.newSegment()
+        heard.newSegment()   // twice with nothing new in between adds nothing
+        #expect(heard.whole == "what time is school tomorrow")
+    }
+}
+
 @Suite struct SpeechClientTests {
     let base = URL(string: "https://lab.example.ts.net")!
 

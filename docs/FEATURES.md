@@ -94,7 +94,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Chat with the homelab agent](#chat) | shipped | `chat` | 10 | **C1**, **C2**, C3, C4, C6, **C7**, **C8** | 3 |
 | [Slash commands and Clear](#chat-commands) | shipped | `chat` | 2 | C5, C5b | 1 |
 | [Proposals and cards in chat bubbles](#chat-proposals-cards) | shipped | `chat`, `actions` | 4 | C9, C10 | 1 |
-| [Live conversation](#chat-live) | partial (?) | `chat` | 4 | C11, C12, C13, C15 | 1 |
+| [Live conversation](#chat-live) | partial (?) | `chat` | 5 | C11, C12, C13, C15 | 1 |
 | [The server's own voice](#chat-live-voice) | partial (?) | `chat`, `speech` | 3 | C14 | 1 |
 
 ### Home (4)
@@ -1022,7 +1022,7 @@ Talk with the agent: while the chat's field is empty the send circle is a wavefo
 |---|---|
 | Server | `chat`, `POST /messages`, `voice (POST /messages)` |
 | Sources | [LiveTalk.swift](../Sources/HomelabKit/LiveTalk.swift), [LiveTalkAudio.swift](../Sources/HomelabUI/LiveTalkAudio.swift), [LiveTalkView.swift](../Sources/HomelabUI/LiveTalkView.swift), [ChatView.swift#LiveTalkView](../Sources/HomelabUI/ChatView.swift) |
-| Tests | `SpokenTextTests`, `SpeechFeedTests`, `LiveTalkTests`, `SpeechClientTests` |
+| Tests | `SpokenTextTests`, `SpeechFeedTests`, `LiveTalkTests`, `HeardTextTests`, `SpeechClientTests` |
 | Phone (DeviceTest.md) | C11, C12, C13, C15 |
 | Docs | [docs/API.md#live-conversation-voice-speech](API.md#live-conversation-voice-speech) |
 | Settings | Settings → Advanced → Chat → Live conversation (the language it listens in) |

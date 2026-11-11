@@ -357,6 +357,34 @@ public struct LiveTalk: Sendable, Equatable {
     }
 }
 
+/// What the recognizer understood in one turn, across its restarts. A recognizer hands out the whole text so far on
+/// every change, but it starts from nothing again when it is restarted, and the on-device one also does after a
+/// short silence. A text that suddenly is much shorter than the one before is such a new start: what was heard
+/// before is kept in front of it.
+public struct HeardText: Sendable, Equatable {
+    private var kept = ""
+    private var last = ""
+
+    public init() {}
+
+    /// The turn's whole text after the recognizer said `raw`.
+    public mutating func take(_ raw: String) -> String {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A correction changes a word or two; a new start drops most of the text.
+        if last.count >= 12, text.count * 2 < last.count { newSegment() }
+        last = text
+        return whole
+    }
+
+    /// The recognizer was restarted: the next text continues after what is there.
+    public mutating func newSegment() {
+        kept = whole
+        last = ""
+    }
+
+    public var whole: String { [kept, last].filter { !$0.isEmpty }.joined(separator: " ") }
+}
+
 /// The language a live conversation is heard in (Settings → Advanced → Chat). The agent answers in the language it
 /// is spoken to, so this is also the language of the iPhone's own voice.
 public enum LiveLanguage: String, Codable, CaseIterable, Sendable, Identifiable {

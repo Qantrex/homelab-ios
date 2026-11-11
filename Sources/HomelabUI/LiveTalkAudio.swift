@@ -299,8 +299,10 @@ final class LiveTalkSession {
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var interruptions: Task<Void, Never>?
     @ObservationIgnored private var listening = false
-    /// What was heard before the recognizer restarted in the middle of a turn.
-    @ObservationIgnored private var carry = ""
+    /// This turn's words across the recognizer's restarts and new starts.
+    @ObservationIgnored private var words = HeardText()
+    /// `end` was called (the screen closed), perhaps while `start` was still asking for the microphone.
+    @ObservationIgnored private var ended = false
     @ObservationIgnored private var listenFailures = 0
 
     init(chat: ChatModel) {
@@ -322,6 +324,8 @@ final class LiveTalkSession {
             self.blocker = blocker
             return
         }
+        // Closed while the iPhone was asking: nothing may start listening now.
+        guard !ended, !Task.isCancelled else { return }
         do {
             // Play and record, but never the hands-free Bluetooth profile: headphones keep their full quality and
             // the iPhone's own microphone listens.
@@ -353,6 +357,7 @@ final class LiveTalkSession {
     }
 
     func end() {
+        ended = true
         ticker?.cancel()
         interruptions?.cancel()
         ticker = nil
@@ -419,7 +424,6 @@ final class LiveTalkSession {
         // The reply is whatever the agent says after the newest message the chat has now.
         talk.sent(after: chat.timeline.messages.last?.id ?? 0)
         note = nil
-        carry = ""
         Task {
             guard await send(words) else {
                 note = String(localized: "Not sent. Say it again.")
@@ -440,7 +444,7 @@ final class LiveTalkSession {
             listener.stop()
             return
         }
-        carry = ""
+        words = HeardText()
         open()
     }
 
@@ -470,7 +474,7 @@ final class LiveTalkSession {
     private func heard(_ text: String) {
         guard listening else { return }
         listenFailures = 0
-        talk.hear(carry.isEmpty ? text : carry + " " + text)
+        talk.hear(words.take(text))
     }
 
     /// The recognizer stopped by itself (its time limit, a hiccup, "no speech"): open it again and keep what was
@@ -485,7 +489,7 @@ final class LiveTalkSession {
             talk.pause()
             return
         }
-        carry = talk.heard
+        words.newSegment()
         open()
     }
 
