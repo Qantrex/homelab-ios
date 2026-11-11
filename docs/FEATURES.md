@@ -94,7 +94,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Chat with the homelab agent](#chat) | shipped | `chat` | 10 | **C1**, **C2**, C3, C4, C6, **C7**, **C8** | 3 |
 | [Slash commands and Clear](#chat-commands) | shipped | `chat` | 2 | C5, C5b | 1 |
 | [Proposals and cards in chat bubbles](#chat-proposals-cards) | shipped | `chat`, `actions` | 4 | C9, C10 | 1 |
-| [Live conversation](#chat-live) | partial (?) | `chat` | 5 | C11, C12, C13, C15 | 1 |
+| [Live conversation](#chat-live) | partial (?) | `chat` | 6 | C11, C12, C13, C15 | 1 |
 | [The server's own voice](#chat-live-voice) | partial (?) | `chat`, `speech` | 3 | C14 | 1 |
 
 ### Home (4)
@@ -1022,7 +1022,7 @@ Talk with the agent: while the chat's field is empty the send circle is a wavefo
 |---|---|
 | Server | `chat`, `POST /messages`, `voice (POST /messages)` |
 | Sources | [LiveTalk.swift](../Sources/HomelabKit/LiveTalk.swift), [LiveTalkAudio.swift](../Sources/HomelabUI/LiveTalkAudio.swift), [LiveTalkView.swift](../Sources/HomelabUI/LiveTalkView.swift), [ChatView.swift#LiveTalkView](../Sources/HomelabUI/ChatView.swift) |
-| Tests | `SpokenTextTests`, `SpeechFeedTests`, `LiveTalkTests`, `HeardTextTests`, `SpeechClientTests` |
+| Tests | `SpokenTextTests`, `SoundMarkTests`, `SpeechFeedTests`, `LiveTalkTests`, `HeardTextTests`, `SpeechClientTests` |
 | Phone (DeviceTest.md) | C11, C12, C13, C15 |
 | Docs | [docs/API.md#live-conversation-voice-speech](API.md#live-conversation-voice-speech) |
 | Settings | Settings → Advanced → Chat → Live conversation (the language it listens in) |
@@ -1034,7 +1034,7 @@ Talk with the agent: while the chat's field is empty the send circle is a wavefo
 
 **The server's own voice** · Chat · partial · since 2026-11-11
 
-A server with `speech` says the reply of a live conversation itself: the app asks `POST /speech` for each piece (the first sentence alone, then about 220 characters), one at a time and ahead of the playback, and plays the audio (WAV, MP3, M4A, AAC or FLAC, recognised by its first bytes). A piece the server can't make is read by the iPhone's voice; after two failures in a row the rest of the conversation is too.
+A server with `speech` says the reply of a live conversation itself: the app asks `POST /speech` for each piece (the first sentence alone, then about 220 characters), one at a time and ahead of the playback, and plays the audio (WAV, MP3, M4A, AAC or FLAC, recognised by its first bytes). A piece the server can't make is read by the iPhone's voice; after two failures in a row the rest of the conversation is too. A reply may carry sound marks (`[giggle]`, `[exhale]`, …) for the server's voice: the app hides them on screen and leaves them out for the iPhone's voice.
 
 | | |
 |---|---|

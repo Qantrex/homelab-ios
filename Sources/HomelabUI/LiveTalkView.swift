@@ -124,7 +124,7 @@ struct LiveTalkView: View {
                         .lineLimit(5)
                         .truncationMode(.head)
                 } else if !talk.reply.isEmpty {
-                    Text(verbatim: SpokenText.clean(talk.reply))
+                    Text(verbatim: SpokenText.withoutSounds(SpokenText.clean(talk.reply)))
                         .font(Typo.body)
                         .foregroundStyle(Palette.tertiary)
                         .lineLimit(4)
@@ -137,7 +137,7 @@ struct LiveTalkView: View {
                     .lineLimit(2)
                     .truncationMode(.head)
                 if !talk.reply.isEmpty {
-                    Text(verbatim: SpokenText.clean(talk.reply))
+                    Text(verbatim: SpokenText.withoutSounds(SpokenText.clean(talk.reply)))
                         .font(Typo.body)
                         .foregroundStyle(Palette.text)
                         .lineLimit(6)

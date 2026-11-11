@@ -195,7 +195,9 @@ final class SpeechVoice: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDel
             } else {
                 if piece.clip != nil { failures += 1 }
                 usedServer = false
-                speak(piece.text)
+                // The iPhone's voice can't giggle: it would read the mark out. A piece that was only a sound is skipped.
+                let words = SpokenText.withoutSounds(piece.text)
+                if words.contains(where: { $0.isLetter || $0.isNumber }) { speak(words) } else { next() }
             }
         }
     }
