@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 107 | 79 | 26 | 1 | 41 | 0 |
+| 109 | 79 | 28 | 1 | 41 | 0 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -87,13 +87,15 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Containers with Restart](#container-restart) | shipped | `hosts`, `run-actions` | 7 | O6, O7 | 2 |
 | [Service launcher (web UIs)](#service-launcher) | shipped | `services` | 3 | O13 | 2 |
 
-### Chat (3)
+### Chat (5)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Chat with the homelab agent](#chat) | shipped | `chat` | 10 | **C1**, **C2**, C3, C4, C6, **C7**, **C8** | 3 |
 | [Slash commands and Clear](#chat-commands) | shipped | `chat` | 2 | C5, C5b | 1 |
 | [Proposals and cards in chat bubbles](#chat-proposals-cards) | shipped | `chat`, `actions` | 4 | C9, C10 | 1 |
+| [Live conversation](#chat-live) | partial (?) | `chat` | 4 | C11, C12, C13, C15 | 1 |
+| [The server's own voice](#chat-live-voice) | partial (?) | `chat`, `speech` | 3 | C14 | 1 |
 
 ### Home (4)
 
@@ -218,6 +220,8 @@ None.
 Not verified (the registry says so in `unsure`):
 
 - [last-report](#last-report): No test checks the last_message section itself; FixtureDecoding only decodes it.
+- [chat-live](#chat-live): Built and compiled 2026-11-11, never run on an iPhone: microphone, recognition, playback and the turn-taking with real audio are untested (C11-C13, C15).
+- [chat-live-voice](#chat-live-voice): Never played on an iPhone (C14); no server in this repo implements POST /speech (the reference server and the Bridge have no voice).
 - [widget-status](#widget-status): Widget views are not unit-tested (WidgetKit doesn't build on Linux); only the data rules are.
 - [widget-actions](#widget-actions): The views are not unit-tested; the gallery preview and the tap-to-run flow are unverified on a device until DeviceTest W13-W15.
 - [background-refresh](#background-refresh): The BGTask itself only runs on a device; no test covers BackgroundRefresh.run (HomelabUI doesn't build on Linux).
@@ -233,7 +237,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Server features (`ServerInfo.Feature`) | `status` | [today-hero](#today-hero), [last-report](#last-report), [lab-hosts](#lab-hosts), [widget-status](#widget-status), [widget-data](#widget-data), [live-activity](#live-activity), [notifications](#notifications), [tabs-by-features](#tabs-by-features), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `hosts` | [today-hero](#today-hero), [overkill-machines](#overkill-machines), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-hosts](#widget-hosts), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox) |
 | Server features (`ServerInfo.Feature`) | `actions` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notifications](#notifications), [notification-actions](#notification-actions), [reference-server](#reference-server) |
-| Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [reference-server](#reference-server) |
+| Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [chat-live](#chat-live), [chat-live-voice](#chat-live-voice), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [game-server-card](#game-server-card), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-rss](#source-rss), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [widget-actions](#widget-actions), [source-actions](#source-actions) |
@@ -241,6 +245,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `search` | [find](#find) |
 | Server features (`ServerInfo.Feature`) | `deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
+| Server features (`ServerInfo.Feature`) | `speech` | [chat-live-voice](#chat-live-voice) |
 | `homelab://` links (`AppModel.open`) | `actions` | [approvals](#approvals), [action-links](#action-links), [action-links](#action-links) |
 | `homelab://` links (`AppModel.open`) | `chat` | [chat](#chat) |
 | `homelab://` links (`AppModel.open`) | `deals` | [deals](#deals) |
@@ -302,8 +307,9 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
-| Endpoints (`server/openapi.yaml`) | `POST /messages` | [chat](#chat) |
+| Endpoints (`server/openapi.yaml`) | `POST /messages` | [chat](#chat), [chat-live](#chat-live) |
 | Endpoints (`server/openapi.yaml`) | `POST /share` | [share-extension](#share-extension) |
+| Endpoints (`server/openapi.yaml`) | `POST /speech` | [chat-live-voice](#chat-live-voice) |
 | Endpoints (`server/openapi.yaml`) | `PUT /news/prefs` | [news](#news), [source-rss](#source-rss) |
 
 ## Feature details
@@ -1005,6 +1011,41 @@ A message's proposals get Approve, Always and Deny in the bubble (same confirm a
 | Docs | [docs/API.md#chat-messages-with-proposals-and-cards](API.md#chat-messages-with-proposals-and-cards) |
 | Depends on | [chat](#chat), [approvals](#approvals), [cards](#cards) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
+
+### chat-live
+
+**Live conversation** · Chat · partial · since 2026-11-11
+
+Talk with the agent: while the chat's field is empty the send circle is a waveform that opens a live conversation. The iPhone listens, sends what it understood as a chat message when you pause, and the reply is spoken while it is still being written: in the server's own voice when it has one (`speech`), else by the iPhone's. A circle follows the voice that has the turn; a tap interrupts, mute pauses, everything said and answered stays in the chat.
+
+| | |
+|---|---|
+| Server | `chat`, `POST /messages`, `voice (POST /messages)` |
+| Sources | [LiveTalk.swift](../Sources/HomelabKit/LiveTalk.swift), [LiveTalkAudio.swift](../Sources/HomelabUI/LiveTalkAudio.swift), [LiveTalkView.swift](../Sources/HomelabUI/LiveTalkView.swift), [ChatView.swift#LiveTalkView](../Sources/HomelabUI/ChatView.swift) |
+| Tests | `SpokenTextTests`, `SpeechFeedTests`, `LiveTalkTests`, `SpeechClientTests` |
+| Phone (DeviceTest.md) | C11, C12, C13, C15 |
+| Docs | [docs/API.md#live-conversation-voice-speech](API.md#live-conversation-voice-speech) |
+| Settings | Settings → Advanced → Chat → Live conversation (the language it listens in) |
+| Depends on | [chat](#chat) |
+| Through those | [companion-api-v1](#dep-companion-api-v1) |
+| Unsure | Built and compiled 2026-11-11, never run on an iPhone: microphone, recognition, playback and the turn-taking with real audio are untested (C11-C13, C15). |
+
+### chat-live-voice
+
+**The server's own voice** · Chat · partial · since 2026-11-11
+
+A server with `speech` says the reply of a live conversation itself: the app asks `POST /speech` for each piece (the first sentence alone, then about 220 characters), one at a time and ahead of the playback, and plays the audio (WAV, MP3, M4A, AAC or FLAC, recognised by its first bytes). A piece the server can't make is read by the iPhone's voice; after two failures in a row the rest of the conversation is too.
+
+| | |
+|---|---|
+| Server | `chat`, `speech`, `POST /speech`, `info.features: speech` |
+| Sources | [LiveTalkAudio.swift#SpeechVoice](../Sources/HomelabUI/LiveTalkAudio.swift), [LiveTalk.swift#SpeechClip](../Sources/HomelabKit/LiveTalk.swift) |
+| Tests | `SpeechClientTests/speechPostsTheTextAndReadsAudio`, `SpeechClientTests/speechRefusesWhatIsNotAudioAndTextThatIsTooLong`, `SpeechClientTests/audioIsRecognisedByItsFirstBytes` |
+| Phone (DeviceTest.md) | C14 |
+| Docs | [docs/API.md#live-conversation-voice-speech](API.md#live-conversation-voice-speech) |
+| Depends on | [chat-live](#chat-live) |
+| Through those | [companion-api-v1](#dep-companion-api-v1) |
+| Unsure | Never played on an iPhone (C14); no server in this repo implements POST /speech (the reference server and the Bridge have no voice). |
 
 ### home-tiles
 
@@ -2097,7 +2138,7 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | 7 features | 33 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 50 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 52 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
 | <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 15 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
@@ -2187,7 +2228,7 @@ Features per area that need each dependency, directly or through another feature
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 8 |  |  | 5 |  |  | 2 | 18 |  |
-| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 4 | 3 |  | 3 | 1 |  | 6 | 1 |  |  | 20 |  |
+| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 4 | 5 |  | 3 | 1 |  | 6 | 1 |  |  | 20 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
 | The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 3 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

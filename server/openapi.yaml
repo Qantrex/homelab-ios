@@ -78,6 +78,12 @@ paths:
               required: [text]
               properties:
                 text: { type: string, minLength: 1, maxLength: 4000 }
+                voice:
+                  type: boolean
+                  description: |
+                    True when the message was said in a live conversation and the reply will be read aloud. The
+                    server may answer the way it wants to be heard (short, no lists or code). Absent for typed
+                    messages; a server that does not know it ignores it.
       responses:
         "200":
           description: Accepted
@@ -91,6 +97,32 @@ paths:
         "400": { description: Empty or longer than 4000 characters. }
         "415": { description: Not JSON. }
         "429": { description: Too many runs; try later. }
+  /speech:
+    post:
+      summary: One piece of a chat reply as speech in the server's own voice (feature `speech`, optional).
+      description: |
+        The chat's live conversation asks for the reply piece by piece (the first sentence alone, then about 220
+        characters each), one request at a time. Plain text in, an audio file out. Without this endpoint, or when it
+        fails, the iPhone's own voice reads the piece.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "200":
+          description: The audio (at most 6 MB). The app recognises WAV, MP3, M4A, AAC (ADTS) and FLAC by the first bytes.
+          content:
+            audio/wav: { schema: { type: string, format: binary } }
+            audio/mpeg: { schema: { type: string, format: binary } }
+            audio/mp4: { schema: { type: string, format: binary } }
+        "400": { description: Empty or longer than 500 characters. }
+        "404": { description: This server has no voice. }
+        "503": { description: The voice is not available right now; the iPhone's own voice reads the piece. }
   /button:
     post:
       summary: Press a signed action button from `State.pending[].buttons`.
@@ -406,13 +438,14 @@ components:
           type: array
           items:
             type: string
-            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share, search, deals]
+            enum: [status, hosts, actions, run-actions, chat, cards, services, documents, share, search, deals, speech]
           description: |
             `actions`: proposed actions to approve (`pending`, `/button`). `run-actions`: the app may start actions
             itself (`/actions`). `documents`: `POST /documents` takes a PDF (the Scan tile, the share extension).
             `share`: `POST /share` takes a link. `search`: `GET /search?q=` answers cards (the Find a movie or show
             screen). `deals`: `GET /deals` answers (the Willhaben deals screen; a server without the word is still asked
-            once in a while). The other values switch the matching tabs and sections.
+            once in a while). `speech`: `POST /speech` answers audio (a live conversation in the chat is spoken in the
+            server's voice). The other values switch the matching tabs and sections.
         auth: { type: string, enum: [identity, token, none] }
         commands:
           type: array

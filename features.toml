@@ -739,6 +739,41 @@ device_tests = ["C9", "C10"]
 docs = ["docs/API.md#chat-messages-with-proposals-and-cards"]
 depends_on = ["chat", "approvals", "cards"]
 
+[[feature]]
+id = "chat-live"
+name = "Live conversation"
+area = "Chat"
+status = "partial"
+since = "2026-11-11"
+summary = "Talk with the agent: while the chat's field is empty the send circle is a waveform that opens a live conversation. The iPhone listens, sends what it understood as a chat message when you pause, and the reply is spoken while it is still being written: in the server's own voice when it has one (`speech`), else by the iPhone's. A circle follows the voice that has the turn; a tap interrupts, mute pauses, everything said and answered stays in the chat."
+server_features = ["chat"]
+endpoints = ["POST /messages"]
+api_fields = ["voice (POST /messages)"]
+sources = ["Sources/HomelabKit/LiveTalk.swift", "Sources/HomelabUI/LiveTalkAudio.swift", "Sources/HomelabUI/LiveTalkView.swift", "Sources/HomelabUI/ChatView.swift#LiveTalkView"]
+tests = ["SpokenTextTests", "SpeechFeedTests", "LiveTalkTests", "SpeechClientTests"]
+device_tests = ["C11", "C12", "C13", "C15"]
+docs = ["docs/API.md#live-conversation-voice-speech"]
+settings = ["Settings → Advanced → Chat → Live conversation (the language it listens in)"]
+depends_on = ["chat"]
+unsure = "Built and compiled 2026-11-11, never run on an iPhone: microphone, recognition, playback and the turn-taking with real audio are untested (C11-C13, C15)."
+
+[[feature]]
+id = "chat-live-voice"
+name = "The server's own voice"
+area = "Chat"
+status = "partial"
+since = "2026-11-11"
+summary = "A server with `speech` says the reply of a live conversation itself: the app asks `POST /speech` for each piece (the first sentence alone, then about 220 characters), one at a time and ahead of the playback, and plays the audio (WAV, MP3, M4A, AAC or FLAC, recognised by its first bytes). A piece the server can't make is read by the iPhone's voice; after two failures in a row the rest of the conversation is too."
+server_features = ["chat", "speech"]
+endpoints = ["POST /speech"]
+api_fields = ["info.features: speech"]
+sources = ["Sources/HomelabUI/LiveTalkAudio.swift#SpeechVoice", "Sources/HomelabKit/LiveTalk.swift#SpeechClip"]
+tests = ["SpeechClientTests/speechPostsTheTextAndReadsAudio", "SpeechClientTests/speechRefusesWhatIsNotAudioAndTextThatIsTooLong", "SpeechClientTests/audioIsRecognisedByItsFirstBytes"]
+device_tests = ["C14"]
+docs = ["docs/API.md#live-conversation-voice-speech"]
+depends_on = ["chat-live"]
+unsure = "Never played on an iPhone (C14); no server in this repo implements POST /speech (the reference server and the Bridge have no voice)."
+
 # ==================================================================================================== Home
 
 [[feature]]

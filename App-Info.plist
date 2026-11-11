@@ -42,6 +42,10 @@
             <string>doc.viewfinder</string>
         </dict>
     </array>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Homelab listens while a live conversation in the chat is open, to turn what you say into a chat message.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Homelab turns what you say in a live conversation into text for the chat, on the iPhone when your language supports it.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>Homelab can lock itself with Face ID, so only you can approve actions.</string>
     <key>NSLocalNetworkUsageDescription</key>

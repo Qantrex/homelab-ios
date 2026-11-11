@@ -9,6 +9,14 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Live conversation in the chat: while the field is empty the send circle is a waveform. A tap opens a full-screen
+  conversation: the iPhone listens (speech becomes text on the iPhone when the language supports it), sends what you
+  said as a chat message once you pause, and speaks the reply while it is still being written; then it listens again.
+  A tap on the circle interrupts, the microphone button pauses, X ends it; the microphone is closed while the agent
+  speaks, so Bluetooth headphones keep their full quality. A server with the new `speech` feature speaks in its own
+  voice (`POST /speech`), else the iPhone's best installed voice reads; spoken messages carry `voice: true`, so a
+  server can answer the way it wants to be heard (docs/API.md "Live conversation"). Settings → Advanced → Chat → Live
+  conversation picks the language. Not tested on a phone yet (DeviceTest C11–C15).
 - Pushes come from the ntfy app: a tap opens the right tab, and the push of a proposal opens `homelab://actions/pending/<id>` (Actions tab, "To approve"); approving stays in the app, no push carries a token.
 - Public route setup by scan: the QR from `apply-daily-fixes.sh` opens the app with `homelab://public-route#v1.…` and asks "Add public route to <server>?" (address and "3 keys (hidden)"); Add stores it like Settings and tests the public route. The link is never stored or logged. The three key fields in Settings now show their labels and "Saved", and Test connection says why it is off.
 - Public route: a server can have a second, public https address (Cloudflare Access service token plus an app token) under Edit server → Public route. The app tries it first, so it loads without Tailscale, and uses the normal address when the network fails. Wrong keys show an error instead of falling back.

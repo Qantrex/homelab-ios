@@ -33,6 +33,9 @@ public struct ServerInfo: Codable, Sendable, Equatable {
         case search
         /// GET /deals: used-market deals the server found and judged (the Deals screen, `homelab://deals`).
         case deals
+        /// POST /speech: the server says a sentence in its own voice (the chat's live conversation). Without it
+        /// the iPhone's voice reads the replies.
+        case speech
     }
 
     public init(api: Int = 1, name: String? = nil, server: String? = nil, version: String? = nil,
