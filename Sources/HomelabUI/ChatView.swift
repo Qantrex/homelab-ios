@@ -300,7 +300,7 @@ struct ChatView: View {
             .onChange(of: chat.timeline.finalCursor) { old, _ in
                 guard old > 0, let reply = chat.timeline.messages.last(where: { $0.from == .agent && !$0.partial && $0.id > old })
                 else { return }
-                AccessibilityNotification.Announcement(String(localized: "Agent: \(Self.short(spoken(reply.text)))")).post()
+                AccessibilityNotification.Announcement(String(localized: "Agent: \(Self.short(spoken(SpokenText.withoutSounds(reply.text))))")).post()
             }
             .onChange(of: chat.timeline.isWorking) { _, working in
                 if working { AccessibilityNotification.Announcement(String(localized: "Working…")).post() }
@@ -544,7 +544,7 @@ struct AgentMessage: View {
     private var label: LocalizedStringKey {
         let job = message.isReport ? message.job.map { "\($0), " } ?? "" : ""
         let time = message.ts.map { $0.formatted(date: .omitted, time: .shortened) + ": " } ?? ""
-        return "Agent, \(job)\(time)\(spoken(message.text))"
+        return "Agent, \(job)\(time)\(spoken(SpokenText.withoutSounds(message.text)))"
     }
 
     /// Above a report: its job, with a dot and the word only for a warning or alert ("watchdog · alert").
@@ -567,7 +567,8 @@ struct AgentMessage: View {
     /// The text, cut to 12 lines with a fade and "Show more" when it is long.
     private var text: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ChatText(message.text)
+            // A spoken reply's sound marks ("[giggle]") are for the voice, not for reading.
+            ChatText(SpokenText.withoutSounds(message.text))
                 .fixedSize(horizontal: false, vertical: true)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
                 .frame(height: folded ? CGFloat(ChatFold.foldedHeight(lineHeight: lineHeight, mode: foldMode)) : nil, alignment: .top)
@@ -579,7 +580,7 @@ struct AgentMessage: View {
                                    startPoint: .top, endPoint: .bottom)
                 }
                 .contextMenu {
-                    Button { UIPasteboardBridge.copy(message.text) } label: { Label("Copy", systemImage: "doc.on.doc") }
+                    Button { UIPasteboardBridge.copy(SpokenText.withoutSounds(message.text)) } label: { Label("Copy", systemImage: "doc.on.doc") }
                 }
             if folds {
                 Button(expanded ? "Show less" : "Show more") {

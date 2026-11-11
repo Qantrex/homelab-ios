@@ -9,6 +9,10 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Live conversation, sounds: a server's voice can giggle, chuckle, laugh, breathe and sigh. The server writes the
+  marks (`[giggle]`, `[exhale]`, …) into a spoken reply; the app hides them in the chat and on the live screen, sends
+  them to `POST /speech` with their piece, and leaves them out when the iPhone's own voice has to read. A piece may
+  take up to 120 s now (expressive voices are slower).
 - Live conversation in the chat: while the field is empty the send circle is a waveform. A tap opens a full-screen
   conversation: the iPhone listens (speech becomes text on the iPhone when the language supports it), sends what you
   said as a chat message once you pause, and speaks the reply while it is still being written; then it listens again.

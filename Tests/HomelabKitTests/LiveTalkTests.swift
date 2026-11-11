@@ -46,6 +46,35 @@ import FoundationNetworking
     }
 }
 
+@Suite struct SoundMarkTests {
+    @Test func knownSoundsAreTakenOutAndTheSpacesClosed() {
+        #expect(SpokenText.withoutSounds("There you go. [giggle] All is up.") == "There you go. All is up.")
+        #expect(SpokenText.withoutSounds("[exhale] You did well.") == "You did well.")
+        #expect(SpokenText.withoutSounds("Now... [Chuckle] school starts at eight.") == "Now... school starts at eight.")
+        #expect(SpokenText.withoutSounds("Good.[sigh]") == "Good.")
+        #expect(SpokenText.withoutSounds("Line one. [giggle]\n[breath] Line two.") == "Line one.\nLine two.")
+        #expect(SpokenText.withoutSounds("[giggle]") == "")
+    }
+
+    @Test func otherBracketsStay() {
+        #expect(SpokenText.withoutSounds("See [the ad](https://x.example) and [LB] groups.") == "See [the ad](https://x.example) and [LB] groups.")
+        #expect(SpokenText.withoutSounds("No marks here.") == "No marks here.")
+        #expect(SpokenText.withoutSounds("An open [bracket stays") == "An open [bracket stays")
+    }
+
+    @Test func soundsTravelWithThePiecesToTheServersVoice() {
+        var feed = SpeechFeed()
+        let reply = "Mm-hmm... there you are. [giggle]\nEverything is fine... all servers are up. [exhale] Rest now."
+        let pieces = feed.feed(reply, final: true)
+        #expect(pieces.first == "Mm-hmm...")
+        #expect(pieces.joined(separator: " ").contains("[giggle]"))
+        #expect(pieces.joined(separator: " ").contains("[exhale]"))
+        #expect(pieces.allSatisfy { $0.count <= SpeechFeed.maxPiece })
+        // What the iPhone's own voice would say instead: the same words, no marks.
+        #expect(pieces.map(SpokenText.withoutSounds).joined(separator: " ").contains("[") == false)
+    }
+}
+
 @Suite struct SpeechFeedTests {
     @Test func aGrowingReplyIsHandedOutOnceSentenceBySentence() {
         var feed = SpeechFeed()
@@ -301,15 +330,19 @@ import FoundationNetworking
     }
 
     @Test func theLanguageSettingIsOmittedWhenItIsTheIPhones() throws {
+        // Sorted keys: the bytes of two encodings are only comparable when the key order is fixed.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
         var s = AppSettings()
         #expect(s.liveLang == .system)
-        let plain = try JSONEncoder().encode(s)
+        let plain = try encoder.encode(s)
+        #expect(!String(decoding: plain, as: UTF8.self).contains("liveLanguage"))
         s.liveLang = .german
         #expect(s.liveLanguage == .german)
-        let back = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(s))
+        let back = try JSONDecoder().decode(AppSettings.self, from: encoder.encode(s))
         #expect(back.liveLang == .german)
         s.liveLang = .system
-        #expect(try JSONEncoder().encode(s) == plain)
+        #expect(try encoder.encode(s) == plain)
         #expect(ServerInfo.Feature(rawValue: "speech") == .speech)
     }
 }

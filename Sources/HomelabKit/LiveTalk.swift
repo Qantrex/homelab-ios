@@ -30,6 +30,39 @@ public enum SpokenText {
         return parts.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
+    /// The sounds a server's voice can be asked for, written `[giggle]` in a reply (docs/API.md "Live conversation").
+    /// They are kept in what goes to `POST /speech`, never shown, and never read by the iPhone's own voice.
+    public static let sounds: Set<String> = ["giggle", "chuckle", "laugh", "breath", "exhale", "sigh"]
+
+    /// `text` without sound marks, for the screen and for a voice that can't make them. Only the known sounds go;
+    /// any other text in brackets stays. The space a mark leaves is closed up.
+    public static func withoutSounds(_ text: String) -> String {
+        guard text.contains("[") else { return text }
+        var out = ""
+        var rest = text[...]
+        while let open = rest.firstIndex(of: "[") {
+            guard let close = rest[open...].firstIndex(of: "]") else { break }
+            let word = rest[rest.index(after: open)..<close].lowercased()
+            out += rest[..<open]
+            if sounds.contains(word) {
+                // "boy. [giggle] There" -> "boy. There": one of the two spaces around the mark goes.
+                let after = rest.index(after: close)
+                if out.isEmpty || out.last?.isWhitespace == true, after < rest.endIndex, rest[after] == " " {
+                    rest = rest[rest.index(after: after)...]
+                } else {
+                    rest = rest[after...]
+                }
+            } else {
+                out += rest[open...close]
+                rest = rest[rest.index(after: close)...]
+            }
+        }
+        out += rest
+        return out.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// `clean` cut into sentences, in order. A dot after a number ("11. November", "3.5") or a short abbreviation
     /// ("e.g.", "z.B.", "Dr.") does not end one.
     public static func sentences(_ text: String) -> [String] {

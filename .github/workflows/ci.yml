@@ -43,7 +43,14 @@ jobs:
 
       - name: Install python3 if missing
         run: |
-          command -v python3 >/dev/null || { apt-get update -qq && apt-get install -y -qq python3; }
+          # The job container's DNS is sometimes not up yet when this runs ("Could not resolve archive.ubuntu.com",
+          # twice in a row on 2026-11-11): try for up to two minutes before giving up.
+          if ! command -v python3 >/dev/null; then
+            for try in 1 2 3 4 5 6 7 8; do
+              if apt-get update -qq && apt-get install -y -qq python3; then break; fi
+              echo "apt failed (try $try), waiting 15 s"; sleep 15
+            done
+          fi
           python3 --version
 
       - name: Lint (no print/NSLog, no secrets in logs, no try!/fatalError in HomelabKit)

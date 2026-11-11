@@ -103,7 +103,9 @@ paths:
       description: |
         The chat's live conversation asks for the reply piece by piece (the first sentence alone, then about 220
         characters each), one request at a time. Plain text in, an audio file out. Without this endpoint, or when it
-        fails, the iPhone's own voice reads the piece.
+        fails, the iPhone's own voice reads the piece. The text may hold the sound marks the server itself wrote into
+        the reply (`[giggle]`, `[chuckle]`, `[laugh]`, `[breath]`, `[exhale]`, `[sigh]`) and `...` for a pause; a piece
+        that is only sounds or pauses should be answered with a short clip. The app waits up to 120 s.
       requestBody:
         required: true
         content:

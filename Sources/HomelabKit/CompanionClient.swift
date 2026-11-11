@@ -109,8 +109,9 @@ public struct CompanionClient: CompanionAPI {
         }
         try checkTokenTransport()
         let body = try JSONSerialization.data(withJSONObject: ["text": trimmed])
-        // A small server makes a sentence about as fast as it is said; a long piece can take a while.
-        var r = request("speech", method: "POST", body: body, timeout: 60)
+        // A small server makes a sentence about as fast as it is said, and an expressive voice on a graphics card
+        // can take longer than that for a long piece: the owner chose quality over speed.
+        var r = request("speech", method: "POST", body: body, timeout: 120)
         r.setValue("audio/*", forHTTPHeaderField: "Accept")
         let data: Data
         let response: HTTPURLResponse

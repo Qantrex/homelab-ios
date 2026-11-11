@@ -522,8 +522,14 @@ on the iPhone when the language supports it (else by Apple's speech recognition)
   characters (the first sentence alone, later pieces of about 220 characters). The answer is the audio itself with
   status 200: WAV, MP3, M4A, AAC (ADTS) or FLAC, at most 6 MB, recognised by its first bytes (the `Content-Type` is
   not trusted). The app asks for one piece at a time, each as soon as its text is known, so the next one is usually
-  ready when the current one ends; it waits up to 60 s. Anything else (404, an error, no audio) and that piece is read
+  ready when the current one ends; it waits up to 120 s. Anything else (404, an error, no audio) and that piece is read
   by the iPhone's own voice; after two failures in a row the rest of the conversation is too.
+- **Sounds and pauses in a spoken reply.** A server whose voice can perform may write sound marks into the reply of
+  a `voice` message: `[giggle]`, `[chuckle]`, `[laugh]`, `[breath]`, `[exhale]`, `[sigh]`. The app never shows them
+  (chat bubble, copy, VoiceOver and the live screen get the text without them), sends them on to `POST /speech` inside
+  the piece they belong to, and takes them out for the iPhone's own voice (a piece that is only a sound is skipped
+  there). Three dots (`...`) are a pause the voice is expected to make. `POST /speech` should answer a piece that is
+  only sounds or pauses with a short clip, not an error. The app waits up to 120 s for a piece.
 - Without `speech` the iPhone's best installed voice for the chosen language reads the reply (Settings → Advanced →
   Chat → Live conversation picks the language; better voices are under the iPhone's Settings → Accessibility → Spoken
   Content → Voices).
