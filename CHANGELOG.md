@@ -9,6 +9,9 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Test section: actions your server marks as tests (`"test": true`, for example playing the spoken morning message,
+  running the wake-up or a speaker line) leave the Start tiles and show under Test on the Actions tab. Settings →
+  Testing → Test section turns it on (off by default); each test still asks before it runs.
 - Live conversation, sounds: a server's voice can giggle, chuckle, laugh, breathe and sigh. The server writes the
   marks (`[giggle]`, `[exhale]`, …) into a spoken reply; the app hides them in the chat and on the live screen, sends
   them to `POST /speech` with their piece, and leaves them out when the iPhone's own voice has to read. A piece may

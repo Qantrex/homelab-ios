@@ -467,6 +467,24 @@ launch_args = ["-HomelabAction"]
 depends_on = ["companion-api", "agent-chat"]
 
 [[feature]]
+id = "test-section"
+name = "Test section"
+area = "Actions"
+status = "partial"
+since = "2026-11-17"
+summary = "Actions the server marks with \"test\": true (play the morning message, run the wake-up, a speaker line) leave the Start tiles and show under \"Test\" on the Actions tab, only while Settings \u2192 Testing \u2192 Test section is on. Same confirm and form as a Start tile."
+server_features = ["run-actions"]
+endpoints = ["GET /actions", "POST /actions/{name}"]
+api_fields = ["actions[].test"]
+sources = ["Sources/HomelabKit/StartActions.swift#testTile", "Sources/HomelabUI/ActionsView.swift#testTiles", "Sources/HomelabUI/SettingsView.swift"]
+tests = ["TestSectionTests"]
+docs = ["docs/API.md#actions-the-app-starts-run-actions"]
+settings = ["Settings \u2192 Testing \u2192 Test section (off by default; the row shows once the server has a test)"]
+depends_on = ["start-actions"]
+not_needed = {device_tests = "a Settings switch and a second tile grid; checked on the owner's phone"}
+unsure = "not yet seen on a phone"
+
+[[feature]]
 id = "action-links"
 name = "Links that fill in a form (Shortcuts)"
 area = "Actions"

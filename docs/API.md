@@ -379,7 +379,10 @@ output. It must check everything again; the form only keeps obviously wrong inpu
 A field may carry `"hidden": true` (a to-do's `uid`): the app never shows it and never asks for it, but when an action is
 started from a card or an item (`action.payload`), every prefilled value of a known field is sent, hidden ones included.
 A form started from a Start tile sends no hidden field. An action may carry `"start": false` (missing = true): no Start
-tile, only card and item actions use it (`todo-done`, `read-later-done`, `parcel-done`). A parcel item in a list card can
+tile, only card and item actions use it (`todo-done`, `read-later-done`, `parcel-done`). An action with `"test": true` (missing =
+false) is a test that tries something at home now (a spoken message, the wake-up): it is no Start tile and not in the
+widget; it shows under "Test" on the Actions tab, and only while Settings → Testing → Test section is on (off by
+default). A parcel item in a list card can
 carry `action: {"name": "parcel-done", "label": "Delivered", "arg": "<parcel id>"}` (a trailing button, with a confirm) and
 `url` (its tracking page, https, opened on tap). `wake-set` may offer a third variant `{Day}:clear` ("Normal").
 

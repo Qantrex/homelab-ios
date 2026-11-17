@@ -6,7 +6,7 @@ Every feature of the Homelab app 1.0.0, where it lives, how it is tested, what i
 
 | Features | Shipped | Partial | Planned | Dependencies | Gaps |
 |---|---|---|---|---|---|
-| 109 | 79 | 28 | 1 | 41 | 0 |
+| 110 | 79 | 29 | 1 | 41 | 0 |
 
 Adding a feature: one `[[feature]]` entry in `features.toml`, then `scripts/features render`. `scripts/features show <id, file, row, suite, feature flag, link>` answers "which feature is this?".
 
@@ -47,12 +47,13 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | [Game server card (status and wake)](#game-server-card) | shipped | `cards` | 2 | O12f | 1 |
 | [Card and item actions (header button, one-tap items)](#card-actions) | shipped | `run-actions` | 8 | O11 | 2 |
 
-### Actions (4)
+### Actions (5)
 
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Approve, Always, Deny (proposed actions)](#approvals) | shipped | `actions` | 7 | **A1**, **A2**, A3, **A4**, **A6**, A7, O16 | 3 |
 | [Start actions (forms)](#start-actions) | shipped | `run-actions` | 5 | **A8**, A9, **A10**, A11, A13, A14, A18 | 3 |
+| [Test section](#test-section) | partial (?) | `run-actions` | 1 | n/a | 1 |
 | [Links that fill in a form (Shortcuts)](#action-links) | shipped | `run-actions` | 3 | A12, A15, A16, A17 | 3 |
 | [Home-screen quick actions](#quick-actions) | shipped | `run-actions` | 2 | SC4, SC4b | 1 |
 
@@ -220,6 +221,7 @@ None.
 Not verified (the registry says so in `unsure`):
 
 - [last-report](#last-report): No test checks the last_message section itself; FixtureDecoding only decodes it.
+- [test-section](#test-section): not yet seen on a phone
 - [chat-live](#chat-live): Built and compiled 2026-11-11, never run on an iPhone: microphone, recognition, playback and the turn-taking with real audio are untested (C11-C13, C15).
 - [chat-live-voice](#chat-live-voice): Never played on an iPhone (C14); no server in this repo implements POST /speech (the reference server and the Bridge have no voice).
 - [widget-status](#widget-status): Widget views are not unit-tested (WidgetKit doesn't build on Linux); only the data rules are.
@@ -240,7 +242,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Server features (`ServerInfo.Feature`) | `chat` | [chat](#chat), [chat-commands](#chat-commands), [chat-proposals-cards](#chat-proposals-cards), [chat-live](#chat-live), [chat-live-voice](#chat-live-voice), [reference-server](#reference-server) |
 | Server features (`ServerInfo.Feature`) | `cards` | [today-day-line](#today-day-line), [weather-line](#weather-line), [cards](#cards), [checklist-card](#checklist-card), [countdown-card](#countdown-card), [parcels](#parcels), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [game-server-card](#game-server-card), [widget-day](#widget-day), [widget-departures](#widget-departures), [widget-deadlines](#widget-deadlines), [widget-todos](#widget-todos), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-rss](#source-rss), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
 | Server features (`ServerInfo.Feature`) | `services` | [service-launcher](#service-launcher), [reference-server](#reference-server), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
-| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [widget-actions](#widget-actions), [source-actions](#source-actions) |
+| Server features (`ServerInfo.Feature`) | `run-actions` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [test-section](#test-section), [action-links](#action-links), [quick-actions](#quick-actions), [find](#find), [container-restart](#container-restart), [widget-actions](#widget-actions), [source-actions](#source-actions) |
 | Server features (`ServerInfo.Feature`) | `documents` | [scan](#scan), [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `share` | [share-extension](#share-extension), [outbox](#outbox) |
 | Server features (`ServerInfo.Feature`) | `search` | [find](#find) |
@@ -295,7 +297,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Card styles (`Card.Style`) | `checklist` | [checklist-card](#checklist-card) |
 | Card styles (`Card.Style`) | `countdown` | [countdown-card](#countdown-card) |
 | Card styles (`Card.Style`) | `departures` | [widget-departures](#widget-departures) |
-| Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions), [source-actions](#source-actions) |
+| Endpoints (`server/openapi.yaml`) | `GET /actions` | [card-actions](#card-actions), [start-actions](#start-actions), [test-section](#test-section), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `GET /deals` | [deals](#deals), [deal-notifications](#deal-notifications) |
 | Endpoints (`server/openapi.yaml`) | `GET /info` | [start-presets](#start-presets), [chat-commands](#chat-commands), [first-run](#first-run), [servers](#servers), [public-route](#public-route), [tabs-by-features](#tabs-by-features), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [source-status](#source-status), [bridge-docker](#bridge-docker) |
 | Endpoints (`server/openapi.yaml`) | `GET /messages` | [chat](#chat), [chat-proposals-cards](#chat-proposals-cards) |
@@ -304,7 +306,7 @@ Read from the code by `scripts/features`; every entry must belong to a feature.
 | Endpoints (`server/openapi.yaml`) | `GET /search` | [find](#find) |
 | Endpoints (`server/openapi.yaml`) | `GET /services` | [service-launcher](#service-launcher), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [homepage-import](#homepage-import) |
 | Endpoints (`server/openapi.yaml`) | `GET /state` | [today-hero](#today-hero), [today-day-line](#today-day-line), [overkill-machines](#overkill-machines), [last-report](#last-report), [weather-line](#weather-line), [cards](#cards), [countdown-card](#countdown-card), [lessons-card](#lessons-card), [lab-cards](#lab-cards), [game-server-card](#game-server-card), [approvals](#approvals), [lab-hosts](#lab-hosts), [host-detail](#host-detail), [container-restart](#container-restart), [widget-departures](#widget-departures), [widget-data](#widget-data), [live-activity](#live-activity), [background-refresh](#background-refresh), [notification-actions](#notification-actions), [refresh-and-cache](#refresh-and-cache), [companion-api](#companion-api), [server-sources](#server-sources), [source-json](#source-json), [source-uptime-kuma](#source-uptime-kuma), [source-gatus](#source-gatus), [bridge-docker](#bridge-docker), [source-docker](#source-docker), [source-proxmox](#source-proxmox), [source-pihole](#source-pihole), [source-adguard](#source-adguard), [source-sonarr](#source-sonarr), [source-radarr](#source-radarr), [source-gameserver](#source-gameserver), [source-qbittorrent](#source-qbittorrent), [homepage-import](#homepage-import) |
-| Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
+| Endpoints (`server/openapi.yaml`) | `POST /actions/{name}` | [checklist-card](#checklist-card), [parcels](#parcels), [card-actions](#card-actions), [start-actions](#start-actions), [test-section](#test-section), [find](#find), [container-restart](#container-restart), [source-actions](#source-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /button` | [approvals](#approvals), [chat-proposals-cards](#chat-proposals-cards), [notification-actions](#notification-actions) |
 | Endpoints (`server/openapi.yaml`) | `POST /documents` | [scan](#scan), [share-extension](#share-extension) |
 | Endpoints (`server/openapi.yaml`) | `POST /messages` | [chat](#chat), [chat-live](#chat-live) |
@@ -738,6 +740,24 @@ Tiles under "Start" for the actions the server lets the app start; each opens a 
 | Launch arguments | `-HomelabAction` |
 | Depends on | [companion-api](#companion-api), [agent-chat](#dep-agent-chat) |
 | Through those | [companion-api-v1](#dep-companion-api-v1) |
+
+### test-section
+
+**Test section** · Actions · partial · since 2026-11-17
+
+Actions the server marks with "test": true (play the morning message, run the wake-up, a speaker line) leave the Start tiles and show under "Test" on the Actions tab, only while Settings → Testing → Test section is on. Same confirm and form as a Start tile.
+
+| | |
+|---|---|
+| Server | `run-actions`, `GET /actions`, `POST /actions/{name}`, `actions[].test` |
+| Sources | [StartActions.swift#testTile](../Sources/HomelabKit/StartActions.swift), [ActionsView.swift#testTiles](../Sources/HomelabUI/ActionsView.swift), [SettingsView.swift](../Sources/HomelabUI/SettingsView.swift) |
+| Tests | `TestSectionTests` |
+| Phone (DeviceTest.md) | n/a: a Settings switch and a second tile grid; checked on the owner's phone |
+| Docs | [docs/API.md#actions-the-app-starts-run-actions](API.md#actions-the-app-starts-run-actions) |
+| Settings | Settings → Testing → Test section (off by default; the row shows once the server has a test) |
+| Depends on | [start-actions](#start-actions) |
+| Through those | [agent-chat](#dep-agent-chat), [companion-api-v1](#dep-companion-api-v1) |
+| Unsure | not yet seen on a phone |
 
 ### action-links
 
@@ -2138,9 +2158,9 @@ Pinned versions are checked: each pin (`file: text`) must still be in its file, 
 | <a id="dep-sidestore-anisette"></a>**SideStore anisette server** | install | new.ani.sidestore.io | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-localdevvpn"></a>**LocalDevVPN** | install | – | [SIDESTORE.md](SIDESTORE.md) | [install-sidestore](#install-sidestore) | 2 |
 | <a id="dep-tailscale"></a>**Tailscale (tailscale serve, MagicDNS, HTTPS certificates)** | runtime | – | [README.md](../README.md), [openapi.yaml](../server/openapi.yaml) | 7 features | 33 |
-| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 52 |
+| <a id="dep-companion-api-v1"></a>**Homelab Companion API v1** | runtime | api 1, /api/v1/ | [openapi.yaml](../server/openapi.yaml), [API.md](API.md) | [companion-api](#companion-api) | 53 |
 | <a id="dep-home-assistant-api"></a>**Home Assistant REST API** | runtime | long-lived token; /api/states, /api/services | [HomeAssistant.swift](../Sources/HomelabKit/HomeAssistant.swift) | [presence](#presence), [home-tiles](#home-tiles) | 7 |
-| <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 15 |
+| <a id="dep-agent-chat"></a>**The owner's homelab agent (agent-chat, private)** | server-side | – | [openapi.yaml](../server/openapi.yaml) | [start-actions](#start-actions), [scan](#scan), [share-extension](#share-extension), [find](#find), [deals](#deals), [live-activity](#live-activity) | 16 |
 | <a id="dep-paperless"></a>**Paperless (server side)** | server-side | – | [API.md](API.md) | [scan](#scan) | 1 |
 | <a id="dep-seerr"></a>**Seerr (server side)** | server-side | – | [API.md](API.md) | [find](#find) | 1 |
 | <a id="dep-willhaben"></a>**willhaben (server side)** | server-side | – | [API.md](API.md) | [share-extension](#share-extension), [deals](#deals) | 3 |
@@ -2228,9 +2248,9 @@ Features per area that need each dependency, directly or through another feature
 | SideStore anisette server |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | LocalDevVPN |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2 |  |  |
 | Tailscale (tailscale serve, MagicDNS, HTTPS certificates) |  |  |  |  |  |  |  |  |  | 8 |  |  | 5 |  |  | 2 | 18 |  |
-| Homelab Companion API v1 | 2 | 6 | 4 |  |  |  | 4 | 5 |  | 3 | 1 |  | 6 | 1 |  |  | 20 |  |
+| Homelab Companion API v1 | 2 | 6 | 5 |  |  |  | 4 | 5 |  | 3 | 1 |  | 6 | 1 |  |  | 20 |  |
 | Home Assistant REST API | 2 |  |  |  |  |  |  |  | 4 |  |  |  | 1 |  |  |  |  |  |
-| The owner's homelab agent (agent-chat, private) |  | 3 | 3 | 2 | 1 | 2 | 1 |  |  | 3 |  |  |  |  |  |  |  |  |
+| The owner's homelab agent (agent-chat, private) |  | 3 | 4 | 2 | 1 | 2 | 1 |  |  | 3 |  |  |  |  |  |  |  |  |
 | Paperless (server side) |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Seerr (server side) |  |  |  |  | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | willhaben (server side) |  |  |  | 1 |  | 2 |  |  |  |  |  |  |  |  |  |  |  |  |

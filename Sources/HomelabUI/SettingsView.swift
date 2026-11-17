@@ -95,6 +95,19 @@ struct SettingsView: View {
                         SettingsFooter("Face ID or the passcode when the app opens; tokens always stay in the Keychain. Reset deletes all servers, tokens, cached data and settings from this phone.")
                     }
 
+                    // Tests the server marks (`"test": true`): the morning message, the wake-up, a speaker line.
+                    // Shown once the server has any, and while it is on (so it can always be turned off).
+                    if model.selectedStatus.actions.contains(where: \.testTile) || model.settings.testsOn {
+                        Section {
+                            Toggle("Test section", isOn: Binding(get: { model.settings.testsOn },
+                                                                 set: { model.settings.testsOn = $0 }))
+                        } header: {
+                            Text("Testing")
+                        } footer: {
+                            SettingsFooter("Shows the server's tests under Test on the Actions tab. They run for real at home (speaker, lamps), each after a confirm.")
+                        }
+                    }
+
                     // The detailed settings: Today's sections and rules, Start tiles, Lab, Chat, the tab bar, quiet hours,
                     // Leave-by, Diagnostics and Demo servers. The title follows the personality (`AdvancedTitle`).
                     Section {

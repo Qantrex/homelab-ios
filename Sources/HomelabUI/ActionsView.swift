@@ -32,10 +32,15 @@ struct ActionsView: View {
     private var canDeals: Bool { model.selected != nil && model.selectedStatus.hasDeals }
     private var pending: [PendingAction] { model.selectedStatus.snapshot?.state.pending ?? [] }
     private var startable: [ActionSpec] {
-        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
+        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.startTile) : []
     }
     /// The Start tiles as the owner arranged them (Settings → Advanced → Start tiles): hidden ones left out.
     private var startTiles: [ActionSpec] { StartTiles.arrange(startable, model.settings.startTiles) }
+    /// The server's tests (`"test": true`), only while Settings → Test section is on; in the server's order.
+    private var testTiles: [ActionSpec] {
+        model.selectedStatus.features.contains(.runActions) && model.settings.testsOn
+            ? model.selectedStatus.actions.filter(\.testTile) : []
+    }
     private var approves: Bool { model.selectedStatus.features.contains(.actions) || startable.isEmpty }
     /// The Start section: tiles to start actions, or the Scan tile.
     private var hasStart: Bool { !startTiles.isEmpty || canScan || canSearch || canDeals }
@@ -75,6 +80,13 @@ struct ActionsView: View {
             ?? "When your homelab proposes an action, it shows up here."
     }
 
+    /// A Start or Test tile: its confirm when it needs no input, else its form.
+    private func openTile(_ spec: ActionSpec) {
+        formPrefill = nil
+        guard !model.actionsRunning.contains(spec.name) else { return }   // still on its way
+        if ActionForm(spec).needsNoInput { quickRun = spec } else { formFor = spec }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -99,11 +111,7 @@ struct ActionsView: View {
                             StartGrid(actions: startTiles, scanWaiting: canScan ? model.outboxCount : nil,
                                       features: model.selectedStatus.knownInfo?.features,
                                       showIds: model.settings.todayDensity.atLeastOverkill,
-                                      open: { spec in
-                                          formPrefill = nil
-                                          guard !model.actionsRunning.contains(spec.name) else { return }   // still on its way
-                                          if ActionForm(spec).needsNoInput { quickRun = spec } else { formFor = spec }
-                                      }, scan: { scanning = true },
+                                      open: openTile, scan: { scanning = true },
                                       search: canSearch ? { searching = SearchRequest(query: "") } : nil,
                                       deals: canDeals ? { showingDeals = true } : nil,
                                       dealsToAct: model.selectedStatus.deals?.freshAct(categories: model.settings.dealCategories).count ?? 0)
@@ -125,6 +133,21 @@ struct ActionsView: View {
                             }
                         }
                     }
+                    if !testTiles.isEmpty {
+                        VStack(alignment: .leading, spacing: Space.titleToPanel) {
+                            SectionTitle(text: "Test")
+                            StartGrid(actions: testTiles, features: model.selectedStatus.knownInfo?.features,
+                                      showIds: model.settings.todayDensity.atLeastOverkill, open: openTile)
+                            if hyper != nil {
+                                ForEach(testTiles) { spec in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(spec.label).font(Typo.meta.weight(.semibold)).foregroundStyle(Palette.secondary)
+                                        HyperNote(lines: Hyper.action(spec), fact: Hyper.fact(action: spec))
+                                    }
+                                }
+                            }
+                        }
+                    }
                     outboxSection
                 }
                 .rowMotion(model.outboxDropped.count)
@@ -136,7 +159,7 @@ struct ActionsView: View {
             .overlay {
                 if model.selectedStatus.snapshot == nil && model.selectedStatus.error == nil {
                     ProgressView("Loading…")
-                } else if pending.isEmpty && startTiles.isEmpty && !canScan && model.outboxCount == 0 && model.outboxDropped.isEmpty && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
+                } else if pending.isEmpty && startTiles.isEmpty && testTiles.isEmpty && !canScan && model.outboxCount == 0 && model.outboxDropped.isEmpty && !canSearch && !canDeals && model.selectedStatus.snapshot != nil
                             && model.selectedStatus.error == nil {
                     Placeholder(title: "Nothing to approve", symbol: "checkmark.shield", message: nothingToApprove)
                 }

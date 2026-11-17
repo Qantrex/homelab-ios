@@ -125,7 +125,7 @@ struct AdvancedSettingsView: View {
     }
 
     private var startSummary: String {
-        let specs = model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
+        let specs = model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.startTile) : []
         if specs.isEmpty { return String(localized: "None on your server") }
         return String(localized: "\(StartTiles.arrange(specs, model.settings.startTiles).count) of \(specs.count)")
     }
@@ -233,7 +233,7 @@ struct StartTilesEditor: View {
     let model: AppModel
 
     private var specs: [ActionSpec] {
-        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.start) : []
+        model.selectedStatus.features.contains(.runActions) ? model.selectedStatus.actions.filter(\.startTile) : []
     }
 
     var body: some View {

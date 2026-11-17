@@ -18,12 +18,21 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
     public var fields: [Field]
     /// Offered as a Start tile. False = only used through card/item actions (`start: false`).
     public var start: Bool
+    /// A test (`"test": true`): it tries something at home now (the morning message, the wake-up). Not a Start tile:
+    /// it shows under Test on the Actions tab, and only while Settings → Test section is on.
+    public var test: Bool
 
     public var id: String { name }
 
+    /// A Start tile (Actions tab, Start tile settings, the widget): started by itself and not a test.
+    public var startTile: Bool { start && !test }
+    /// A tile under Test: started by itself and marked as a test.
+    public var testTile: Bool { start && test }
+
     public init(name: String, label: String? = nil, icon: String? = nil, hint: String? = nil, destructive: Bool = false,
-                variants: [ArgVariant] = [], fields: [Field] = [], start: Bool = true) {
+                variants: [ArgVariant] = [], fields: [Field] = [], start: Bool = true, test: Bool = false) {
         self.start = start
+        self.test = test
         self.name = name; self.label = label ?? name; self.icon = icon; self.hint = hint
         self.destructive = destructive; self.variants = variants; self.fields = fields
     }
@@ -195,7 +204,7 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         }
     }
 
-    enum CodingKeys: String, CodingKey { case name, label, icon, hint, destructive, arg, fields, start }
+    enum CodingKeys: String, CodingKey { case name, label, icon, hint, destructive, arg, fields, start, test }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -211,7 +220,7 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         let fields = c.array(Field.self, .fields).filter { seen.insert($0.name).inserted }
         self.init(name: name, label: c.text(.label), icon: c.text(.icon), hint: c.text(.hint),
                   destructive: c.bool(.destructive) ?? false, variants: variants, fields: fields,
-                  start: c.bool(.start) ?? true)
+                  start: c.bool(.start) ?? true, test: c.bool(.test) ?? false)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -224,6 +233,7 @@ public struct ActionSpec: Codable, Sendable, Equatable, Identifiable, Hashable {
         if !variants.isEmpty { try c.encode(variants, forKey: .arg) }
         try c.encode(fields, forKey: .fields)
         if !start { try c.encode(false, forKey: .start) }
+        if test { try c.encode(true, forKey: .test) }
     }
 }
 

@@ -53,11 +53,12 @@ public struct ActionUsage: Codable, Sendable, Equatable {
         counts[k] = list
     }
 
-    /// The actions `server` offers now (`GET /actions`). Only Start actions count: a card-only one needs its card.
+    /// The actions `server` offers now (`GET /actions`). Only Start actions count: a card-only one needs its card, a test
+    /// stays under Test.
     /// Returns whether anything changed.
     @discardableResult
     public mutating func setOffered(_ specs: [ActionSpec], server: UUID) -> Bool {
-        let list = specs.filter(\.start).map {
+        let list = specs.filter(\.startTile).map {
             Offered(name: $0.name, label: $0.label, icon: $0.icon, destructive: $0.destructive,
                     needsInput: !$0.fields.isEmpty || !$0.variants.isEmpty)
         }

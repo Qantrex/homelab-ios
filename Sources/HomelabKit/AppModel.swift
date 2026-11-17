@@ -77,6 +77,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var dealCategories: [String]?
     /// Settings → Advanced → Chat → "Live conversation language"; nil = the iPhone's language (omitted from the file).
     public var liveLanguage: LiveLanguage?
+    /// Settings → Testing → "Test section": the server's test actions show under Test on the Actions tab; nil = off
+    /// (omitted from the file).
+    public var testSection: Bool?
 
     public static let fileName = "settings.json"
     public init() {}
@@ -96,6 +99,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var notifyDeals: Bool {
         get { dealNotifications ?? false }
         set { dealNotifications = newValue ? true : nil }
+    }
+
+    /// The Settings toggle "Test section" (default off).
+    public var testsOn: Bool {
+        get { testSection ?? false }
+        set { testSection = newValue ? true : nil }
     }
 
     /// The News sheet's starting language (default English).
@@ -138,7 +147,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case notifyProblems, notifyPending, dealNotifications, faceIDLock, lastBackgroundRun, lastBackgroundResult
         case today, density, personality, leaveActivity, presenceEntity, quietHours, ultrakillWarned, hyperdetailWarned
-        case startTiles, labBlocks, tabs, chatText, chatFold, newsLanguage, dealCategories, liveLanguage
+        case startTiles, labBlocks, tabs, chatText, chatFold, newsLanguage, dealCategories, liveLanguage, testSection
     }
 }
 
@@ -171,6 +180,7 @@ extension AppSettings {
         newsLanguage = c.lenient(String.self, .newsLanguage)
         dealCategories = c.lenient([String].self, .dealCategories)
         liveLanguage = c.lenient(LiveLanguage.self, .liveLanguage).flatMap { $0 == .system ? nil : $0 }
+        testSection = c.lenient(Bool.self, .testSection).flatMap { $0 ? true : nil }
     }
 }
 
