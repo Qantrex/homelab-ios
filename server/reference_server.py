@@ -875,10 +875,9 @@ class Actions:
             argv = self.build_argv(template, arg)
             env = child_env({"HOMELAB_PENDING_ID": pid, "HOMELAB_ACTION": name, "HOMELAB_ARG": arg})
             try:
-                res = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT, timeout=self.timeout, env=env)
-                out = res.stdout.decode("utf-8", "replace").strip()
-                result = "exit %d" % res.returncode
+                raw, code = run_bounded(argv, env, self.timeout)
+                out = raw.decode("utf-8", "replace").strip()
+                result = "exit %d" % code
             except subprocess.TimeoutExpired:
                 out, result = "", "timed out after %d s" % self.timeout
             except OSError as exc:
@@ -901,6 +900,51 @@ class Actions:
 
 
 # --------------------------------------------------------------------------------------------- chat
+
+MAX_CHILD_OUTPUT = 256 * 1024   # bytes of a child's output kept; more ends the child
+
+
+def kill_group(proc):
+    """Kills the child and everything it started (it runs in its own session, so its group id is its pid)."""
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        proc.kill()
+
+
+def run_bounded(argv, env, timeout, cap=MAX_CHILD_OUTPUT):
+    """Runs argv without stdin, stdout and stderr together, in its own process group. Returns (output bytes, exit
+    code). Raises subprocess.TimeoutExpired after `timeout` s with the group killed. Output beyond `cap` bytes
+    is dropped and ends the child (exit code -9)."""
+    proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            env=env, start_new_session=True)
+    deadline = time.monotonic() + timeout
+    fd = proc.stdout.fileno()
+    chunks, size = [], 0
+    try:
+        while True:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise subprocess.TimeoutExpired(argv, timeout)
+            ready, _, _ = select.select([fd], [], [], min(left, 0.5))
+            if ready:
+                data = os.read(fd, 65536)
+                if not data:
+                    break
+                chunks.append(data[:max(cap - size, 0)])
+                size += len(data)
+                if size > cap:
+                    kill_group(proc)
+                    break
+        proc.wait(timeout=max(deadline - time.monotonic(), 0.1))
+    except BaseException:
+        kill_group(proc)
+        proc.wait()
+        raise
+    finally:
+        proc.stdout.close()
+    return b"".join(chunks), proc.returncode
+
 
 class Chat:
     """Chat history in a JSONL file; each message runs chat_command with the text on stdin."""
@@ -1004,8 +1048,10 @@ class Chat:
         """Runs the command; while it runs, `self.partial` carries what it printed so far (read as it comes,
         shown about once a second). Returns (stdout, exit code)."""
         proc = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, env=child_env())
+                                stderr=subprocess.DEVNULL, env=child_env(), start_new_session=True)
         chunks = []
+        size = 0
+        cut = False
         last_update = [0.0]
 
         def feed():
@@ -1039,16 +1085,23 @@ class Chat:
                     data = os.read(fd, 65536)
                     if not data:
                         break
-                    chunks.append(data)
+                    chunks.append(data[:max(MAX_CHILD_OUTPUT - size, 0)])
+                    size += len(data)
+                    if size > MAX_CHILD_OUTPUT:   # endless output: keep what fits, end the command
+                        cut = True
+                        kill_group(proc)
+                        break
                 publish()
             publish(force=True)
             proc.wait(timeout=max(deadline - time.monotonic(), 0.1))
         except BaseException:
-            proc.kill()
+            kill_group(proc)
             proc.wait()
             raise
         finally:
             proc.stdout.close()
+        if cut:
+            return b"".join(chunks).decode("utf-8", "replace")[:19000] + "\n(output cut)", 0
         return b"".join(chunks).decode("utf-8", "replace"), proc.returncode
 
     def page(self, after):

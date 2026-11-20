@@ -731,6 +731,55 @@ class RealModeTest(unittest.TestCase):
         self.assertEqual(rs.probe("tcp://127.0.0.1:%d" % self.closed, 2), (False, "connection refused"))
 
 
+class ChildProcessLimits(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def alive(self, pid):
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+    def grandchild_cmd(self, pidfile):
+        return ["sh", "-c", "sleep 30 & echo $! > %s; wait" % pidfile]
+
+    def test_action_timeout_kills_the_whole_process_group(self):
+        pidfile = os.path.join(self.tmp, "pid")
+        with self.assertRaises(subprocess.TimeoutExpired):
+            rs.run_bounded(self.grandchild_cmd(pidfile), dict(os.environ), 1)
+        pid = int(open(pidfile).read())
+        wait_for(lambda: not self.alive(pid), timeout=5)
+        self.assertFalse(self.alive(pid))
+
+    def test_action_output_is_capped_and_the_child_ended(self):
+        out, code = rs.run_bounded(["yes"], dict(os.environ), 20, cap=1000)
+        self.assertEqual(len(out), 1000)
+        self.assertNotEqual(code, 0)
+
+    def test_chat_timeout_kills_the_grandchild(self):
+        pidfile = os.path.join(self.tmp, "cpid")
+        chat = rs.Chat(["sh", "-c", "cat >/dev/null; sleep 30 & echo $! > %s; wait" % pidfile],
+                       os.path.join(self.tmp, "c1"), timeout=1)
+        chat.post("go")
+        wait_for(lambda: not chat.busy, timeout=10)
+        pid = int(open(pidfile).read())
+        wait_for(lambda: not self.alive(pid), timeout=5)
+        self.assertFalse(self.alive(pid))
+
+    def test_chat_endless_output_is_cut(self):
+        chat = rs.Chat(["sh", "-c", "cat >/dev/null; exec yes"], os.path.join(self.tmp, "c2"), timeout=30)
+        started = time.monotonic()
+        mid = chat.post("go")[1]["id"]
+        wait_for(lambda: not chat.busy, timeout=15)
+        self.assertLess(time.monotonic() - started, 15)
+        m = chat.page(mid)["messages"][0]
+        self.assertTrue(m["text"].endswith("(output cut)"))
+        self.assertLessEqual(len(m["text"]), 20001)
+
+
 class FixtureModeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

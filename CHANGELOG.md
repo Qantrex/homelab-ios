@@ -9,6 +9,7 @@ use needs a license from the author). Earlier versions were MIT and stay MIT.
 
 Highlights:
 
+- Reference server: a chat command or an approved action now runs in its own process group, which is killed as a whole on a timeout, and its output is capped at 256 KB (a command that prints endlessly is ended).
 - Test section: actions your server marks as tests (`"test": true`, for example playing the spoken morning message,
   running the wake-up or a speaker line) leave the Start tiles and show under Test on the Actions tab. Settings →
   Testing → Test section turns it on (off by default); each test still asks before it runs.

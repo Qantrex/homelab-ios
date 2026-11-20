@@ -1416,7 +1416,7 @@ since = "2026-11-04"
 summary = "One Python file for any homelab: host and web checks, cards (also from your own scripts), services, opt-in actions and chat, and a fixture mode that the integration tests and the CI screenshots use."
 server_features = ["status", "hosts", "actions", "chat", "cards", "services"]
 sources = ["server/reference_server.py", "server/test_reference_server.py", "server/config.example.json", "server/examples/card-containers"]
-tests = ["server/test_reference_server.py::RealModeTest", "server/test_reference_server.py::FixtureModeTest", "server/test_reference_server.py::CliTest", "IntegrationTests"]
+tests = ["server/test_reference_server.py::RealModeTest", "server/test_reference_server.py::FixtureModeTest", "server/test_reference_server.py::ChildProcessLimits", "server/test_reference_server.py::CliTest", "IntegrationTests"]
 docs = ["docs/REFERENCE_SERVER.md#reference-server", "docs/SERVER-SETUP.md#a-reference-server", "README.md#quick-start-a-homelab-with-nothing-yet"]
 not_needed = { device_tests = "R1 to R8 run against any server; the reference server has its own Python tests" }
 depends_on = ["python3", "tailscale", "companion-api"]

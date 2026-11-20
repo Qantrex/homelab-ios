@@ -183,7 +183,7 @@ Columns: **Needs** = server features (`features` in `GET /api/v1/info`), **Tests
 | Feature | Status | Needs | Tests | Phone | Docs |
 |---|---|---|---|---|---|
 | [Companion API v1 contract](#companion-api) | shipped | – | 3 | n/a | 3 |
-| [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 4 | n/a | 3 |
+| [Reference server (stdlib Python)](#reference-server) | shipped | `status`, `hosts`, `actions`, `chat`, `cards`, `services` | 5 | n/a | 3 |
 | [Homelab Bridge sources interface](#server-sources) | partial | `status`, `hosts`, `cards`, `services` | 11 | n/a | 2 |
 | [Source status in /info](#source-status) | partial | – | 5 | n/a | 2 |
 | [JSON feed source](#source-json) | partial | `status`, `hosts`, `cards`, `services` | 4 | n/a | 1 |
@@ -1743,7 +1743,7 @@ One Python file for any homelab: host and web checks, cards (also from your own 
 |---|---|
 | Server | `status`, `hosts`, `actions`, `chat`, `cards`, `services` |
 | Sources | [reference_server.py](../server/reference_server.py), [test_reference_server.py](../server/test_reference_server.py), [config.example.json](../server/config.example.json), [card-containers](../server/examples/card-containers) |
-| Tests | `server/test_reference_server.py::RealModeTest`, `server/test_reference_server.py::FixtureModeTest`, `server/test_reference_server.py::CliTest`, `IntegrationTests` |
+| Tests | `server/test_reference_server.py::RealModeTest`, `server/test_reference_server.py::FixtureModeTest`, `server/test_reference_server.py::ChildProcessLimits`, `server/test_reference_server.py::CliTest`, `IntegrationTests` |
 | Phone (DeviceTest.md) | n/a: R1 to R8 run against any server; the reference server has its own Python tests |
 | Docs | [docs/REFERENCE_SERVER.md#reference-server](REFERENCE_SERVER.md#reference-server), [docs/SERVER-SETUP.md#a-reference-server](SERVER-SETUP.md#a-reference-server), [README.md#quick-start-a-homelab-with-nothing-yet](../README.md#quick-start-a-homelab-with-nothing-yet) |
 | Depends on | [python3](#dep-python3), [tailscale](#dep-tailscale), [companion-api](#companion-api) |
