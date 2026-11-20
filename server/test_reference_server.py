@@ -739,9 +739,13 @@ class ChildProcessLimits(unittest.TestCase):
     def alive(self, pid):
         try:
             os.kill(pid, 0)
-            return True
         except OSError:
             return False
+        try:   # killed but not yet reaped is dead too: PID 1 of a container often never reaps (the CI job runs in one)
+            with open("/proc/%d/stat" % pid) as f:
+                return f.read().rsplit(")", 1)[1].split()[0] != "Z"
+        except (OSError, IndexError):
+            return True
 
     def grandchild_cmd(self, pidfile):
         return ["sh", "-c", "sleep 30 & echo $! > %s; wait" % pidfile]
