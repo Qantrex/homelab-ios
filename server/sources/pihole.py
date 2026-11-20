@@ -20,7 +20,7 @@ the login password. Without key_env the Pi-hole must have no password. `top`: ho
 those lengths and Resume, and puts "Pause 5 min" (the shortest) or "Resume" on the Blocking row.
 """
 
-from . import SourceError, as_dict, as_list, as_text
+from . import SourceError, as_dict, as_list, as_text, plain_text
 from ._dns import ACTIONS, allowed, check_actions, minutes, number, pause_seconds, result, top_pairs  # noqa: F401
 
 STATES = {"enabled": "on", "disabled": "off", "failed": "failed"}
@@ -48,7 +48,7 @@ def _login(cfg, fetch):
         raise SourceError(str(reply.status))
     session = as_dict(as_dict(reply.json()).get("session"))
     if session.get("valid") is not True:
-        raise SourceError("login refused: %s" % (as_text(session.get("message")) or "no valid session"))
+        raise SourceError("login refused: %s" % (plain_text(as_text(session.get("message")), 120) or "no valid session"))
     sid = session.get("sid")
     return sid if isinstance(sid, str) and sid else None
 

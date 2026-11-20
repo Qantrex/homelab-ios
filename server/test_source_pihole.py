@@ -168,6 +168,13 @@ class PiholeSource(unittest.TestCase):
         refused = routes(**{"POST /api/auth": {"json": {"session": {"valid": False, "message": "password incorrect"}}}})
         with FakeUpstream(refused) as up:
             self.assertEqual(run(up).states["Pi-hole"].error, "login refused: password incorrect")
+        long_msg = "see https://example.invalid/x?token=abc " + "x" * 500
+        noisy = routes(**{"POST /api/auth": {"json": {"session": {"valid": False, "message": long_msg}}}})
+        with FakeUpstream(noisy) as up:
+            err = run(up).states["Pi-hole"].error
+            self.assertLessEqual(len(err), len("login refused: ") + 120)
+            self.assertIn("<url>", err)
+            self.assertNotIn("example.invalid", err)
 
     def test_pause_and_resume(self):
         with FakeUpstream(recording("normal")) as up:
