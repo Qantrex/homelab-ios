@@ -106,8 +106,8 @@ without `id` or `title`):
 ```json
 {"updated": "2026-11-07T09:50:51Z",
  "categories": [{"id": "ram", "name": "Memory"}, {"id": "gpu", "name": "Graphics cards"}],
- "deals": [{"id": 1310779339, "watch": "any-gpu", "kind": "gpu", "category": "gpu", "title": "RAM kit 32 GB", "price": 100.0, "value": 200.0,
-            "discount": 0.5, "conf": "high", "specs": "ddr4 · dimm · 2x16 · 3200 MHz", "loc": "Krems an der Donau",
+ "deals": [{"id": 9000000001, "watch": "any-gpu", "kind": "gpu", "category": "gpu", "title": "RAM kit 32 GB", "price": 100.0, "value": 200.0,
+            "discount": 0.5, "conf": "high", "specs": "ddr4 · dimm · 2x16 · 3200 MHz", "loc": "Exampletown",
             "state": "Niederösterreich", "near": true, "private": true, "ships": true, "cond": "used",
             "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/...", "flags": ["urgent sale (Notverkauf)"],
             "seen": "2026-11-07T09:50:51Z", "verdict": "act", "note": "one line from the agent",

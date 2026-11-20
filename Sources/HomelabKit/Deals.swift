@@ -191,7 +191,7 @@ public struct Deal: Codable, Sendable, Equatable, Identifiable, Hashable {
         flags.contains { $0.lowercased().hasPrefix("too good") }
     }
 
-    /// "Krems an der Donau, Niederösterreich"; one word when both are the same ("Wien").
+    /// "Exampletown, Niederösterreich"; one word when both are the same ("Wien").
     public var place: String? {
         switch (location, state) {
         case let (l?, s?) where l.caseInsensitiveCompare(s) != .orderedSame: "\(l), \(s)"

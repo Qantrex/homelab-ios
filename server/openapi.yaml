@@ -873,7 +873,7 @@ components:
       required: [id, title]
       description: One ad the server judged. Everything but `id` and `title` may be missing or null.
       properties:
-        id: { type: integer, format: int64, example: 1310779339, description: "The ad's number on the marketplace." }
+        id: { type: integer, format: int64, example: 9000000001, description: "The ad's number on the marketplace." }
         watch: { type: string, example: any-gpu, description: Which saved search found it. }
         kind: { type: string, example: gpu, description: What kind of thing it is. }
         title: { type: string }
@@ -882,7 +882,7 @@ components:
         discount: { type: number, minimum: 0, maximum: 1, example: 0.5, description: "Share below value (0.5 = 50 % below). Missing: the app works it out from price and value." }
         conf: { type: string, enum: [high, medium, low], description: How sure the server is about `value`. }
         specs: { type: string, example: "ddr4 · dimm · 2x16 · 3200 MHz" }
-        loc: { type: string, example: Krems an der Donau }
+        loc: { type: string, example: Exampletown }
         state: { type: string, example: Niederösterreich }
         near: { type: [boolean, null], description: In the owner's pickup area. }
         private: { type: boolean, description: A private seller (false = dealer). }

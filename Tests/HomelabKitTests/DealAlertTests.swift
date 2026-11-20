@@ -10,7 +10,7 @@ import Testing
     let on = AlertTracker.Options(problems: true, pending: true, deals: true)
 
     func deal(_ id: Int64, _ verdict: Deal.Verdict? = .act, minutesAgo: Double = 10, price: Double? = 100, value: Double? = 200) -> Deal {
-        Deal(id: id, title: "Deal \(id)", price: price, value: value, location: "Krems", state: "Niederösterreich",
+        Deal(id: id, title: "Deal \(id)", price: price, value: value, location: "Exampletown", state: "Niederösterreich",
              seen: now.addingTimeInterval(-minutesAgo * 60), verdict: verdict)
     }
 
@@ -29,7 +29,7 @@ import Testing
         var t = learned()
         let first = t.update(with: calm, deals: list(deal(1)), server: "lab", serverID: server, options: on, now: now)
         #expect(first.count == 1 && first[0].kind == .deal && first[0].id == "deal-1")
-        #expect(first[0].title == "lab: deal at €\u{00A0}100 (\u{2212}50\u{00A0}%)" && first[0].body == "Deal 1 · Krems, Niederösterreich")
+        #expect(first[0].title == "lab: deal at €\u{00A0}100 (\u{2212}50\u{00A0}%)" && first[0].body == "Deal 1 · Exampletown, Niederösterreich")
         #expect(first[0].moment == .notice(.deal) && first[0].proposal == nil)
         // The next run, the same deal: nothing.
         #expect(t.update(with: calm, deals: list(deal(1)), server: "lab", serverID: server, options: on, now: now + 120).isEmpty)

@@ -13,16 +13,16 @@ import Testing
         let list = try fixture(DealList.self, "deals.json")
         #expect(list.deals.count == 5 && list.updated != nil)
         let gpu = try #require(list.deals.first)
-        #expect(gpu.id == 1310779339 && gpu.watch == "any-gpu" && gpu.kind == "gpu")
+        #expect(gpu.id == 9000000001 && gpu.watch == "any-gpu" && gpu.kind == "gpu")
         #expect(gpu.price == 140 && gpu.value == 280 && gpu.discount == 0.5 && gpu.confidence == .high)
-        #expect(gpu.specs == "8 GB · GDDR6 · 2 fans" && gpu.place == "Krems an der Donau, Niederösterreich")
+        #expect(gpu.specs == "8 GB · GDDR6 · 2 fans" && gpu.place == "Exampletown, Niederösterreich")
         #expect(gpu.near && gpu.isPrivate == true && gpu.ships == true && gpu.condition == "like new")
         #expect(gpu.verdict == .act && gpu.note?.hasPrefix("Half the usual price") == true && gpu.flags.isEmpty)
         #expect(gpu.url?.host == "www.willhaben.at" && gpu.comps.count == 3 && gpu.comps[0].price == 265)
         #expect(gpu.comps[0].url?.host == "www.willhaben.at" && gpu.seen != nil)
-        let scam = try #require(list.deals.first { $0.id == 1310441906 })
+        let scam = try #require(list.deals.first { $0.id == 9000000004 })
         #expect(scam.warnsOfScam && scam.flags.count == 2 && scam.verdict == .skip && !scam.near && scam.ships == false)
-        let dealer = try #require(list.deals.first { $0.id == 1310555871 })
+        let dealer = try #require(list.deals.first { $0.id == 9000000003 })
         #expect(dealer.near == false && dealer.isPrivate == false && dealer.sellerWord == "dealer")
         let plain = try #require(list.deals.last)
         #expect(plain.verdict == nil && plain.note == nil && plain.condition == nil)
@@ -31,10 +31,10 @@ import Testing
     @Test func contractExampleDecodes() throws {
         let json = """
         {"updated": "2026-11-07T09:50:51Z",
-         "deals": [{"id": 1310779339, "watch": "any-gpu", "kind": "gpu", "title": "G Skill Trident Z RGB 32GB 3200Mhz",
+         "deals": [{"id": 9000000001, "watch": "any-gpu", "kind": "gpu", "title": "G Skill Trident Z RGB 32GB 3200Mhz",
            "price": 100.0, "value": 200.0, "discount": 0.5, "conf": "high", "specs": "ddr4 · dimm · 2x16 · 3200 MHz",
-           "loc": "Krems an der Donau", "state": "Niederösterreich", "near": true, "private": true, "ships": true,
-           "cond": "used", "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/x-1310779339/",
+           "loc": "Exampletown", "state": "Niederösterreich", "near": true, "private": true, "ships": true,
+           "cond": "used", "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/x-9000000001/",
            "flags": ["too good to be true? price far below every comparable", "urgent sale (Notverkauf)", "dealer"],
            "seen": "2026-11-07T09:50:51Z", "verdict": "act", "note": "one line from the agent",
            "comps": [{"title": "Trident Z 32GB", "price": 185.0, "url": "https://www.willhaben.at/iad/kaufen-und-verkaufen/d/c/"}]}]}
@@ -136,7 +136,7 @@ import Testing
     }
 
     @Test func spokenSentence() throws {
-        let d = try #require(try fixture(DealList.self, "deals.json").deals.first { $0.id == 1310441906 })
+        let d = try #require(try fixture(DealList.self, "deals.json").deals.first { $0.id == 9000000004 })
         let said = d.spoken
         #expect(said.hasPrefix("Gaming card, never opened, €\u{00A0}90, 78 percent below the market value, skipped, low confidence"))
         #expect(said.contains("private seller") && said.contains("warning: too good to be true?") && !said.contains("ships"))

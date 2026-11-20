@@ -60,9 +60,9 @@ import Testing
         let s = try fixture(HomelabState.self, "state-legacy.json")
         // Unknown status value + problems present → derived from the problems.
         #expect(s.status == .problem)
-        #expect(s.problems.map(\.text) == ["pi-media: disk / at 91%", "object problem"])   // 42 dropped
+        #expect(s.problems.map(\.text) == ["host-a: disk / at 91%", "object problem"])   // 42 dropped
         #expect(s.checked != nil)                                                         // epoch number
-        #expect(s.hosts.map(\.id) == ["pi-two", "mediabox"])                              // no-id host dropped
+        #expect(s.hosts.map(\.id) == ["server", "media"])                              // no-id host dropped
         let h = s.hosts[0]
         #expect(h.reachable == true)          // "yes"
         #expect(h.load == 0.5)                // "0.5"

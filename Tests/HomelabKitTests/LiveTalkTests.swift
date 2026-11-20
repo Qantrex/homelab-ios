@@ -23,8 +23,8 @@ import FoundationNetworking
     }
 
     @Test func codeAndRulesAreLeftOutAndTablesReadByRow() {
-        let text = "Here:\n```sh\nsudo rm -rf /\n```\n---\n| Host | State |\n|---|---|\n| pi-two | up |\n| mediabox | up |"
-        #expect(SpokenText.clean(text) == "Here. pi-two, up. mediabox, up.")
+        let text = "Here:\n```sh\nsudo rm -rf /\n```\n---\n| Host | State |\n|---|---|\n| server | up |\n| media | up |"
+        #expect(SpokenText.clean(text) == "Here. server, up. media, up.")
     }
 
     @Test func emojiAreDropped() {

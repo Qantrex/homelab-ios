@@ -3421,7 +3421,7 @@
     }
   },
   "state-legacy.json" : {
-    "detail" : "pi-media: disk \/ at 91%",
+    "detail" : "host-a: disk \/ at 91%",
     "headline" : "2 problems.",
     "level" : "alarm",
     "sections" : {
@@ -3522,15 +3522,15 @@
             "flags" : [
               "undervoltage_now"
             ],
-            "id" : "pi-two",
+            "id" : "server",
             "load" : 0.5,
             "mem_pct" : 13,
-            "name" : "pi-two",
+            "name" : "server",
             "reachable" : true
           },
           {
-            "id" : "mediabox",
-            "name" : "mediabox"
+            "id" : "media",
+            "name" : "media"
           }
         ],
         "pending" : [
@@ -3543,9 +3543,9 @@
         ],
         "problems" : [
           {
-            "id" : "pi-media: disk \/ at 91%",
+            "id" : "host-a: disk \/ at 91%",
             "severity" : "problem",
-            "text" : "pi-media: disk \/ at 91%"
+            "text" : "host-a: disk \/ at 91%"
           },
           {
             "id" : "object problem",
@@ -4036,7 +4036,7 @@
                 "value" : "10:00–10:50"
               },
               {
-                "subtitle" : "Lab 4 (was R 2.20) · Bauer",
+                "subtitle" : "Lab 4 (was R 2.20) · Weber",
                 "tint" : "orange",
                 "title" : "Software engineering",
                 "value" : "11:00–12:40"

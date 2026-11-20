@@ -266,7 +266,7 @@ TrueNAS (WebSocket API). Each needs a new decision.
   media titles or IPs. Never read or copy `~/.config/homelab-ios/`. `scripts/lint` and the `check-live-api` secret
   scan must pass.
 - **Commits:** prefix `FEAT:`, `FIX:` or `DOCS:` (tests go with their feature). Short plain sentences, the house style. Identity
-  `Konstantin Bauer <konstantin@wbauer.com>`. No AI attribution lines (public repo). One commit per finished,
+  the commit identity set in the owner's git config. No AI attribution lines (public repo). One commit per finished,
   tested step.
 
 ## 7. Risks and open questions
