@@ -168,7 +168,7 @@ How it works:
 2. The app shows it with signed buttons: `HOMELAB_<APPROVE|ALWAYS|DENY>_<id>_<sig>`, where `sig` is the first
    16 hex digits of HMAC-SHA256(secret, `"<VERB>:<id>:<sha256 of action, arg, created>"`). So a button only works
    for exactly the action the user saw: if a script reuses an id for a different action, old buttons stop working.
-   The secret is env `HOMELAB_BUTTON_SECRET`; without it, a random one is made at every start.
+   The secret is env `HOMELAB_BUTTON_SECRET`; without it, a random one is made at every start, so every button issued before a restart stops working (the app shows "forged or outdated button", 403). Set the variable when the server runs under `restart: unless-stopped` or systemd, so buttons survive restarts.
 3. Approve runs the argv list from `actions[action]`. No shell. `{arg}` must be a whole argv item; the arg is
    split at spaces into separate items. Always works like Approve (the server keeps no standing approvals).
    Deny runs nothing.
