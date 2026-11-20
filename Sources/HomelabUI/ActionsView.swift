@@ -291,7 +291,8 @@ struct ActionsView: View {
         formFor = request.spec
     }
 
-    /// Runs a Start tile that has nothing to fill in, after its confirm; the result shows as for a form.
+    /// Runs a Start tile that has nothing to fill in: after its confirm, or at once for the Actions widget's tap (a link
+    /// with the run key, `AppModel.takeOpenActionForm`); the result shows as for a form.
     private func runQuick(_ spec: ActionSpec) async {
         guard let server = model.selected else { return }
         let r = await model.run(ActionForm(spec), on: server)
