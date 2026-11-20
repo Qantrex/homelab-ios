@@ -31,7 +31,8 @@ Highlights:
   out), like the Hue widgets. Small (1 or 2), medium (4), large (8) and a lock-screen circle (1), with sample tiles in
   the gallery. It is a plain widget (no Edit menu: xtool cannot build App Intents). A tap opens the app: an action
   without fields runs at once and shows "Done" (or the error); one with fields or a destructive one opens its form.
-  The widget never reads the Keychain.
+  The widget never reads the Keychain. The run-at-once link carries a secret key that only the app and the widget
+  know, so a link from a web page, a QR code or another app that says `run=1` just opens the form, which asks first.
 - Action forms: Run in a filled form runs at once; only a destructive action asks again. The confirm buttons are white,
   not blue, and the Duke or U6 form shows "Bike" under the switch instead of the raw value.
 - Server and tooling fixes: the fixture server serves the info and actions that belong to `state-bridge.json` and `state-huge.json`; the Homelab Bridge cuts and scrubs host, container and service names, lets only http(s) links and images through, and reads .NET times with 7 fraction digits on Python before 3.11; `scripts/ship-to-phone` never waits for a password or a dead host; demo scene `minimal` (only /info and /state). Settings paths in the docs follow Settings → Advanced.

@@ -1250,7 +1250,7 @@ Your open to-dos (small, medium, lock screen circular and rectangular), from the
 
 **Widget: Actions** · Widgets · shipped · since 2026-11-08
 
-Static widget (no App Intents, no Edit menu) with tiles for the first Start actions in the order from Settings > Advanced > Start tiles, hidden ones left out (small 1-2, medium 4, large 8, lock screen circular 1; sample tiles in the gallery). A tap opens homelab://actions/<name>; a simple action adds run=1 and the app runs it at once and shows Done or the error, the others open their form.
+Static widget (no App Intents, no Edit menu) with tiles for the first Start actions in the order from Settings > Advanced > Start tiles, hidden ones left out (small 1-2, medium 4, large 8, lock screen circular 1; sample tiles in the gallery). A tap opens homelab://actions/<name>; a simple action adds run=1 and a secret run key from the app's cache, and the app runs it at once (and shows Done or the error) only when the key matches; the others, and any link without the right key, open their form.
 
 | | |
 |---|---|

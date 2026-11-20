@@ -139,9 +139,9 @@ HIG Branding: "Use your brand's unique voice and tone", "branding always defers 
   shows the first Start tiles in the order from Settings → Advanced → Start tiles, hidden ones left out; the gallery
   and placeholder show sample tiles. Small: one big tile (icon top, name below) or two stacked rows; medium: 2 x 2;
   large: 2 x 4; lock screen: one circle with the icon. Every tile is a link `homelab://actions/<name>`; a simple action
-  (no fields, not destructive) adds `run=1`, and the app then runs it at once and answers with the usual "Done" (or
-  the error) alert; the others open their form. The app honours `run=1` only for a simple action the server lists
-  (`AppModel.takeOpenActionForm`). VoiceOver: "Wake Minecraft, runs it" / "Add a to-do, opens the form". Dynamic Type
+  (no fields, not destructive) adds `run=1` and the run key (`ActionUsage.runKey`, a secret in `action-usage.json` that only the app and the widget read), and the app then runs it at once and answers with the usual "Done" (or
+  the error) alert; the others open their form. The app honours `run=1` only with the right key and only for a simple action the server lists
+  (`AppModel.takeOpenActionForm`); any other link opens the form, which asks first. VoiceOver: "Wake Minecraft, runs it" / "Add a to-do, opens the form". Dynamic Type
   stops at xxLarge. The widget never reads the Keychain or the network: it lists the Start actions the app cached
   (`action-usage.json`).
 - **Caveat (xtool 1.24.0):** xtool compiles App Intents but does not run Xcode's metadata extraction, so the IPA has no

@@ -943,8 +943,10 @@ public final class AppModel {
 
     /// Like `takeOpenAction`, with the link's prefill for the form (nil: a plain link or launch argument). Hidden
     /// fields and choice values that aren't options never come from a link (`ActionLink.prefill`).
-    /// `run` is true when the link carried `run=1` (the Actions widget) and the action is simple: no input, not
-    /// destructive (`ActionForm.needsNoInput`); then the app runs it at once instead of opening the form.
+    /// `run` is true when the link carried `run=1` with the run key stored in `action-usage.json` (only the Actions
+    /// widget can read it; a forged link has none or a wrong one) and the action is simple: no input, not
+    /// destructive (`ActionForm.needsNoInput`); then the app runs it at once instead of opening the form. Every other
+    /// link opens the form, which asks before anything runs.
     public func takeOpenActionForm() -> (spec: ActionSpec, prefill: ItemAction?, run: Bool)? {
         guard let name = openAction, tab == .actions, !formSheetOpen else { return nil }
         let s = selectedStatus
@@ -954,7 +956,7 @@ public final class AppModel {
             let link = openActionLink?.name == name ? openActionLink : nil
             openAction = nil
             openActionLink = nil
-            let run = link?.run == true && !spec.destructive && ActionForm(spec).needsNoInput
+            let run = link?.run == true && hasRunKey(link) && !spec.destructive && ActionForm(spec).needsNoInput
             return (spec, link?.prefill(for: spec), run)
         }
         if s.actionsFetched != nil || (s.knownInfo != nil && !s.features.contains(.runActions)) {
@@ -962,6 +964,15 @@ public final class AppModel {
             openActionLink = nil
         }
         return nil
+    }
+
+    /// Whether `link` carries the run key the app keeps in `action-usage.json` (compared in constant time).
+    private func hasRunKey(_ link: ActionLink?) -> Bool {
+        guard let given = link?.runKey, !given.isEmpty,
+              let stored = storage.read(ActionUsage.self, ActionUsage.fileName)?.runKey, !stored.isEmpty else { return false }
+        let a = Array(given.utf8), b = Array(stored.utf8)
+        guard a.count == b.count else { return false }
+        return zip(a, b).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
     }
 
     /// The form sheet with `token` (one per sheet, stable while it lives) appeared or went away (`formSheetOpen`).

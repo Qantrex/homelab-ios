@@ -16,6 +16,7 @@ final class FakeServer: @unchecked Sendable {
     private var _authHeaders: [String?] = []
     private var _hosts: [String] = []
     private var _info: Data?
+    private var _actions: Data?
     private let gate = NSCondition()
     private var _open = true
     private var _releaseOn: String?
@@ -51,6 +52,8 @@ final class FakeServer: @unchecked Sendable {
     var authHeaders: [String?] { lock.withLock { _authHeaders } }
     var hosts: [String] { lock.withLock { _hosts } }
     /// Another /info answer than info.json (nil = info.json).
+    /// Replaces the `/actions` answer (nil: the fixture).
+    var actions: Data? { get { lock.withLock { _actions } } set { lock.withLock { _actions = newValue } } }
     var info: Data? { get { lock.withLock { _info } } set { lock.withLock { _info = newValue } } }
 
     // Strong capture on purpose: a test may drop its FakeServer while the model still uses the transport.
@@ -71,7 +74,7 @@ final class FakeServer: @unchecked Sendable {
             return infoStatus == 200 ? .init(body: info ?? Fixtures.data("info.json") ?? Data()) : .init(status: infoStatus)
         case "/api/v1/state": return .init(body: Fixtures.data(state) ?? Data())
         case "/api/v1/services": return .init(body: Fixtures.data("services.json") ?? Data())
-        case "/api/v1/actions": return .init(body: Fixtures.data("actions.json") ?? Data())
+        case "/api/v1/actions": return .init(body: actions ?? Fixtures.data("actions.json") ?? Data())
         case "/api/v1/actions/todo-add":
             lock.withLock { _state = "state-ok.json" }
             return .init(body: Data(#"{"ok": true, "text": "Done: todo-add"}"#.utf8))

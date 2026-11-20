@@ -8,8 +8,10 @@ import Foundation
 /// - The widget never reads the Keychain or the network: the names come from the cache the app keeps
 ///   (`action-usage.json`) and the order from Settings → Advanced → Start tiles (hidden ones left out).
 /// - A tap is `homelab://actions/<name>`. For a simple action (no fields, no argument, not destructive) the link adds
-///   `run=1`; the app then runs it at once, but only after checking the server's own list (`AppModel.takeOpenActionForm`).
-///   Every other action opens its form.
+///   `run=1` and the run key from the cache (`ActionUsage.runKey`, a secret only the app and the widget can read); the
+///   app then runs it at once, but only when the key matches and after checking the server's own list
+///   (`AppModel.takeOpenActionForm`). Without a key (an older cache, or a timeline drawn before the app made one) the
+///   link has no `run`. Every other action opens its form, which asks before anything runs.
 public enum WidgetActions {
     /// Actions per widget family: small 2, medium 4, large 8, lock screen 1.
     public enum Size: Sendable, CaseIterable {
@@ -28,7 +30,8 @@ public enum WidgetActions {
     public static func visible(_ usage: ActionUsage, server: UUID?, order: ItemOrder?) -> [ActionUsage.Offered] {
         guard let server else { return [] }
         let offered = usage.offered[ActionUsage.key(server)] ?? []
-        return (order ?? .standard).arrange(offered, id: \.name)
+        // The run key travels only in memory, from the cache to the tap link (`ActionUsage.Offered.runKey`).
+        return (order ?? .standard).arrange(offered, id: \.name).map { var o = $0; o.runKey = usage.runKey; return o }
     }
 
     /// The tiles to draw: the first visible Start tiles, as many as the size holds.
@@ -41,11 +44,13 @@ public enum WidgetActions {
         action.destructive == false && action.needsInput == false
     }
 
-    /// Where a tap goes: `homelab://actions/<name>`, with `run=1` for a simple action; the Actions tab when the name
-    /// is not one the server could have sent.
+    /// Where a tap goes: `homelab://actions/<name>`, with `run=1` and the run key for a simple action when the tile
+    /// has the key; the Actions tab when the name is not one the server could have sent.
     public static func tapURL(_ action: ActionUsage.Offered) -> URL {
+        let key = action.runKey ?? ""
+        let run = isSimple(action) && !key.isEmpty
         // Only a valid action name becomes a deep link (newer Foundation accepts spaces in URL(string:)).
-        (ActionSpec.isValidName(action.name) ? ActionLink(name: action.name, run: isSimple(action)).url : nil)
+        return (ActionSpec.isValidName(action.name) ? ActionLink(name: action.name, run: run, runKey: run ? key : "").url : nil)
             ?? URL(string: "homelab://actions")!
     }
 

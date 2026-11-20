@@ -20,16 +20,27 @@ public struct ActionUsage: Codable, Sendable, Equatable {
         public var destructive: Bool?
         /// Needs input: it has fields or a way to build an argument. Nil = unknown, like `destructive`.
         public var needsInput: Bool?
-        public init(name: String, label: String, icon: String? = nil, destructive: Bool? = nil, needsInput: Bool? = nil) {
+        /// The app's run key, stamped on by `WidgetActions.visible` so a tap link can carry it. Never stored: it is
+        /// not in `CodingKeys` and stays nil in the cache, so the stored-list comparison in `setOffered` ignores it.
+        public var runKey: String?
+        public init(name: String, label: String, icon: String? = nil, destructive: Bool? = nil, needsInput: Bool? = nil,
+                    runKey: String? = nil) {
             self.name = name; self.label = label; self.icon = icon
-            self.destructive = destructive; self.needsInput = needsInput
+            self.destructive = destructive; self.needsInput = needsInput; self.runKey = runKey
         }
+
+        enum CodingKeys: String, CodingKey { case name, label, icon, destructive, needsInput }
     }
 
     /// Server id (lowercased UUID string) → action name → use.
     public var counts: [String: [String: Entry]] = [:]
     /// Server id → the Start actions it offered at its last fetch, in the server's order.
     public var offered: [String: [Offered]] = [:]
+
+    /// A random secret (hex, 128 bits) the app creates when it first stores offered actions. Only the Actions widget
+    /// (which reads this file) can put it into a tap link, so the app can tell the widget's `run=1` from a forged one.
+    /// Nil in an older cache: the widget's taps then just open the form.
+    public var runKey: String?
 
     public static let fileName = "action-usage.json"
     /// Names kept per server; the least used beyond this are forgotten.
@@ -63,7 +74,13 @@ public struct ActionUsage: Codable, Sendable, Equatable {
                     needsInput: !$0.fields.isEmpty || !$0.variants.isEmpty)
         }
         let k = Self.key(server)
-        guard offered[k] != list else { return false }
+        var changed = false
+        if runKey == nil, !list.isEmpty {
+            var rng = SystemRandomNumberGenerator()
+            runKey = String(format: "%016llx%016llx", rng.next() as UInt64, rng.next() as UInt64)
+            changed = true
+        }
+        guard offered[k] != list else { return changed }
         offered[k] = list.isEmpty ? nil : list
         return true
     }
