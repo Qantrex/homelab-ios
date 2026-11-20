@@ -145,9 +145,13 @@ import Testing
         server.actions = Data(#"{"actions":[{"name":"wake-pc","label":"Wake PC","fields":[]}]}"#.utf8)
         let (m, _, storage, _) = makeModel(server)
         try m.save(ServerConfig(name: "lab", kind: .companion, baseURL: labURL, auth: .identity), token: nil)
+        // The widget is redrawn at the moment the key exists (it would link to the form until its next refresh).
+        var keyAtRedraw: [String?] = []
+        m.onWidgetDataChange = { keyAtRedraw.append(storage.read(ActionUsage.self, ActionUsage.fileName)?.runKey) }
         await m.refresh()
         m.validateTab()
         let stored = try #require(storage.read(ActionUsage.self, ActionUsage.fileName)?.runKey)
+        #expect(keyAtRedraw.contains(stored))
         func take(_ link: String) throws -> Bool {
             m.open(URL(string: link)!)
             let r = try #require(m.takeOpenActionForm())

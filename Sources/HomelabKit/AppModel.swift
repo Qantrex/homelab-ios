@@ -1074,6 +1074,8 @@ public final class AppModel {
         guard usage != before else { return }
         try? storage.write(usage, ActionUsage.fileName)
         onQuickActionsChange()
+        // A new run key: redraw the widget now, or its simple tiles would open the form until its next refresh.
+        if usage.runKey != before.runKey { onWidgetDataChange() }
     }
 
     /// The widget reads the selected server's snapshot from shared storage.
