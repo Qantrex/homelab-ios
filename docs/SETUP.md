@@ -190,9 +190,10 @@ reachable on your tailnet. Nothing goes to GitHub, and a server without this fea
    than your latest source change. No sudo is needed on either side.
 2. Your server serves two endpoints, [App updates](API.md#app-updates-optional-owner-only): `GET /app/latest` (what is
    there and whether your phone is behind) and `GET /app/ipa` (the file).
-3. On the iPhone, a Shortcuts automation turns Tailscale on, fetches `/app/latest`, and if `update` is true downloads
-   `/app/ipa`, turns LocalDevVPN on and runs SideStore's **Install IPA** action with the file; the usual refresh steps
-   follow ([SIDESTORE.md](SIDESTORE.md)).
+3. On the iPhone, a Shortcuts automation turns Tailscale on (Tailscale's own Connect action, then a 5 s wait: while
+   another VPN such as LocalDevVPN is on, the `ts.net` name doesn't resolve), fetches `/app/latest`, and if `update`
+   is true downloads `/app/ipa`, turns LocalDevVPN on and runs SideStore's **Install IPA** action with the file; the
+   usual refresh steps follow ([SIDESTORE.md](SIDESTORE.md)).
 
 ## Tests
 
