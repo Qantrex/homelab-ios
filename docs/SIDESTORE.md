@@ -75,6 +75,10 @@ install stops opening, and Settings → Advanced → Diagnostics → Install exp
 
   A second automation a few minutes later with only step 6 brings Tailscale back if a refresh ever fails (a failed
   action stops the shortcut before step 6).
+- If SideStore is signed out (it asks for your Apple ID when you open it), the automation still runs, but Refresh All
+  Apps and Install IPA can't sign anything, and nothing says so until Today's 2-day warning. Open SideStore now and
+  then to check. To fix it, connect LocalDevVPN, sign in again (see [Sign-in error -80045](#sign-in-error--80045) if
+  it fails), then run the automation's shortcut once by hand (seen 2026-11-23).
 - A refresh keeps everything: servers, tokens (Keychain), cached data and the widget. `DeviceTest.md` checks this.
 - If the app expired anyway, it doesn't open. Refresh it in SideStore; the data is still there.
 - Deleting the app, or installing it with a different Apple ID, starts from zero.
